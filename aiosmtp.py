@@ -1,16 +1,11 @@
 #! /usr/bin/env python3
-
-'''SMTP client class for use with asyncio.
+"""SMTP client class for use with asyncio.
 
 Author: Cole Maclean <hi@cole.io>
-Based on smtplib by: The Dragon De Monsyne <dragondm@integral.org>
+Based on smtplib (from the Python 3 standard library) by:
+The Dragon De Monsyne <dragondm@integral.org>
+"""
 
-TODOS:
-starttls
-login
-ssl connection
-
-'''
 import re
 import io
 import copy
@@ -31,6 +26,8 @@ SMTP_START_INPUT = 354
 SMTP_NOT_AVAILABLE = 421
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+logging.basicConfig()
 
 def quote_address(address_string):
     """Quote a subset of the email addresses defined by RFC 821.
@@ -61,28 +58,25 @@ class SMTP:
         self.hostname = hostname
         self.port = port
         self.loop = loop or asyncio.get_event_loop()
-        self.protocol = SMTPProtocol(loop=self.loop)
-        self.transport = None
-        self.ready = asyncio.Future()
         self.debug = debug
         self.esmtp_extensions = {}
         self.last_status = (None, None)
-        
-        connect = self.loop.create_connection(lambda: self.protocol,
-            self.hostname, self.port)
-        connected = asyncio.async(connect)
+        self.reader = None
+        self.writer = None
+        self.ready = asyncio.Future()
+        connected = asyncio.async(asyncio.open_connection(host=self.hostname, port=self.port))
         connected.add_done_callback(self.on_connect)
-        
+
     def on_connect(self, future):
         try:
-            transport, protocol = future.result()
+            reader, writer = future.result()
         except (ConnectionRefusedError, OSError) as e:
             message = "Error connection to {} on port {}".format(
                 self.hostname, self.port
             )
             raise SMTPConnectError(SMTP_NO_CONNECTION, message)
-        self.transport = transport
-        self.protocol = protocol
+        self.reader = reader
+        self.writer = writer
         status = asyncio.async(self.get_response())
         status.add_done_callback(self.on_connection_status)
         
@@ -93,10 +87,24 @@ class SMTP:
         elif self.debug:
             logger.debug("connected")
         self.ready.set_result(True)
-
+    
+    @asyncio.coroutine
+    def reconnect(self):
+        """Callback free version.
+        """
+        self.ready = asyncio.Future()
+        self.reader, self.writer = yield from asyncio.open_connection(
+            host=self.hostname, port=self.port)
+        code, message = yield from self.get_response()
+        if code != SMTP_READY:
+            raise SMTPConnectError(code, message)
+        elif self.debug:
+            logger.debug("connected")
+        self.ready.set_result(True)
+    
     @property
     def is_connected(self):
-        return bool(self.transport)
+        return bool(self.reader) and bool(self.writer)
         
     @property
     def is_ready(self):
@@ -105,13 +113,6 @@ class SMTP:
     @property
     def supports_esmtp(self):
         return bool(self.esmtp_extensions)
-    
-    @property
-    def socket(self):
-        if self.is_connected:
-            return self.transport.get_extra_info('socket')
-        else:
-            return None
             
     @property
     def local_hostname(self):
@@ -120,12 +121,6 @@ class SMTP:
         if not hasattr(self, '_local_hostname'):
             self._local_hostname = socket.getfqdn()
         return self._local_hostname
-    
-    def close(self):
-        """Close the transport, if there is one.
-        """
-        if self.is_connected:
-            self.transport.close()
             
     def supports(self, extension):
         """Does the server support the SMTP service extension given?
@@ -148,12 +143,15 @@ class SMTP:
         """
         response = []
         while True:
-            line = yield from self.protocol.reader.readline()
+            try:
+                line = yield from self.reader.readline()
+            except ConnectionResetError as exc:
+                raise SMTPServerDisconnected(exc)
+
             if not line:
                 break
             
             if len(line) > MAX_LINE_LENGTH:
-                self.close()
                 raise SMTPResponseException(500, "Line too long.")
             
             code = line[:3]
@@ -195,8 +193,18 @@ class SMTP:
         if isinstance(data, str):
             data = data.encode('ascii')
         
-        self.protocol.writer.write(data)
-    
+        self.writer.write(data)
+        # Ensure the write finishes
+        try:
+            yield from self.writer.drain()
+        except ConnectionResetError as exc:
+            try:
+                yield from self.reconnect()
+                # Send again
+                yield from self.send_data(data)
+            except:
+                raise exc
+        
     @asyncio.coroutine
     def helo(self, hostname=None):
         """SMTP 'helo' command.
@@ -322,6 +330,14 @@ class SMTP:
         """
         address = extract_address(address)
         code, message = yield from self.execute_command("expn", address)
+        return code, message
+        
+    @asyncio.coroutine
+    def quit(self):
+        """SMTP 'quit' command
+        Returns (code, message) response tuple        
+        """
+        code, message = yield from self.execute_command("quit")
         return code, message
         
     @asyncio.coroutine
@@ -578,160 +594,55 @@ class SMTP:
             mail_options, rcpt_options)
         return result
 
-class SMTPProtocol(asyncio.Protocol):
-    
-    def __init__(self, loop=None):
-        self.loop = loop or asyncio.get_event_loop()
-        self.reader = asyncio.streams.StreamReader(loop=self.loop)
-        self.writer = None
-    
-    def connection_made(self, transport):
-        self.reader.set_transport(transport)
-        self.writer = asyncio.streams.StreamWriter(transport, self,
-            self.reader, self.loop)
+# class SMTPProtocol(asyncio.Protocol):
+#
+#     def __init__(self, smtp=None, loop=None):
+#         self.smtp = smtp
+#         self.loop = loop or asyncio.get_event_loop()
+#         self.reader = asyncio.streams.StreamReader(loop=self.loop)
+#         self.writer = None
+#
+#     def connection_made(self, transport):
+#         self.transport = transport
+#         self.reader.set_transport(self.transport)
+#         self.writer = asyncio.streams.StreamWriter(self.transport, self,
+#             self.reader, self.loop)
+#
+#     def data_received(self, data):
+#         self.reader.feed_data(data)
+#
+#     def eof_recieved(self):
+#         self.reader.feed_eof()
+#
+#     def connection_lost(self, exception):
+#         message = "Connection unexpectedly closed"
+#         message = "{}: {}".format(message, exception)
+#         self.reader.set_exception(SMTPServerDisconnected(message))
 
-    def data_received(self, data):
-        self.reader.feed_data(data)
-        
-    def eof_recieved(self):
-        self.reader.feed_eof()    
-    
-    def connection_lost(self, exception):
-        message = "Connection unexpectedly closed"
-        if exception:
-            message = "{}: {}".format(message, exception)
-        raise SMTPServerDisconnected(message)
-    
+# Test the sendmail method, which tests most of the others.
+# Note: This always sends to localhost.
 if __name__ == '__main__':
-    import unittest
-    import email.mime.text    
-    import email.mime.multipart
+    import sys
+
+    def prompt(prompt):
+        sys.stdout.write(prompt + ": ")
+        sys.stdout.flush()
+        return sys.stdin.readline().strip()
+
+    sender = prompt("From")
+    recipients = prompt("To").split(',')
+    print("Enter message, end with ^D:")
+    message = []
+    while 1:
+        line = sys.stdin.readline()
+        if not line:
+            break
+        message.append(line)
+    message = '\n'.join(message)
+    print("Message length is %d" % len(message))
+
+    loop = asyncio.get_event_loop()
+    smtp = SMTP(hostname='localhost', port=25, loop=loop, debug=True)
+    loop.run_until_complete(smtp.ready)
+    future = asyncio.async(smtp.sendmail(sender, recipients, message))
     
-    logger.setLevel(logging.DEBUG)
-    logging.basicConfig()
-        
-    class SMTPTest(unittest.TestCase):
-        
-        @classmethod
-        def setUpClass(cls):
-            cls.loop = asyncio.get_event_loop()
-            cls.smtp = SMTP(hostname='localhost', port=25, loop=cls.loop,
-                debug=True)
-            cls.loop.run_until_complete(cls.smtp.ready)
-        
-        def setUp(self):
-            self.smtp.last_status = (None, None)
-        
-        def test_helo_ok(self):
-            future = asyncio.async(self.smtp.helo())
-            self.loop.run_until_complete(future)
-            code, message = future.result()
-            self.assertTrue(200 <= code <= 299)
-            
-        def test_ehlo_ok(self):
-            future = asyncio.async(self.smtp.ehlo())
-            self.loop.run_until_complete(future)
-            code, message = future.result()
-            self.assertTrue(200 <= code <= 299)
-        
-        def test_helo_if_needed_when_needed(self):
-            future = asyncio.async(self.smtp.ehlo_or_helo_if_needed())
-            self.loop.run_until_complete(future)
-            future.result()
-            self.assertTrue(200 <= self.smtp.last_status[0] <= 299)
-            
-        def test_helo_if_needed_when_not_needed(self):
-            future = asyncio.async(self.smtp.helo())
-            self.loop.run_until_complete(future)
-            self.assertTrue(200 <= self.smtp.last_status[0] <= 299)
-            future2 = asyncio.async(self.smtp.ehlo_or_helo_if_needed())
-            self.loop.run_until_complete(future2)
-            # How to test not run?
-        
-        def test_rset_ok(self):
-            future = asyncio.async(self.smtp.rset())
-            self.loop.run_until_complete(future)
-            code, message = future.result()
-            self.assertTrue(200 <= code <= 299)
-            
-        def test_noop_ok(self):
-            future = asyncio.async(self.smtp.noop())
-            self.loop.run_until_complete(future)
-            code, message = future.result()
-            self.assertTrue(200 <= code <= 299)
-            
-        def test_vrfy_ok(self):
-            test_address = 'test@test.com'
-            future = asyncio.async(self.smtp.vrfy(test_address))
-            self.loop.run_until_complete(future)
-            code, message = future.result()
-            self.assertTrue(200 <= code <= 299)
-        
-        def test_vrfy_failure(self):
-            test_address = 'test@---'
-            future = asyncio.async(self.smtp.vrfy(test_address))
-            self.assertRaises(SMTPResponseException,
-                self.loop.run_until_complete, future)
-        
-        # EXPN doesn't work
-        # def test_expn_ok(self):
-        #     test_address = 'test@test.com'
-        #     future = asyncio.async(self.smtp.expn(test_address))
-        #     self.loop.run_until_complete(future)
-        #     code, message = future.result()
-        #     self.assertTrue(200 <= code <= 299)
-        
-        # HELP doesn't work on my server
-        # def test_help_ok(self):
-        #     future = asyncio.async(self.smtp.help())
-        #     self.loop.run_until_complete(future)
-        #     message = future.result()
-        #     self.assertNotEqual(message, "")
-        
-        def test_supports_method(self):
-            future = asyncio.async(self.smtp.ehlo())
-            self.loop.run_until_complete(future)
-            code, message = future.result()
-            self.assertTrue(self.smtp.supports('ENHANCEDSTATUSCODES'))
-            self.assertTrue(self.smtp.supports('VRFY'))
-            self.assertFalse(self.smtp.supports('BOGUSEXT'))
-            
-        def test_sendmail_simple(self):
-            mail_text = """
-            Hello world!
-            
-            -a tester
-            """
-            future = asyncio.async(self.smtp.sendmail('cole@warpmail.net', 
-                ['cole@warpmail.net'], mail_text))
-            self.loop.run_until_complete(future)
-            errors = future.result()
-            self.assertFalse(errors)
-            
-        def test_sendmail_bogus(self):
-            future = asyncio.async(self.smtp.sendmail('root@localhost', 
-                ['noonehere@localhost'], 'blah blah blah'))
-            self.assertRaises(SMTPRecipientsRefused,
-                self.loop.run_until_complete, future)
-                
-        def test_send_message(self):
-            message = email.mime.multipart.MIMEMultipart()
-            message['To'] =  'cole@warpmail.net'
-            message['From'] = 'cole@warpmail.net'
-            message['Subject'] = 'tëst message'
-            body = email.mime.text.MIMEText("""
-            Hello world. UTF8 OK? 15£ ümläüts'r'us
-            """)
-            message.attach(body)
-            future = asyncio.async(self.smtp.send_message(message))
-            self.loop.run_until_complete(future)
-            errors = future.result()
-            self.assertFalse(errors)
-                        
-        @classmethod
-        def tearDownClass(cls):
-            cls.loop = None
-            cls.smtp.close() # TODO: run loop to execute this
-            cls.stmp = None
-            
-    unittest.main()
