@@ -657,8 +657,7 @@ if __name__ == '__main__':
     print("Message length is %d" % len(message))
 
     loop = asyncio.get_event_loop()
-    smtp = SMTP(hostname='localhost', port=25, loop=loop, debug=False)
-    loop.run_until_complete(smtp.ready)
+    smtp = SMTP(hostname='localhost', port=25, loop=loop)
     send_message = asyncio.async(smtp.sendmail(sender, recipients, message))
     loop.run_until_complete(send_message)
     
