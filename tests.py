@@ -6,15 +6,11 @@ import logging
 import email.mime.text    
 import email.mime.multipart
 
-from aiosmtp import SMTP, SMTPServerDisconnected, SMTPResponseException, \
-    SMTPConnectError, SMTPHeloError, SMTPDataError, SMTPRecipientsRefused
+from aiosmtplib import SMTP, SMTPServerDisconnected, SMTPResponseException, SMTPConnectError, \
+    SMTPHeloError, SMTPDataError, SMTPRecipientsRefused
 
 # NOTE: this sends real emails! change the address before running.
-TEST_ADDRESS = 'cole@warpmail.net'
-
-logger = logging.getLogger('asyncio')
-logger.setLevel(logging.DEBUG)
-logging.basicConfig()
+TEST_ADDRESS = 'root@localhost'
 
 def async_test(f):
     @functools.wraps(f)
@@ -22,7 +18,7 @@ def async_test(f):
         coroutine = asyncio.coroutine(f)
         future = coroutine(*args, **kwargs)
         loop = asyncio.get_event_loop()
-        loop.set_debug(True)
+        loop.set_debug(False)
         loop.run_until_complete(future)
     return wrapper
     
@@ -31,12 +27,10 @@ class SMTPTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.loop = asyncio.get_event_loop()
-        cls.smtp = SMTP(hostname='localhost', port=25, loop=cls.loop,
-            debug=True)
-        cls.loop.run_until_complete(cls.smtp.ready)
+        cls.smtp = SMTP(hostname='localhost', port=25, loop=cls.loop)
     
     def setUp(self):
-        self.smtp.last_status = (None, None)
+        self.smtp.last_helo_status = (None, None)
     
     @async_test
     def test_helo_ok(self):
@@ -51,14 +45,15 @@ class SMTPTest(unittest.TestCase):
     @async_test
     def test_helo_if_needed_when_needed(self):
         yield from self.smtp.ehlo_or_helo_if_needed()
-        self.assertTrue(200 <= self.smtp.last_status[0] <= 299)
+        self.assertTrue(200 <= self.smtp.last_helo_status[0] <= 299)
         
     @async_test
     def test_helo_if_needed_when_not_needed(self):
         yield from self.smtp.helo()
-        self.assertTrue(200 <= self.smtp.last_status[0] <= 299)
+        self.assertTrue(200 <= self.smtp.last_helo_status[0] <= 299)
+        self.smtp.last_helo_status = ('Test', 'Test')
         yield from self.smtp.ehlo_or_helo_if_needed()
-        # TODO: How to test not run?
+        self.assertEqual(self.smtp.last_helo_status, ('Test', 'Test'))
 
     @async_test    
     def test_rset_ok(self):
@@ -141,7 +136,7 @@ class SMTPTest(unittest.TestCase):
     
     @classmethod
     def tearDownClass(cls):
-        future = asyncio.async(cls.smtp.quit())
+        future = asyncio.async(cls.smtp.close())
         cls.loop.run_until_complete(future)
         cls.stmp = None
         cls.loop = None
