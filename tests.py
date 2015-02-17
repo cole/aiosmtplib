@@ -3,7 +3,7 @@ import asyncio.test_utils
 import functools
 import unittest
 import logging
-import email.mime.text    
+import email.mime.text
 import email.mime.multipart
 
 from aiosmtplib import SMTP, SMTPServerDisconnected, SMTPResponseException, SMTPConnectError, \
@@ -11,6 +11,7 @@ from aiosmtplib import SMTP, SMTPServerDisconnected, SMTPResponseException, SMTP
 
 # NOTE: this sends real emails! change the address before running.
 TEST_ADDRESS = 'root@localhost'
+
 
 def async_test(f):
     @functools.wraps(f)
@@ -21,32 +22,33 @@ def async_test(f):
         loop.set_debug(False)
         loop.run_until_complete(future)
     return wrapper
-    
+
+
 class SMTPTest(unittest.TestCase):
-    
+
     @classmethod
     def setUpClass(cls):
         cls.loop = asyncio.get_event_loop()
-        cls.smtp = SMTP(hostname='localhost', port=25, loop=cls.loop)
-    
+        cls.smtp = SMTP(hostname='localhost', port=1025, loop=cls.loop)
+
     def setUp(self):
         self.smtp.last_helo_status = (None, None)
-    
+
     @async_test
     def test_helo_ok(self):
         code, message = yield from self.smtp.helo()
         self.assertTrue(200 <= code <= 299)
-    
+
     @async_test
     def test_ehlo_ok(self):
         code, message = yield from self.smtp.ehlo()
         self.assertTrue(200 <= code <= 299)
-    
+
     @async_test
     def test_helo_if_needed_when_needed(self):
         yield from self.smtp.ehlo_or_helo_if_needed()
         self.assertTrue(200 <= self.smtp.last_helo_status[0] <= 299)
-        
+
     @async_test
     def test_helo_if_needed_when_not_needed(self):
         yield from self.smtp.helo()
@@ -55,16 +57,16 @@ class SMTPTest(unittest.TestCase):
         yield from self.smtp.ehlo_or_helo_if_needed()
         self.assertEqual(self.smtp.last_helo_status, ('Test', 'Test'))
 
-    @async_test    
+    @async_test
     def test_rset_ok(self):
         code, message = yield from self.smtp.rset()
         self.assertTrue(200 <= code <= 299)
-        
+
     @async_test
     def test_noop_ok(self):
         code, message = yield from self.smtp.noop()
         self.assertTrue(200 <= code <= 299)
-        
+
     @async_test
     def test_vrfy_ok(self):
         code, message = yield from self.smtp.vrfy(TEST_ADDRESS)
@@ -74,7 +76,7 @@ class SMTPTest(unittest.TestCase):
         bad_address = 'test@---'
         with self.assertRaises(SMTPResponseException):
             yield from self.smtp.vrfy(bad_address)
-    
+
     # These commands aren't supported on my test system
     # @async_test
     # def test_expn_ok(self):
@@ -92,27 +94,29 @@ class SMTPTest(unittest.TestCase):
         self.assertTrue(self.smtp.supports('ENHANCEDSTATUSCODES'))
         self.assertTrue(self.smtp.supports('VRFY'))
         self.assertFalse(self.smtp.supports('BOGUSEXT'))
-    
+
     @async_test
     def test_sendmail_simple(self):
         mail_text = """
         Hello world!
-        
+
         -a tester
         """
-        errors = yield from self.smtp.sendmail(TEST_ADDRESS, 
-            [TEST_ADDRESS], mail_text)
+        errors = yield from self.smtp.sendmail(TEST_ADDRESS,
+                                               [TEST_ADDRESS], mail_text)
         self.assertFalse(errors)
-        
+
+    @async_test
     def test_sendmail_bogus(self):
         with self.assertRaises(SMTPRecipientsRefused):
-            yield from self.smtp.sendmail(TEST_ADDRESS, 
-                ['noonehere@localhost'], 'blah blah blah')
-    
-    @async_test   
+            yield from self.smtp.sendmail(TEST_ADDRESS,
+                                          ['noonehere@localhost'],
+                                          'blah blah blah')
+
+    @async_test
     def test_send_message(self):
         message = email.mime.multipart.MIMEMultipart()
-        message['To'] =  TEST_ADDRESS
+        message['To'] = TEST_ADDRESS
         message['From'] = TEST_ADDRESS
         message['Subject'] = 'tëst message'
         body = email.mime.text.MIMEText("""
@@ -133,7 +137,7 @@ class SMTPTest(unittest.TestCase):
         # after reconnect, it should work again
         code, message = yield from self.smtp.noop()
         self.assertTrue(200 <= code <= 299)
-    
+
     @classmethod
     def tearDownClass(cls):
         future = asyncio.async(cls.smtp.close())
