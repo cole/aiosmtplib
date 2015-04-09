@@ -17,7 +17,7 @@ Basic usage:
         sender = 'root@localhost'
         recipient = 'somebody@localhost'
         message = "Hello World"
-        yield from smtp.sendmail(sender, recipients, message)
+        yield from smtp.sendmail(sender, [recipient], message)
     
     asyncio.async(send_a_message())
     loop.run_forever()
