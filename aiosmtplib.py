@@ -14,9 +14,12 @@ import asyncio
 import logging
 import email.utils
 import email.generator
+import base64
+import hmac
+from email.base64mime import body_encode as encode_base64
 from smtplib import (
     SMTPServerDisconnected, SMTPResponseException, SMTPConnectError,
-    SMTPHeloError, SMTPDataError, SMTPRecipientsRefused,
+    SMTPHeloError, SMTPDataError, SMTPRecipientsRefused, SMTPSenderRefused
 )
 
 __all__ = (
@@ -113,6 +116,66 @@ class SMTP:
             self.writer.close()
         self.ready = asyncio.Future(loop=self.loop)
         yield from self.connect()
+
+    @asyncio.coroutine
+    def login(self, user, password):
+        def encode_cram_md5(challenge, user, password):
+            challenge = base64.b64decode(challenge)
+            response = user + " " + hmac.HMAC(password.encode('ascii'),
+                                              challenge, 'md5').hexdigest()
+            return encode_base64(response.encode('ascii'), eol='')
+
+        def encode_plain(user, password):
+            s = "\0%s\0%s" % (user, password)
+            return encode_base64(s.encode('ascii'), eol='')
+
+        AUTH_PLAIN = "PLAIN"
+        AUTH_CRAM_MD5 = "CRAM-MD5"
+        AUTH_LOGIN = "LOGIN"
+
+        yield from self.ehlo_or_helo_if_needed()
+
+        if not self.supports("auth"):
+            raise SMTPException("SMTP AUTH extension not supported by server.")
+
+        # Authentication methods the server claims to support
+        advertised_authlist = self.esmtp_extensions["auth"]
+
+        # List of authentication methods we support: from preferred to
+        # less preferred methods. Except for the purpose of testing the weaker
+        # ones, we prefer stronger methods like CRAM-MD5:
+        preferred_auths = [AUTH_CRAM_MD5, AUTH_PLAIN, AUTH_LOGIN]
+
+        # We try the authentication methods the server advertises, but only the
+        # ones *we* support. And in our preferred order.
+        authlist = [auth for auth in preferred_auths if auth in advertised_authlist]
+        if not authlist:
+            raise SMTPException("No suitable authentication method found.")
+
+        # Some servers advertise authentication methods they don't really
+        # support, so if authentication fails, we continue until we've tried
+        # all methods.
+        for authmethod in authlist:
+            if authmethod == AUTH_CRAM_MD5:
+                (code, resp) = yield from self.execute_command("AUTH", AUTH_CRAM_MD5)
+                if code == 334:
+                    (code, resp) = yield from self.execute_command(encode_cram_md5(resp, user, password))
+            elif authmethod == AUTH_PLAIN:
+                (code, resp) = yield from self.execute_command("AUTH",
+                    AUTH_PLAIN + " " + encode_plain(user, password))
+            elif authmethod == AUTH_LOGIN:
+                (code, resp) = yield from self.execute_command("AUTH",
+                    "%s %s" % (AUTH_LOGIN, encode_base64(user.encode('ascii'), eol='')))
+                if code == 334:
+                    (code, resp) = yield from self.execute_command(encode_base64(password.encode('ascii'), eol=''))
+
+            # 235 == 'Authentication successful'
+            # 503 == 'Error: already authenticated'
+            if code in (235, 503):
+                return (code, resp)
+
+        # We could not login sucessfully. Return result of last attempt.
+        raise SMTPAuthenticationError(code, resp)
 
     @asyncio.coroutine
     def close(self):
@@ -410,7 +473,7 @@ class SMTP:
                     yield from self.rset()
                 except SMTPServerDisconnected:
                     pass
-            raise SMTPSenderRefused(code, response, sender)
+            raise SMTPSenderRefused(code, message, sender)
 
         return code, message
 
