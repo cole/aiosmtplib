@@ -6,11 +6,17 @@ import logging
 import email.mime.text
 import email.mime.multipart
 
-from aiosmtplib import SMTP, SMTPServerDisconnected, SMTPResponseException, SMTPConnectError, \
-    SMTPHeloError, SMTPDataError, SMTPRecipientsRefused
+from .smtp import SMTP
+from .errors import (
+    SMTPServerDisconnected, SMTPResponseException, SMTPConnectError,
+    SMTPHeloError, SMTPDataError, SMTPRecipientsRefused,
+)
+
 
 # NOTE: this sends real emails! change the address before running.
-TEST_ADDRESS = 'root@localhost'
+TEST_ADDRESS = 'cole@warpmail.net'
+TEST_HOSTNAME = 'localhost'
+TEST_PORT = 25
 
 
 def async_test(f):
@@ -29,7 +35,7 @@ class SMTPTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.loop = asyncio.get_event_loop()
-        cls.smtp = SMTP(hostname='localhost', port=1025, loop=cls.loop)
+        cls.smtp = SMTP(hostname=TEST_HOSTNAME, port=TEST_PORT, loop=cls.loop)
 
     def setUp(self):
         self.smtp.last_helo_status = (None, None)

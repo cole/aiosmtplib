@@ -1,11 +1,13 @@
-# aiosmtplib
+aiosmtplib
+==========
 
-## Introduction
+Introduction
+------------
 
 Aiosmtplib is an implementation of the python stdlib smtplib using asyncio, for
 use in asynchronous applications.
 
-Basic usage:
+Basic usage::
 
     import asyncio
     import aiosmtplib
@@ -23,16 +25,18 @@ Basic usage:
     loop.run_forever()
 
 
-## Connecting to an SMTP server
+Connecting to an SMTP server
+----------------------------
 
 Use an instance of the `SMTP` class to connect to a server. Note that if the
 event loop used to initialize the class is not currently running, it will be
 started in order to connect.
 
-## Sending messages
+Sending messages
+----------------
 
-Use `SMTP.sendmail` to send raw messages. The method signature is the same as
+Use ``SMTP.sendmail`` to send raw messages. The method signature is the same as
 for standard smtplib.
 
-Use `SMTP.send_message` to send `email.message.Message` objects. The method
+Use ``SMTP.send_message`` to send ``email.message.Message`` objects. The method
 signature is the same as for standard smtplib.
