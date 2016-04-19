@@ -10,7 +10,7 @@ def read(f):
 setup(
     name='aiosmtplib',
     packages=['aiosmtplib'],
-    version='0.1',
+    version='0.1.2',
     description='asyncio version of smtplib',
     long_description=read('README.rst'),
     author='Cole Maclean',
