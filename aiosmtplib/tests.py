@@ -14,9 +14,9 @@ from .errors import (
 
 
 # NOTE: this sends real emails! change the address before running.
-TEST_ADDRESS = 'cole@warpmail.net'
+TEST_ADDRESS = 'root@localhost'
 TEST_HOSTNAME = 'localhost'
-TEST_PORT = 25
+TEST_PORT = 1025
 
 
 def async_test(f):
