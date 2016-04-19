@@ -10,13 +10,13 @@ def read(f):
 setup(
     name='aiosmtplib',
     packages=['aiosmtplib'],
-    version='0.1.2',
+    version='0.1.3',
     description='asyncio version of smtplib',
     long_description=read('README.rst'),
     author='Cole Maclean',
     author_email='hi@cole.io',
     url='https://github.com/cole/aiosmtplib',
-    download_url='https://github.com/cole/aiosmtplib/tarball/0.1',
+    download_url='https://github.com/cole/aiosmtplib/tarball/0.1.3',
     license='MIT',
     keywords=['smtp', 'email', 'asyncio'],
     classifiers=[
