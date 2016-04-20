@@ -146,7 +146,7 @@ class SMTPTest(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        future = asyncio.async(cls.smtp.close())
+        future = asyncio.ensure_future(cls.smtp.close())
         cls.loop.run_until_complete(future)
         cls.stmp = None
         cls.loop = None

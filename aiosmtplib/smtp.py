@@ -79,7 +79,7 @@ class SMTP:
         self.writer = None
         self.ready = asyncio.Future(loop=self.loop)
 
-        connected = asyncio.async(self.connect())
+        connected = asyncio.ensure_future(self.connect())
         if not self.loop.is_running():
             self.loop.run_until_complete(connected)
 
@@ -144,7 +144,9 @@ class SMTP:
 
         # We try the authentication methods the server advertises, but only the
         # ones *we* support. And in our preferred order.
-        authlist = [auth for auth in preferred_auths if auth in advertised_authlist]
+        authlist = [
+            auth for auth in preferred_auths if auth in advertised_authlist
+        ]
         if not authlist:
             raise SMTPException("No suitable authentication method found.")
 
@@ -597,7 +599,8 @@ class SMTP:
          ... Subject: testin'...
          ...
          ... This is a test '''
-         >>> future = asyncio.async(smtp.sendmail("me@my.org", tolist, msg))
+         >>> future = asyncio.ensure_future(
+         >>>     smtp.sendmail("me@my.org", tolist, msg))
          >>> loop.run_until_complete(future)
          >>> future.result()
          { "three@three.org" : ( 550 ,"User unknown" ) }
