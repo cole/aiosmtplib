@@ -16,7 +16,7 @@ from .errors import (
 # NOTE: this sends real emails! change the address before running.
 TEST_ADDRESS = 'root@localhost'
 TEST_HOSTNAME = 'localhost'
-TEST_PORT = 1025
+TEST_PORT = 25
 
 
 def async_test(f):
