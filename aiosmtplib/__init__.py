@@ -1,10 +1,13 @@
 import asyncio
 
-from .smtp import SMTP
+from .esmtp import ESMTP
 from .errors import (
     SMTPServerDisconnected, SMTPResponseException, SMTPConnectError,
     SMTPHeloError, SMTPDataError, SMTPRecipientsRefused, SMTPSenderRefused
 )
+
+
+SMTP = ESMTP
 
 
 __all__ = (
@@ -14,9 +17,7 @@ __all__ = (
 )
 
 
-# Test the sendmail method, which tests most of the others.
-# Note: This always sends to localhost.
-if __name__ == '__main__':
+def main():
     import sys
 
     def prompt(prompt):
@@ -28,11 +29,13 @@ if __name__ == '__main__':
     recipients = prompt("To").split(',')
     print("Enter message, end with ^D:")
     message = []
-    while 1:
+    while True:
         line = sys.stdin.readline()
-        if not line:
+        if line:
+            message.append(line)
+        else:
             break
-        message.append(line)
+
     message = '\n'.join(message)
     print("Message length is %d" % len(message))
 
@@ -40,3 +43,9 @@ if __name__ == '__main__':
     smtp = SMTP(hostname='localhost', port=25, loop=loop)
     send_message = asyncio.async(smtp.sendmail(sender, recipients, message))
     loop.run_until_complete(send_message)
+
+
+# Test the sendmail method, which tests most of the others.
+# Note: This always sends to localhost.
+if __name__ == '__main__':
+    main()
