@@ -11,32 +11,40 @@ Basic usage::
 
     import asyncio
     import aiosmtplib
+
     loop = asyncio.get_event_loop()
-    smtp = aiosmtplib.SMTP(hostname='localhost', port=25, loop=loop)
-    
-    @asyncio.coroutine
-    def send_a_message():
+    smtp = aiosmtplib.SMTP(hostname='localhost', port=1025, loop=loop)
+    loop.run_until_complete(smtp.connect())
+
+    async def send_a_message():
         sender = 'root@localhost'
         recipient = 'somebody@localhost'
         message = "Hello World"
-        yield from smtp.sendmail(sender, [recipient], message)
-    
-    asyncio.async(send_a_message())
-    loop.run_forever()
+        await smtp.sendmail(sender, [recipient], message)
+
+
+    loop.run_until_complete(send_a_message())
+
 
 
 Connecting to an SMTP server
 ----------------------------
 
-Use an instance of the `SMTP` class to connect to a server. Note that if the
-event loop used to initialize the class is not currently running, it will be
-started in order to connect.
+Initialize a new ``aiosmtplib.SMTP`` instance, then run it's ``connect``
+coroutine. Unlike the standard smtplib, initializing an instance does not
+automatically connect to the server.
 
 Sending messages
 ----------------
 
-Use ``SMTP.sendmail`` to send raw messages. The method signature is the same as
-for standard smtplib.
+Use ``SMTP.sendmail`` to send raw messages. Allowed arguments are:
+    - sender       : The address sending this mail.
+    - recipients   : A list of addresses to send this mail to.  A bare
+                     string will be treated as a list with 1 address.
+    - message      : The message string to send.
+    - mail_options : List of options (such as ESMTP 8bitmime) for the
+                     mail command.
+    - rcpt_options : List of options (such as DSN commands) for
+                     all the rcpt commands.
 
-Use ``SMTP.send_message`` to send ``email.message.Message`` objects. The method
-signature is the same as for standard smtplib.
+Use ``SMTP.send_message`` to send ``email.message.Message`` objects.

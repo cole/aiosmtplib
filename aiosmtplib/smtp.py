@@ -9,36 +9,51 @@ import io
 import copy
 import socket
 import asyncio
+import re
 import email.utils
 import email.generator
 
 from aiosmtplib import status
+from aiosmtplib.auth import auth_crammd5, auth_login, auth_plain
 from aiosmtplib.streams import SMTPStreamReader, SMTPStreamWriter
 from aiosmtplib.errors import (
     SMTPConnectError, SMTPHeloError, SMTPDataError, SMTPRecipientRefused,
-    SMTPRecipientsRefused, SMTPSenderRefused,
+    SMTPRecipientsRefused, SMTPSenderRefused, SMTPServerDisconnected,
+    SMTPResponseException,
 )
-from aiosmtplib.utils import (
-    quote_address, extract_sender, extract_recipients, prepare_message_string,
+from aiosmtplib.textutils import (
+    quote_address, extract_sender, extract_recipients, encode_message_string,
 )
 
 
 MAX_LINE_LENGTH = 8192
 SMTP_PORT = 25
+OLDSTYLE_AUTH_REGEX = re.compile(r"auth=(?P<auth>.*)", flags=re.I)
+EXTENSIONS_REGEX = re.compile(r'(?P<ext>[A-Za-z0-9][A-Za-z0-9\-]*) ?')
 
 
-class BaseSMTP:
+class SMTP:
     '''
-    An SMTP client, not implementing any extensions. For those see the ESMTP
-    class.
+    An SMTP/ESMTP client.
     '''
+
+    # List of authentication methods we support: from preferred to
+    # less preferred methods. We prefer stronger methods like CRAM-MD5.
+    authentication_methods = (
+        ('cram-md5', auth_crammd5,),
+        ('plain', auth_plain,),
+        ('login', auth_login,),
+    )
 
     def __init__(self, hostname='localhost', port=SMTP_PORT,
-                 source_address=None, timeout=None, loop=None):
+                 source_address=None, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
+                 loop=None):
         self.hostname = hostname
         self.port = port
-        self.last_helo_response = (None, None)
         self._source_address = source_address
+        self.last_helo_response = (None, None)
+        self.last_ehlo_response = (None, None)
+        self.esmtp_extensions = {}
         # TODO: implement timeout
         self.timeout = timeout
 
@@ -46,23 +61,54 @@ class BaseSMTP:
         self.writer = None
         self.protocol = None
         self.transport = None
-        self.ready = asyncio.Future()
         self.loop = loop or asyncio.get_event_loop()
+
+    @property
+    def supports_esmtp(self):
+        '''
+        Check if the connection supports ESMTP.
+
+        Returns bool
+        '''
+        return bool(self.esmtp_extensions)
+
+    @property
+    def supported_auth_methods(self):
+        if self.supports_esmtp and self.esmtp_extensions['auth']:
+            supported_auth_methods = [
+                (auth_name, auth) for auth_name, auth
+                in self.authentication_methods
+                if auth_name in self.esmtp_extensions['auth']
+            ]
+        else:
+            supported_auth_methods = []
+
+        return supported_auth_methods
+
+    def supports_extension(self, extension):
+        '''
+        Check if the server supports the ESMTP service extension given.
+
+        Returns bool
+        '''
+        return extension.lower() in self.esmtp_extensions
 
     async def connect(self):
         '''
         Open asyncio streams to the server and check response status.
         '''
         self.reader = SMTPStreamReader(limit=MAX_LINE_LENGTH, loop=self.loop)
+
         self.protocol = asyncio.StreamReaderProtocol(self.reader,
                                                      loop=self.loop)
+
         try:
-            self.transport, _ = yield from self.loop.create_connection(
+            self.transport, _ = await self.loop.create_connection(
                 lambda: self.protocol, self.hostname, self.port)
         except (ConnectionRefusedError, OSError):
             message = "Error connecting to {host} on port {port}".format(
-                host=self.host, port=self.port)
-            raise SMTPConnectError(status.SMTP_NO_CONNECTION, message)
+                host=self.hostname, port=self.port)
+            raise SMTPConnectError(None, message)
         else:
             self.writer = SMTPStreamWriter(self.transport, self.protocol,
                                            self.reader, self.loop)
@@ -70,8 +116,6 @@ class BaseSMTP:
         code, message = await self.reader.read_response()
         if not status.is_success_code(code):
             raise SMTPConnectError(code, message)
-
-        self.connected.set_result(True)
 
     async def close(self):
         '''
@@ -84,7 +128,6 @@ class BaseSMTP:
         self.writer = None
         self.protocol = None
         self.transport = None
-        self.ready = asyncio.Future()
 
     @property
     def is_connected(self):
@@ -94,15 +137,6 @@ class BaseSMTP:
         Returns bool
         '''
         return self.transport and not self.transport.is_closing()
-
-    @property
-    def is_ready(self):
-        '''
-        Check for ready message recieved from server.
-
-        Returns bool
-        '''
-        return self.ready.done()
 
     @property
     def source_address(self):
@@ -117,7 +151,10 @@ class BaseSMTP:
 
     @property
     def is_helo_needed(self):
-        return self.last_helo_response == (None, None)
+        return (
+            self.last_ehlo_response == (None, None) and
+            self.last_helo_response == (None, None)
+        )
 
     async def execute_command(self, *args):
         '''
@@ -125,9 +162,15 @@ class BaseSMTP:
 
         Returns (code, message) tuple.
         '''
+        if not self.is_connected:
+            message = 'Not connected to SMTP server {}:{}'.format(
+                self.hostname, self.port)
+            raise SMTPServerDisconnected(message)
+
         await self.writer.send_command(*args)
         code, message = await self.reader.read_response()
 
+        # TODO: confirm this is correct behaviour
         # If the server is unavailable, shut it down
         if code == status.SMTP_421_DOMAIN_UNAVAILABLE:
             await self.close()
@@ -156,9 +199,30 @@ class BaseSMTP:
 
         return code, message
 
-    async def helo_if_needed(self):
+    async def ehlo(self, hostname=None):
         '''
-        Call self.helo() if needed.
+        Send the SMTP 'ehlo' command.
+        Hostname to send for this command defaults to the FQDN of the local
+        host.
+
+        Returns a (code, message) tuple with the server response.
+        '''
+        hostname = hostname or self.source_address
+        code, message = await self.execute_command("ehlo", hostname)
+
+        if code == status.SMTP_250_COMPLETED:
+            self.parse_esmtp_response(code, message)
+
+        self.last_ehlo_response = (code, message)
+
+        return code, message
+
+    async def ehlo_or_helo_if_needed(self):
+        '''
+        Call self.ehlo() and/or self.helo() if needed.
+
+        If there has been no previous EHLO or HELO command this session, this
+        method tries ESMTP EHLO first.
 
         This method may raise the following exceptions:
 
@@ -166,7 +230,13 @@ class BaseSMTP:
                                   the helo greeting.
         '''
         if self.is_helo_needed:
-            helo_code, helo_response = await self.helo()
+            try:
+                ehlo_code, ehlo_response = await self.ehlo()
+            except SMTPResponseException as exc:
+                ehlo_code, ehlo_response = exc.code, exc.message
+
+            if not status.is_success_code(ehlo_code):
+                helo_code, helo_response = await self.helo()
 
     async def help(self):
         '''
@@ -241,9 +311,13 @@ class BaseSMTP:
         '''
         if options is None:
             options = []
-        to_string = "TO:{}".format(quote_address(recipient))
+        to = "TO:{}".format(quote_address(recipient))
 
-        code, message = await self.execute_command("rcpt", to_string, *options)
+        # Turn a generic STMPResponseException into SMTPRecipientRefused
+        try:
+            code, message = await self.execute_command("rcpt", to, *options)
+        except SMTPResponseException as exc:
+            code, message = exc.code, exc.message
 
         success_codes = (
             status.SMTP_250_COMPLETED,
@@ -268,8 +342,8 @@ class BaseSMTP:
         if code != status.SMTP_354_START_INPUT:
             raise SMTPDataError(code, response)
 
-        encoded_message = prepare_message_string(message)
-        await self.writer.write(encoded_message)
+        encoded_message = encode_message_string(message)
+        self.writer.write(encoded_message)
 
         code, response = await self.reader.read_response()
         if code != status.SMTP_250_COMPLETED:
@@ -295,8 +369,8 @@ class BaseSMTP:
         The string is encoded to bytes using the ascii codec, and lone \\r and
         \\n characters are converted to \\r\\n characters.
 
-        If there has been no previous HELO command this session, this
-        method tries HELO first.
+        If there has been no previous HELO or EHLO command this session, this
+        method tries EHLO first.
 
         This method will return normally if the mail is accepted for at least
         one recipient.  It returns a dictionary, with one entry for each
@@ -350,7 +424,12 @@ class BaseSMTP:
         if rcpt_options is None:
             rcpt_options = []
 
-        await self.helo_if_needed()
+        await self.ehlo_or_helo_if_needed()
+
+        if self.supports_esmtp and self.supports_extension('size'):
+            size_option = "size={}".format(len(message))
+            mail_options.append(size_option)
+
         await self.mail(sender, options=mail_options)
 
         recipient_errors = {}
@@ -404,8 +483,8 @@ class BaseSMTP:
         del message_copy['Bcc']
         del message_copy['Resent-Bcc']
 
-        messageio = io.BytesIO()
-        generator = email.generator.BytesGenerator(messageio)
+        messageio = io.StringIO()
+        generator = email.generator.Generator(messageio)
         generator.flatten(message_copy, linesep='\r\n')
         flat_message = messageio.getvalue()
 
@@ -414,3 +493,103 @@ class BaseSMTP:
                                      rcpt_options=rcpt_options)
 
         return result
+
+    # ESMTP extensions #
+    def parse_esmtp_response(self, code, message):
+        '''
+        Parse an ESMTP response from the server.
+
+        It might look something like:
+             220 size.does.matter.af.MIL (More ESMTP than Crappysoft!)
+             EHLO heaven.af.mil
+             250-size.does.matter.af.MIL offers FIFTEEN extensions:
+             250-8BITMIME
+             250-PIPELINING
+             250-DSN
+             250-ENHANCEDSTATUSCODES
+             250-EXPN
+             250-HELP
+             250-SAML
+             250-SEND
+             250-SOML
+             250-TURN
+             250-XADR
+             250-XSTA
+             250-ETRN
+             250-XGEN
+             250 SIZE 51200000
+
+        We add extensions in the reponse to self.esmtp_extensions.
+        '''
+        response_lines = message.split('\n')
+        del response_lines[0]  # ignore the first line
+
+        for line in response_lines:
+            # To be able to communicate with as many SMTP servers as possible,
+            # we have to take the old-style auth advertisement into account,
+            # because:
+            # 1) Else our SMTP feature parser gets confused.
+            # 2) There are some servers that only advertise the auth methods we
+            #    support using the old style.
+            auth_match = OLDSTYLE_AUTH_REGEX.match(line)
+            if auth_match:
+                auth_type = auth_match.group('auth')[0]
+                self.esmtp_extensions.setdefault('auth', [])
+                if auth_type not in self.esmtp_extensions['auth']:
+                    self.esmtp_extensions['auth'].append(auth_type)
+
+            # RFC 1869 requires a space between ehlo keyword and parameters.
+            # It's actually stricter, in that only spaces are allowed between
+            # parameters, but were not going to check for that here.  Note
+            # that the space isn't present if there are no parameters.
+            extensions = EXTENSIONS_REGEX.match(line)
+            if extensions:
+                extension = extensions.group('ext').lower()
+                params = extensions.string[extensions.end('ext'):].strip()
+                if extension == "auth":
+                    self.esmtp_extensions.setdefault('auth', [])
+                    self.esmtp_extensions['auth'] += params.split()
+                else:
+                    self.esmtp_extensions[extension] = params
+
+    async def _auth(self, auth_method, username, password):
+        '''
+        Try a single auth method. Used as part of login.
+        '''
+        request_command, verification_callback = auth_method(
+            username, password)
+        code, response = await self.execute_command('AUTH', request_command)
+        if verification_callback and code == status.SMTP_334_AUTH_CONTINUE:
+            next_command = verification_callback(code, response)
+            code, response = await self.execute_command(next_command)
+
+        return code, response
+
+    async def login(self, username, password):
+        await self.ehlo_or_helo_if_needed()
+
+        if not self.supports("auth"):
+            raise SMTPException("SMTP AUTH extension not supported by server.")
+
+        if not self.supported_auth_methods:
+            raise SMTPException("No suitable authentication method found.")
+
+        # Some servers advertise authentication methods they don't really
+        # support, so if authentication fails, we continue until we've tried
+        # all methods.
+        for auth_name, auth_method in self.supported_auth_methods:
+            try:
+                code, message = self._auth(auth_method, username, password)
+            except SMTPResponseException as exc:
+                # In this context, 503 means we're already authenticated.
+                # Ignore.
+                if exc.code == status.SMTP_503_BAD_COMMAND_SEQUENCE:
+                    return exc.code, exc.message
+                else:
+                    raise exc
+            else:
+                if code == status.SMTP_235_AUTH_SUCCESSFUL:
+                    return code, message
+
+        # We could not login sucessfully. Return result of last attempt.
+        raise SMTPAuthenticationError(code, message)

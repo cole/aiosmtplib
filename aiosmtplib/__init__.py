@@ -1,13 +1,10 @@
 import asyncio
 
-from .esmtp import ESMTP
+from .smtp import SMTP
 from .errors import (
     SMTPServerDisconnected, SMTPResponseException, SMTPConnectError,
     SMTPHeloError, SMTPDataError, SMTPRecipientsRefused, SMTPSenderRefused
 )
-
-
-SMTP = ESMTP
 
 
 __all__ = (

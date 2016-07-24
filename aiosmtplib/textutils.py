@@ -2,6 +2,10 @@ import re
 import email.utils
 
 
+LINE_ENDINGS_REGEX = re.compile(b'(?:\r\n|\n|\r(?!\n))')
+PERIOD_REGEX = re.compile(b'(?m)^\.')
+
+
 def quote_address(address):
     '''
     Quote a subset of the email addresses defined by RFC 821.
@@ -54,15 +58,14 @@ def extract_recipients(message, resent_dates=None):
         recipient_headers = ('Resent-To', 'Resent-Cc', 'Resent-Bcc')
 
     for header in recipient_headers:
-        address_field_values = message.get_all(header, [])
-        for raw_address in address_field_values:
-            recipient = email.utils.getaddresses(raw_address)
-            recipients.append(recipient)
+        recipients.extend(message.get_all(header, []))
 
-    return recipients
+    parsed_recipients = email.utils.getaddresses(recipients)
+
+    return parsed_recipients
 
 
-def prepare_message_string(message_str):
+def encode_message_string(message_str):
     '''
     Prepare a message for sending.
     Automatically quotes lines beginning with a period per RFC821.
@@ -71,8 +74,8 @@ def prepare_message_string(message_str):
     Returns bytes.
     '''
     message_bytes = message_str.encode('utf-8')
-    message_bytes = re.sub(r'(?:\r\n|\n|\r(?!\n))', b"\r\n", message_bytes)
-    message_bytes = re.sub(r'(?m)^\.', b'..', message_bytes)
+    message_bytes = LINE_ENDINGS_REGEX.sub(b"\r\n", message_bytes)
+    message_bytes = PERIOD_REGEX.sub(b'..', message_bytes)
     if not message_bytes.endswith(b"\r\n"):
         message_bytes += b"\r\n"
     message_bytes += b".\r\n"
