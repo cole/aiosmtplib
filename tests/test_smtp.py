@@ -154,6 +154,21 @@ async def test_sendmail_simple_success(smtp_client):
 
 
 @pytest.mark.asyncio
+async def test_sendmail_binary_content(smtp_client):
+    await smtp_client.connect()
+    test_address = 'test@example.com'
+    mail_text = b"""
+    Hello world!
+
+    -a tester
+    """
+    errors = await smtp_client.sendmail(
+        test_address, [test_address], mail_text)
+
+    assert errors is None
+
+
+@pytest.mark.asyncio
 async def test_sendmail_simple_failure(smtp_client):
     await smtp_client.connect()
     sender = 'test@example.com'

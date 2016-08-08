@@ -73,7 +73,11 @@ def encode_message_string(message_str):
 
     Returns bytes.
     '''
-    message_bytes = message_str.encode('utf-8')
+    if isinstance(message_str, str):
+        message_bytes = message_str.encode('utf-8')
+    else:
+        assert isinstance(message_str, bytes)
+        message_bytes = message_str
     message_bytes = LINE_ENDINGS_REGEX.sub(b"\r\n", message_bytes)
     message_bytes = PERIOD_REGEX.sub(b'..', message_bytes)
     if not message_bytes.endswith(b"\r\n"):
