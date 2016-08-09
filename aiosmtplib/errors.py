@@ -9,7 +9,9 @@ class SMTPException(Exception):
     '''
     Base class for all SMTP exceptions.
     '''
-    pass
+    def __init__(self, message):
+        self.message = message
+        self.args = (message,)
 
 
 class SMTPServerDisconnected(SMTPException):
@@ -25,15 +27,6 @@ class SMTPConnectError(SMTPException):
     An error occurred while connectiong to the SMTP server.
     '''
     pass
-
-
-class SMTPRecipientsRefused(SMTPException):
-    '''
-    Wraps a dict collection of recipients refused by the SMTP server.
-    '''
-    def __init__(self, recipients):
-        self.recipients = recipients
-        self.args = (recipients,)
 
 
 class SMTPResponseException(SMTPException):
@@ -94,3 +87,12 @@ class SMTPRecipientRefused(SMTPResponseException):
         self.message = message
         self.recipient = recipient
         self.args = (code, message, recipient,)
+
+
+class SMTPRecipientsRefused(SMTPException):
+    '''
+    Wraps a list of SMTPRecipientRefused exceptions.
+    '''
+    def __init__(self, recipients):
+        self.recipients = recipients
+        self.args = (recipients,)

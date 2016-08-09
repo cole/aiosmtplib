@@ -22,7 +22,7 @@ def crammd5_server_response():
 @pytest.mark.parametrize('username,password', USERNAMES_AND_PASSWORDS)
 def test_auth_plain(username, password):
     '''
-    Check that auth_plain base64 encode the username/password given.
+    Check that auth_plain base64 encodes the username/password given.
     '''
     request_str, callback = auth_plain(username, password)
 

@@ -2,15 +2,18 @@ import asyncio
 
 from .smtp import SMTP
 from .errors import (
-    SMTPServerDisconnected, SMTPResponseException, SMTPConnectError,
-    SMTPHeloError, SMTPDataError, SMTPRecipientsRefused, SMTPSenderRefused
+    SMTPException, SMTPServerDisconnected, SMTPConnectError,
+    SMTPRecipientsRefused, SMTPResponseException, SMTPNotSupported,
+    SMTPHeloError, SMTPDataError, SMTPAuthenticationError,
+    SMTPSenderRefused, SMTPRecipientRefused,
 )
 
 
 __all__ = (
-    'SMTP', 'SMTPServerDisconnected', 'SMTPResponseException',
-    'SMTPConnectError', 'SMTPHeloError', 'SMTPDataError',
-    'SMTPRecipientsRefused', 'SMTPSenderRefused',
+    'SMTP', 'SMTPException', 'SMTPServerDisconnected', 'SMTPConnectError',
+    'SMTPResponseException', 'SMTPNotSupported', 'SMTPHeloError',
+    'SMTPDataError', 'SMTPAuthenticationError', 'SMTPSenderRefused',
+    'SMTPRecipientRefused', 'SMTPRecipientsRefused',
 )
 
 
