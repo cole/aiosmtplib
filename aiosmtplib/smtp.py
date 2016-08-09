@@ -337,6 +337,7 @@ class SMTP:
 
         encoded_message = encode_message_string(message)
         self.writer.write(encoded_message)
+        await self.writer.drain()
 
         code, response = await self.reader.read_response()
         if code != status.SMTP_250_COMPLETED:
