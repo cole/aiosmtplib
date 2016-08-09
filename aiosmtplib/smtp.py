@@ -199,7 +199,7 @@ class SMTP:
         if hostname is None:
             hostname = self.source_address
 
-        code, message = await self.execute_command("ehlo", hostname)
+        code, message = await self.execute_command('EHLO', hostname)
 
         if code == status.SMTP_250_COMPLETED:
             extensions, auth_methods = parse_esmtp_extensions(message)
@@ -237,7 +237,7 @@ class SMTP:
         SMTP 'help' command.
         Returns help text.
         '''
-        return await self.execute_command("help")
+        return await self.execute_command('HELP')
 
     async def rset(self):
         '''
@@ -245,14 +245,14 @@ class SMTP:
 
         Returns a (code, message) tuple with the server response.
         '''
-        return await self.execute_command("rset")
+        return await self.execute_command('RSET')
 
     async def noop(self):
         '''
         Sends an SMTP 'noop' command (does nothing)
         Returns a (code, message) tuple with the server response.
         '''
-        return await self.execute_command("noop")
+        return await self.execute_command('NOOP')
 
     async def vrfy(self, address):
         '''
@@ -260,7 +260,7 @@ class SMTP:
         Returns a (code, message) tuple with the server response.
         '''
         parsed_address = email.utils.parseaddr(address)[1] or address
-        return await self.execute_command("vrfy", parsed_address)
+        return await self.execute_command('VRFY', parsed_address)
 
     async def expn(self, address):
         '''
@@ -268,14 +268,14 @@ class SMTP:
         Returns a (code, message) tuple with the server response.
         '''
         parsed_address = email.utils.parseaddr(address)[1] or address
-        return await self.execute_command("expn", parsed_address)
+        return await self.execute_command('EXPN', parsed_address)
 
     async def quit(self):
         '''
         Sends the SMTP 'quit' command, and closes the connection.
         Returns a (code, message) tuple with the server response.
         '''
-        code, message = await self.execute_command("quit")
+        code, message = await self.execute_command('QUIT')
         await self.close()
         return code, message
 
@@ -291,7 +291,7 @@ class SMTP:
         from_string = "FROM:{}".format(quote_address(sender))
 
         code, message = await self.execute_command(
-            "mail", from_string, *options)
+            'MAIL', from_string, *options)
 
         if code != status.SMTP_250_COMPLETED:
             raise SMTPSenderRefused(code, message, sender)
@@ -309,7 +309,7 @@ class SMTP:
 
         # Turn a generic STMPResponseException into SMTPRecipientRefused
         try:
-            code, message = await self.execute_command("rcpt", to, *options)
+            code, message = await self.execute_command('RCPT', to, *options)
         except SMTPResponseException as exc:
             raise SMTPRecipientRefused(exc.code, exc.message, recipient)
 
@@ -331,7 +331,7 @@ class SMTP:
         Returns a (code, message) response tuple (the last one, after all
         data is sent.)
         '''
-        code, response = await self.execute_command("data")
+        code, response = await self.execute_command('DATA')
         if code != status.SMTP_354_START_INPUT:
             raise SMTPDataError(code, response)
 
