@@ -210,3 +210,14 @@ async def test_quit_then_connect_ok(smtp_client):
     # after reconnect, it should work again
     code, message = await smtp_client.noop()
     assert 200 <= code <= 299
+
+
+@pytest.mark.asyncio
+async def test_smtp_as_context_manager(smtp_client):
+    async with smtp_client:
+        assert smtp_client.is_connected
+
+        code, message = await smtp_client.noop()
+        assert 200 <= code <= 299
+
+    assert not smtp_client.is_connected

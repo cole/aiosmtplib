@@ -1,5 +1,5 @@
-#! /usr/bin/env python3
-'''SMTP client class for use with asyncio.
+'''
+SMTP client class for use with asyncio.
 
 Author: Cole Maclean <hi@cole.io>
 Based on smtplib (from the Python 3 standard library) by:
@@ -63,6 +63,18 @@ class SMTP:
         self.protocol = None
         self.transport = None
         self.loop = loop or asyncio.get_event_loop()
+
+    async def __aenter__(self):
+        if not self.is_connected:
+            await self.connect()
+
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        try:
+            code, message = await self.quit()
+        except SMTPServerDisconnected:
+            await self.close()
 
     async def connect(self):
         '''
