@@ -59,6 +59,16 @@ def smtp_client(request, smtp_server, event_loop):
 
 
 @pytest.mark.asyncio
+async def test_context_manager(smtp_client):
+    assert not smtp_client.is_connected
+
+    async with smtp_client as client:
+        assert client.is_connected
+
+    assert not smtp_client.is_connected
+
+
+@pytest.mark.asyncio
 async def test_helo_ok(smtp_client):
     await smtp_client.connect()
     code, message = await smtp_client.helo()
