@@ -111,6 +111,13 @@ class SMTP:
         self.protocol = None
         self.transport = None
 
+    async def __aenter__(self):
+        await self.connect()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.close()
+
     @property
     def is_connected(self):
         '''
