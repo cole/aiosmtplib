@@ -1,186 +1,145 @@
-import asyncio
-import functools
 import email.mime.text
 import email.mime.multipart
-from email.errors import HeaderParseError
 
 import pytest
-from aiosmtpd.smtp import SMTP as BaseSMTPD
-from aiosmtpd.handlers import Debugging as SMTPDDebuggingHandler
-from aiosmtpd.controller import Controller
 
-from aiosmtplib import (
-    SMTP, SMTPServerDisconnected, SMTPResponseException, SMTPConnectError,
-    SMTPHeloError, SMTPDataError, SMTPRecipientsRefused,
-)
-
-
-class SMTPD(BaseSMTPD):
-
-    def _getaddr(self, arg):
-        try:
-            return super()._getaddr(arg)
-        except HeaderParseError:
-            return None, ''
-
-
-class SMTPDController(Controller):
-
-    def factory(self):
-        return SMTPD(self.handler)
-
-
-class MessageHandler(SMTPDDebuggingHandler):
-
-    def handle_message(self, message):
-        print(message)
-
-
-@pytest.fixture()
-def smtp_server(request):
-    handler = MessageHandler()
-    controller = SMTPDController(handler)
-    controller.start()
-
-    def cleanup():
-        controller.stop()
-
-    request.addfinalizer(cleanup)
-
-    return controller
-
-
-@pytest.fixture()
-def smtp_client(request, smtp_server, event_loop):
-    smtp_client = SMTP(
-        hostname=smtp_server.hostname, port=smtp_server.port, loop=event_loop)
-
-    return smtp_client
+from aiosmtplib import SMTP, SMTPResponseException, SMTPRecipientsRefused
 
 
 @pytest.mark.asyncio
-async def test_helo_ok(smtp_client):
-    await smtp_client.connect()
-    code, message = await smtp_client.helo()
+async def test_helo_ok(aiosmtpd_client):
+    await aiosmtpd_client.connect()
+    code, message = await aiosmtpd_client.helo()
 
     assert 200 <= code <= 299
 
 
 @pytest.mark.asyncio
-async def test_ehlo_ok(smtp_client):
-    await smtp_client.connect()
-    code, message = await smtp_client.ehlo()
+async def test_ehlo_ok(aiosmtpd_client):
+    await aiosmtpd_client.connect()
+    code, message = await aiosmtpd_client.ehlo()
 
     assert 200 <= code <= 299
 
 
 @pytest.mark.asyncio
-async def test_rset_ok(smtp_client):
-    await smtp_client.connect()
-    code, message = await smtp_client.rset()
+async def test_rset_ok(aiosmtpd_client):
+    await aiosmtpd_client.connect()
+    code, message = await aiosmtpd_client.rset()
 
     assert 200 <= code <= 299
     assert message == 'OK'
 
 
 @pytest.mark.asyncio
-async def test_noop_ok(smtp_client):
-    await smtp_client.connect()
-    code, message = await smtp_client.noop()
+async def test_noop_ok(aiosmtpd_client):
+    await aiosmtpd_client.connect()
+    code, message = await aiosmtpd_client.noop()
 
     assert 200 <= code <= 299
     assert message == 'OK'
 
 
 @pytest.mark.asyncio
-async def test_vrfy_ok(smtp_client):
+async def test_vrfy_ok(aiosmtpd_client):
     nice_address = 'test@example.com'
-    await smtp_client.connect()
-    code, message = await smtp_client.vrfy(nice_address)
+    await aiosmtpd_client.connect()
+    code, message = await aiosmtpd_client.vrfy(nice_address)
 
     assert 200 <= code <= 299
 
 
 @pytest.mark.asyncio
-async def test_vrfy_with_blank_address(smtp_client):
+async def test_vrfy_with_blank_address(aiosmtpd_client):
     bad_address = ''
-    await smtp_client.connect()
+    await aiosmtpd_client.connect()
     with pytest.raises(SMTPResponseException):
-        code, message = await smtp_client.vrfy(bad_address)
+        code, message = await aiosmtpd_client.vrfy(bad_address)
 
 
-@pytest.mark.skip(reason="aiosmtpd doesn't implement EXPN")
 @pytest.mark.asyncio
-async def test_expn_ok(smtp_client):
-    await smtp_client.connect()
-    code, message = await smtp_client.expn('listserv-members')
+async def test_expn_ok(preset_client):
+    '''
+    EXPN is not implemented by aiosmtpd (or anyone, really), so just fake a
+    response.
+    '''
+    await preset_client.server.start()
+    await preset_client.connect()
 
+    preset_client.server.next_response = b'\n'.join([
+        b'250-Joseph Blow <jblow@example.com>',
+        b'250 Alice Smith <asmith@example.com>',
+    ])
+    code, message = await preset_client.expn('listserv-members')
     assert 200 <= code <= 299
 
+    await preset_client.quit()
+    await preset_client.server.stop()
+
 
 @pytest.mark.asyncio
-async def test_help_ok(smtp_client):
-    await smtp_client.connect()
-    code, message = await smtp_client.help()
+async def test_help_ok(aiosmtpd_client):
+    await aiosmtpd_client.connect()
+    code, message = await aiosmtpd_client.help()
 
     assert 200 <= code <= 299
     assert 'Supported commands' in message
 
 
 @pytest.mark.asyncio
-async def test_supported_methods(smtp_client):
-    await smtp_client.connect()
-    code, message = await smtp_client.ehlo()
+async def test_supported_methods(aiosmtpd_client):
+    await aiosmtpd_client.connect()
+    code, message = await aiosmtpd_client.ehlo()
 
     assert 200 <= code <= 299
-    assert smtp_client.supports_extension('size')
-    assert smtp_client.supports_extension('8bitmime')
-    assert not smtp_client.supports_extension('bogus')
+    assert aiosmtpd_client.supports_extension('size')
+    assert aiosmtpd_client.supports_extension('8bitmime')
+    assert not aiosmtpd_client.supports_extension('bogus')
 
 
 @pytest.mark.asyncio
-async def test_sendmail_simple_success(smtp_client):
-    await smtp_client.connect()
+async def test_sendmail_simple_success(aiosmtpd_client):
+    await aiosmtpd_client.connect()
     test_address = 'test@example.com'
     mail_text = """
     Hello world!
 
     -a tester
     """
-    errors = await smtp_client.sendmail(
+    errors = await aiosmtpd_client.sendmail(
         test_address, [test_address], mail_text)
 
     assert errors is None
 
 
 @pytest.mark.asyncio
-async def test_sendmail_binary_content(smtp_client):
-    await smtp_client.connect()
+async def test_sendmail_binary_content(aiosmtpd_client):
+    await aiosmtpd_client.connect()
     test_address = 'test@example.com'
     mail_text = b"""
     Hello world!
 
     -a tester
     """
-    errors = await smtp_client.sendmail(
+    errors = await aiosmtpd_client.sendmail(
         test_address, [test_address], mail_text)
 
     assert errors is None
 
 
 @pytest.mark.asyncio
-async def test_sendmail_simple_failure(smtp_client):
-    await smtp_client.connect()
+async def test_sendmail_simple_failure(aiosmtpd_client):
+    await aiosmtpd_client.connect()
     sender = 'test@example.com'
     recipient = '@@'
     mail_text = 'blah-blah-blah'
 
     with pytest.raises(SMTPRecipientsRefused):
-        await smtp_client.sendmail(sender, [recipient], mail_text)
+        await aiosmtpd_client.sendmail(sender, [recipient], mail_text)
 
 
 @pytest.mark.asyncio
-async def test_send_message(smtp_client):
+async def test_send_message(aiosmtpd_client):
     message = email.mime.multipart.MIMEMultipart()
     message['To'] = 'test@example.com'
     message['From'] = 'test@example.com'
@@ -190,34 +149,17 @@ async def test_send_message(smtp_client):
     ''')
     message.attach(body)
 
-    await smtp_client.connect()
-    errors = await smtp_client.send_message(message)
+    await aiosmtpd_client.connect()
+    errors = await aiosmtpd_client.send_message(message)
     assert not errors
 
 
 @pytest.mark.asyncio
-async def test_quit_then_connect_ok(smtp_client):
-    await smtp_client.connect()
+async def test_smtp_as_context_manager(aiosmtpd_client):
+    async with aiosmtpd_client:
+        assert aiosmtpd_client.is_connected
 
-    code, message = await smtp_client.quit()
-    assert 200 <= code <= 299
-
-    # Next command should fail
-    with pytest.raises(SMTPServerDisconnected):
-        code, message = await smtp_client.noop()
-
-    await smtp_client.connect()
-    # after reconnect, it should work again
-    code, message = await smtp_client.noop()
-    assert 200 <= code <= 299
-
-
-@pytest.mark.asyncio
-async def test_smtp_as_context_manager(smtp_client):
-    async with smtp_client:
-        assert smtp_client.is_connected
-
-        code, message = await smtp_client.noop()
+        code, message = await aiosmtpd_client.noop()
         assert 200 <= code <= 299
 
-    assert not smtp_client.is_connected
+    assert not aiosmtpd_client.is_connected

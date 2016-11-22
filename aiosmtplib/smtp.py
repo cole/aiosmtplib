@@ -11,6 +11,12 @@ import socket
 import asyncio
 import email.utils
 import email.generator
+try:
+    import ssl
+except ImportError:
+    _has_ssl = False
+else:
+    _has_ssl = True
 
 from aiosmtplib import status
 from aiosmtplib.auth import auth_crammd5, auth_login, auth_plain
@@ -28,6 +34,7 @@ from aiosmtplib.textutils import (
 
 MAX_LINE_LENGTH = 8192
 SMTP_PORT = 25
+SMTP_SSL_PORT = 465
 
 
 class SMTP:
@@ -43,10 +50,13 @@ class SMTP:
         ('login', auth_login,),
     )
 
-    def __init__(self, hostname='localhost', port=SMTP_PORT,
+    def __init__(self, hostname='localhost', port=None,
                  source_address=None, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
-                 loop=None):
+                 loop=None, use_ssl=False, validate_certs=True,
+                 client_cert=None, client_key=None, ssl_context=None):
         self.hostname = hostname
+        if port is None:
+            port = SMTP_SSL_PORT if use_ssl else SMTP_PORT
         self.port = port
         self._source_address = source_address
         # TODO: implement timeout
@@ -64,13 +74,26 @@ class SMTP:
         self.transport = None
         self.loop = loop or asyncio.get_event_loop()
 
+        if use_ssl:
+            if not _has_ssl:
+                raise RuntimeError('No SSL support included in this Python')
+            if ssl_context and (client_key or client_cert):
+                raise ValueError(
+                    'Either an SSLContext or a certificate/key must be '
+                    'provided')
+            self.ssl_context = self._configure_ssl_context(
+                validate_certs=validate_certs, client_cert=client_cert,
+                client_key=client_key)
+        else:
+            self.ssl_context = None
+
     async def __aenter__(self):
         if not self.is_connected:
             await self.connect()
 
         return self
 
-    async def __aexit__(self, exc_type, exc, tb):
+    async def __aexit__(self, exc_type, exc, traceback):
         try:
             code, message = await self.quit()
         except SMTPServerDisconnected:
@@ -86,18 +109,19 @@ class SMTP:
 
         try:
             self.transport, _ = await self.loop.create_connection(
-                lambda: self.protocol, self.hostname, self.port)
-        except (ConnectionRefusedError, OSError):
-            message = "Error connecting to {host} on port {port}".format(
-                host=self.hostname, port=self.port)
-            raise SMTPConnectError(None, message)
+                lambda: self.protocol, host=self.hostname, port=self.port,
+                ssl=self.ssl_context)
+        except (ConnectionRefusedError, OSError) as err:
+            raise SMTPConnectError(
+                'Error connecting to {host} on port {port}: {err}'.format(
+                    host=self.hostname, port=self.port, err=err))
         else:
             self.writer = SMTPStreamWriter(
                 self.transport, self.protocol, self.reader, self.loop)
 
         code, message = await self.reader.read_response()
         if not status.is_success_code(code):
-            raise SMTPConnectError(code, message)
+            raise SMTPConnectError(message)
 
     async def close(self):
         '''
@@ -551,3 +575,18 @@ class SMTP:
             raise SMTPException("No suitable authentication method found.")
         else:
             raise SMTPAuthenticationError(code, message)
+
+    def _configure_ssl_context(self, validate_certs=True, client_cert=None,
+                               client_key=None):
+        ssl_context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+        if validate_certs:
+            ssl_context.check_hostname = True
+            ssl_context.verify_mode = ssl.CERT_REQUIRED
+        else:
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
+
+        if client_cert and client_key:
+            ssl_context.load_cert_chain(client_cert, keyfile=client_key)
+
+        return ssl_context

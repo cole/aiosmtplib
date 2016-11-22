@@ -44,7 +44,12 @@ class SMTPStreamReader(asyncio.StreamReader):
 
         full_message = "\n".join(response_lines)
 
-        if status.is_permanent_error_code(code):
+        if code is None and self.at_eof():
+            raise SMTPServerDisconnected('Server disconnected unexpectedly')
+        elif code is None:
+            raise SMTPResponseException(
+                -1, 'Malformed SMTP response: {}'.format(full_message))
+        elif status.is_permanent_error_code(code):
             raise SMTPResponseException(code, full_message)
 
         return code, full_message
