@@ -19,7 +19,8 @@ except ImportError:
 else:
     _has_ssl = True
 
-from aiosmtplib import status, starttls
+from aiosmtplib import status
+from aiosmtplib.protocol import SMTPProtocol
 from aiosmtplib.auth import auth_crammd5, auth_login, auth_plain
 from aiosmtplib.streams import SMTPStreamReader, SMTPStreamWriter
 from aiosmtplib.errors import (
@@ -144,8 +145,7 @@ class SMTP:
         Open asyncio streams to the server and check response status.
         '''
         self.reader = SMTPStreamReader(limit=MAX_LINE_LENGTH, loop=self.loop)
-        self.protocol = starttls.SMTPProtocol(
-            self.reader, loop=self.loop)
+        self.protocol = SMTPProtocol(self.reader, loop=self.loop)
 
         if _has_ssl and self.use_ssl:
             ssl_context = self.ssl_context
