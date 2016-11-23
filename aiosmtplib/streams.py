@@ -1,6 +1,6 @@
 import asyncio
 
-from aiosmtplib import status, starttls
+from aiosmtplib import status
 from aiosmtplib.errors import SMTPResponseException, SMTPServerDisconnected
 
 
@@ -55,7 +55,7 @@ class SMTPStreamReader(asyncio.StreamReader):
         return code, full_message
 
 
-class SMTPStreamWriter(starttls.StreamWriter):
+class SMTPStreamWriter(asyncio.StreamWriter):
 
     async def send_command(self, *args):
         '''

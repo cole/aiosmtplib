@@ -9,6 +9,7 @@ import io
 import copy
 import socket
 import asyncio
+from asyncio import sslproto
 import email.utils
 import email.generator
 try:
@@ -73,6 +74,7 @@ class SMTP:
         self.reader = None
         self.writer = None
         self.protocol = None
+        self._tls_protocol = None
         self.transport = None
         self.loop = loop or asyncio.get_event_loop()
         self._server_state = {}
@@ -142,7 +144,7 @@ class SMTP:
         Open asyncio streams to the server and check response status.
         '''
         self.reader = SMTPStreamReader(limit=MAX_LINE_LENGTH, loop=self.loop)
-        self.protocol = starttls.StreamReaderProtocol(
+        self.protocol = starttls.SMTPProtocol(
             self.reader, loop=self.loop)
 
         if _has_ssl and self.use_ssl:
@@ -178,6 +180,7 @@ class SMTP:
         self.protocol = None
         self.transport = None
         self._server_state = {}
+        self._tls_protocol = None
 
     def _raise_error_if_disconnected(self):
         '''
@@ -637,23 +640,40 @@ class SMTP:
             elif not ssl_context:
                 ssl_context = self.ssl_context
 
-            await self.writer.start_tls(
-                ssl_context, server_hostname=self.hostname)
-
-            # RFC 3207:
+            waiter = self.loop.create_future()
+            self._tls_protocol = sslproto.SSLProtocol(
+                self.loop,
+                self.protocol,
+                ssl_context,
+                waiter,
+                server_side=False
+            )
+            # reconfigure transport layer
+            socket_transport = self.transport
+            socket_transport._protocol = self._tls_protocol
+            # reconfigure protocol layer. Cant understand why app transport is
+            # protected property, if it MUST be used externally
+            self.transport = self._tls_protocol._app_transport
+            # start handshake
+            self._tls_protocol.connection_made(socket_transport)
+            await waiter
+            self.writer._transport = self.transport
+            # RFC 3207 part 4.2:
             # The client MUST discard any knowledge obtained from
             # the server, such as the list of SMTP service extensions,
             # which was not obtained from the TLS negotiation itself.
             self._server_state = {}
-
+            # return SSL layer information to provide upper level deside,
+            # what to do with it.
+            return code, self._tls_protocol._extra
         return code, response
 
     def _configure_ssl_context(self, validate_certs=True, client_cert=None,
                                client_key=None):
-        ssl_context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+        ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
         if validate_certs:
-            ssl_context.check_hostname = True
             ssl_context.verify_mode = ssl.CERT_REQUIRED
+            ssl_context.check_hostname = True
         else:
             ssl_context.check_hostname = False
             ssl_context.verify_mode = ssl.CERT_NONE
