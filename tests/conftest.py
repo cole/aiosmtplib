@@ -49,7 +49,6 @@ def ssl_preset_server(request, unused_tcp_port, event_loop):
 
 @pytest.fixture()
 def aiosmtpd_client(request, aiosmtpd_server, event_loop):
-    print(aiosmtpd_server.__dict__)
     client = SMTP(
         hostname=aiosmtpd_server.hostname, port=aiosmtpd_server.port,
         loop=event_loop)

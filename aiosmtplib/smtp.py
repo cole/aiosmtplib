@@ -18,7 +18,7 @@ except ImportError:
 else:
     _has_ssl = True
 
-from aiosmtplib import status
+from aiosmtplib import status, starttls
 from aiosmtplib.auth import auth_crammd5, auth_login, auth_plain
 from aiosmtplib.streams import SMTPStreamReader, SMTPStreamWriter
 from aiosmtplib.errors import (
@@ -54,6 +54,14 @@ class SMTP:
                  source_address=None, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
                  loop=None, use_ssl=False, validate_certs=True,
                  client_cert=None, client_key=None, ssl_context=None):
+        has_ssl_args = any([use_ssl, client_key, client_cert, ssl_context])
+        if not _has_ssl and has_ssl_args:
+            raise RuntimeError('No SSL support included in this Python')
+        if ssl_context and (client_key or client_cert):
+            raise ValueError(
+                'Either an SSLContext or a certificate/key must be '
+                'provided')
+
         self.hostname = hostname
         if port is None:
             port = SMTP_SSL_PORT if use_ssl else SMTP_PORT
@@ -62,30 +70,18 @@ class SMTP:
         # TODO: implement timeout
         self.timeout = timeout
 
-        self.last_helo_response = (None, None)
-        self.last_ehlo_response = (None, None)
-        self.esmtp_extensions = {}
-        self.supports_esmtp = False
-        self.supported_auth_methods = []
-
         self.reader = None
         self.writer = None
         self.protocol = None
         self.transport = None
         self.loop = loop or asyncio.get_event_loop()
+        self._server_state = {}
 
-        if use_ssl:
-            if not _has_ssl:
-                raise RuntimeError('No SSL support included in this Python')
-            if ssl_context and (client_key or client_cert):
-                raise ValueError(
-                    'Either an SSLContext or a certificate/key must be '
-                    'provided')
-            self.ssl_context = self._configure_ssl_context(
+        self.use_ssl = use_ssl
+        if _has_ssl:
+            self.ssl_context = ssl_context or self._configure_ssl_context(
                 validate_certs=validate_certs, client_cert=client_cert,
                 client_key=client_key)
-        else:
-            self.ssl_context = None
 
     async def __aenter__(self):
         if not self.is_connected:
@@ -99,18 +95,65 @@ class SMTP:
         except SMTPServerDisconnected:
             await self.close()
 
+    @property
+    def esmtp_extensions(self):
+        return self._server_state.get('esmtp_extensions', [])
+
+    @property
+    def supports_esmtp(self):
+        return self._server_state.get('supports_esmtp', False)
+
+    @property
+    def supported_auth_methods(self):
+        return self._server_state.get('supported_auth_methods', [])
+
+    @property
+    def is_connected(self):
+        '''
+        Check connection status.
+
+        Returns bool
+        '''
+        return bool(self.transport and not self.transport.is_closing())
+
+    @property
+    def source_address(self):
+        '''
+        Get the system hostname to be sent to the SMTP server.
+        Simply caches the result of socket.getfqdn.
+        '''
+        if not self._source_address:
+            self._source_address = socket.getfqdn()
+
+        return self._source_address
+
+    @property
+    def is_ehlo_or_helo_needed(self):
+        self._raise_error_if_disconnected()
+
+        no_ehlo_response = ('last_ehlo_response' not in self._server_state)
+        no_helo_response = ('last_helo_response' not in self._server_state)
+        is_needed = (no_ehlo_response and no_helo_response)
+
+        return is_needed
+
     async def connect(self):
         '''
         Open asyncio streams to the server and check response status.
         '''
         self.reader = SMTPStreamReader(limit=MAX_LINE_LENGTH, loop=self.loop)
-        self.protocol = asyncio.StreamReaderProtocol(
+        self.protocol = starttls.StreamReaderProtocol(
             self.reader, loop=self.loop)
+
+        if _has_ssl and self.use_ssl:
+            ssl_context = self.ssl_context
+        else:
+            ssl_context = None
 
         try:
             self.transport, _ = await self.loop.create_connection(
                 lambda: self.protocol, host=self.hostname, port=self.port,
-                ssl=self.ssl_context)
+                ssl=ssl_context)
         except (ConnectionRefusedError, OSError) as err:
             raise SMTPConnectError(
                 'Error connecting to {host} on port {port}: {err}'.format(
@@ -134,15 +177,7 @@ class SMTP:
         self.writer = None
         self.protocol = None
         self.transport = None
-
-    @property
-    def is_connected(self):
-        '''
-        Check connection status.
-
-        Returns bool
-        '''
-        return self.transport and not self.transport.is_closing()
+        self._server_state = {}
 
     def _raise_error_if_disconnected(self):
         '''
@@ -160,27 +195,6 @@ class SMTP:
         Returns bool
         '''
         return extension.lower() in self.esmtp_extensions
-
-    @property
-    def source_address(self):
-        '''
-        Get the system hostname to be sent to the SMTP server.
-        Simply caches the result of socket.getfqdn.
-        '''
-        if not self._source_address:
-            self._source_address = socket.getfqdn()
-
-        return self._source_address
-
-    @property
-    def is_ehlo_or_helo_needed(self):
-        self._raise_error_if_disconnected()
-
-        no_ehlo_response = (self.last_ehlo_response == (None, None))
-        no_helo_response = (self.last_helo_response == (None, None))
-        is_needed = (no_ehlo_response and no_helo_response)
-
-        return is_needed
 
     async def execute_command(self, *args):
         '''
@@ -217,7 +231,7 @@ class SMTP:
             hostname = self.source_address
 
         code, message = await self.execute_command("helo", hostname)
-        self.last_helo_response = (code, message)
+        self._server_state['last_helo_response'] = (code, message)
 
         if not status.is_success_code(code):
             raise SMTPHeloError(code, message)
@@ -239,11 +253,11 @@ class SMTP:
 
         if code == status.SMTP_250_COMPLETED:
             extensions, auth_methods = parse_esmtp_extensions(message)
-            self.esmtp_extensions = extensions
-            self.supported_auth_methods = auth_methods
-            self._supports_esmtp = True
+            self._server_state['esmtp_extensions'] = extensions
+            self._server_state['supported_auth_methods'] = auth_methods
+            self._server_state['supports_esmtp'] = True
 
-        self.last_ehlo_response = (code, message)
+        self._server_state['last_ehlo_response'] = (code, message)
 
         return code, message
 
@@ -575,6 +589,64 @@ class SMTP:
             raise SMTPException("No suitable authentication method found.")
         else:
             raise SMTPAuthenticationError(code, message)
+
+    async def starttls(self, validate_certs=True, client_cert=None,
+                       client_key=None, ssl_context=None):
+        '''
+        Puts the connection to the SMTP server into TLS mode.
+
+        If there has been no previous EHLO or HELO command this session, this
+        method tries ESMTP EHLO first.
+
+        If the server supports TLS, this will encrypt the rest of the SMTP
+        session. If you provide the keyfile and certfile parameters,
+        the identity of the SMTP server and client can be checked (if
+        validate_certs is True). You can also provide a custom SSLContext
+        object. If no certs or SSLContext is given, and ssl config was
+        provided when initializing the class, STARTTLS will use to that,
+        otherwise it will use the Python defaults.
+
+        This method may raise the following exceptions:
+
+         SMTPHeloError            The server didn't reply properly to
+                                  the helo greeting.
+         RuntimeError             Python does not support SSL.
+         ValueError               An unsupported combination of args was
+                                  provided.
+        '''
+        if not _has_ssl:
+            raise RuntimeError('No SSL support included in this Python')
+        if ssl_context and (client_key or client_cert):
+            raise ValueError(
+                'Either an SSLContext or a certificate/key must be '
+                'provided')
+
+        await self.ehlo_or_helo_if_needed()
+
+        if not self.supports_extension('starttls'):
+            raise SMTPException(
+                'SMTP STARTTLS extension not supported by server.')
+
+        code, response = await self.execute_command('STARTTLS')
+
+        if code == status.SMTP_220_READY:
+            if not ssl_context and (client_key or client_cert):
+                ssl_context = self._configure_ssl_context(
+                    validate_certs=validate_certs, client_cert=client_cert,
+                    client_key=client_key,)
+            elif not ssl_context:
+                ssl_context = self.ssl_context
+
+            await self.writer.start_tls(
+                ssl_context, server_hostname=self.hostname)
+
+            # RFC 3207:
+            # The client MUST discard any knowledge obtained from
+            # the server, such as the list of SMTP service extensions,
+            # which was not obtained from the TLS negotiation itself.
+            self._server_state = {}
+
+        return code, response
 
     def _configure_ssl_context(self, validate_certs=True, client_cert=None,
                                client_key=None):
