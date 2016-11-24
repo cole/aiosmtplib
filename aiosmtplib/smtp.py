@@ -9,7 +9,6 @@ import io
 import copy
 import socket
 import asyncio
-from asyncio import sslproto
 import email.utils
 import email.generator
 try:
@@ -20,9 +19,8 @@ else:
     _has_ssl = True
 
 from aiosmtplib import status
-from aiosmtplib.protocol import SMTPProtocol
 from aiosmtplib.auth import auth_crammd5, auth_login, auth_plain
-from aiosmtplib.streams import SMTPStreamReader, SMTPStreamWriter
+from aiosmtplib.streams import SMTPProtocol, SMTPStreamReader, SMTPStreamWriter
 from aiosmtplib.errors import (
     SMTPException, SMTPConnectError, SMTPHeloError, SMTPDataError,
     SMTPRecipientRefused, SMTPRecipientsRefused, SMTPSenderRefused,
@@ -81,10 +79,15 @@ class SMTP:
         self._server_state = {}
 
         self.use_ssl = use_ssl
-        if _has_ssl:
-            self.ssl_context = ssl_context or self._configure_ssl_context(
-                validate_certs=validate_certs, client_cert=client_cert,
-                client_key=client_key)
+        if ssl_context:
+            self.ssl_context = ssl_context
+        else:
+            self.ssl_context = None
+            self.ssl_options = {
+                'validate_certs': validate_certs,
+                'client_cert': client_cert,
+                'client_key': client_key,
+            }
 
     async def __aenter__(self):
         if not self.is_connected:
@@ -148,7 +151,8 @@ class SMTP:
         self.protocol = SMTPProtocol(self.reader, loop=self.loop)
 
         if _has_ssl and self.use_ssl:
-            ssl_context = self.ssl_context
+            ssl_context = self.ssl_context or self._configure_ssl_context(
+                **self.ssl_options)
         else:
             ssl_context = None
 
@@ -593,8 +597,8 @@ class SMTP:
         else:
             raise SMTPAuthenticationError(code, message)
 
-    async def starttls(self, validate_certs=True, client_cert=None,
-                       client_key=None, ssl_context=None):
+    async def starttls(self, ssl_context=None, validate_certs=True,
+                       client_cert=None, client_key=None):
         '''
         Puts the connection to the SMTP server into TLS mode.
 
@@ -624,6 +628,19 @@ class SMTP:
                 'Either an SSLContext or a certificate/key must be '
                 'provided')
 
+        if not ssl_context:
+            if self.ssl_context is None or (client_key or client_cert):
+                ssl_options = self.ssl_options.copy()
+                ssl_options['validate_certs'] = validate_certs
+                if client_cert:
+                    ssl_options['client_cert'] = client_cert
+                if client_key:
+                    ssl_options['client_key'] = client_key
+
+                ssl_context = self._configure_ssl_context(**ssl_options)
+            else:
+                ssl_context = self.ssl_context
+
         await self.ehlo_or_helo_if_needed()
 
         if not self.supports_extension('starttls'):
@@ -633,49 +650,25 @@ class SMTP:
         code, response = await self.execute_command('STARTTLS')
 
         if code == status.SMTP_220_READY:
-            if not ssl_context and (client_key or client_cert):
-                ssl_context = self._configure_ssl_context(
-                    validate_certs=validate_certs, client_cert=client_cert,
-                    client_key=client_key,)
-            elif not ssl_context:
-                ssl_context = self.ssl_context
+            self.protocol, self.transport = await self.writer.start_tls(
+                ssl_context=ssl_context, server_hostname=self.hostname)
 
-            waiter = self.loop.create_future()
-            self._tls_protocol = sslproto.SSLProtocol(
-                self.loop,
-                self.protocol,
-                ssl_context,
-                waiter,
-                server_side=False
-            )
-            # reconfigure transport layer
-            socket_transport = self.transport
-            socket_transport._protocol = self._tls_protocol
-            # reconfigure protocol layer. Cant understand why app transport is
-            # protected property, if it MUST be used externally
-            self.transport = self._tls_protocol._app_transport
-            # start handshake
-            self._tls_protocol.connection_made(socket_transport)
-            await waiter
-            self.writer._transport = self.transport
             # RFC 3207 part 4.2:
             # The client MUST discard any knowledge obtained from
             # the server, such as the list of SMTP service extensions,
             # which was not obtained from the TLS negotiation itself.
             self._server_state = {}
-            # return SSL layer information to provide upper level deside,
-            # what to do with it.
-            return code, self._tls_protocol._extra
+
         return code, response
 
     def _configure_ssl_context(self, validate_certs=True, client_cert=None,
                                client_key=None):
-        ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+        # SERVER_AUTH is what we want for a client side socket
+        ssl_context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+        ssl_context.check_hostname = bool(validate_certs)
         if validate_certs:
             ssl_context.verify_mode = ssl.CERT_REQUIRED
-            ssl_context.check_hostname = True
         else:
-            ssl_context.check_hostname = False
             ssl_context.verify_mode = ssl.CERT_NONE
 
         if client_cert and client_key:

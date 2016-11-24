@@ -1,14 +1,109 @@
 import asyncio
+import threading
+import socketserver
+import selectors
 import ssl
 from email.errors import HeaderParseError
 
-
 from aiosmtpd.smtp import SMTP as BaseSMTPD
-from aiosmtpd.handlers import Debugging as SMTPDDebuggingHandler
+from aiosmtpd.handlers import Sink as SMTPDSinkHandler
 from aiosmtpd.controller import Controller
 
 
-class PresetServer:
+class ThreadedPresetRequestHandler(socketserver.BaseRequestHandler):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.selector = selectors.DefaultSelector()
+
+    @property
+    def next_response(self):
+        return self.server._next_response
+
+    @next_response.setter
+    def next_response(self, response):
+        self.server.next_response = response
+
+    def starttls(self):
+        context = self.server.get_ssl_context()
+        self.request.settimeout(30)
+        self.request = context.wrap_socket(self.request, server_side=True)
+        self.request.settimeout(None)
+
+    def handle(self):
+        self.request.sendall(b'220 Hello world!\n')
+        # self.selector.register(self.request, selectors.EVENT_READ)
+
+        while True:
+            request = self.request.recv(4096)  # Naive recv won't work for data
+            response = self.next_response
+            if response:
+                self.request.sendall(response)
+            else:
+                break
+
+            if request[:8] == b'STARTTLS':
+                self.starttls()
+
+            self.next_response = b''
+
+        # Disconnect
+        self.request.sendall(b'221 Goodbye then\n')
+
+
+class ThreadedPresetServer(
+        socketserver.ThreadingMixIn, socketserver.TCPServer):
+
+    def __init__(self, hostname, port, certfile='tests/certs/selfsigned.crt',
+                 keyfile='tests/certs/selfsigned.key'):
+        super().__init__((hostname, port), ThreadedPresetRequestHandler)
+        self.hostname = hostname
+        self.port = port
+        self.certfile = certfile
+        self.keyfile = keyfile
+
+        self.next_response = b''
+
+    @property
+    def next_response(self):
+        return self._next_response
+
+    @next_response.setter
+    def next_response(self, response):
+        response = bytes(response)
+        if response and not response.endswith(b'\n'):
+            response = response + b'\n'
+
+        self._next_response = response
+
+    def start(self):
+        self.server_thread = threading.Thread(target=self.serve_forever)
+        # Exit the server thread when the main thread terminates
+        self.server_thread.daemon = True
+        self.server_thread.start()
+
+    def stop(self):
+        self.shutdown()
+        self.server_close()
+
+    def get_ssl_context(self):
+        context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+        context.load_cert_chain(self.certfile, keyfile=self.keyfile)
+
+        return context
+
+
+class SSLThreadedPresetServer(ThreadedPresetServer):
+
+    def get_request(self):
+        socket, from_address = self.socket.accept()
+        context = self.get_ssl_context()
+        ssl_socket = context.wrap_socket(socket, server_side=True)
+
+        return ssl_socket, from_address
+
+
+class AsyncioPresetServer:
     '''
     Returns only predefined responses, in order.
     '''
@@ -79,7 +174,7 @@ class PresetServer:
         self.server = None
 
 
-class SSLPresetServer(PresetServer):
+class SSLAsyncioPresetServer(AsyncioPresetServer):
     '''
     SSL enabled version of PresetServer.
     '''
@@ -104,10 +199,14 @@ class TestSMTPD(BaseSMTPD):
             return None, ''
 
 
-class MessageHandler(SMTPDDebuggingHandler):
+class MessageHandler(SMTPDSinkHandler):
+
+    def __init__(self):
+        self.messages = []
+        super().__init__()
 
     def handle_message(self, message):
-        pass
+        self.messages.append(message)
 
 
 class AioSMTPDTestServer(Controller):

@@ -1,3 +1,7 @@
+import ssl
+import smtplib
+import asyncio.sslproto
+
 import pytest
 
 import aiosmtplib  # Required so we can monkeypatch
@@ -5,68 +9,131 @@ from aiosmtplib import SMTP, SMTPConnectError, SMTPServerDisconnected
 
 
 @pytest.mark.asyncio(forbid_global_loop=True)
-async def test_plain_smtp_connect(preset_server_client_context_manager):
-    async with preset_server_client_context_manager as (server, client):
-        assert client.is_connected
+async def test_plain_smtp_connect(preset_client):
+    '''
+    Use an explicit connect/quit here, as other tests use the context manager.
+    '''
+    await preset_client.connect()
+    assert preset_client.is_connected
+
+    await preset_client.quit()
+    assert not preset_client.is_connected
 
 
 @pytest.mark.asyncio(forbid_global_loop=True)
-async def test_ssl_connection(ssl_preset_server_client_context_manager):
-    async with ssl_preset_server_client_context_manager as (server, client):
-        assert client.is_connected
+async def test_ssl_connection(ssl_preset_client):
+    '''
+    Use an explicit connect/quit here, as other tests use the context manager.
+    '''
+    await ssl_preset_client.connect()
+    assert ssl_preset_client.is_connected
+
+    await ssl_preset_client.quit()
+    assert not ssl_preset_client.is_connected
 
 
 @pytest.mark.asyncio()
 async def test_quit_then_connect_ok_with_aiosmtpd(aiosmtpd_client):
-    await aiosmtpd_client.connect()
-    code, message = await aiosmtpd_client.quit()
-    assert 200 <= code <= 299
-
-    # Next command should fail
-    with pytest.raises(SMTPServerDisconnected):
-        code, message = await aiosmtpd_client.noop()
-
-    await aiosmtpd_client.connect()
-
-    # after reconnect, it should work again
-    code, message = await aiosmtpd_client.noop()
-    assert 200 <= code <= 299
-
-
-@pytest.mark.asyncio(forbid_global_loop=True)
-async def test_quit_then_connect_ok_with_preset_server(
-        preset_server_client_context_manager):
-    async with preset_server_client_context_manager as (server, client):
-        code, message = await client.quit()
+    async with aiosmtpd_client:
+        code, message = await aiosmtpd_client.quit()
         assert 200 <= code <= 299
 
         # Next command should fail
         with pytest.raises(SMTPServerDisconnected):
-            code, message = await client.noop()
+            code, message = await aiosmtpd_client.noop()
 
-        server.next_response = b'220 Hi again!'
-        await client.connect()
+        await aiosmtpd_client.connect()
 
         # after reconnect, it should work again
-        server.next_response = b'250 noop'
-
-        code, message = await client.noop()
+        code, message = await aiosmtpd_client.noop()
         assert 200 <= code <= 299
 
 
 @pytest.mark.asyncio(forbid_global_loop=True)
-async def test_ssl_smtp_connect_to_non_ssl_server(preset_server):
-    ssl_client = SMTP(
-        hostname='127.0.0.1', port=preset_server.port, loop=preset_server.loop,
-        use_ssl=True, validate_certs=False)
+async def test_quit_then_connect_ok_with_preset_server(preset_client):
+    async with preset_client:
+        code, message = await preset_client.quit()
+        assert 200 <= code <= 299
 
-    await preset_server.start()
+        # Next command should fail
+        with pytest.raises(SMTPServerDisconnected):
+            code, message = await preset_client.noop()
+
+        preset_client.server.next_response = b'220 Hi again!'
+        await preset_client.connect()
+
+        # after reconnect, it should work again
+        preset_client.server.next_response = b'250 noop'
+
+        code, message = await preset_client.noop()
+        assert 200 <= code <= 299
+
+
+@pytest.mark.asyncio(forbid_global_loop=True)
+async def test_ssl_smtp_connect_to_non_ssl_server(preset_server, event_loop):
+    ssl_client = SMTP(
+        hostname='127.0.0.1', port=preset_server.port, loop=event_loop,
+        use_ssl=True, validate_certs=False)
 
     with pytest.raises(SMTPConnectError):
         await ssl_client.connect()
     assert not ssl_client.is_connected
 
-    await preset_server.stop()
+
+@pytest.mark.asyncio(forbid_global_loop=True)
+async def test_starttls(preset_client):
+    async with preset_client:
+        preset_client.server.next_response = b'\n'.join([
+            b'250-localhost, hello',
+            b'250-SIZE 100000',
+            b'250 STARTTLS',
+        ])
+        code, message = await preset_client.ehlo()
+        assert code == 250
+
+        preset_client.server.next_response = b'220 ready for TLS'
+        code, message = await preset_client.starttls(validate_certs=False)
+        assert code == 220
+
+        # Make sure our state has been cleared
+        assert not preset_client.esmtp_extensions
+        assert not preset_client.supported_auth_methods
+        assert not preset_client.supports_esmtp
+
+        # make sure our connection was actually upgraded
+        assert isinstance(
+            preset_client.transport, asyncio.sslproto._SSLProtocolTransport)
+
+        preset_client.server.next_response = b'250 all good'
+        code, message = await preset_client.ehlo()
+        assert code == 250
+
+
+def test_mock_server_starttls_with_stmplib(preset_server):
+    '''
+    Check that our test server behaves properly.
+    '''
+    smtp = smtplib.SMTP()
+    smtp.connect(preset_server.hostname, preset_server.port)
+    preset_server.next_response = b'\n'.join([
+        b'250-localhost, hello',
+        b'250-SIZE 100000',
+        b'250 STARTTLS',
+    ])
+
+    code, message = smtp.ehlo()
+    assert code == 250
+
+    preset_server.next_response = b'220 ready for TLS'
+    code, message = smtp.starttls()
+    assert code == 220
+
+    # make sure our connection was actually upgraded
+    assert isinstance(smtp.sock, ssl.SSLSocket)
+
+    preset_server.next_response = b'250 all good'
+    code, message = smtp.ehlo()
+    assert code == 250
 
 
 def test_smtp_use_ssl_with_no_ssl_raises(monkeypatch):
