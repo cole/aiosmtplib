@@ -1,0 +1,8 @@
+dist/
+TODO
+aiosmtplib.egg-info/
+aiosmtplib.sublime-project
+aiosmtplib.sublime-workspace
+.coverage
+coverage/
+venv/
