@@ -9,6 +9,7 @@ import io
 import copy
 import socket
 import asyncio
+import collections
 import email.utils
 import email.generator
 try:
@@ -35,6 +36,9 @@ from aiosmtplib.textutils import (
 MAX_LINE_LENGTH = 8192
 SMTP_PORT = 25
 SMTP_SSL_PORT = 465
+
+
+SMTPResponse = collections.namedtuple('SMTPResponse', ['code', 'message'])
 
 
 class SMTP:
@@ -73,7 +77,6 @@ class SMTP:
         self.reader = None
         self.writer = None
         self.protocol = None
-        self._tls_protocol = None
         self.transport = None
         self.loop = loop or asyncio.get_event_loop()
         self._server_state = {}
@@ -137,9 +140,9 @@ class SMTP:
     def is_ehlo_or_helo_needed(self):
         self._raise_error_if_disconnected()
 
-        no_ehlo_response = ('last_ehlo_response' not in self._server_state)
-        no_helo_response = ('last_helo_response' not in self._server_state)
-        is_needed = (no_ehlo_response and no_helo_response)
+        ehlo_response = ('last_ehlo_response' in self._server_state)
+        helo_response = ('last_helo_response' in self._server_state)
+        is_needed = not (ehlo_response or helo_response)
 
         return is_needed
 
@@ -172,6 +175,8 @@ class SMTP:
         if not status.is_success_code(code):
             raise SMTPConnectError(message)
 
+        return SMTPResponse(code, message)
+
     async def close(self):
         '''
         Closes the connection.
@@ -184,7 +189,6 @@ class SMTP:
         self.protocol = None
         self.transport = None
         self._server_state = {}
-        self._tls_protocol = None
 
     def _raise_error_if_disconnected(self):
         '''
@@ -214,12 +218,14 @@ class SMTP:
         await self.writer.send_command(*args)
         code, message = await self.reader.read_response()
 
-        # TODO: confirm this is correct behaviour
-        # If the server is unavailable, shut it down
-        if code == status.SMTP_421_DOMAIN_UNAVAILABLE:
+        if code is None:
+            raise SMTPResponseException(
+                -1, 'Malformed SMTP response: {}'.format(message))
+        elif code == status.SMTP_421_DOMAIN_UNAVAILABLE:
+            # If the server is unavailable, shut down our connection
             await self.close()
 
-        return code, message
+        return SMTPResponse(code, message)
 
     async def helo(self, hostname=None):
         '''
@@ -237,13 +243,13 @@ class SMTP:
         if hostname is None:
             hostname = self.source_address
 
-        code, message = await self.execute_command("helo", hostname)
-        self._server_state['last_helo_response'] = (code, message)
+        response = await self.execute_command('HELO', hostname)
+        self._server_state['last_helo_response'] = response
 
-        if not status.is_success_code(code):
-            raise SMTPHeloError(code, message)
+        if not status.is_success_code(response.code):
+            raise SMTPHeloError(response.code, response.message)
 
-        return code, message
+        return response
 
     async def ehlo(self, hostname=None):
         '''
@@ -256,17 +262,18 @@ class SMTP:
         if hostname is None:
             hostname = self.source_address
 
-        code, message = await self.execute_command('EHLO', hostname)
+        response = await self.execute_command('EHLO', hostname)
+        self._server_state['last_ehlo_response'] = response
 
-        if code == status.SMTP_250_COMPLETED:
-            extensions, auth_methods = parse_esmtp_extensions(message)
+        if response.code != status.SMTP_250_COMPLETED:
+            raise SMTPHeloError(response.code, response.message)
+        else:
+            extensions, auth_methods = parse_esmtp_extensions(response.message)
             self._server_state['esmtp_extensions'] = extensions
             self._server_state['supported_auth_methods'] = auth_methods
             self._server_state['supports_esmtp'] = True
 
-        self._server_state['last_ehlo_response'] = (code, message)
-
-        return code, message
+        return response
 
     async def ehlo_or_helo_if_needed(self):
         '''
@@ -294,89 +301,115 @@ class SMTP:
         SMTP 'help' command.
         Returns help text.
         '''
-        return await self.execute_command('HELP')
+        response = await self.execute_command('HELP')
+        if not status.is_success_code(response.code):
+            raise SMTPResponseException(response.code, response.message)
+
+        return response.message
 
     async def rset(self):
         '''
         Sends an SMTP 'rset' command (resets session)
 
-        Returns a (code, message) tuple with the server response.
+        Returns an SMTPResponse tuple.
         '''
-        return await self.execute_command('RSET')
+        response = await self.execute_command('RSET')
+        if not status.is_success_code(response.code):
+            raise SMTPResponseException(response.code, response.message)
+
+        return response
 
     async def noop(self):
         '''
         Sends an SMTP 'noop' command (does nothing)
-        Returns a (code, message) tuple with the server response.
+
+        Returns an SMTPResponse tuple.
         '''
-        return await self.execute_command('NOOP')
+        response = await self.execute_command('NOOP')
+        if not status.is_success_code(response.code):
+            raise SMTPResponseException(response.code, response.message)
+
+        return response
 
     async def vrfy(self, address):
         '''
         Sends an SMTP 'vrfy' command (tests an address for validity)
-        Returns a (code, message) tuple with the server response.
+        Returns an SMTPResponse tuple.
         '''
         parsed_address = email.utils.parseaddr(address)[1] or address
-        return await self.execute_command('VRFY', parsed_address)
+        response = await self.execute_command('VRFY', parsed_address)
+        if not status.is_success_code(response.code):
+            raise SMTPResponseException(response.code, response.message)
+
+        return response
 
     async def expn(self, address):
         '''
         Sends an SMTP 'expn' command (expands a mailing list)
-        Returns a (code, message) tuple with the server response.
+        Returns an SMTPResponse tuple.
         '''
         parsed_address = email.utils.parseaddr(address)[1] or address
-        return await self.execute_command('EXPN', parsed_address)
+        response = await self.execute_command('EXPN', parsed_address)
+        if not status.is_success_code(response.code):
+            raise SMTPResponseException(response.code, response.message)
+
+        return response
 
     async def quit(self):
         '''
         Sends the SMTP 'quit' command, and closes the connection.
-        Returns a (code, message) tuple with the server response.
+        Returns an SMTPResponse tuple.
         '''
-        code, message = await self.execute_command('QUIT')
+        response = await self.execute_command('QUIT')
+        if not status.is_success_code(response.code):
+            raise SMTPResponseException(response.code, response.message)
+
         await self.close()
-        return code, message
+        return response
 
     async def mail(self, sender, options=None):
         '''
         Sends the SMTP 'mail' command (begins mail transfer session)
-        Returns a (code, message) tuple with the server response.
+        Returns an SMTPResponse tuple.
 
         Raises SMTPSenderRefused if the response is not 250.
         '''
         if options is None:
             options = []
-        from_string = "FROM:{}".format(quote_address(sender))
+        from_string = 'FROM:{}'.format(quote_address(sender))
 
-        code, message = await self.execute_command(
-            'MAIL', from_string, *options)
+        response = await self.execute_command('MAIL', from_string, *options)
 
-        if code != status.SMTP_250_COMPLETED:
-            raise SMTPSenderRefused(code, message, sender)
+        if response.code != status.SMTP_250_COMPLETED:
+            try:
+                await self.rset()
+            except SMTPServerDisconnected:
+                # If we're disconnected on the reset, don't raise that yet
+                # as it's confusing
+                pass
+            raise SMTPSenderRefused(response.code, response.message, sender)
 
-        return code, message
+        return response
 
     async def rcpt(self, recipient, options=None):
         '''
         Sends the SMTP 'rcpt' command (specifies a recipient for the message)
-        Returns a (code, message) tuple with the server response.
+        Returns an SMTPResponse tuple.
         '''
         if options is None:
             options = []
-        to = "TO:{}".format(quote_address(recipient))
+        to = 'TO:{}'.format(quote_address(recipient))
 
-        # Turn a generic STMPResponseException into SMTPRecipientRefused
-        try:
-            code, message = await self.execute_command('RCPT', to, *options)
-        except SMTPResponseException as exc:
-            raise SMTPRecipientRefused(exc.code, exc.message, recipient)
+        response = await self.execute_command('RCPT', to, *options)
 
         success_codes = (
             status.SMTP_250_COMPLETED, status.SMTP_251_WILL_FORWARD,
         )
-        if code not in success_codes:
-            raise SMTPRecipientRefused(code, message, recipient)
+        if response.code not in success_codes:
+            raise SMTPRecipientRefused(
+                response.code, response.message, recipient)
 
-        return code, message
+        return response
 
     async def data(self, message):
         '''
@@ -385,22 +418,22 @@ class SMTP:
         Raises SMTPDataError if there is an unexpected reply to the
         DATA command.
 
-        Returns a (code, message) response tuple (the last one, after all
-        data is sent.)
+        Returns an SMTPResponse tuple (the last one, after all data is sent.)
         '''
-        code, response = await self.execute_command('DATA')
-        if code != status.SMTP_354_START_INPUT:
-            raise SMTPDataError(code, response)
+        start_response = await self.execute_command('DATA')
+
+        if start_response.code != status.SMTP_354_START_INPUT:
+            raise SMTPDataError(start_response.code, start_response.message)
 
         encoded_message = encode_message_string(message)
         self.writer.write(encoded_message)
         await self.writer.drain()
 
-        code, response = await self.reader.read_response()
+        code, message = await self.reader.read_response()
         if code != status.SMTP_250_COMPLETED:
-            raise SMTPDataError(code, response)
+            raise SMTPDataError(code, message)
 
-        return code, response
+        return SMTPResponse(code, message)
 
     async def sendmail(self, sender, recipients, message, mail_options=None,
                        rcpt_options=None):
@@ -478,7 +511,7 @@ class SMTP:
         await self.ehlo_or_helo_if_needed()
 
         if self.supports_esmtp and self.supports_extension('size'):
-            size_option = "size={}".format(len(message))
+            size_option = 'size={}'.format(len(message))
             mail_options.append(size_option)
 
         await self.mail(sender, options=mail_options)
@@ -553,49 +586,48 @@ class SMTP:
     async def _auth(self, auth_method, username, password):
         '''
         Try a single auth method. Used as part of login.
+
+        Returns an SMTPResponse tuple.
         '''
-        request_command, verification_callback = auth_method(
-            username, password)
-        code, response = await self.execute_command('AUTH', request_command)
+        request_command, auth_callback = auth_method(username, password)
+        response = await self.execute_command('AUTH', request_command)
 
-        continue_code = (code == status.SMTP_334_AUTH_CONTINUE)
-        if continue_code and verification_callback:
-            next_command = verification_callback(code, response)
-            code, response = await self.execute_command(next_command)
+        if response.code == status.SMTP_334_AUTH_CONTINUE and auth_callback:
+            next_command = auth_callback(response.code, response.message)
+            response = await self.execute_command(next_command)
 
-        return code, response
+        return response
 
     async def login(self, username, password):
+        '''
+        SMTP Login command. Tries all supported auth methods in order.
+        '''
         await self.ehlo_or_helo_if_needed()
 
-        if not self.supports_extension("auth"):
-            raise SMTPException("SMTP AUTH extension not supported by server.")
+        if not self.supports_extension('auth'):
+            raise SMTPException('SMTP AUTH extension not supported by server.')
 
         # Some servers advertise authentication methods they don't really
         # support, so if authentication fails, we continue until we've tried
         # all methods.
-        code, message = None, None
+        supported_auths = [
+            auth for auth in self.authentication_methods
+            if auth[0] in self.supported_auth_methods
+        ]
 
-        for auth_name, auth_method in self.authentication_methods:
-            if auth_name in self.supported_auth_methods:
-                try:
-                    code, message = await self._auth(
-                        auth_method, username, password)
-                except SMTPResponseException as exc:
-                    # In this context, 503 means we're already authenticated.
-                    # Ignore.
-                    if exc.code == status.SMTP_503_BAD_COMMAND_SEQUENCE:
-                        return exc.code, exc.message
-                    else:
-                        raise exc
+        response = None
+        for auth_name, auth_method in supported_auths:
+            response = await self._auth(auth_method, username, password)
 
-                if code == status.SMTP_235_AUTH_SUCCESSFUL:
-                    return code, message
-
-        if code is None:
-            raise SMTPException("No suitable authentication method found.")
+            if response.code == status.SMTP_235_AUTH_SUCCESSFUL:
+                break
         else:
-            raise SMTPAuthenticationError(code, message)
+            if response is None:
+                raise SMTPException('No suitable authentication method found.')
+            else:
+                raise SMTPAuthenticationError(response.code, response.message)
+
+        return response
 
     async def starttls(self, ssl_context=None, validate_certs=True,
                        client_cert=None, client_key=None):
@@ -647,9 +679,9 @@ class SMTP:
             raise SMTPException(
                 'SMTP STARTTLS extension not supported by server.')
 
-        code, response = await self.execute_command('STARTTLS')
+        response = await self.execute_command('STARTTLS')
 
-        if code == status.SMTP_220_READY:
+        if response.code == status.SMTP_220_READY:
             self.protocol, self.transport = await self.writer.start_tls(
                 ssl_context=ssl_context, server_hostname=self.hostname)
 
@@ -659,7 +691,7 @@ class SMTP:
             # which was not obtained from the TLS negotiation itself.
             self._server_state = {}
 
-        return code, response
+        return response
 
     def _configure_ssl_context(self, validate_certs=True, client_cert=None,
                                client_key=None):

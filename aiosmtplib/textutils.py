@@ -4,7 +4,7 @@ import email.utils
 
 LINE_ENDINGS_REGEX = re.compile(b'(?:\r\n|\n|\r(?!\n))')
 PERIOD_REGEX = re.compile(b'(?m)^\.')
-OLDSTYLE_AUTH_REGEX = re.compile(r"auth=(?P<auth>.*)", flags=re.I)
+OLDSTYLE_AUTH_REGEX = re.compile(r'auth=(?P<auth>.*)', flags=re.I)
 EXTENSIONS_REGEX = re.compile(r'(?P<ext>[A-Za-z0-9][A-Za-z0-9\-]*) ?')
 
 
@@ -16,12 +16,12 @@ def quote_address(address):
     '''
     display_name, parsed_address = email.utils.parseaddr(address)
     if parsed_address:
-        quoted_address = "<{}>".format(parsed_address)
+        quoted_address = '<{}>'.format(parsed_address)
     # parseaddr couldn't parse it, use it as is and hope for the best.
     elif address.lstrip().startswith('<'):
         quoted_address = address.strip()
     else:
-        quoted_address = "<{}>".format(address.strip())
+        quoted_address = '<{}>'.format(address.strip())
 
     return quoted_address
 
@@ -79,11 +79,11 @@ def encode_message_string(message_str):
         message_bytes = message_str
     else:
         message_bytes = message_str.encode('utf-8')
-    message_bytes = LINE_ENDINGS_REGEX.sub(b"\r\n", message_bytes)
+    message_bytes = LINE_ENDINGS_REGEX.sub(b'\r\n', message_bytes)
     message_bytes = PERIOD_REGEX.sub(b'..', message_bytes)
-    if not message_bytes.endswith(b"\r\n"):
-        message_bytes += b"\r\n"
-    message_bytes += b".\r\n"
+    if not message_bytes.endswith(b'\r\n'):
+        message_bytes += b'\r\n'
+    message_bytes += b'.\r\n'
 
     return message_bytes
 
@@ -145,7 +145,7 @@ def parse_esmtp_extensions(message):
             params = extensions.string[extensions.end('ext'):].strip()
             esmtp_extensions[extension] = params
 
-            if extension == "auth":
+            if extension == 'auth':
                 auth_types.extend(
                     [param.strip().lower() for param in params.split()])
 

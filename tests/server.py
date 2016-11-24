@@ -1,8 +1,9 @@
 import asyncio
 import threading
 import socketserver
-import selectors
+import socket
 import ssl
+import collections
 from email.errors import HeaderParseError
 
 from aiosmtpd.smtp import SMTP as BaseSMTPD
@@ -12,18 +13,6 @@ from aiosmtpd.controller import Controller
 
 class ThreadedPresetRequestHandler(socketserver.BaseRequestHandler):
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.selector = selectors.DefaultSelector()
-
-    @property
-    def next_response(self):
-        return self.server._next_response
-
-    @next_response.setter
-    def next_response(self, response):
-        self.server.next_response = response
-
     def starttls(self):
         context = self.server.get_ssl_context()
         self.request.settimeout(30)
@@ -31,50 +20,63 @@ class ThreadedPresetRequestHandler(socketserver.BaseRequestHandler):
         self.request.settimeout(None)
 
     def handle(self):
-        self.request.sendall(b'220 Hello world!\n')
-        # self.selector.register(self.request, selectors.EVENT_READ)
+        if self.server.send_greeting:
+            self.request.sendall(b'220 Hello world!\n')
 
         while True:
-            request = self.request.recv(4096)  # Naive recv won't work for data
-            response = self.next_response
+            data = self.request.recv(4096)  # Naive recv won't work for data
+            self.server.requests.append(data)
+
+            response = self.server.next_response
             if response:
                 self.request.sendall(response)
             else:
                 break
 
-            if request[:8] == b'STARTTLS':
+            if data[:8] == b'STARTTLS':
                 self.starttls()
 
-            self.next_response = b''
-
         # Disconnect
-        self.request.sendall(b'221 Goodbye then\n')
+        if self.server.send_goodbye:
+            self.request.sendall(b'221 Goodbye then\n')
+            try:
+                self.request.shutdown(socket.SHUT_RDWR)
+            except TypeError:
+                self.request.shutdown()
+            except OSError:
+                pass
+            self.request.close()
 
 
 class ThreadedPresetServer(
         socketserver.ThreadingMixIn, socketserver.TCPServer):
 
     def __init__(self, hostname, port, certfile='tests/certs/selfsigned.crt',
-                 keyfile='tests/certs/selfsigned.key'):
+                 keyfile='tests/certs/selfsigned.key', send_greeting=True,
+                 send_goodbye=True):
         super().__init__((hostname, port), ThreadedPresetRequestHandler)
         self.hostname = hostname
         self.port = port
         self.certfile = certfile
         self.keyfile = keyfile
 
-        self.next_response = b''
+        self.send_greeting = send_greeting
+        self.send_goodbye = send_goodbye
+        self.responses = collections.deque()
+        self.requests = []
 
     @property
     def next_response(self):
-        return self._next_response
+        try:
+            response = self.responses.popleft()
+        except IndexError:
+            response = b''
+        else:
+            response = bytes(response)
+            if response and not response.endswith(b'\n'):
+                response = response + b'\n'
 
-    @next_response.setter
-    def next_response(self, response):
-        response = bytes(response)
-        if response and not response.endswith(b'\n'):
-            response = response + b'\n'
-
-        self._next_response = response
+        return response
 
     def start(self):
         self.server_thread = threading.Thread(target=self.serve_forever)

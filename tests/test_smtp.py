@@ -64,21 +64,41 @@ async def test_expn_ok(preset_client):
     response.
     '''
     async with preset_client:
-        preset_client.server.next_response = b'\n'.join([
+        preset_client.server.responses.append(b'\n'.join([
             b'250-Joseph Blow <jblow@example.com>',
             b'250 Alice Smith <asmith@example.com>',
-        ])
+        ]))
         code, message = await preset_client.expn('listserv-members')
         assert 200 <= code <= 299
 
 
 @pytest.mark.asyncio
+async def test_rset_after_mail_error(preset_client):
+    '''
+    If an error response is given to the mail command, test that
+    we reset the server session.
+    '''
+    async with preset_client:
+        preset_client.server.responses.append(b'250 Hello there')
+        code, message = await preset_client.ehlo()
+        assert code == 250
+
+        preset_client.server.responses.append(b'501 bad address')
+        preset_client.server.responses.append(b'250 ok')
+
+        try:
+            code, message = await preset_client.mail('>foobar<')
+        except SMTPResponseException as err:
+            assert err.code == 501
+            assert preset_client.server.requests[-1][:4] == b'RSET'
+
+
+@pytest.mark.asyncio
 async def test_help_ok(aiosmtpd_client):
     async with aiosmtpd_client:
-        code, message = await aiosmtpd_client.help()
+        help_message = await aiosmtpd_client.help()
 
-        assert 200 <= code <= 299
-        assert 'Supported commands' in message
+        assert 'Supported commands' in help_message
 
 
 @pytest.mark.asyncio

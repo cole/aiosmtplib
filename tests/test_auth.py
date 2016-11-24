@@ -26,7 +26,7 @@ def test_auth_plain(username, password):
     '''
     request_str, callback = auth_plain(username, password)
 
-    assert b64_decode(request_str[6:]) == "\0{}\0{}".format(username, password)
+    assert b64_decode(request_str[6:]) == '\0{}\0{}'.format(username, password)
     assert callback is None
 
 

@@ -59,12 +59,11 @@ async def test_quit_then_connect_ok_with_preset_server(preset_client):
         with pytest.raises(SMTPServerDisconnected):
             code, message = await preset_client.noop()
 
-        preset_client.server.next_response = b'220 Hi again!'
+        preset_client.server.responses.append(b'220 Hi again!')
         await preset_client.connect()
 
         # after reconnect, it should work again
-        preset_client.server.next_response = b'250 noop'
-
+        preset_client.server.responses.append(b'250 noop')
         code, message = await preset_client.noop()
         assert 200 <= code <= 299
 
@@ -83,15 +82,15 @@ async def test_ssl_smtp_connect_to_non_ssl_server(preset_server, event_loop):
 @pytest.mark.asyncio(forbid_global_loop=True)
 async def test_starttls(preset_client):
     async with preset_client:
-        preset_client.server.next_response = b'\n'.join([
+        preset_client.server.responses.append(b'\n'.join([
             b'250-localhost, hello',
             b'250-SIZE 100000',
             b'250 STARTTLS',
-        ])
+        ]))
         code, message = await preset_client.ehlo()
         assert code == 250
 
-        preset_client.server.next_response = b'220 ready for TLS'
+        preset_client.server.responses.append(b'220 ready for TLS')
         code, message = await preset_client.starttls(validate_certs=False)
         assert code == 220
 
@@ -104,7 +103,7 @@ async def test_starttls(preset_client):
         assert isinstance(
             preset_client.transport, asyncio.sslproto._SSLProtocolTransport)
 
-        preset_client.server.next_response = b'250 all good'
+        preset_client.server.responses.append(b'250 all good')
         code, message = await preset_client.ehlo()
         assert code == 250
 
@@ -115,23 +114,23 @@ def test_mock_server_starttls_with_stmplib(preset_server):
     '''
     smtp = smtplib.SMTP()
     smtp.connect(preset_server.hostname, preset_server.port)
-    preset_server.next_response = b'\n'.join([
+    preset_server.responses.append(b'\n'.join([
         b'250-localhost, hello',
         b'250-SIZE 100000',
         b'250 STARTTLS',
-    ])
+    ]))
 
     code, message = smtp.ehlo()
     assert code == 250
 
-    preset_server.next_response = b'220 ready for TLS'
+    preset_server.responses.append(b'220 ready for TLS')
     code, message = smtp.starttls()
     assert code == 220
 
     # make sure our connection was actually upgraded
     assert isinstance(smtp.sock, ssl.SSLSocket)
 
-    preset_server.next_response = b'250 all good'
+    preset_server.responses.append(b'250 all good')
     code, message = smtp.ehlo()
     assert code == 250
 

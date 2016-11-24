@@ -27,8 +27,8 @@ def auth_plain(username, password):
     AUTH PLAIN dGVzdAB0ZXN0AHRlc3RwYXNz
     235 ok, go ahead (#2.0.0)
     '''
-    username_and_password = "\0{}\0{}".format(username, password)
-    request = "{} {}".format('PLAIN', b64_encode(username_and_password))
+    username_and_password = '\0{}\0{}'.format(username, password)
+    request = '{} {}'.format('PLAIN', b64_encode(username_and_password))
 
     return request, None
 

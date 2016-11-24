@@ -16,8 +16,8 @@ SIMPLE_EXCEPTIONS = (SMTPServerDisconnected, SMTPConnectError,)
 SIMPLE_RESPONSE_EXCEPTIONS = (
     SMTPNotSupported, SMTPHeloError, SMTPDataError, SMTPAuthenticationError,)
 ERROR_CODES = (
-    (503, "Bad command sequence"),
-    (530, "Access denied")
+    (503, 'Bad command sequence'),
+    (530, 'Access denied')
 )
 EMAIL_ADDRESSES = ('a@example.com', 'b@example.com')
 

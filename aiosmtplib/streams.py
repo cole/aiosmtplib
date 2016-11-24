@@ -2,8 +2,7 @@ import asyncio
 import asyncio.selector_events
 import asyncio.sslproto
 
-from aiosmtplib import status
-from aiosmtplib.errors import SMTPResponseException, SMTPServerDisconnected
+from aiosmtplib.errors import SMTPServerDisconnected
 
 
 class SMTPProtocol(asyncio.StreamReaderProtocol):
@@ -65,7 +64,7 @@ class SMTPStreamReader(asyncio.StreamReader):
                 line = await self.readline()
             # TODO: alternative to LimitOverrunError
             # except LimitOverrunError:
-            #     raise SMTPResponseException(500, "Line too long.")
+            #     raise SMTPResponseException(500, 'Line too long.'')
             except ConnectionResetError as exc:
                 raise SMTPServerDisconnected(exc)
 
@@ -77,18 +76,13 @@ class SMTPStreamReader(asyncio.StreamReader):
             message = line[4:].strip(b' \t\r\n').decode('ascii')
             response_lines.append(message)
 
-            if line[3:4] != b"-":
+            if line[3:4] != b'-':
                 break
 
-        full_message = "\n".join(response_lines)
+        full_message = '\n'.join(response_lines)
 
         if code is None and self.at_eof():
             raise SMTPServerDisconnected('Server disconnected unexpectedly')
-        elif code is None:
-            raise SMTPResponseException(
-                -1, 'Malformed SMTP response: {}'.format(full_message))
-        elif status.is_permanent_error_code(code):
-            raise SMTPResponseException(code, full_message)
 
         return code, full_message
 
@@ -99,7 +93,7 @@ class SMTPStreamWriter(asyncio.StreamWriter):
         '''
         Format a command and send it to the server.
         '''
-        command = "{}\r\n".format(' '.join(args)).encode('ascii')
+        command = '{}\r\n'.format(' '.join(args)).encode('ascii')
         self.write(command)
 
         await self.drain()
