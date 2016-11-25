@@ -5,7 +5,7 @@ import asyncio.sslproto
 import pytest
 
 import aiosmtplib  # Required so we can monkeypatch
-from aiosmtplib import SMTP, SMTPConnectError, SMTPServerDisconnected
+from aiosmtplib import SMTP, status, SMTPConnectError, SMTPServerDisconnected
 
 
 @pytest.mark.asyncio(forbid_global_loop=True)
@@ -33,20 +33,20 @@ async def test_tls_connection(tls_preset_client):
 
 
 @pytest.mark.asyncio()
-async def test_quit_then_connect_ok_with_aiosmtpd(aiosmtpd_client):
-    async with aiosmtpd_client:
-        code, message = await aiosmtpd_client.quit()
-        assert 200 <= code <= 299
+async def test_quit_then_connect_ok_with_smtpd(smtpd_client):
+    async with smtpd_client:
+        response = await smtpd_client.quit()
+        assert response.code == status.SMTP_221_CLOSING
 
         # Next command should fail
         with pytest.raises(SMTPServerDisconnected):
-            code, message = await aiosmtpd_client.noop()
+            response = await smtpd_client.noop()
 
-        await aiosmtpd_client.connect()
+        await smtpd_client.connect()
 
         # after reconnect, it should work again
-        code, message = await aiosmtpd_client.noop()
-        assert 200 <= code <= 299
+        response = await smtpd_client.noop()
+        assert response.code == status.SMTP_250_COMPLETED
 
 
 @pytest.mark.asyncio(forbid_global_loop=True)
@@ -95,12 +95,12 @@ async def test_starttls(preset_client):
             b'250-SIZE 100000',
             b'250 STARTTLS',
         ]))
-        code, message = await preset_client.ehlo()
-        assert code == 250
+        response = await preset_client.ehlo()
+        assert response.code == status.SMTP_250_COMPLETED
 
         preset_client.server.responses.append(b'220 ready for TLS')
-        code, message = await preset_client.starttls(validate_certs=False)
-        assert code == 220
+        response = await preset_client.starttls(validate_certs=False)
+        assert response.code == status.SMTP_220_READY
 
         # Make sure our state has been cleared
         assert not preset_client.esmtp_extensions
@@ -112,8 +112,8 @@ async def test_starttls(preset_client):
             preset_client.transport, asyncio.sslproto._SSLProtocolTransport)
 
         preset_client.server.responses.append(b'250 all good')
-        code, message = await preset_client.ehlo()
-        assert code == 250
+        response = await preset_client.ehlo()
+        assert response.code == status.SMTP_250_COMPLETED
 
 
 def test_mock_server_starttls_with_stmplib(preset_server):
@@ -129,11 +129,11 @@ def test_mock_server_starttls_with_stmplib(preset_server):
     ]))
 
     code, message = smtp.ehlo()
-    assert code == 250
+    assert code == status.SMTP_250_COMPLETED
 
     preset_server.responses.append(b'220 ready for TLS')
     code, message = smtp.starttls()
-    assert code == 220
+    assert code == status.SMTP_220_READY
 
     # make sure our connection was actually upgraded
     assert isinstance(smtp.sock, ssl.SSLSocket)

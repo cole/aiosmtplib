@@ -5,13 +5,14 @@ import pytest
 
 from aiosmtplib import SMTP
 from .server import (
-    ThreadedPresetServer, TLSThreadedPresetServer, AioSMTPDTestServer,
+    ThreadedPresetServer, TLSThreadedPresetServer,
+    ThreadedSMTPDServer,
 )
 
 
 @pytest.fixture()
-def aiosmtpd_server(request):
-    server = AioSMTPDTestServer()
+def smtpd_server(request, unused_tcp_port):
+    server = ThreadedSMTPDServer('127.0.0.1', unused_tcp_port)
     server.start()
 
     request.addfinalizer(server.stop)
@@ -40,11 +41,11 @@ def tls_preset_server(request, unused_tcp_port):
 
 
 @pytest.fixture()
-def aiosmtpd_client(request, aiosmtpd_server, event_loop):
+def smtpd_client(request, smtpd_server, event_loop):
     client = SMTP(
-        hostname=aiosmtpd_server.hostname, port=aiosmtpd_server.port,
+        hostname=smtpd_server.hostname, port=smtpd_server.port,
         loop=event_loop)
-    client.server = aiosmtpd_server
+    client.server = smtpd_server
 
     return client
 
