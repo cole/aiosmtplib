@@ -9,13 +9,12 @@ import io
 import copy
 import socket
 import asyncio
-import collections
 import email.utils
 import email.generator
 try:
     import ssl
 except ImportError:
-    _has_ssl = False
+    _has_ssl = False  # pragma: no cover
 else:
     _has_ssl = True
 
@@ -27,6 +26,7 @@ from aiosmtplib.errors import (
     SMTPRecipientRefused, SMTPRecipientsRefused, SMTPSenderRefused,
     SMTPServerDisconnected, SMTPResponseException, SMTPAuthenticationError,
 )
+from aiosmtplib.response import SMTPResponse
 from aiosmtplib.textutils import (
     quote_address, extract_sender, extract_recipients, encode_message_string,
     parse_esmtp_extensions,
@@ -36,9 +36,6 @@ from aiosmtplib.textutils import (
 MAX_LINE_LENGTH = 8192
 SMTP_PORT = 25
 SMTP_SSL_PORT = 465
-
-
-SMTPResponse = collections.namedtuple('SMTPResponse', ['code', 'message'])
 
 
 class SMTP:
@@ -172,7 +169,7 @@ class SMTP:
                 self.transport, self.protocol, self.reader, self.loop)
 
         code, message = await self.reader.read_response()
-        if not status.is_success_code(code):
+        if code != status.SMTP_220_READY:
             raise SMTPConnectError(message)
 
         return SMTPResponse(code, message)
@@ -246,7 +243,7 @@ class SMTP:
         response = await self.execute_command('HELO', hostname)
         self._server_state['last_helo_response'] = response
 
-        if not status.is_success_code(response.code):
+        if response.code != status.SMTP_250_COMPLETED:
             raise SMTPHeloError(response.code, response.message)
 
         return response
@@ -265,13 +262,13 @@ class SMTP:
         response = await self.execute_command('EHLO', hostname)
         self._server_state['last_ehlo_response'] = response
 
-        if response.code != status.SMTP_250_COMPLETED:
-            raise SMTPHeloError(response.code, response.message)
-        else:
+        if response.code == status.SMTP_250_COMPLETED:
             extensions, auth_methods = parse_esmtp_extensions(response.message)
             self._server_state['esmtp_extensions'] = extensions
             self._server_state['supported_auth_methods'] = auth_methods
             self._server_state['supports_esmtp'] = True
+        else:
+            raise SMTPHeloError(response.code, response.message)
 
         return response
 
@@ -289,11 +286,8 @@ class SMTP:
         '''
         if self.is_ehlo_or_helo_needed:
             try:
-                ehlo_code, _ = await self.ehlo()
-            except SMTPResponseException as exc:
-                ehlo_code = exc.code
-
-            if not status.is_success_code(ehlo_code):
+                await self.ehlo()
+            except SMTPHeloError:
                 await self.helo()
 
     async def help(self):
@@ -302,7 +296,7 @@ class SMTP:
         Returns help text.
         '''
         response = await self.execute_command('HELP')
-        if not status.is_success_code(response.code):
+        if response.code not in status.HELP_SUCCESS_STATUSES:
             raise SMTPResponseException(response.code, response.message)
 
         return response.message
@@ -314,7 +308,7 @@ class SMTP:
         Returns an SMTPResponse tuple.
         '''
         response = await self.execute_command('RSET')
-        if not status.is_success_code(response.code):
+        if response.code != status.SMTP_250_COMPLETED:
             raise SMTPResponseException(response.code, response.message)
 
         return response
@@ -326,7 +320,7 @@ class SMTP:
         Returns an SMTPResponse tuple.
         '''
         response = await self.execute_command('NOOP')
-        if not status.is_success_code(response.code):
+        if response.code != status.SMTP_250_COMPLETED:
             raise SMTPResponseException(response.code, response.message)
 
         return response
@@ -338,7 +332,7 @@ class SMTP:
         '''
         parsed_address = email.utils.parseaddr(address)[1] or address
         response = await self.execute_command('VRFY', parsed_address)
-        if not status.is_success_code(response.code):
+        if response.code not in status.VRFY_SUCCESS_STATUSES:
             raise SMTPResponseException(response.code, response.message)
 
         return response
@@ -350,7 +344,8 @@ class SMTP:
         '''
         parsed_address = email.utils.parseaddr(address)[1] or address
         response = await self.execute_command('EXPN', parsed_address)
-        if not status.is_success_code(response.code):
+
+        if response.code != status.SMTP_250_COMPLETED:
             raise SMTPResponseException(response.code, response.message)
 
         return response
@@ -361,7 +356,7 @@ class SMTP:
         Returns an SMTPResponse tuple.
         '''
         response = await self.execute_command('QUIT')
-        if not status.is_success_code(response.code):
+        if response.code != status.SMTP_221_CLOSING:
             raise SMTPResponseException(response.code, response.message)
 
         await self.close()
@@ -402,10 +397,7 @@ class SMTP:
 
         response = await self.execute_command('RCPT', to, *options)
 
-        success_codes = (
-            status.SMTP_250_COMPLETED, status.SMTP_251_WILL_FORWARD,
-        )
-        if response.code not in success_codes:
+        if response.code not in status.RCPT_SUCCESS_STATUSES:
             raise SMTPRecipientRefused(
                 response.code, response.message, recipient)
 

@@ -50,22 +50,30 @@ async def test_quit_then_connect_ok_with_aiosmtpd(aiosmtpd_client):
 
 
 @pytest.mark.asyncio(forbid_global_loop=True)
-async def test_quit_then_connect_ok_with_preset_server(preset_client):
-    async with preset_client:
-        code, message = await preset_client.quit()
-        assert 200 <= code <= 299
+async def test_quit_then_connect_ok_with_preset_server(
+        preset_server, event_loop):
+    preset_client = SMTP(
+        hostname='127.0.0.1', port=preset_server.port, loop=event_loop)
 
-        # Next command should fail
-        with pytest.raises(SMTPServerDisconnected):
-            code, message = await preset_client.noop()
+    response = await preset_client.connect()
+    assert response.code == 220
 
-        preset_client.server.responses.append(b'220 Hi again!')
-        await preset_client.connect()
+    response = await preset_client.quit()
+    assert response.code == 221
 
-        # after reconnect, it should work again
-        preset_client.server.responses.append(b'250 noop')
-        code, message = await preset_client.noop()
-        assert 200 <= code <= 299
+    # Next command should fail
+    with pytest.raises(SMTPServerDisconnected):
+        await preset_client.noop()
+
+    response = await preset_client.connect()
+    assert response.code == 220
+
+    # after reconnect, it should work again
+    preset_server.responses.append(b'250 noop')
+    response = await preset_client.noop()
+    assert response.code == 250
+
+    await preset_client.quit()
 
 
 @pytest.mark.asyncio(forbid_global_loop=True)
