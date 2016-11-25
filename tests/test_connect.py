@@ -121,7 +121,8 @@ def test_mock_server_starttls_with_stmplib(preset_server):
     Check that our test server behaves properly.
     '''
     smtp = smtplib.SMTP()
-    smtp.connect(preset_server.hostname, preset_server.port)
+    smtp._host = preset_server.hostname  # Hack around smtplib SNI bug
+    smtp.connect(host=preset_server.hostname, port=preset_server.port)
     preset_server.responses.append(b'\n'.join([
         b'250-localhost, hello',
         b'250-SIZE 100000',
