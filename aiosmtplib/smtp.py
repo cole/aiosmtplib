@@ -114,6 +114,14 @@ class SMTP:
         return self._source_address
 
     @property
+    def transport_info(self):
+        '''
+        Returns a dict of asyncio information about the transport.
+        Includes SSLContext, ciphers, compression, etc.
+        '''
+        return self.transport._extra
+
+    @property
     def is_ehlo_or_helo_needed(self):
         self._raise_error_if_disconnected()
 
@@ -431,9 +439,15 @@ class SMTP:
         method tries EHLO first.
 
         This method will return normally if the mail is accepted for at least
-        one recipient.  It returns a dictionary, with one entry for each
-        recipient that was refused.  Each entry contains a tuple of the SMTP
-        error code and the accompanying error message sent by the server.
+        one recipient.  It returns a tuple consisting of:
+
+            - an error dictionary, with one entry for each
+                recipient that was refused.  Each entry contains a tuple of the
+                SMTP error code and the accompanying error message sent by the
+                server.
+            - the message sent by the server in response to the DATA command
+                (often containing a message id)
+
 
         This method may raise the following exceptions:
 
@@ -448,31 +462,28 @@ class SMTP:
 
         Note: the connection will be open even after an exception is raised.
 
-        Example:
 
-        # TODO: test
          >>> import asyncio
          >>> import aiosmtplib
          >>> loop = asyncio.get_event_loop()
          >>> smtp = aiosmtplib.SMTP(hostname='localhost', port=25)
-         >>> loop.run_until_complete(smtp.ready)
-         >>> tolist=["one@one.org","two@two.org","three@three.org"]
-         >>> msg = """\\
-         ... From: Me@my.org
-         ... Subject: testin'...
-         ...
-         ... This is a test """
-         >>> future = asyncio.ensure_future(
-         >>>     smtp.sendmail("me@my.org", tolist, msg))
-         >>> loop.run_until_complete(future)
-         >>> future.result()
-         { "three@three.org" : ( 550 ,"User unknown" ) }
-         >>> smtp.close()
+         >>> loop.run_until_complete(smtp.connect())
+         >>> recipients = ['one@one.org', 'two@two.org','nobody@three.org']
+         >>> message = 'From: Me@my.org\nSubject: testing...\nHello World'
+         >>> loop.run_until_complete(
+         >>>     smtp.sendmail('me@my.org', recipients, message))
+         (
+             {
+                'nobody@three.org': (550 ,'User unknown'),
+             },
+             'Written safely to disk. #902487694.289148.12219.',
+         )
+         >>> loop.run_until_complete(smtp.quit())
 
         In the above example, the message was accepted for delivery to two
         of the three addresses, and one was rejected, with the error code
         550.  If all addresses are accepted, then the method will return an
-        empty dictionary.
+        empty errors dictionary.
 
         '''
         if isinstance(recipients, str):
@@ -500,13 +511,14 @@ class SMTP:
         if len(recipient_errors) == len(recipients):
             raise SMTPRecipientsRefused(recipient_errors)
 
-        await self.data(message)
+        response = await self.data(message)
 
-        formatted_errors = [
-            {err.recipient: (err.code, err.message)}
+        formatted_errors = {
+            err.recipient: (err.code, err.message)
             for err in recipient_errors
-        ]
-        return formatted_errors or None
+        }
+
+        return formatted_errors, response.message
 
     async def send_message(self, message, sender=None, recipients=None,
                            mail_options=None, rcpt_options=None):

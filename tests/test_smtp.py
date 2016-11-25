@@ -290,10 +290,12 @@ async def test_sendmail_simple_success(smtpd_client):
 
         -a tester
         """
-        errors = await smtpd_client.sendmail(
+        errors, message = await smtpd_client.sendmail(
             test_address, [test_address], mail_text)
 
-        assert errors is None
+        assert not errors
+        assert isinstance(errors, dict)
+        assert message != ''
 
 
 @pytest.mark.asyncio
@@ -305,10 +307,12 @@ async def test_sendmail_binary_content(smtpd_client):
 
         -a tester
         """
-        errors = await smtpd_client.sendmail(
+        errors, message = await smtpd_client.sendmail(
             test_address, [test_address], mail_text)
 
-        assert errors is None
+        assert not errors
+        assert isinstance(errors, dict)
+        assert message != ''
 
 
 @pytest.mark.asyncio
@@ -334,9 +338,11 @@ async def test_send_message(smtpd_client):
     message.attach(body)
 
     async with smtpd_client:
-        errors = await smtpd_client.send_message(message)
+        errors, message = await smtpd_client.send_message(message)
 
     assert not errors
+    assert isinstance(errors, dict)
+    assert message != ''
 
 
 @pytest.mark.asyncio
