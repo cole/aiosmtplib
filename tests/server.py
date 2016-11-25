@@ -14,7 +14,7 @@ from aiosmtpd.controller import Controller
 class ThreadedPresetRequestHandler(socketserver.BaseRequestHandler):
 
     def starttls(self):
-        context = self.server.get_ssl_context()
+        context = self.server.get_tls_context()
         self.request.settimeout(30)
         self.request = context.wrap_socket(self.request, server_side=True)
         self.request.settimeout(None)
@@ -88,21 +88,21 @@ class ThreadedPresetServer(
         self.shutdown()
         self.server_close()
 
-    def get_ssl_context(self):
+    def get_tls_context(self):
         context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
         context.load_cert_chain(self.certfile, keyfile=self.keyfile)
 
         return context
 
 
-class SSLThreadedPresetServer(ThreadedPresetServer):
+class TLSThreadedPresetServer(ThreadedPresetServer):
 
     def get_request(self):
         socket, from_address = self.socket.accept()
-        context = self.get_ssl_context()
-        ssl_socket = context.wrap_socket(socket, server_side=True)
+        context = self.get_tls_context()
+        wrapped_socket = context.wrap_socket(socket, server_side=True)
 
-        return ssl_socket, from_address
+        return wrapped_socket, from_address
 
 
 class AsyncioPresetServer:
@@ -176,20 +176,20 @@ class AsyncioPresetServer:
         self.server = None
 
 
-class SSLAsyncioPresetServer(AsyncioPresetServer):
+class TLSAsyncioPresetServer(AsyncioPresetServer):
     '''
-    SSL enabled version of PresetServer.
+    TLS enabled version of PresetServer.
     '''
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-        self.ssl_context.load_cert_chain(
+        self.tls_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+        self.tls_context.load_cert_chain(
             'tests/certs/selfsigned.crt', 'tests/certs/selfsigned.key')
 
     async def start(self):
         self.server = await asyncio.start_server(
             self.on_connect, self.hostname, self.port, loop=self.loop,
-            ssl=self.ssl_context)
+            ssl=self.tls_context)
 
 
 class TestSMTPD(BaseSMTPD):

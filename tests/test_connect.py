@@ -21,15 +21,15 @@ async def test_plain_smtp_connect(preset_client):
 
 
 @pytest.mark.asyncio(forbid_global_loop=True)
-async def test_ssl_connection(ssl_preset_client):
+async def test_tls_connection(tls_preset_client):
     '''
     Use an explicit connect/quit here, as other tests use the context manager.
     '''
-    await ssl_preset_client.connect()
-    assert ssl_preset_client.is_connected
+    await tls_preset_client.connect()
+    assert tls_preset_client.is_connected
 
-    await ssl_preset_client.quit()
-    assert not ssl_preset_client.is_connected
+    await tls_preset_client.quit()
+    assert not tls_preset_client.is_connected
 
 
 @pytest.mark.asyncio()
@@ -77,14 +77,14 @@ async def test_quit_then_connect_ok_with_preset_server(
 
 
 @pytest.mark.asyncio(forbid_global_loop=True)
-async def test_ssl_smtp_connect_to_non_ssl_server(preset_server, event_loop):
-    ssl_client = SMTP(
+async def test_tls_smtp_connect_to_non_tls_server(preset_server, event_loop):
+    tls_client = SMTP(
         hostname='127.0.0.1', port=preset_server.port, loop=event_loop,
-        use_ssl=True, validate_certs=False)
+        use_tls=True, validate_certs=False)
 
     with pytest.raises(SMTPConnectError):
-        await ssl_client.connect()
-    assert not ssl_client.is_connected
+        await tls_client.connect()
+    assert not tls_client.is_connected
 
 
 @pytest.mark.asyncio(forbid_global_loop=True)
@@ -143,16 +143,18 @@ def test_mock_server_starttls_with_stmplib(preset_server):
     assert code == 250
 
 
-def test_smtp_use_ssl_with_no_ssl_raises(monkeypatch):
-    monkeypatch.setattr(aiosmtplib.smtp, '_has_ssl', False)
+@pytest.mark.asyncio(forbid_global_loop=True)
+async def test_smtp_use_tls_with_no_ssl_module_raises(monkeypatch, event_loop):
+    monkeypatch.setattr(aiosmtplib.tls, '_has_tls', False)
+    smtp = SMTP(use_tls=True, loop=event_loop)
 
     with pytest.raises(RuntimeError):
-        SMTP(use_ssl=True)
+        await smtp.connect()
 
 
-def test_ssl_context_and_cert_raises():
+def test_tls_context_and_cert_raises():
     with pytest.raises(ValueError):
-        SMTP(use_ssl=True, client_cert='foo.crt', ssl_context=True)
+        SMTP(use_tls=True, client_cert='foo.crt', tls_context=True)
 
     with pytest.raises(ValueError):
-        SMTP(use_ssl=True, client_key='foo.key', ssl_context=True)
+        SMTP(use_tls=True, client_key='foo.key', tls_context=True)

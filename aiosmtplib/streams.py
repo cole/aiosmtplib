@@ -18,7 +18,7 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
         else:
             super().connection_made(transport)
 
-    def start_tls(self, ssl_context, server_hostname=None, waiter=None):
+    def start_tls(self, context, server_hostname=None, waiter=None):
         '''
         Upgrade our transport to TLS in place.
         '''
@@ -27,7 +27,7 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
         plain_transport = self._stream_reader._transport
 
         tls_protocol = asyncio.sslproto.SSLProtocol(
-            self._loop, self, ssl_context, waiter, server_side=False,
+            self._loop, self, context, waiter, server_side=False,
             server_hostname=server_hostname)
 
         # This assignment is required, even though it's done again in
@@ -98,13 +98,13 @@ class SMTPStreamWriter(asyncio.StreamWriter):
 
         await self.drain()
 
-    async def start_tls(self, ssl_context, server_hostname=None):
+    async def start_tls(self, context, server_hostname=None):
         await self.drain()
 
         waiter = asyncio.Future(loop=self._loop)
 
         tls_protocol = self._protocol.start_tls(
-            ssl_context, server_hostname=server_hostname, waiter=waiter)
+            context, server_hostname=server_hostname, waiter=waiter)
 
         self._transport = tls_protocol._app_transport
 

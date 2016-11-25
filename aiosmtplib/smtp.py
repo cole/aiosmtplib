@@ -11,15 +11,9 @@ import socket
 import asyncio
 import email.utils
 import email.generator
-try:
-    import ssl
-except ImportError:
-    _has_ssl = False  # pragma: no cover
-else:
-    _has_ssl = True
 
 from aiosmtplib import status
-from aiosmtplib.auth import auth_crammd5, auth_login, auth_plain
+from aiosmtplib.auth import AUTH_METHODS
 from aiosmtplib.streams import SMTPProtocol, SMTPStreamReader, SMTPStreamWriter
 from aiosmtplib.errors import (
     SMTPException, SMTPConnectError, SMTPHeloError, SMTPDataError,
@@ -31,11 +25,12 @@ from aiosmtplib.textutils import (
     quote_address, extract_sender, extract_recipients, encode_message_string,
     parse_esmtp_extensions,
 )
+from aiosmtplib.tls import TLSOptions
 
 
 MAX_LINE_LENGTH = 8192
 SMTP_PORT = 25
-SMTP_SSL_PORT = 465
+SMTP_TLS_PORT = 465
 
 
 class SMTP:
@@ -43,29 +38,13 @@ class SMTP:
     An SMTP/ESMTP client.
     '''
 
-    # List of authentication methods we support: from preferred to
-    # less preferred methods. We prefer stronger methods like CRAM-MD5.
-    authentication_methods = (
-        ('cram-md5', auth_crammd5,),
-        ('plain', auth_plain,),
-        ('login', auth_login,),
-    )
-
     def __init__(self, hostname='localhost', port=None,
                  source_address=None, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
-                 loop=None, use_ssl=False, validate_certs=True,
-                 client_cert=None, client_key=None, ssl_context=None):
-        has_ssl_args = any([use_ssl, client_key, client_cert, ssl_context])
-        if not _has_ssl and has_ssl_args:
-            raise RuntimeError('No SSL support included in this Python')
-        if ssl_context and (client_key or client_cert):
-            raise ValueError(
-                'Either an SSLContext or a certificate/key must be '
-                'provided')
-
+                 loop=None, use_tls=False, validate_certs=True,
+                 client_cert=None, client_key=None, tls_context=None):
         self.hostname = hostname
         if port is None:
-            port = SMTP_SSL_PORT if use_ssl else SMTP_PORT
+            port = SMTP_TLS_PORT if use_tls else SMTP_PORT
         self.port = port
         self._source_address = source_address
         # TODO: implement timeout
@@ -78,16 +57,10 @@ class SMTP:
         self.loop = loop or asyncio.get_event_loop()
         self._server_state = {}
 
-        self.use_ssl = use_ssl
-        if ssl_context:
-            self.ssl_context = ssl_context
-        else:
-            self.ssl_context = None
-            self.ssl_options = {
-                'validate_certs': validate_certs,
-                'client_cert': client_cert,
-                'client_key': client_key,
-            }
+        self.use_tls = use_tls
+        self.tls_options = TLSOptions(
+            tls_context=tls_context, validate_certs=validate_certs,
+            client_cert=client_cert, client_key=client_key)
 
     async def __aenter__(self):
         if not self.is_connected:
@@ -110,8 +83,15 @@ class SMTP:
         return self._server_state.get('supports_esmtp', False)
 
     @property
-    def supported_auth_methods(self):
+    def server_auth_methods(self):
         return self._server_state.get('supported_auth_methods', [])
+
+    @property
+    def supported_auth_methods(self):
+        return [
+            auth for auth in AUTH_METHODS
+            if auth[0] in self.server_auth_methods
+        ]
 
     @property
     def is_connected(self):
@@ -150,16 +130,12 @@ class SMTP:
         self.reader = SMTPStreamReader(limit=MAX_LINE_LENGTH, loop=self.loop)
         self.protocol = SMTPProtocol(self.reader, loop=self.loop)
 
-        if _has_ssl and self.use_ssl:
-            ssl_context = self.ssl_context or self._configure_ssl_context(
-                **self.ssl_options)
-        else:
-            ssl_context = None
+        tls_context = self.tls_options.get_context() if self.use_tls else None
 
         try:
             self.transport, _ = await self.loop.create_connection(
                 lambda: self.protocol, host=self.hostname, port=self.port,
-                ssl=ssl_context)
+                ssl=tls_context)
         except (ConnectionRefusedError, OSError) as err:
             raise SMTPConnectError(
                 'Error connecting to {host} on port {port}: {err}'.format(
@@ -602,13 +578,8 @@ class SMTP:
         # Some servers advertise authentication methods they don't really
         # support, so if authentication fails, we continue until we've tried
         # all methods.
-        supported_auths = [
-            auth for auth in self.authentication_methods
-            if auth[0] in self.supported_auth_methods
-        ]
-
         response = None
-        for auth_name, auth_method in supported_auths:
+        for auth_name, auth_method in self.supported_auth_methods:
             response = await self._auth(auth_method, username, password)
 
             if response.code == status.SMTP_235_AUTH_SUCCESSFUL:
@@ -621,7 +592,7 @@ class SMTP:
 
         return response
 
-    async def starttls(self, ssl_context=None, validate_certs=True,
+    async def starttls(self, tls_context=None, validate_certs=True,
                        client_cert=None, client_key=None):
         '''
         Puts the connection to the SMTP server into TLS mode.
@@ -633,7 +604,7 @@ class SMTP:
         session. If you provide the keyfile and certfile parameters,
         the identity of the SMTP server and client can be checked (if
         validate_certs is True). You can also provide a custom SSLContext
-        object. If no certs or SSLContext is given, and ssl config was
+        object. If no certs or SSLContext is given, and TLS config was
         provided when initializing the class, STARTTLS will use to that,
         otherwise it will use the Python defaults.
 
@@ -641,29 +612,12 @@ class SMTP:
 
          SMTPHeloError            The server didn't reply properly to
                                   the helo greeting.
-         RuntimeError             Python does not support SSL.
          ValueError               An unsupported combination of args was
                                   provided.
         '''
-        if not _has_ssl:
-            raise RuntimeError('No SSL support included in this Python')
-        if ssl_context and (client_key or client_cert):
-            raise ValueError(
-                'Either an SSLContext or a certificate/key must be '
-                'provided')
-
-        if not ssl_context:
-            if self.ssl_context is None or (client_key or client_cert):
-                ssl_options = self.ssl_options.copy()
-                ssl_options['validate_certs'] = validate_certs
-                if client_cert:
-                    ssl_options['client_cert'] = client_cert
-                if client_key:
-                    ssl_options['client_key'] = client_key
-
-                ssl_context = self._configure_ssl_context(**ssl_options)
-            else:
-                ssl_context = self.ssl_context
+        tls_context = self.tls_options.get_context(
+            tls_context=tls_context, validate_certs=validate_certs,
+            client_cert=client_cert, client_key=client_key)
 
         await self.ehlo_or_helo_if_needed()
 
@@ -675,7 +629,7 @@ class SMTP:
 
         if response.code == status.SMTP_220_READY:
             self.protocol, self.transport = await self.writer.start_tls(
-                ssl_context=ssl_context, server_hostname=self.hostname)
+                tls_context, server_hostname=self.hostname)
 
             # RFC 3207 part 4.2:
             # The client MUST discard any knowledge obtained from
@@ -684,18 +638,3 @@ class SMTP:
             self._server_state = {}
 
         return response
-
-    def _configure_ssl_context(self, validate_certs=True, client_cert=None,
-                               client_key=None):
-        # SERVER_AUTH is what we want for a client side socket
-        ssl_context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
-        ssl_context.check_hostname = bool(validate_certs)
-        if validate_certs:
-            ssl_context.verify_mode = ssl.CERT_REQUIRED
-        else:
-            ssl_context.verify_mode = ssl.CERT_NONE
-
-        if client_cert and client_key:
-            ssl_context.load_cert_chain(client_cert, keyfile=client_key)
-
-        return ssl_context

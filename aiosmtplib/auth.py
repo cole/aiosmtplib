@@ -74,3 +74,12 @@ def auth_login(username, password):
         return verification
 
     return login_request, auth_login_verification
+
+
+# List of authentication methods we support: from preferred to
+# less preferred methods. We prefer stronger methods like CRAM-MD5.
+AUTH_METHODS = (
+    ('cram-md5', auth_crammd5,),
+    ('plain', auth_plain,),
+    ('login', auth_login,),
+)
