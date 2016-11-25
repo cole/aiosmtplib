@@ -1,11 +1,20 @@
 import re
 import email.utils
+from email.base64mime import body_encode, body_decode
 
 
 LINE_ENDINGS_REGEX = re.compile(b'(?:\r\n|\n|\r(?!\n))')
 PERIOD_REGEX = re.compile(b'(?m)^\.')
 OLDSTYLE_AUTH_REGEX = re.compile(r'auth=(?P<auth>.*)', flags=re.I)
 EXTENSIONS_REGEX = re.compile(r'(?P<ext>[A-Za-z0-9][A-Za-z0-9\-]*) ?')
+
+
+def b64_encode(text):
+    return body_encode(text.encode('utf-8'), eol='')
+
+
+def b64_decode(text):
+    return body_decode(text).decode('utf-8')
 
 
 def quote_address(address):

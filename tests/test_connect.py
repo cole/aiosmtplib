@@ -158,3 +158,54 @@ def test_tls_context_and_cert_raises():
 
     with pytest.raises(ValueError):
         SMTP(use_tls=True, client_key='foo.key', tls_context=True)
+
+
+@pytest.mark.asyncio
+async def test_smtp_as_context_manager(smtpd_client):
+    async with smtpd_client:
+        assert smtpd_client.is_connected
+
+        response = await smtpd_client.noop()
+        assert response.code == status.SMTP_250_COMPLETED
+
+    assert not smtpd_client.is_connected
+
+
+@pytest.mark.asyncio
+async def test_smtp_context_manager_disconnect_handling(smtpd_client):
+    async with smtpd_client:
+        assert smtpd_client.is_connected
+
+        response = await smtpd_client.noop()
+        assert response.code == status.SMTP_250_COMPLETED
+
+        smtpd_client.server.stop()
+        await smtpd_client.quit()
+
+    assert not smtpd_client.is_connected
+
+
+@pytest.mark.asyncio(forbid_global_loop=True)
+async def test_bad_connect_response_raises_error(preset_server, event_loop):
+    preset_client = SMTP(
+        hostname='127.0.0.1', port=preset_server.port, loop=event_loop)
+
+    preset_server.greeting = b'421 Please come back in 204232430 seconds.\n'
+    with pytest.raises(SMTPConnectError):
+        await preset_client.connect()
+
+    await preset_client.close()
+
+
+@pytest.mark.asyncio(forbid_global_loop=True)
+async def test_421_closes_connection(preset_server, event_loop):
+    preset_client = SMTP(
+        hostname='127.0.0.1', port=preset_server.port, loop=event_loop)
+
+    await preset_client.connect()
+    preset_server.responses.append(
+        b'421 Please come back in 204232430 seconds.\n')
+    response = await preset_client.execute_command('NOOP')
+
+    assert response.code == status.SMTP_421_DOMAIN_UNAVAILABLE
+    assert not preset_client.is_connected

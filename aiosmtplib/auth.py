@@ -6,15 +6,8 @@ If callback is not None, it should be called with the server response code
 and message to the request.
 '''
 import hmac
-from email.base64mime import body_encode, body_decode
 
-
-def b64_encode(text):
-    return body_encode(text.encode('utf-8'), eol='')
-
-
-def b64_decode(text):
-    return body_decode(text).decode('utf-8')
+from aiosmtplib.textutils import b64_encode, b64_decode
 
 
 def auth_plain(username, password):
@@ -47,7 +40,7 @@ def auth_crammd5(username, password):
     request = 'CRAM-MD5'
 
     def auth_crammd5_verification(code, response):
-        challenge = body_decode(response)  # We want bytes here, not str
+        challenge = b64_decode(response).encode('utf-8')  # We want bytes here
         md5_digest = hmac.new(
             password.encode('utf-8'), msg=challenge, digestmod='md5')
         verification = '{} {}'.format(username, md5_digest.hexdigest())

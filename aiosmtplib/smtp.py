@@ -70,7 +70,7 @@ class SMTP:
 
     async def __aexit__(self, exc_type, exc, traceback):
         try:
-            code, message = await self.quit()
+            await self.quit()
         except SMTPServerDisconnected:
             await self.close()
 
@@ -184,7 +184,7 @@ class SMTP:
         '''
         Send the commands given and return the reply message.
 
-        Returns (code, message) tuple.
+        Returns an SMTPResponse namedtuple.
         '''
         self._raise_error_if_disconnected()
 
@@ -230,7 +230,7 @@ class SMTP:
         Hostname to send for this command defaults to the FQDN of the local
         host.
 
-        Returns a (code, message) tuple with the server response.
+        Returns an SMTPResponse namedtuple.
         '''
         if hostname is None:
             hostname = self.source_address
@@ -281,7 +281,7 @@ class SMTP:
         '''
         Sends an SMTP 'rset' command (resets session)
 
-        Returns an SMTPResponse tuple.
+        Returns an SMTPResponse namedtuple.
         '''
         response = await self.execute_command('RSET')
         if response.code != status.SMTP_250_COMPLETED:
@@ -293,7 +293,7 @@ class SMTP:
         '''
         Sends an SMTP 'noop' command (does nothing)
 
-        Returns an SMTPResponse tuple.
+        Returns an SMTPResponse namedtuple.
         '''
         response = await self.execute_command('NOOP')
         if response.code != status.SMTP_250_COMPLETED:
@@ -304,7 +304,8 @@ class SMTP:
     async def vrfy(self, address):
         '''
         Sends an SMTP 'vrfy' command (tests an address for validity)
-        Returns an SMTPResponse tuple.
+
+        Returns an SMTPResponse namedtuple.
         '''
         parsed_address = email.utils.parseaddr(address)[1] or address
         response = await self.execute_command('VRFY', parsed_address)
@@ -316,7 +317,8 @@ class SMTP:
     async def expn(self, address):
         '''
         Sends an SMTP 'expn' command (expands a mailing list)
-        Returns an SMTPResponse tuple.
+
+        Returns an SMTPResponse namedtuple.
         '''
         parsed_address = email.utils.parseaddr(address)[1] or address
         response = await self.execute_command('EXPN', parsed_address)
@@ -329,7 +331,8 @@ class SMTP:
     async def quit(self):
         '''
         Sends the SMTP 'quit' command, and closes the connection.
-        Returns an SMTPResponse tuple.
+
+        Returns an SMTPResponse namedtuple.
         '''
         response = await self.execute_command('QUIT')
         if response.code != status.SMTP_221_CLOSING:
@@ -341,7 +344,8 @@ class SMTP:
     async def mail(self, sender, options=None):
         '''
         Sends the SMTP 'mail' command (begins mail transfer session)
-        Returns an SMTPResponse tuple.
+
+        Returns an SMTPResponse namedtuple.
 
         Raises SMTPSenderRefused if the response is not 250.
         '''
@@ -365,7 +369,8 @@ class SMTP:
     async def rcpt(self, recipient, options=None):
         '''
         Sends the SMTP 'rcpt' command (specifies a recipient for the message)
-        Returns an SMTPResponse tuple.
+
+        Returns an SMTPResponse namedtuple.
         '''
         if options is None:
             options = []
@@ -405,7 +410,8 @@ class SMTP:
 
     async def sendmail(self, sender, recipients, message, mail_options=None,
                        rcpt_options=None):
-        '''This command performs an entire mail transaction.
+        '''
+        This command performs an entire mail transaction.
 
         The arguments are:
             - sender       : The address sending this mail.

@@ -11,13 +11,13 @@ from aiosmtplib import (
 )
 
 
-# These differ only in name
-SIMPLE_EXCEPTIONS = (SMTPServerDisconnected, SMTPConnectError,)
+CONNECTION_EXCEPTIONS = (SMTPServerDisconnected, SMTPConnectError)
 SIMPLE_RESPONSE_EXCEPTIONS = (
-    SMTPNotSupported, SMTPHeloError, SMTPDataError, SMTPAuthenticationError,)
+    SMTPNotSupported, SMTPHeloError, SMTPDataError, SMTPAuthenticationError,
+)
 ERROR_CODES = (
     (503, 'Bad command sequence'),
-    (530, 'Access denied')
+    (530, 'Access denied'),
 )
 EMAIL_ADDRESSES = ('a@example.com', 'b@example.com')
 
@@ -41,12 +41,13 @@ def test_raise_smtp_response_exception(code, message):
 
 
 @pytest.mark.parametrize('code, message', ERROR_CODES)
-@pytest.mark.parametrize('error_class', SIMPLE_EXCEPTIONS)
+@pytest.mark.parametrize('error_class', CONNECTION_EXCEPTIONS)
 def test_simple_exceptions(code, message, error_class):
     with pytest.raises(error_class) as excinfo:
         raise error_class(message)
 
     assert issubclass(excinfo.type, SMTPException)
+    assert issubclass(excinfo.type, ConnectionError)
     assert excinfo.value.message == message
 
 
@@ -83,3 +84,11 @@ def test_raise_smtp_recipient_refused(code, message, recipient):
     assert excinfo.value.code == code
     assert excinfo.value.message == message
     assert excinfo.value.recipient == recipient
+
+
+def test_raise_smtp_recipients_refused():
+    with pytest.raises(SMTPRecipientsRefused) as excinfo:
+        raise SMTPRecipientsRefused(EMAIL_ADDRESSES)
+
+    assert issubclass(excinfo.type, SMTPException)
+    assert excinfo.value.recipients == EMAIL_ADDRESSES

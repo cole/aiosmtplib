@@ -3,7 +3,10 @@ import email.mime.multipart
 
 import pytest
 
-from aiosmtplib import status, SMTPResponseException, SMTPRecipientsRefused
+from aiosmtplib import (
+    status, SMTPResponseException, SMTPRecipientsRefused, SMTPHeloError,
+    SMTPDataError,
+)
 
 
 @pytest.mark.asyncio
@@ -15,11 +18,62 @@ async def test_helo_ok(smtpd_client):
 
 
 @pytest.mark.asyncio
+async def test_helo_error(preset_client):
+    async with preset_client:
+        preset_client.server.responses.append(b'501 oh noes')
+        with pytest.raises(SMTPHeloError):
+            await preset_client.helo()
+
+
+@pytest.mark.asyncio
 async def test_ehlo_ok(smtpd_client):
     async with smtpd_client:
         response = await smtpd_client.ehlo()
 
         assert response.code == status.SMTP_250_COMPLETED
+
+
+@pytest.mark.asyncio
+async def test_ehlo_error(preset_client):
+    async with preset_client:
+        preset_client.server.responses.append(b'501 oh noes')
+        with pytest.raises(SMTPHeloError):
+            await preset_client.ehlo()
+
+
+@pytest.mark.asyncio
+async def test_ehlo_or_helo_if_needed_ehlo_success(preset_client):
+    async with preset_client:
+        assert preset_client.is_ehlo_or_helo_needed is True
+
+        preset_client.server.responses.append(b'250 Ehlo is OK')
+        await preset_client.ehlo_or_helo_if_needed()
+
+        assert preset_client.is_ehlo_or_helo_needed is False
+
+
+@pytest.mark.asyncio
+async def test_ehlo_or_helo_if_needed_helo_success(preset_client):
+    async with preset_client:
+        assert preset_client.is_ehlo_or_helo_needed is True
+
+        preset_client.server.responses.append(b'500 no ehlo')
+        preset_client.server.responses.append(b'250 Helo is OK')
+
+        await preset_client.ehlo_or_helo_if_needed()
+
+        assert preset_client.is_ehlo_or_helo_needed is False
+
+
+@pytest.mark.asyncio
+async def test_ehlo_or_helo_if_needed_neither_succeeds(preset_client):
+    async with preset_client:
+        assert preset_client.is_ehlo_or_helo_needed is True
+
+        preset_client.server.responses.append(b'500 no ehlo')
+        preset_client.server.responses.append(b'503 no helo even!')
+        with pytest.raises(SMTPHeloError):
+            await preset_client.ehlo_or_helo_if_needed()
 
 
 @pytest.mark.asyncio
@@ -32,12 +86,28 @@ async def test_rset_ok(smtpd_client):
 
 
 @pytest.mark.asyncio
+async def test_rset_error(preset_client):
+    async with preset_client:
+        preset_client.server.responses.append(b'501 oh noes')
+        with pytest.raises(SMTPResponseException):
+            await preset_client.rset()
+
+
+@pytest.mark.asyncio
 async def test_noop_ok(smtpd_client):
     async with smtpd_client:
         response = await smtpd_client.noop()
 
         assert response.code == status.SMTP_250_COMPLETED
         assert response.message == 'OK'
+
+
+@pytest.mark.asyncio
+async def test_noop_error(preset_client):
+    async with preset_client:
+        preset_client.server.responses.append(b'501 oh noes')
+        with pytest.raises(SMTPResponseException):
+            await preset_client.noop()
 
 
 @pytest.mark.asyncio
@@ -73,6 +143,14 @@ async def test_expn_ok(preset_client):
 
 
 @pytest.mark.asyncio
+async def test_expn_error(preset_client):
+    async with preset_client:
+        preset_client.server.responses.append(b'501 oh noes')
+        with pytest.raises(SMTPResponseException):
+            await preset_client.expn('a-list')
+
+
+@pytest.mark.asyncio
 async def test_rset_after_mail_error(preset_client):
     '''
     If an error response is given to the mail command, test that
@@ -102,6 +180,22 @@ async def test_help_ok(smtpd_client):
 
 
 @pytest.mark.asyncio
+async def test_help_error(preset_client):
+    async with preset_client:
+        preset_client.server.responses.append(b'501 oh noes')
+        with pytest.raises(SMTPResponseException):
+            await preset_client.help()
+
+
+@pytest.mark.asyncio
+async def test_quit_error(preset_client):
+    async with preset_client:
+        preset_client.server.responses.append(b'501 oh noes')
+        with pytest.raises(SMTPResponseException):
+            await preset_client.quit()
+
+
+@pytest.mark.asyncio
 async def test_supported_methods(smtpd_client):
     async with smtpd_client:
         response = await smtpd_client.ehlo()
@@ -110,6 +204,81 @@ async def test_supported_methods(smtpd_client):
         assert smtpd_client.supports_extension('size')
         assert smtpd_client.supports_extension('help')
         assert not smtpd_client.supports_extension('bogus')
+
+
+@pytest.mark.asyncio
+async def test_mail_ok(smtpd_client):
+    async with smtpd_client:
+        await smtpd_client.ehlo()
+        response = await smtpd_client.mail('j@example.com')
+
+        assert response.code == status.SMTP_250_COMPLETED
+        assert response.message == 'OK'
+
+
+@pytest.mark.asyncio
+async def test_mail_error(preset_client):
+    async with preset_client:
+        preset_client.server.responses.append(b'501 oh noes')
+        with pytest.raises(SMTPResponseException):
+            await preset_client.mail('test@example.com')
+
+
+@pytest.mark.asyncio
+async def test_mail_error_silent_rset_handles_disconnect(preset_client):
+    async with preset_client:
+        preset_client.server.goodbye = b'501 oh noes'
+        with pytest.raises(SMTPResponseException):
+            await preset_client.mail('test@example.com')
+
+
+@pytest.mark.asyncio
+async def test_rcpt_ok(smtpd_client):
+    async with smtpd_client:
+        await smtpd_client.ehlo()
+        await smtpd_client.mail('j@example.com')
+
+        response = await smtpd_client.rcpt('test@example.com')
+
+        assert response.code == status.SMTP_250_COMPLETED
+        assert response.message == 'OK'
+
+
+@pytest.mark.asyncio
+async def test_rcpt_error(preset_client):
+    async with preset_client:
+        preset_client.server.responses.append(b'501 oh noes')
+        with pytest.raises(SMTPResponseException):
+            await preset_client.rcpt('test@example.com')
+
+
+@pytest.mark.asyncio
+async def test_data_ok(smtpd_client):
+    async with smtpd_client:
+        await smtpd_client.ehlo()
+        await smtpd_client.mail('j@example.com')
+        await smtpd_client.rcpt('test@example.com')
+        response = await smtpd_client.data(b'HELLO WORLD')
+
+        assert response.code == status.SMTP_250_COMPLETED
+        assert response.message == 'OK'
+
+
+@pytest.mark.asyncio
+async def test_data_error(preset_client):
+    async with preset_client:
+        preset_client.server.responses.append(b'501 oh noes')
+        with pytest.raises(SMTPDataError):
+            await preset_client.data(b'TEST MESSAGE')
+
+
+@pytest.mark.asyncio
+async def test_data_complete_error(preset_client):
+    async with preset_client:
+        preset_client.server.responses.append(b'354 lets go')
+        preset_client.server.responses.append(b'501 oh noes')
+        with pytest.raises(SMTPDataError):
+            await preset_client.data(b'TEST MESSAGE')
 
 
 @pytest.mark.asyncio
@@ -171,11 +340,8 @@ async def test_send_message(smtpd_client):
 
 
 @pytest.mark.asyncio
-async def test_smtp_as_context_manager(smtpd_client):
-    async with smtpd_client:
-        assert smtpd_client.is_connected
-
-        response = await smtpd_client.noop()
-        assert response.code == status.SMTP_250_COMPLETED
-
-    assert not smtpd_client.is_connected
+async def test_gibberish_raises_exception(preset_client):
+    async with preset_client:
+        preset_client.server.responses.append(b'sdfjlfwqejflqw\n')
+        with pytest.raises(SMTPResponseException):
+            await preset_client.execute_command('NOOP')

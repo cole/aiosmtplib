@@ -96,10 +96,16 @@ class SMTPStreamWriter(asyncio.StreamWriter):
         command = '{}\r\n'.format(' '.join(args)).encode('ascii')
         self.write(command)
 
-        await self.drain()
+        try:
+            await self.drain()
+        except ConnectionResetError as exc:
+            raise SMTPServerDisconnected(exc)
 
     async def start_tls(self, context, server_hostname=None):
-        await self.drain()
+        try:
+            await self.drain()
+        except ConnectionResetError as exc:
+            raise SMTPServerDisconnected(exc)
 
         waiter = asyncio.Future(loop=self._loop)
 

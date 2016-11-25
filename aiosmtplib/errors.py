@@ -14,7 +14,7 @@ class SMTPException(Exception):
         self.args = (message,)
 
 
-class SMTPServerDisconnected(SMTPException):
+class SMTPServerDisconnected(SMTPException, ConnectionError):
     '''
     The connection was lost unexpectedly, or a command was run that requires
     a connection.
@@ -22,7 +22,7 @@ class SMTPServerDisconnected(SMTPException):
     pass
 
 
-class SMTPConnectError(SMTPException):
+class SMTPConnectError(SMTPException, ConnectionError):
     '''
     An error occurred while connectiong to the SMTP server.
     '''

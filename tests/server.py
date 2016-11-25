@@ -17,8 +17,7 @@ class ThreadedPresetRequestHandler(socketserver.BaseRequestHandler):
         self.request.settimeout(None)
 
     def handle(self):
-        if self.server.send_greeting:
-            self.request.sendall(b'220 Hello world!\n')
+        self.request.sendall(self.server.greeting)
 
         while True:
             data = self.request.recv(4096)  # Naive recv won't work for data
@@ -34,31 +33,36 @@ class ThreadedPresetRequestHandler(socketserver.BaseRequestHandler):
                 self.starttls()
 
         # Disconnect
-        if self.server.send_goodbye:
-            self.request.sendall(b'221 Goodbye then\n')
-            try:
-                self.request.shutdown(socket.SHUT_RDWR)
-            except TypeError:
-                self.request.shutdown()
-            except OSError:
-                pass
-            self.request.close()
+        self.request.sendall(self.server.goodbye)
+        try:
+            self.request.shutdown(socket.SHUT_RDWR)
+        except TypeError:
+            self.request.shutdown()
+        except OSError:
+            pass
+        self.request.close()
 
 
 class ThreadedPresetServer(
         socketserver.ThreadingMixIn, socketserver.TCPServer):
 
     def __init__(self, hostname, port, certfile='tests/certs/selfsigned.crt',
-                 keyfile='tests/certs/selfsigned.key', send_greeting=True,
-                 send_goodbye=True):
+                 keyfile='tests/certs/selfsigned.key', greeting=None,
+                 goodbye=None):
         super().__init__((hostname, port), ThreadedPresetRequestHandler)
         self.hostname = hostname
         self.port = port
         self.certfile = certfile
         self.keyfile = keyfile
 
-        self.send_greeting = send_greeting
-        self.send_goodbye = send_goodbye
+        if greeting is not None:
+            self.greeting = greeting
+        else:
+            self.greeting = b'220 Hello world!\n'
+        if goodbye is not None:
+            self.goodbye = goodbye
+        else:
+            self.goodbye = b'221 Goodbye then\n'
         self.responses = collections.deque()
         self.requests = []
 
@@ -140,8 +144,7 @@ class ThreadedSMTPDServer:
 
     def serve_forever(self):
         # We use poll here - select doesn't seem to work.
-        asyncore.loop(0.01, True)
+        asyncore.loop(1, True)
 
     def stop(self):
         self.smtpd.close()
-        self.server_thread.join()
