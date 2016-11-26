@@ -11,9 +11,8 @@ deploy:
   user: colemaclean
   password:
     secure: 0p6dJgRNPUPmXEuW3piVlTqlCusRVvILWslhaLBBNQk3jKFexpr9Jat17H6VUg+iGuLFKNlZh8BUGiOJHxADycOPA76Td9MvAlFz1QhS2CuDB8NYlpz7YsQnM92WTTAh3mW964I2mC6U5sxw0K9gV6XMVgQc5dzCYumqUyagV0s=
-  python:
-    - '3.5'
+  distributions: sdist bdist_wheel
   on:
     tags: true
-    distributions: sdist bdist_wheel
+    python: '3.5'
     repo: cole/aiosmtplib
