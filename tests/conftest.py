@@ -1,6 +1,6 @@
-'''
+"""
 Pytest fixtures and config.
-'''
+"""
 import pytest
 
 from aiosmtplib import SMTP

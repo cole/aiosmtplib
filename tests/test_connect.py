@@ -4,15 +4,14 @@ import asyncio.sslproto
 
 import pytest
 
-import aiosmtplib  # Required so we can monkeypatch
 from aiosmtplib import SMTP, status, SMTPConnectError, SMTPServerDisconnected
 
 
 @pytest.mark.asyncio(forbid_global_loop=True)
 async def test_plain_smtp_connect(preset_client):
-    '''
+    """
     Use an explicit connect/quit here, as other tests use the context manager.
-    '''
+    """
     await preset_client.connect()
     assert preset_client.is_connected
 
@@ -22,9 +21,9 @@ async def test_plain_smtp_connect(preset_client):
 
 @pytest.mark.asyncio(forbid_global_loop=True)
 async def test_tls_connection(tls_preset_client):
-    '''
+    """
     Use an explicit connect/quit here, as other tests use the context manager.
-    '''
+    """
     await tls_preset_client.connect()
     assert tls_preset_client.is_connected
 
@@ -114,9 +113,9 @@ async def test_starttls(preset_client):
 
 
 def test_mock_server_starttls_with_stmplib(preset_server):
-    '''
+    """
     Check that our test server behaves properly.
-    '''
+    """
     smtp = smtplib.SMTP()
     smtp._host = preset_server.hostname  # Hack around smtplib SNI bug
     smtp.connect(host=preset_server.hostname, port=preset_server.port)

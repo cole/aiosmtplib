@@ -1,6 +1,6 @@
-'''
+"""
 SMTP status codes, as constants for code readability.
-'''
+"""
 SMTP_211_SYSTEM_STATUS_OK = 211
 SMTP_214_HELP_MESSAGE = 214
 SMTP_220_READY = 220

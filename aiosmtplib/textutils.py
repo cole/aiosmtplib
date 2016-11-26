@@ -18,11 +18,11 @@ def b64_decode(text):
 
 
 def quote_address(address):
-    '''
+    """
     Quote a subset of the email addresses defined by RFC 821.
 
     Should be able to handle anything email.utils.parseaddr can handle.
-    '''
+    """
     display_name, parsed_address = email.utils.parseaddr(address)
     if parsed_address:
         quoted_address = '<{}>'.format(parsed_address)
@@ -36,10 +36,10 @@ def quote_address(address):
 
 
 def extract_sender(message, resent_dates=None):
-    '''
+    """
     Returns a sender pulled from the email message object (using appropriate
     headers).
-    '''
+    """
     if not resent_dates:
         sender_header = 'Sender'
         from_header = 'From'
@@ -57,10 +57,10 @@ def extract_sender(message, resent_dates=None):
 
 
 def extract_recipients(message, resent_dates=None):
-    '''
+    """
     Returns a list of recipients pulled from the email message object
     (using appropriate headers).
-    '''
+    """
     recipients = []
 
     if not resent_dates:
@@ -77,13 +77,13 @@ def extract_recipients(message, resent_dates=None):
 
 
 def encode_message_string(message_str):
-    '''
+    """
     Prepare a message for sending.
     Automatically quotes lines beginning with a period per RFC821.
     Lone '\r' and '\n' characters are converted to '\r\n' characters.
 
     Returns bytes.
-    '''
+    """
     if isinstance(message_str, bytes):
         message_bytes = message_str
     else:
@@ -98,7 +98,7 @@ def encode_message_string(message_str):
 
 
 def parse_esmtp_extensions(message):
-    '''
+    """
     Parse an ESMTP response from the server.
 
     It might look something like:
@@ -124,7 +124,7 @@ def parse_esmtp_extensions(message):
     Returns a tuple containing:
         a dict of extension names to values (pretty much only size has a value)
         a list of auth methods supported
-    '''
+    """
     esmtp_extensions = {}
     auth_types = []
 

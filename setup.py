@@ -1,10 +1,6 @@
-import os
+from pathlib import Path
 
 from setuptools import setup
-
-
-def read(f):
-    return open(os.path.join(os.path.dirname(__file__), f)).read().strip()
 
 
 setup(
@@ -12,7 +8,7 @@ setup(
     packages=['aiosmtplib'],
     version='0.1.4',
     description='asyncio version of smtplib',
-    long_description=read('README.rst'),
+    long_description=Path(__file__).with_name('README.rst').read_text('utf-8'),
     author='Cole Maclean',
     author_email='hi@cole.io',
     url='https://github.com/cole/aiosmtplib',
@@ -34,4 +30,12 @@ setup(
         'Topic :: Communications :: Email',
         'Topic :: System :: Networking',
     ],
+    extras_require={
+        'testing': [
+            'pytest < 4.0',
+            'pytest-asyncio ~= 0.5.0',
+            'pytest-cov ~= 2.4',
+            'wheel[signatures]'
+        ]
+    }
 )

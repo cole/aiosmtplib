@@ -109,9 +109,9 @@ class TLSThreadedPresetServer(ThreadedPresetServer):
 class TestSMTPDChannel(smtpd.SMTPChannel):
 
     def _getaddr(self, arg):
-        '''
+        """
         Don't raise an exception on unparsable email address
-        '''
+        """
         try:
             return super()._getaddr(arg)
         except HeaderParseError:

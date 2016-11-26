@@ -35,10 +35,10 @@ def test_configure_without_validate_certs():
 
 
 def test_configure_with_cert_chain():
-    '''
+    """
     Just checks that the certs don't error, not that they're actually loaded.
     TODO: improve.
-    '''
+    """
     context = tls.configure_tls_context(
         client_cert='tests/certs/selfsigned.crt',
         client_key='tests/certs/selfsigned.key')
