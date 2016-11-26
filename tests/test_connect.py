@@ -4,7 +4,6 @@ import asyncio.sslproto
 
 import pytest
 
-import aiosmtplib  # Required so we can monkeypatch
 from aiosmtplib import SMTP, status, SMTPConnectError, SMTPServerDisconnected
 
 

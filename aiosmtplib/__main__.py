@@ -9,6 +9,7 @@ def prompt(prompt):
     sys.stdout.flush()
     return sys.stdin.readline().strip()
 
+
 async def send(hostname, port, sender, recipients, message, loop=None):
     smtp = SMTP(hostname=hostname, port=port, loop=loop)
     async with smtp:
