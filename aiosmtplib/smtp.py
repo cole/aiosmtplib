@@ -11,6 +11,9 @@ import socket
 import asyncio
 import email.utils
 import email.generator
+from asyncio import Transport  # noqa
+from ssl import SSLContext
+from typing import Any, Union, Iterable, Dict, List, Callable, Tuple
 
 from aiosmtplib import status
 from aiosmtplib.auth import AUTH_METHODS
@@ -38,10 +41,13 @@ class SMTP:
     An SMTP/ESMTP client.
     """
 
-    def __init__(self, hostname='localhost', port=None, source_address=None,
-                 timeout=socket._GLOBAL_DEFAULT_TIMEOUT, loop=None,
-                 use_tls=False, validate_certs=True, client_cert=None,
-                 client_key=None, tls_context=None):
+    def __init__(self, hostname: str = 'localhost', port: int = None,
+                 source_address: str = None,
+                 timeout: Union[int, float] = socket._GLOBAL_DEFAULT_TIMEOUT,
+                 loop: asyncio.AbstractEventLoop = None,
+                 use_tls: bool = False, validate_certs: bool = True,
+                 client_cert: str = None, client_key: str = None,
+                 tls_context: SSLContext = None) -> None:
         """
         Kwarg defaults are provided here, and saved for connect.
         """
@@ -63,44 +69,45 @@ class SMTP:
         self._connect_kwargs = connect_kwargs
 
         self.loop = loop or asyncio.get_event_loop()
-        self.reader = None
-        self.writer = None
-        self.protocol = None
-        self.transport = None
+        self.reader = None  # type: SMTPStreamReader
+        self.writer = None  # type: SMTPStreamWriter
+        self.protocol = None  # type: SMTPProtocol
+        self.transport = None  # type: Transport
+        self._server_state = {}  # type: Dict[str, Any]
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> 'SMTP':
         if not self.is_connected:
             await self.connect()
 
         return self
 
-    async def __aexit__(self, exc_type, exc, traceback):
+    async def __aexit__(self, exc_type, exc, traceback) -> None:
         try:
             await self.quit()
         except SMTPServerDisconnected:
             await self.close()
 
     @property
-    def esmtp_extensions(self):
+    def esmtp_extensions(self) -> List[str]:
         return self._server_state.get('esmtp_extensions', [])
 
     @property
-    def supports_esmtp(self):
+    def supports_esmtp(self) -> bool:
         return self._server_state.get('supports_esmtp', False)
 
     @property
-    def server_auth_methods(self):
+    def server_auth_methods(self) -> List[str]:
         return self._server_state.get('supported_auth_methods', [])
 
     @property
-    def supported_auth_methods(self):
+    def supported_auth_methods(self) -> List[Tuple[str, Callable]]:
         return [
             auth for auth in AUTH_METHODS
             if auth[0] in self.server_auth_methods
         ]
 
     @property
-    def is_connected(self):
+    def is_connected(self) -> bool:
         """
         Check connection status.
 
@@ -109,7 +116,7 @@ class SMTP:
         return bool(self.transport and not self.transport.is_closing())
 
     @property
-    def source_address(self):
+    def source_address(self) -> str:
         """
         Get the system hostname to be sent to the SMTP server.
         Simply caches the result of socket.getfqdn.
@@ -120,7 +127,7 @@ class SMTP:
         return self._source_address
 
     @property
-    def transport_info(self):
+    def transport_info(self) -> Dict[str, Any]:
         """
         Returns a dict of asyncio information about the transport.
         Includes SSLContext, ciphers, compression, etc.
@@ -128,7 +135,7 @@ class SMTP:
         return self.transport._extra
 
     @property
-    def is_ehlo_or_helo_needed(self):
+    def is_ehlo_or_helo_needed(self) -> bool:
         self._raise_error_if_disconnected()
 
         ehlo_response = ('last_ehlo_response' in self._server_state)
@@ -137,7 +144,7 @@ class SMTP:
 
         return is_needed
 
-    async def connect(self, **kwargs):
+    async def connect(self, **kwargs) -> SMTPResponse:
         """
         Open asyncio streams to the server and check response status.
 
@@ -179,7 +186,8 @@ class SMTP:
         return await self._connect(
             self._connect_kwargs['hostname'], port, tls_context)
 
-    async def _connect(self, hostname, port, tls_context):
+    async def _connect(self, hostname: str, port: int,
+                       tls_context: SSLContext) -> SMTPResponse:
         """
         Make the actual connection.
         """
@@ -204,7 +212,7 @@ class SMTP:
 
         return SMTPResponse(code, message)
 
-    async def close(self):
+    async def close(self) -> None:
         """
         Closes the connection.
         """
@@ -217,7 +225,7 @@ class SMTP:
         self.transport = None
         self._server_state = {}
 
-    def _raise_error_if_disconnected(self):
+    def _raise_error_if_disconnected(self) -> None:
         """
         See if we're still connected, and if not, raise an error.
         """
@@ -225,7 +233,7 @@ class SMTP:
             # TODO: maybe SMTPConnectError here if we never were connected?
             raise SMTPServerDisconnected('Not connected to SMTP server')
 
-    def supports_extension(self, extension):
+    def supports_extension(self, extension: str) -> bool:
         """
         Check if the server supports the ESMTP service extension given.
 
@@ -233,7 +241,7 @@ class SMTP:
         """
         return extension.lower() in self.esmtp_extensions
 
-    async def execute_command(self, *args):
+    async def execute_command(self, *args: str) -> SMTPResponse:
         """
         Send the commands given and return the reply message.
 
@@ -253,7 +261,7 @@ class SMTP:
 
         return SMTPResponse(code, message)
 
-    async def helo(self, hostname=None):
+    async def helo(self, hostname: str = None) -> SMTPResponse:
         """
         Send the SMTP 'helo' command.
         Hostname to send for this command defaults to the FQDN of the local
@@ -277,7 +285,7 @@ class SMTP:
 
         return response
 
-    async def ehlo(self, hostname=None):
+    async def ehlo(self, hostname: str = None) -> SMTPResponse:
         """
         Send the SMTP 'ehlo' command.
         Hostname to send for this command defaults to the FQDN of the local
@@ -301,7 +309,7 @@ class SMTP:
 
         return response
 
-    async def ehlo_or_helo_if_needed(self):
+    async def ehlo_or_helo_if_needed(self) -> None:
         """
         Call self.ehlo() and/or self.helo() if needed.
 
@@ -319,7 +327,7 @@ class SMTP:
             except SMTPHeloError:
                 await self.helo()
 
-    async def help(self):
+    async def help(self) -> SMTPResponse:
         """
         SMTP 'help' command.
         Returns help text.
@@ -330,7 +338,7 @@ class SMTP:
 
         return response.message
 
-    async def rset(self):
+    async def rset(self) -> SMTPResponse:
         """
         Sends an SMTP 'rset' command (resets session)
 
@@ -342,7 +350,7 @@ class SMTP:
 
         return response
 
-    async def noop(self):
+    async def noop(self) -> SMTPResponse:
         """
         Sends an SMTP 'noop' command (does nothing)
 
@@ -354,7 +362,7 @@ class SMTP:
 
         return response
 
-    async def vrfy(self, address):
+    async def vrfy(self, address: str) -> SMTPResponse:
         """
         Sends an SMTP 'vrfy' command (tests an address for validity)
 
@@ -367,7 +375,7 @@ class SMTP:
 
         return response
 
-    async def expn(self, address):
+    async def expn(self, address: str) -> SMTPResponse:
         """
         Sends an SMTP 'expn' command (expands a mailing list)
 
@@ -381,7 +389,7 @@ class SMTP:
 
         return response
 
-    async def quit(self):
+    async def quit(self) -> SMTPResponse:
         """
         Sends the SMTP 'quit' command, and closes the connection.
 
@@ -394,7 +402,8 @@ class SMTP:
         await self.close()
         return response
 
-    async def mail(self, sender, options=None):
+    async def mail(self, sender: str,
+                   options: Iterable[str] = None) -> SMTPResponse:
         """
         Sends the SMTP 'mail' command (begins mail transfer session)
 
@@ -419,7 +428,8 @@ class SMTP:
 
         return response
 
-    async def rcpt(self, recipient, options=None):
+    async def rcpt(self, recipient: str,
+                   options: Iterable[str] = None) -> SMTPResponse:
         """
         Sends the SMTP 'rcpt' command (specifies a recipient for the message)
 
@@ -437,7 +447,7 @@ class SMTP:
 
         return response
 
-    async def data(self, message):
+    async def data(self, message) -> SMTPResponse:
         """
         Sends the SMTP 'data' command (sends message data to server)
 
@@ -461,8 +471,9 @@ class SMTP:
 
         return SMTPResponse(code, message)
 
-    async def sendmail(self, sender, recipients, message, mail_options=None,
-                       rcpt_options=None):
+    async def sendmail(self, sender: str, recipients: Union[str, List[str]],
+                       message: str, mail_options: List[str] = None,
+                       rcpt_options: List[str] = None):
         """
         This command performs an entire mail transaction.
 
@@ -614,7 +625,8 @@ class SMTP:
         return result
 
     # ESMTP extensions #
-    async def _auth(self, auth_method, username, password):
+    async def _auth(self, auth_method: Callable[[str, str], Any],
+                    username: str, password: str) -> SMTPResponse:
         """
         Try a single auth method. Used as part of login.
 
@@ -629,7 +641,7 @@ class SMTP:
 
         return response
 
-    async def login(self, username, password):
+    async def login(self, username: str, password: str) -> SMTPResponse:
         """
         SMTP Login command. Tries all supported auth methods in order.
         """
@@ -655,7 +667,8 @@ class SMTP:
 
         return response
 
-    async def starttls(self, server_hostname=None, **kwargs):
+    async def starttls(self, server_hostname: str = None,
+                       **kwargs) -> SMTPResponse:
         """
         Puts the connection to the SMTP server into TLS mode.
 

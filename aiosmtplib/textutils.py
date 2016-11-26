@@ -9,15 +9,15 @@ OLDSTYLE_AUTH_REGEX = re.compile(r'auth=(?P<auth>.*)', flags=re.I)
 EXTENSIONS_REGEX = re.compile(r'(?P<ext>[A-Za-z0-9][A-Za-z0-9\-]*) ?')
 
 
-def b64_encode(text):
+def b64_encode(text: str) -> str:
     return body_encode(text.encode('utf-8'), eol='')
 
 
-def b64_decode(text):
+def b64_decode(text: str) -> str:
     return body_decode(text).decode('utf-8')
 
 
-def quote_address(address):
+def quote_address(address: str) -> str:
     """
     Quote a subset of the email addresses defined by RFC 821.
 
