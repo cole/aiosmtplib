@@ -6,13 +6,13 @@ from setuptools import setup
 setup(
     name='aiosmtplib',
     packages=['aiosmtplib'],
-    version='0.1.4',
+    version='0.1.5rc2',
     description='asyncio version of smtplib',
     long_description=Path(__file__).with_name('README.rst').read_text('utf-8'),
     author='Cole Maclean',
     author_email='hi@cole.io',
     url='https://github.com/cole/aiosmtplib',
-    download_url='https://github.com/cole/aiosmtplib/tarball/0.1.4',
+    download_url='https://github.com/cole/aiosmtplib/tarball/0.1.5rc2',
     license='MIT',
     keywords=['smtp', 'email', 'asyncio'],
     classifiers=[
