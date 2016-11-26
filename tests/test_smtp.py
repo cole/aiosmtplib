@@ -129,10 +129,10 @@ async def test_vrfy_with_blank_address(smtpd_client):
 
 @pytest.mark.asyncio
 async def test_expn_ok(preset_client):
-    '''
+    """
     EXPN is not implemented by aiosmtpd (or anyone, really), so just fake a
     response.
-    '''
+    """
     async with preset_client:
         preset_client.server.responses.append(b'\n'.join([
             b'250-Joseph Blow <jblow@example.com>',
@@ -152,10 +152,10 @@ async def test_expn_error(preset_client):
 
 @pytest.mark.asyncio
 async def test_rset_after_mail_error(preset_client):
-    '''
+    """
     If an error response is given to the mail command, test that
     we reset the server session.
-    '''
+    """
     async with preset_client:
         preset_client.server.responses.append(b'250 Hello there')
         response = await preset_client.ehlo()
@@ -332,9 +332,9 @@ async def test_send_message(smtpd_client):
     message['To'] = 'test@example.com'
     message['From'] = 'test@example.com'
     message['Subject'] = 'tëst message'
-    body = email.mime.text.MIMEText('''
+    body = email.mime.text.MIMEText("""
     Hello world. UTF8 OK? 15£ ümläüts'r'us
-    ''')
+    """)
     message.attach(body)
 
     async with smtpd_client:

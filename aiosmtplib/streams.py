@@ -8,9 +8,9 @@ from aiosmtplib.errors import SMTPServerDisconnected
 class SMTPProtocol(asyncio.StreamReaderProtocol):
 
     def connection_made(self, transport):
-        '''
+        """
         TODO: We won't need this anymore where 3.5.3 is released (hopefully)
-        '''
+        """
         if isinstance(transport, asyncio.sslproto._SSLProtocolTransport):
             # STARTTLS connection over normal connection
             self._stream_reader._transport = transport
@@ -19,9 +19,9 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
             super().connection_made(transport)
 
     def start_tls(self, context, server_hostname=None, waiter=None):
-        '''
+        """
         Upgrade our transport to TLS in place.
-        '''
+        """
         assert not self._over_ssl, 'Already using TLS'
 
         plain_transport = self._stream_reader._transport
@@ -44,7 +44,7 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
 class SMTPStreamReader(asyncio.StreamReader):
 
     async def read_response(self):
-        '''
+        """
         Get a status reponse from the server.
 
         Returns a tuple consisting of:
@@ -55,7 +55,7 @@ class SMTPStreamReader(asyncio.StreamReader):
             responses are converted to a single, multiline string).
 
         Raises SMTPResponseException for codes > 500.
-        '''
+        """
         code = None
         response_lines = []
 
@@ -90,9 +90,9 @@ class SMTPStreamReader(asyncio.StreamReader):
 class SMTPStreamWriter(asyncio.StreamWriter):
 
     async def send_command(self, *args):
-        '''
+        """
         Format a command and send it to the server.
-        '''
+        """
         command = '{}\r\n'.format(' '.join(args)).encode('ascii')
         self.write(command)
 

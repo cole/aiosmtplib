@@ -1,10 +1,10 @@
-'''
+"""
 SMTP client class for use with asyncio.
 
 Author: Cole Maclean <hi@cole.io>
 Based on smtplib (from the Python 3 standard library) by:
 The Dragon De Monsyne <dragondm@integral.org>
-'''
+"""
 import io
 import copy
 import socket
@@ -34,17 +34,17 @@ SMTP_TLS_PORT = 465
 
 
 class SMTP:
-    '''
+    """
     An SMTP/ESMTP client.
-    '''
+    """
 
     def __init__(self, hostname='localhost', port=None, source_address=None,
                  timeout=socket._GLOBAL_DEFAULT_TIMEOUT, loop=None,
                  use_tls=False, validate_certs=True, client_cert=None,
                  client_key=None, tls_context=None):
-        '''
+        """
         Kwarg defaults are provided here, and saved for connect.
-        '''
+        """
         if tls_context and client_cert:
             raise ValueError(
                 'Either an SSLContext or a certificate/key must be provided')
@@ -101,19 +101,19 @@ class SMTP:
 
     @property
     def is_connected(self):
-        '''
+        """
         Check connection status.
 
         Returns bool
-        '''
+        """
         return bool(self.transport and not self.transport.is_closing())
 
     @property
     def source_address(self):
-        '''
+        """
         Get the system hostname to be sent to the SMTP server.
         Simply caches the result of socket.getfqdn.
-        '''
+        """
         if not self._source_address:
             self._source_address = socket.getfqdn()
 
@@ -121,10 +121,10 @@ class SMTP:
 
     @property
     def transport_info(self):
-        '''
+        """
         Returns a dict of asyncio information about the transport.
         Includes SSLContext, ciphers, compression, etc.
-        '''
+        """
         return self.transport._extra
 
     @property
@@ -138,11 +138,11 @@ class SMTP:
         return is_needed
 
     async def connect(self, **kwargs):
-        '''
+        """
         Open asyncio streams to the server and check response status.
 
         Accepts all of the same keyword arguments as __init__ (except loop).
-        '''
+        """
         for kwarg in kwargs.keys():
             if kwarg not in self._connect_kwargs:
                 raise TypeError(
@@ -180,9 +180,9 @@ class SMTP:
             self._connect_kwargs['hostname'], port, tls_context)
 
     async def _connect(self, hostname, port, tls_context):
-        '''
+        """
         Make the actual connection.
-        '''
+        """
         self.reader = SMTPStreamReader(limit=MAX_LINE_LENGTH, loop=self.loop)
         self.protocol = SMTPProtocol(self.reader, loop=self.loop)
 
@@ -205,9 +205,9 @@ class SMTP:
         return SMTPResponse(code, message)
 
     async def close(self):
-        '''
+        """
         Closes the connection.
-        '''
+        """
         if self.transport and not self.transport.is_closing():
             self.transport.close()
 
@@ -218,27 +218,27 @@ class SMTP:
         self._server_state = {}
 
     def _raise_error_if_disconnected(self):
-        '''
+        """
         See if we're still connected, and if not, raise an error.
-        '''
+        """
         if not self.is_connected:
             # TODO: maybe SMTPConnectError here if we never were connected?
             raise SMTPServerDisconnected('Not connected to SMTP server')
 
     def supports_extension(self, extension):
-        '''
+        """
         Check if the server supports the ESMTP service extension given.
 
         Returns bool
-        '''
+        """
         return extension.lower() in self.esmtp_extensions
 
     async def execute_command(self, *args):
-        '''
+        """
         Send the commands given and return the reply message.
 
         Returns an SMTPResponse namedtuple.
-        '''
+        """
         self._raise_error_if_disconnected()
 
         await self.writer.send_command(*args)
@@ -254,7 +254,7 @@ class SMTP:
         return SMTPResponse(code, message)
 
     async def helo(self, hostname=None):
-        '''
+        """
         Send the SMTP 'helo' command.
         Hostname to send for this command defaults to the FQDN of the local
         host.
@@ -265,7 +265,7 @@ class SMTP:
                                   the helo greeting.
 
         Returns a (code, message) tuple with the server response.
-        '''
+        """
         if hostname is None:
             hostname = self.source_address
 
@@ -278,13 +278,13 @@ class SMTP:
         return response
 
     async def ehlo(self, hostname=None):
-        '''
+        """
         Send the SMTP 'ehlo' command.
         Hostname to send for this command defaults to the FQDN of the local
         host.
 
         Returns an SMTPResponse namedtuple.
-        '''
+        """
         if hostname is None:
             hostname = self.source_address
 
@@ -302,7 +302,7 @@ class SMTP:
         return response
 
     async def ehlo_or_helo_if_needed(self):
-        '''
+        """
         Call self.ehlo() and/or self.helo() if needed.
 
         If there has been no previous EHLO or HELO command this session, this
@@ -312,7 +312,7 @@ class SMTP:
 
          SMTPHeloError            The server didn't reply properly to
                                   the helo greeting.
-        '''
+        """
         if self.is_ehlo_or_helo_needed:
             try:
                 await self.ehlo()
@@ -320,10 +320,10 @@ class SMTP:
                 await self.helo()
 
     async def help(self):
-        '''
+        """
         SMTP 'help' command.
         Returns help text.
-        '''
+        """
         response = await self.execute_command('HELP')
         if response.code not in status.HELP_SUCCESS_STATUSES:
             raise SMTPResponseException(response.code, response.message)
@@ -331,11 +331,11 @@ class SMTP:
         return response.message
 
     async def rset(self):
-        '''
+        """
         Sends an SMTP 'rset' command (resets session)
 
         Returns an SMTPResponse namedtuple.
-        '''
+        """
         response = await self.execute_command('RSET')
         if response.code != status.SMTP_250_COMPLETED:
             raise SMTPResponseException(response.code, response.message)
@@ -343,11 +343,11 @@ class SMTP:
         return response
 
     async def noop(self):
-        '''
+        """
         Sends an SMTP 'noop' command (does nothing)
 
         Returns an SMTPResponse namedtuple.
-        '''
+        """
         response = await self.execute_command('NOOP')
         if response.code != status.SMTP_250_COMPLETED:
             raise SMTPResponseException(response.code, response.message)
@@ -355,11 +355,11 @@ class SMTP:
         return response
 
     async def vrfy(self, address):
-        '''
+        """
         Sends an SMTP 'vrfy' command (tests an address for validity)
 
         Returns an SMTPResponse namedtuple.
-        '''
+        """
         parsed_address = email.utils.parseaddr(address)[1] or address
         response = await self.execute_command('VRFY', parsed_address)
         if response.code not in status.VRFY_SUCCESS_STATUSES:
@@ -368,11 +368,11 @@ class SMTP:
         return response
 
     async def expn(self, address):
-        '''
+        """
         Sends an SMTP 'expn' command (expands a mailing list)
 
         Returns an SMTPResponse namedtuple.
-        '''
+        """
         parsed_address = email.utils.parseaddr(address)[1] or address
         response = await self.execute_command('EXPN', parsed_address)
 
@@ -382,11 +382,11 @@ class SMTP:
         return response
 
     async def quit(self):
-        '''
+        """
         Sends the SMTP 'quit' command, and closes the connection.
 
         Returns an SMTPResponse namedtuple.
-        '''
+        """
         response = await self.execute_command('QUIT')
         if response.code != status.SMTP_221_CLOSING:
             raise SMTPResponseException(response.code, response.message)
@@ -395,13 +395,13 @@ class SMTP:
         return response
 
     async def mail(self, sender, options=None):
-        '''
+        """
         Sends the SMTP 'mail' command (begins mail transfer session)
 
         Returns an SMTPResponse namedtuple.
 
         Raises SMTPSenderRefused if the response is not 250.
-        '''
+        """
         if options is None:
             options = []
         from_string = 'FROM:{}'.format(quote_address(sender))
@@ -420,11 +420,11 @@ class SMTP:
         return response
 
     async def rcpt(self, recipient, options=None):
-        '''
+        """
         Sends the SMTP 'rcpt' command (specifies a recipient for the message)
 
         Returns an SMTPResponse namedtuple.
-        '''
+        """
         if options is None:
             options = []
         to = 'TO:{}'.format(quote_address(recipient))
@@ -438,14 +438,14 @@ class SMTP:
         return response
 
     async def data(self, message):
-        '''
+        """
         Sends the SMTP 'data' command (sends message data to server)
 
         Raises SMTPDataError if there is an unexpected reply to the
         DATA command.
 
         Returns an SMTPResponse tuple (the last one, after all data is sent.)
-        '''
+        """
         start_response = await self.execute_command('DATA')
 
         if start_response.code != status.SMTP_354_START_INPUT:
@@ -463,7 +463,7 @@ class SMTP:
 
     async def sendmail(self, sender, recipients, message, mail_options=None,
                        rcpt_options=None):
-        '''
+        """
         This command performs an entire mail transaction.
 
         The arguments are:
@@ -530,7 +530,7 @@ class SMTP:
         550.  If all addresses are accepted, then the method will return an
         empty errors dictionary.
 
-        '''
+        """
         if isinstance(recipients, str):
             recipients = [recipients]
         if mail_options is None:
@@ -567,7 +567,7 @@ class SMTP:
 
     async def send_message(self, message, sender=None, recipients=None,
                            mail_options=None, rcpt_options=None):
-        '''
+        """
         Converts message to a bytestring and passes it to sendmail.
 
         The arguments are as for sendmail, except that messsage is an
@@ -585,7 +585,7 @@ class SMTP:
         However, if there is more than one 'Resent-' block there's no way to
         unambiguously determine which one is the most recent in all cases,
         so rather than guess we raise a ValueError in that case.
-        '''
+        """
         resent_dates = message.get_all('Resent-Date')
         if resent_dates and len(resent_dates) > 1:
             raise ValueError(
@@ -615,11 +615,11 @@ class SMTP:
 
     # ESMTP extensions #
     async def _auth(self, auth_method, username, password):
-        '''
+        """
         Try a single auth method. Used as part of login.
 
         Returns an SMTPResponse tuple.
-        '''
+        """
         request_command, auth_callback = auth_method(username, password)
         response = await self.execute_command('AUTH', request_command)
 
@@ -630,9 +630,9 @@ class SMTP:
         return response
 
     async def login(self, username, password):
-        '''
+        """
         SMTP Login command. Tries all supported auth methods in order.
-        '''
+        """
         await self.ehlo_or_helo_if_needed()
 
         if not self.supports_extension('auth'):
@@ -656,7 +656,7 @@ class SMTP:
         return response
 
     async def starttls(self, server_hostname=None, **kwargs):
-        '''
+        """
         Puts the connection to the SMTP server into TLS mode.
 
         If there has been no previous EHLO or HELO command this session, this
@@ -676,7 +676,7 @@ class SMTP:
                                   the helo greeting.
          ValueError               An unsupported combination of args was
                                   provided.
-        '''
+        """
         allowed_kwargs = (
             'validate_certs', 'client_cert', 'client_key', 'tls_context',
         )

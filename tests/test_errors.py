@@ -1,6 +1,6 @@
-'''
+"""
 Test error class imports, arguments, and inheritance
-'''
+"""
 import pytest
 
 from aiosmtplib import (
