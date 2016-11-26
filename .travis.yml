@@ -1,8 +1,19 @@
 language: python
 python:
-  - "3.5"
-  - "3.5-dev" # 3.5 development branch
-  - "3.6-dev" # 3.6 development branch
-  - "nightly" # currently points to 3.7-dev
+  - '3.5'
+  - 3.5-dev
+  - 3.6-dev
+  - nightly
 install: pip install tox-travis
 script: tox
+deploy:
+  provider: pypi
+  user: colemaclean
+  password:
+    secure: 0p6dJgRNPUPmXEuW3piVlTqlCusRVvILWslhaLBBNQk3jKFexpr9Jat17H6VUg+iGuLFKNlZh8BUGiOJHxADycOPA76Td9MvAlFz1QhS2CuDB8NYlpz7YsQnM92WTTAh3mW964I2mC6U5sxw0K9gV6XMVgQc5dzCYumqUyagV0s=
+  python:
+    - '3.5'
+  on:
+    tags: true
+    distributions: sdist bdist_wheel
+    repo: cole/aiosmtplib
