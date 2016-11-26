@@ -95,9 +95,6 @@ async def test_starttls(preset_client):
             b'250-SIZE 100000',
             b'250 STARTTLS',
         ]))
-        response = await preset_client.ehlo()
-        assert response.code == status.SMTP_250_COMPLETED
-
         preset_client.server.responses.append(b'220 ready for TLS')
         response = await preset_client.starttls(validate_certs=False)
         assert response.code == status.SMTP_220_READY
@@ -144,21 +141,9 @@ def test_mock_server_starttls_with_stmplib(preset_server):
     assert code == 250
 
 
-@pytest.mark.asyncio(forbid_global_loop=True)
-async def test_smtp_use_tls_with_no_ssl_module_raises(monkeypatch, event_loop):
-    monkeypatch.setattr(aiosmtplib.tls, '_has_tls', False)
-    smtp = SMTP(use_tls=True, loop=event_loop)
-
-    with pytest.raises(RuntimeError):
-        await smtp.connect()
-
-
 def test_tls_context_and_cert_raises():
     with pytest.raises(ValueError):
         SMTP(use_tls=True, client_cert='foo.crt', tls_context=True)
-
-    with pytest.raises(ValueError):
-        SMTP(use_tls=True, client_key='foo.key', tls_context=True)
 
 
 @pytest.mark.asyncio

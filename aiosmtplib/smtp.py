@@ -25,7 +25,7 @@ from aiosmtplib.textutils import (
     quote_address, extract_sender, extract_recipients, encode_message_string,
     parse_esmtp_extensions,
 )
-from aiosmtplib.tls import TLSOptions
+from aiosmtplib.tls import configure_tls_context
 
 
 MAX_LINE_LENGTH = 8192
@@ -38,29 +38,35 @@ class SMTP:
     An SMTP/ESMTP client.
     '''
 
-    def __init__(self, hostname='localhost', port=None,
-                 source_address=None, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
-                 loop=None, use_tls=False, validate_certs=True,
-                 client_cert=None, client_key=None, tls_context=None):
-        self.hostname = hostname
-        if port is None:
-            port = SMTP_TLS_PORT if use_tls else SMTP_PORT
-        self.port = port
-        self._source_address = source_address
-        # TODO: implement timeout
-        self.timeout = timeout
+    def __init__(self, hostname='localhost', port=None, source_address=None,
+                 timeout=socket._GLOBAL_DEFAULT_TIMEOUT, loop=None,
+                 use_tls=False, validate_certs=True, client_cert=None,
+                 client_key=None, tls_context=None):
+        '''
+        Kwarg defaults are provided here, and saved for connect.
+        '''
+        if tls_context and client_cert:
+            raise ValueError(
+                'Either an SSLContext or a certificate/key must be provided')
 
+        connect_kwargs = {
+            'hostname': hostname,
+            'port': port,
+            'source_address': source_address,
+            'timeout': timeout,
+            'use_tls': use_tls,
+            'validate_certs': validate_certs,
+            'client_cert': client_cert,
+            'client_key': client_key,
+            'tls_context': tls_context,
+        }
+        self._connect_kwargs = connect_kwargs
+
+        self.loop = loop or asyncio.get_event_loop()
         self.reader = None
         self.writer = None
         self.protocol = None
         self.transport = None
-        self.loop = loop or asyncio.get_event_loop()
-        self._server_state = {}
-
-        self.use_tls = use_tls
-        self.tls_options = TLSOptions(
-            tls_context=tls_context, validate_certs=validate_certs,
-            client_cert=client_cert, client_key=client_key)
 
     async def __aenter__(self):
         if not self.is_connected:
@@ -131,23 +137,63 @@ class SMTP:
 
         return is_needed
 
-    async def connect(self):
+    async def connect(self, **kwargs):
         '''
         Open asyncio streams to the server and check response status.
+
+        Accepts all of the same keyword arguments as __init__ (except loop).
+        '''
+        for kwarg in kwargs.keys():
+            if kwarg not in self._connect_kwargs:
+                raise TypeError(
+                    "connect() got an unexptected keyword argument "
+                    "'{}'".format(kwarg))
+
+        if kwargs.get('tls_context') and kwargs.get('client_cert'):
+            raise ValueError(
+                'Either an SSLContext or a certificate/key must be provided')
+
+        self._connect_kwargs.update(kwargs)
+
+        if self._connect_kwargs['port'] is not None:
+            port = self._connect_kwargs['port']
+        elif self._connect_kwargs['use_tls']:
+            port = SMTP_TLS_PORT
+        else:
+            port = SMTP_PORT
+
+        if self._connect_kwargs['use_tls']:
+            if self._connect_kwargs['tls_context']:
+                tls_context = self._connect_kwargs['tls_context']
+            else:
+                tls_context = configure_tls_context(
+                    validate_certs=self._connect_kwargs['validate_certs'],
+                    client_cert=self._connect_kwargs['client_cert'],
+                    client_key=self._connect_kwargs['client_key'])
+        else:
+            tls_context = None
+
+        self._source_address = self._connect_kwargs['source_address']
+        self._server_state = {}
+
+        return await self._connect(
+            self._connect_kwargs['hostname'], port, tls_context)
+
+    async def _connect(self, hostname, port, tls_context):
+        '''
+        Make the actual connection.
         '''
         self.reader = SMTPStreamReader(limit=MAX_LINE_LENGTH, loop=self.loop)
         self.protocol = SMTPProtocol(self.reader, loop=self.loop)
 
-        tls_context = self.tls_options.get_context() if self.use_tls else None
-
         try:
             self.transport, _ = await self.loop.create_connection(
-                lambda: self.protocol, host=self.hostname, port=self.port,
+                lambda: self.protocol, host=hostname, port=port,
                 ssl=tls_context)
         except (ConnectionRefusedError, OSError) as err:
             raise SMTPConnectError(
                 'Error connecting to {host} on port {port}: {err}'.format(
-                    host=self.hostname, port=self.port, err=err))
+                    host=hostname, port=port, err=err))
         else:
             self.writer = SMTPStreamWriter(
                 self.transport, self.protocol, self.reader, self.loop)
@@ -176,9 +222,8 @@ class SMTP:
         See if we're still connected, and if not, raise an error.
         '''
         if not self.is_connected:
-            message = 'Not connected to SMTP server on {}:{}'.format(
-                self.hostname, self.port)
-            raise SMTPServerDisconnected(message)
+            # TODO: maybe SMTPConnectError here if we never were connected?
+            raise SMTPServerDisconnected('Not connected to SMTP server')
 
     def supports_extension(self, extension):
         '''
@@ -610,8 +655,7 @@ class SMTP:
 
         return response
 
-    async def starttls(self, tls_context=None, validate_certs=True,
-                       client_cert=None, client_key=None):
+    async def starttls(self, server_hostname=None, **kwargs):
         '''
         Puts the connection to the SMTP server into TLS mode.
 
@@ -633,9 +677,31 @@ class SMTP:
          ValueError               An unsupported combination of args was
                                   provided.
         '''
-        tls_context = self.tls_options.get_context(
-            tls_context=tls_context, validate_certs=validate_certs,
-            client_cert=client_cert, client_key=client_key)
+        allowed_kwargs = (
+            'validate_certs', 'client_cert', 'client_key', 'tls_context',
+        )
+        for kwarg in kwargs.keys():
+            if kwarg not in allowed_kwargs:
+                raise TypeError(
+                    "connect() got an unexptected keyword argument "
+                    "'{}'".format(kwarg))
+
+        if kwargs.get('tls_context') and kwargs.get('client_cert'):
+            raise ValueError(
+                'Either an SSLContext or a certificate/key must be provided')
+
+        self._connect_kwargs.update(kwargs)
+
+        if server_hostname is None:
+            server_hostname = self._connect_kwargs['hostname']
+
+        if self._connect_kwargs['tls_context']:
+            tls_context = self._connect_kwargs['tls_context']
+        else:
+            tls_context = configure_tls_context(
+                validate_certs=self._connect_kwargs['validate_certs'],
+                client_cert=self._connect_kwargs['client_cert'],
+                client_key=self._connect_kwargs['client_key'])
 
         await self.ehlo_or_helo_if_needed()
 
@@ -647,7 +713,7 @@ class SMTP:
 
         if response.code == status.SMTP_220_READY:
             self.protocol, self.transport = await self.writer.start_tls(
-                tls_context, server_hostname=self.hostname)
+                tls_context, server_hostname=server_hostname)
 
             # RFC 3207 part 4.2:
             # The client MUST discard any knowledge obtained from
