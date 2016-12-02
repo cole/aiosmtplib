@@ -6,11 +6,12 @@ If callback is not None, it should be called with the server response code
 and message to the request.
 """
 import hmac
+from typing import Tuple, Callable
 
 from aiosmtplib.textutils import b64_encode, b64_decode
 
 
-def auth_plain(username, password):
+def auth_plain(username: str, password: str) -> Tuple[str, None]:
     """
     PLAIN auth encodes the username and password in one Base64 encoded string.
     No verification message is required.
@@ -26,7 +27,7 @@ def auth_plain(username, password):
     return request, None
 
 
-def auth_crammd5(username, password):
+def auth_crammd5(username: str, password: str) -> Tuple[str, Callable]:
     """
     CRAM-MD5 auth uses the password as a shared secret to MD5 the server's
     response.
@@ -50,7 +51,7 @@ def auth_crammd5(username, password):
     return request, auth_crammd5_verification
 
 
-def auth_login(username, password):
+def auth_login(username: str, password: str) -> Tuple[str, Callable]:
     """
     LOGIN auth sends the Base64 encoded username and password in sequence.
 

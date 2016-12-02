@@ -3,13 +3,14 @@ Exception classes.
 
 Unlinke in standard smtplib, these do not inherit from OSError.
 """
+from typing import List
 
 
 class SMTPException(Exception):
     """
     Base class for all SMTP exceptions.
     """
-    def __init__(self, message):
+    def __init__(self, message: str) -> None:
         self.message = message
         self.args = (message,)
 
@@ -33,7 +34,7 @@ class SMTPResponseException(SMTPException):
     """
     Base class for all server responses with error codes.
     """
-    def __init__(self, code, message):
+    def __init__(self, code: int, message: str) -> None:
         self.code = code
         self.message = message
         self.args = (code, message,)
@@ -71,7 +72,7 @@ class SMTPSenderRefused(SMTPResponseException):
     """
     SMTP server refused the message sender.
     """
-    def __init__(self, code, message, sender):
+    def __init__(self, code: int, message: str, sender: str) -> None:
         self.code = code
         self.message = message
         self.sender = sender
@@ -82,7 +83,7 @@ class SMTPRecipientRefused(SMTPResponseException):
     """
     SMTP server refused a message recipient.
     """
-    def __init__(self, code, message, recipient):
+    def __init__(self, code: int, message: str, recipient: str) -> None:
         self.code = code
         self.message = message
         self.recipient = recipient
@@ -93,6 +94,6 @@ class SMTPRecipientsRefused(SMTPException):
     """
     Wraps a list of SMTPRecipientRefused exceptions.
     """
-    def __init__(self, recipients):
+    def __init__(self, recipients: List[str]) -> None:
         self.recipients = recipients
         self.args = (recipients,)

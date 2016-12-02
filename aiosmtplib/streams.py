@@ -1,13 +1,15 @@
 import asyncio
 import asyncio.selector_events
 import asyncio.sslproto
+from ssl import SSLContext
+from typing import Tuple, Awaitable
 
 from aiosmtplib.errors import SMTPServerDisconnected
 
 
 class SMTPProtocol(asyncio.StreamReaderProtocol):
 
-    def connection_made(self, transport):
+    def connection_made(self, transport: asyncio.BaseTransport) -> None:
         """
         TODO: We won't need this anymore where 3.5.3 is released (hopefully)
         """
@@ -18,7 +20,8 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
         else:
             super().connection_made(transport)
 
-    def start_tls(self, context, server_hostname=None, waiter=None):
+    def start_tls(self, context: SSLContext, server_hostname: str = None,
+                  waiter: Awaitable = None) -> asyncio.sslproto.SSLProtocol:
         """
         Upgrade our transport to TLS in place.
         """
@@ -43,7 +46,7 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
 
 class SMTPStreamReader(asyncio.StreamReader):
 
-    async def read_response(self):
+    async def read_response(self) -> Tuple[int, str]:
         """
         Get a status reponse from the server.
 
@@ -89,7 +92,7 @@ class SMTPStreamReader(asyncio.StreamReader):
 
 class SMTPStreamWriter(asyncio.StreamWriter):
 
-    async def send_command(self, *args):
+    async def send_command(self, *args: str) -> None:
         """
         Format a command and send it to the server.
         """
@@ -101,7 +104,10 @@ class SMTPStreamWriter(asyncio.StreamWriter):
         except ConnectionResetError as exc:
             raise SMTPServerDisconnected(exc)
 
-    async def start_tls(self, context, server_hostname=None):
+    async def start_tls(
+            self, context: SSLContext,
+            server_hostname: str = None) -> \
+            Tuple[asyncio.sslproto.SSLProtocol, asyncio.BaseTransport]:
         try:
             await self.drain()
         except ConnectionResetError as exc:

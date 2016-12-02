@@ -6,8 +6,8 @@ else:
     _has_tls = True
 
 
-def configure_tls_context(validate_certs=True, client_cert=None,
-                          client_key=None):
+def configure_tls_context(validate_certs: bool = True, client_cert: str = None,
+                          client_key: str = None) -> ssl.SSLContext:
     if not _has_tls:
         raise RuntimeError('No SSL support in this Python')
 
