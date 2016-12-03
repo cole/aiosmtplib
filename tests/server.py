@@ -148,3 +148,4 @@ class ThreadedSMTPDServer:
 
     def stop(self):
         self.smtpd.close()
+        self.server_thread.join(timeout=0.1)
