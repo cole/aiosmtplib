@@ -1,8 +1,7 @@
-import re
 import email.utils
+import re
 from email.message import Message
-from typing import Tuple, List, Dict
-
+from typing import Dict, List, Tuple
 
 LINE_ENDINGS_REGEX = re.compile(b'(?:\r\n|\n|\r(?!\n))')
 PERIOD_REGEX = re.compile(b'(?m)^\.')

@@ -1,11 +1,10 @@
-import hmac
 import base64
+import hmac
 import random
 
 import pytest
 
 from aiosmtplib.auth import auth_crammd5, auth_login, auth_plain
-
 
 USERNAMES_AND_PASSWORDS = [
     ('test', 'test'),

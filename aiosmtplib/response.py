@@ -1,6 +1,5 @@
 import collections
 
-
 ResponseBase = collections.namedtuple('SMTPResponse', ['code', 'message'])
 
 

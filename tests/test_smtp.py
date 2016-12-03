@@ -1,11 +1,11 @@
-import email.mime.text
 import email.mime.multipart
+import email.mime.text
 
 import pytest
 
 from aiosmtplib import (
-    status, SMTPResponseException, SMTPRecipientsRefused, SMTPHeloError,
-    SMTPDataError,
+    SMTPDataError, SMTPHeloError, SMTPRecipientsRefused, SMTPResponseException,
+    status,
 )
 
 

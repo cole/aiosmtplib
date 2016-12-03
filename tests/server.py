@@ -1,10 +1,10 @@
-import threading
-import socketserver
-import socket
-import ssl
+import asyncore
 import collections
 import smtpd
-import asyncore
+import socket
+import socketserver
+import ssl
+import threading
 from email.errors import HeaderParseError
 
 

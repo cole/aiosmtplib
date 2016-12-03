@@ -1,7 +1,7 @@
 import asyncio
 from asyncio.sslproto import SSLProtocol, _SSLProtocolTransport  # type: ignore
 from ssl import SSLContext
-from typing import Tuple, Awaitable
+from typing import Awaitable, Tuple
 
 from aiosmtplib import status
 from aiosmtplib.errors import SMTPServerDisconnected

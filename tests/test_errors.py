@@ -4,12 +4,11 @@ Test error class imports, arguments, and inheritance
 import pytest
 
 from aiosmtplib import (
-    SMTPException, SMTPServerDisconnected, SMTPConnectError,
-    SMTPResponseException, SMTPNotSupported, SMTPHeloError, SMTPDataError,
-    SMTPAuthenticationError, SMTPSenderRefused, SMTPRecipientRefused,
-    SMTPRecipientsRefused,
+    SMTPAuthenticationError, SMTPConnectError, SMTPDataError, SMTPException,
+    SMTPHeloError, SMTPNotSupported, SMTPRecipientRefused,
+    SMTPRecipientsRefused, SMTPResponseException, SMTPSenderRefused,
+    SMTPServerDisconnected,
 )
-
 
 CONNECTION_EXCEPTIONS = (SMTPServerDisconnected, SMTPConnectError)
 SIMPLE_RESPONSE_EXCEPTIONS = (

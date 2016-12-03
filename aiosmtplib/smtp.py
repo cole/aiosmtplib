@@ -5,31 +5,30 @@ Author: Cole Maclean <hi@cole.io>
 Based on smtplib (from the Python 3 standard library) by:
 The Dragon De Monsyne <dragondm@integral.org>
 """
-import io
-import copy
-import socket
 import asyncio
-import email.utils
+import copy
 import email.generator
-from ssl import SSLContext
+import email.utils
+import io
+import socket
 from enum import Enum
-from typing import Any, Union, Iterable, Dict, List, Tuple, Optional  # NOQA
+from ssl import SSLContext
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union  # NOQA
 
 from aiosmtplib import status
 from aiosmtplib.auth import AUTH_METHODS, AuthFunctionType
-from aiosmtplib.streams import SMTPProtocol, SMTPStreamReader, SMTPStreamWriter
 from aiosmtplib.errors import (
-    SMTPException, SMTPConnectError, SMTPHeloError, SMTPDataError,
-    SMTPRecipientRefused, SMTPRecipientsRefused, SMTPSenderRefused,
-    SMTPServerDisconnected, SMTPResponseException, SMTPAuthenticationError,
+    SMTPAuthenticationError, SMTPConnectError, SMTPDataError, SMTPException,
+    SMTPHeloError, SMTPRecipientRefused, SMTPRecipientsRefused,
+    SMTPResponseException, SMTPSenderRefused, SMTPServerDisconnected,
 )
 from aiosmtplib.response import SMTPResponse
+from aiosmtplib.streams import SMTPProtocol, SMTPStreamReader, SMTPStreamWriter
 from aiosmtplib.textutils import (
-    quote_address, extract_sender, extract_recipients, encode_message_string,
-    parse_esmtp_extensions,
+    encode_message_string, extract_recipients, extract_sender,
+    parse_esmtp_extensions, quote_address,
 )
 from aiosmtplib.tls import configure_tls_context
-
 
 MAX_LINE_LENGTH = 8192
 SMTP_PORT = 25

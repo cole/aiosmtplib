@@ -4,9 +4,8 @@ Pytest fixtures and config.
 import pytest
 
 from aiosmtplib import SMTP
-from .server import (
-    ThreadedPresetServer, TLSThreadedPresetServer,
-    ThreadedSMTPDServer,
+from tests.server import (
+    ThreadedPresetServer, ThreadedSMTPDServer, TLSThreadedPresetServer,
 )
 
 

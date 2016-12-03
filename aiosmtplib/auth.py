@@ -5,10 +5,9 @@ We use functions that return a tuple of (request_string, callback).
 If callback is not None, it should be called with the server response code
 and message to the request.
 """
-import hmac
 import base64
-from typing import Tuple, Callable, Optional
-
+import hmac
+from typing import Callable, Optional, Tuple
 
 AuthReturnType = Tuple[str, Optional[Callable[[int, str], str]]]
 AuthFunctionType = Callable[[str, str], AuthReturnType]

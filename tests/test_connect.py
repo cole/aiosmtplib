@@ -1,10 +1,10 @@
-import ssl
-import smtplib
 import asyncio.sslproto
+import smtplib
+import ssl
 
 import pytest
 
-from aiosmtplib import SMTP, status, SMTPConnectError, SMTPServerDisconnected
+from aiosmtplib import SMTP, SMTPConnectError, SMTPServerDisconnected, status
 
 
 @pytest.mark.asyncio(forbid_global_loop=True)
