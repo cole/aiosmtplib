@@ -1,20 +1,13 @@
 import re
 import email.utils
-from email.base64mime import body_encode, body_decode
+from email.message import Message
+from typing import Tuple, List, Dict
 
 
 LINE_ENDINGS_REGEX = re.compile(b'(?:\r\n|\n|\r(?!\n))')
 PERIOD_REGEX = re.compile(b'(?m)^\.')
 OLDSTYLE_AUTH_REGEX = re.compile(r'auth=(?P<auth>.*)', flags=re.I)
 EXTENSIONS_REGEX = re.compile(r'(?P<ext>[A-Za-z0-9][A-Za-z0-9\-]*) ?')
-
-
-def b64_encode(text: str) -> str:
-    return body_encode(text.encode('utf-8'), eol='')
-
-
-def b64_decode(text: str) -> str:
-    return body_decode(text).decode('utf-8')
 
 
 def quote_address(address: str) -> str:
@@ -35,7 +28,7 @@ def quote_address(address: str) -> str:
     return quoted_address
 
 
-def extract_sender(message, resent_dates=None):
+def extract_sender(message: Message, resent_dates: List[str] = None) -> str:
     """
     Returns a sender pulled from the email message object (using appropriate
     headers).
@@ -53,15 +46,16 @@ def extract_sender(message, resent_dates=None):
     else:
         sender = message[from_header]
 
-    return sender
+    return sender or ''
 
 
-def extract_recipients(message, resent_dates=None):
+def extract_recipients(
+        message: Message, resent_dates: List[str] = None) -> List[str]:
     """
     Returns a list of recipients pulled from the email message object
     (using appropriate headers).
     """
-    recipients = []
+    recipients = []  # type: List[str]
 
     if not resent_dates:
         recipient_headers = ('To', 'Cc', 'Bcc')
@@ -71,12 +65,15 @@ def extract_recipients(message, resent_dates=None):
     for header in recipient_headers:
         recipients.extend(message.get_all(header, []))
 
-    parsed_recipients = email.utils.getaddresses(recipients)
+    parsed_recipients = [
+        email.utils.formataddr(address)
+        for address in email.utils.getaddresses(recipients)
+    ]
 
     return parsed_recipients
 
 
-def encode_message_string(message_str):
+def encode_message_string(message_str: str) -> bytes:
     """
     Prepare a message for sending.
     Automatically quotes lines beginning with a period per RFC821.
@@ -97,7 +94,7 @@ def encode_message_string(message_str):
     return message_bytes
 
 
-def parse_esmtp_extensions(message):
+def parse_esmtp_extensions(message: str) -> Tuple[Dict[str, str], List[str]]:
     """
     Parse an ESMTP response from the server.
 
@@ -125,8 +122,8 @@ def parse_esmtp_extensions(message):
         a dict of extension names to values (pretty much only size has a value)
         a list of auth methods supported
     """
-    esmtp_extensions = {}
-    auth_types = []
+    esmtp_extensions = {}  # type: Dict[str, str]
+    auth_types = []  # type: List[str]
 
     response_lines = message.split('\n')
 

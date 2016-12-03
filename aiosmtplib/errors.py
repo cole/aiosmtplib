@@ -94,6 +94,6 @@ class SMTPRecipientsRefused(SMTPException):
     """
     Wraps a list of SMTPRecipientRefused exceptions.
     """
-    def __init__(self, recipients: List[str]) -> None:
+    def __init__(self, recipients: List[SMTPRecipientRefused]) -> None:
         self.recipients = recipients
         self.args = (recipients,)

@@ -6,12 +6,31 @@ If callback is not None, it should be called with the server response code
 and message to the request.
 """
 import hmac
-from typing import Tuple, Callable
+import base64
+from typing import Tuple, Callable, Optional
 
-from aiosmtplib.textutils import b64_encode, b64_decode
+
+AuthReturnType = Tuple[str, Optional[Callable[[int, str], str]]]
+AuthFunctionType = Callable[[str, str], AuthReturnType]
 
 
-def auth_plain(username: str, password: str) -> Tuple[str, None]:
+def _b64encode(message: str) -> str:
+    bytes_message = message.encode('utf-8')
+    encoded = base64.b64encode(bytes_message)
+    encoded_str = encoded.decode('utf-8')
+
+    return encoded_str
+
+
+def _b64decode(message: str) -> str:
+    bytes_message = message.encode('utf-8')
+    decoded = base64.b64decode(bytes_message)
+    decoded_str = decoded.decode('utf-8')
+
+    return decoded_str
+
+
+def auth_plain(username: str, password: str) -> AuthReturnType:
     """
     PLAIN auth encodes the username and password in one Base64 encoded string.
     No verification message is required.
@@ -21,13 +40,13 @@ def auth_plain(username: str, password: str) -> Tuple[str, None]:
     AUTH PLAIN dGVzdAB0ZXN0AHRlc3RwYXNz
     235 ok, go ahead (#2.0.0)
     """
-    username_and_password = '\0{}\0{}'.format(username, password)
-    request = '{} {}'.format('PLAIN', b64_encode(username_and_password))
+    username_and_password = _b64encode('\0{}\0{}'.format(username, password))
+    request = 'PLAIN {}'.format(username_and_password)
 
     return request, None
 
 
-def auth_crammd5(username: str, password: str) -> Tuple[str, Callable]:
+def auth_crammd5(username: str, password: str) -> AuthReturnType:
     """
     CRAM-MD5 auth uses the password as a shared secret to MD5 the server's
     response.
@@ -39,19 +58,19 @@ def auth_crammd5(username: str, password: str) -> Tuple[str, Callable]:
     dGltIGI5MTNhNjAyYzdlZGE3YTQ5NWI0ZTZlNzMzNGQzODkw
     """
     request = 'CRAM-MD5'
+    password_bytes = password.encode('utf-8')
 
-    def auth_crammd5_verification(code, response):
-        challenge = b64_decode(response).encode('utf-8')  # We want bytes here
-        md5_digest = hmac.new(
-            password.encode('utf-8'), msg=challenge, digestmod='md5')
+    def auth_crammd5_verification(code: int, response: str) -> str:
+        challenge = _b64decode(response).encode('utf-8')  # We want bytes here
+        md5_digest = hmac.new(password_bytes, msg=challenge, digestmod='md5')
         verification = '{} {}'.format(username, md5_digest.hexdigest())
 
-        return b64_encode(verification)
+        return _b64encode(verification)
 
     return request, auth_crammd5_verification
 
 
-def auth_login(username: str, password: str) -> Tuple[str, Callable]:
+def auth_login(username: str, password: str) -> AuthReturnType:
     """
     LOGIN auth sends the Base64 encoded username and password in sequence.
 
@@ -61,10 +80,10 @@ def auth_login(username: str, password: str) -> Tuple[str, Callable]:
     334 VXNlcm5hbWU6
     avlsdkfj
     """
-    login_request = '{} {}'.format('LOGIN', b64_encode(username))
+    login_request = 'LOGIN {}'.format(_b64encode(username))
 
-    def auth_login_verification(code, response):
-        verification = b64_encode(password)
+    def auth_login_verification(code: int, response: str) -> str:
+        verification = _b64encode(password)
         return verification
 
     return login_request, auth_login_verification

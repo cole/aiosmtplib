@@ -1,9 +1,9 @@
 import asyncio
-import asyncio.selector_events
-import asyncio.sslproto
+from asyncio.sslproto import SSLProtocol, _SSLProtocolTransport  # type: ignore
 from ssl import SSLContext
 from typing import Tuple, Awaitable
 
+from aiosmtplib import status
 from aiosmtplib.errors import SMTPServerDisconnected
 
 
@@ -13,30 +13,33 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
         """
         TODO: We won't need this anymore where 3.5.3 is released (hopefully)
         """
-        if isinstance(transport, asyncio.sslproto._SSLProtocolTransport):
+        if isinstance(transport, _SSLProtocolTransport):
             # STARTTLS connection over normal connection
-            self._stream_reader._transport = transport
+            self._stream_reader._transport = transport  # type: ignore
             self._over_ssl = True
         else:
             super().connection_made(transport)
 
-    def start_tls(self, context: SSLContext, server_hostname: str = None,
-                  waiter: Awaitable = None) -> asyncio.sslproto.SSLProtocol:
+    def start_tls(
+            self, context: SSLContext, server_hostname: str = None,
+            waiter: Awaitable = None) -> SSLProtocol:
         """
         Upgrade our transport to TLS in place.
         """
         assert not self._over_ssl, 'Already using TLS'
 
-        plain_transport = self._stream_reader._transport
+        plain_transport = self._stream_reader._transport  # type: ignore
+        loop = self._loop  # type: ignore
 
-        tls_protocol = asyncio.sslproto.SSLProtocol(
-            self._loop, self, context, waiter, server_side=False,
+        tls_protocol = SSLProtocol(
+            loop, self, context, waiter, server_side=False,
             server_hostname=server_hostname)
 
         # This assignment is required, even though it's done again in
         # connection_made
-        self._stream_reader._transport._protocol = tls_protocol
-        self._stream_reader._transport = tls_protocol._app_transport
+        app_transport = tls_protocol._app_transport  # type: ignore
+        self._stream_reader._transport._protocol = tls_protocol  # type: ignore
+        self._stream_reader._transport = app_transport  # type: ignore
 
         tls_protocol.connection_made(plain_transport)
         self._over_ssl = True
@@ -59,7 +62,7 @@ class SMTPStreamReader(asyncio.StreamReader):
 
         Raises SMTPResponseException for codes > 500.
         """
-        code = None
+        code = status.SMTP_NO_RESPONSE_CODE
         response_lines = []
 
         while True:
@@ -69,7 +72,7 @@ class SMTPStreamReader(asyncio.StreamReader):
             # except LimitOverrunError:
             #     raise SMTPResponseException(500, 'Line too long.'')
             except ConnectionResetError as exc:
-                raise SMTPServerDisconnected(exc)
+                raise SMTPServerDisconnected(str(exc))
 
             try:
                 code = int(line[:3])
@@ -84,7 +87,7 @@ class SMTPStreamReader(asyncio.StreamReader):
 
         full_message = '\n'.join(response_lines)
 
-        if code is None and self.at_eof():
+        if code == status.SMTP_NO_RESPONSE_CODE and self.at_eof():
             raise SMTPServerDisconnected('Server disconnected unexpectedly')
 
         return code, full_message
@@ -92,33 +95,33 @@ class SMTPStreamReader(asyncio.StreamReader):
 
 class SMTPStreamWriter(asyncio.StreamWriter):
 
-    async def send_command(self, *args: str) -> None:
+    async def send_command(self, command: bytes) -> None:
         """
         Format a command and send it to the server.
         """
-        command = '{}\r\n'.format(' '.join(args)).encode('ascii')
-        self.write(command)
+        self.write(command + b'\r\n')
 
         try:
-            await self.drain()
+            await self.drain()  # type: ignore
         except ConnectionResetError as exc:
-            raise SMTPServerDisconnected(exc)
+            raise SMTPServerDisconnected(str(exc))
 
     async def start_tls(
-            self, context: SSLContext,
-            server_hostname: str = None) -> \
-            Tuple[asyncio.sslproto.SSLProtocol, asyncio.BaseTransport]:
+            self, context: SSLContext, server_hostname: str = None) -> \
+            Tuple[SSLProtocol, asyncio.BaseTransport]:
         try:
-            await self.drain()
+            await self.drain()  # type: ignore
         except ConnectionResetError as exc:
-            raise SMTPServerDisconnected(exc)
+            raise SMTPServerDisconnected(str(exc))
 
-        waiter = asyncio.Future(loop=self._loop)
+        loop = self._loop  # type: ignore
+        protocol = self._protocol  # type: ignore
+        waiter = asyncio.Future(loop=loop)  # type: asyncio.Future
 
-        tls_protocol = self._protocol.start_tls(
+        tls_protocol = protocol.start_tls(
             context, server_hostname=server_hostname, waiter=waiter)
 
-        self._transport = tls_protocol._app_transport
+        self._transport = tls_protocol._app_transport  # type: ignore
 
         await waiter
 

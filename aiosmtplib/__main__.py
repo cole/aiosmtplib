@@ -30,9 +30,9 @@ while True:
     else:
         break
 
-message = '\n'.join(message)
-print('Message length is {}'.format(len(message)))
+full_message = '\n'.join(message)
+print('Message length is {}'.format(len(full_message)))
 
 loop = asyncio.get_event_loop()
 loop.run_until_complete(
-    send(hostname, port, sender, recipients, message, loop=loop))
+    send(hostname, port, sender, recipients, full_message, loop=loop))

@@ -11,12 +11,12 @@ import socket
 import asyncio
 import email.utils
 import email.generator
-from asyncio import Transport  # noqa
 from ssl import SSLContext
-from typing import Any, Union, Iterable, Dict, List, Callable, Tuple
+from enum import Enum
+from typing import Any, Union, Iterable, Dict, List, Tuple, Optional  # NOQA
 
 from aiosmtplib import status
-from aiosmtplib.auth import AUTH_METHODS
+from aiosmtplib.auth import AUTH_METHODS, AuthFunctionType
 from aiosmtplib.streams import SMTPProtocol, SMTPStreamReader, SMTPStreamWriter
 from aiosmtplib.errors import (
     SMTPException, SMTPConnectError, SMTPHeloError, SMTPDataError,
@@ -36,44 +36,51 @@ SMTP_PORT = 25
 SMTP_TLS_PORT = 465
 
 
+class Default(Enum):
+    """
+    Used for type hinting compatible kwarg defaults.
+    """
+    token = 0
+
+
+_default = Default.token
+
+
 class SMTP:
     """
     An SMTP/ESMTP client.
     """
 
-    def __init__(self, hostname: str = 'localhost', port: int = None,
-                 source_address: str = None,
-                 timeout: Union[int, float] = socket._GLOBAL_DEFAULT_TIMEOUT,
-                 loop: asyncio.AbstractEventLoop = None,
-                 use_tls: bool = False, validate_certs: bool = True,
-                 client_cert: str = None, client_key: str = None,
-                 tls_context: SSLContext = None) -> None:
-        """
-        Kwarg defaults are provided here, and saved for connect.
-        """
+    def __init__(
+            self, hostname: str = 'localhost', port: int = None,
+            source_address: str = None,
+            timeout: Union[int, float, None] = socket._GLOBAL_DEFAULT_TIMEOUT,
+            loop: asyncio.AbstractEventLoop = None,
+            use_tls: bool = False, validate_certs: bool = True,
+            client_cert: str = None, client_key: str = None,
+            tls_context: SSLContext = None) -> None:
+        # Kwarg defaults are provided here, and saved for connect.
         if tls_context and client_cert:
             raise ValueError(
-                'Either an SSLContext or a certificate/key must be provided')
+                'Either a TLS context or a certificate/key must be provided')
 
-        connect_kwargs = {
-            'hostname': hostname,
-            'port': port,
-            'source_address': source_address,
-            'timeout': timeout,
-            'use_tls': use_tls,
-            'validate_certs': validate_certs,
-            'client_cert': client_cert,
-            'client_key': client_key,
-            'tls_context': tls_context,
-        }
-        self._connect_kwargs = connect_kwargs
+        self.hostname = hostname
+        self.port = port
+        self.timeout = timeout
+        self.use_tls = use_tls
+        self._source_address = source_address
+        self._validate_certs = validate_certs
+        self._client_cert = client_cert
+        self._client_key = client_key
+        self._tls_context = tls_context
 
         self.loop = loop or asyncio.get_event_loop()
         self.reader = None  # type: SMTPStreamReader
         self.writer = None  # type: SMTPStreamWriter
         self.protocol = None  # type: SMTPProtocol
-        self.transport = None  # type: Transport
-        self._server_state = {}  # type: Dict[str, Any]
+        self.transport = None  # type: asyncio.BaseTransport
+
+        self._reset_server_state()
 
     async def __aenter__(self) -> 'SMTP':
         if not self.is_connected:
@@ -88,19 +95,7 @@ class SMTP:
             await self.close()
 
     @property
-    def esmtp_extensions(self) -> List[str]:
-        return self._server_state.get('esmtp_extensions', [])
-
-    @property
-    def supports_esmtp(self) -> bool:
-        return self._server_state.get('supports_esmtp', False)
-
-    @property
-    def server_auth_methods(self) -> List[str]:
-        return self._server_state.get('supported_auth_methods', [])
-
-    @property
-    def supported_auth_methods(self) -> List[Tuple[str, Callable]]:
+    def supported_auth_methods(self) -> List[Tuple[str, AuthFunctionType]]:
         return [
             auth for auth in AUTH_METHODS
             if auth[0] in self.server_auth_methods
@@ -121,81 +116,87 @@ class SMTP:
         Get the system hostname to be sent to the SMTP server.
         Simply caches the result of socket.getfqdn.
         """
-        if not self._source_address:
+        if self._source_address is None:
             self._source_address = socket.getfqdn()
 
         return self._source_address
 
     @property
-    def transport_info(self) -> Dict[str, Any]:
-        """
-        Returns a dict of asyncio information about the transport.
-        Includes SSLContext, ciphers, compression, etc.
-        """
-        return self.transport._extra
-
-    @property
     def is_ehlo_or_helo_needed(self) -> bool:
         self._raise_error_if_disconnected()
+        return not (self._last_ehlo_response or self._last_helo_response)
 
-        ehlo_response = ('last_ehlo_response' in self._server_state)
-        helo_response = ('last_helo_response' in self._server_state)
-        is_needed = not (ehlo_response or helo_response)
-
-        return is_needed
-
-    async def connect(self, **kwargs) -> SMTPResponse:
+    async def connect(
+            self, hostname: str = None, port: int = None,
+            source_address: Union[str, None, Default] = _default,
+            timeout: Union[float, int, None, Default] = _default,
+            loop: asyncio.AbstractEventLoop = None,
+            use_tls: Union[bool, Default] = _default,
+            validate_certs: Union[bool, Default] = _default,
+            client_cert: Union[str, None, Default] = _default,
+            client_key: Union[str, None, Default] = _default,
+            tls_context: Union[SSLContext, None, Default] = _default) -> \
+            SMTPResponse:
         """
         Open asyncio streams to the server and check response status.
-
-        Accepts all of the same keyword arguments as __init__ (except loop).
         """
-        for kwarg in kwargs.keys():
-            if kwarg not in self._connect_kwargs:
-                raise TypeError(
-                    "connect() got an unexptected keyword argument "
-                    "'{}'".format(kwarg))
+        # TODO: replace isinstance checks with identity checks
+        # when mypy will handle that
+        if hostname is not None:
+            self.hostname = hostname
+        if port is not None:
+            self.port = port
+        if loop is not None:
+            self.loop = loop
+        if not isinstance(timeout, Default):
+            self.timeout = timeout
+        if not isinstance(use_tls, Default):
+            self.use_tls = use_tls
+        if not isinstance(source_address, Default):
+            self._source_address = source_address
+        if not isinstance(validate_certs, Default):
+            self._validate_certs = validate_certs
+        if not isinstance(client_cert, Default):
+            self._client_cert = client_cert
+        if not isinstance(client_key, Default):
+            self._client_key = client_key
+        if not isinstance(tls_context, Default):
+            self._tls_context = tls_context
 
-        if kwargs.get('tls_context') and kwargs.get('client_cert'):
+        if self._tls_context and self._client_cert:
             raise ValueError(
-                'Either an SSLContext or a certificate/key must be provided')
+                'Either a TLS context or a certificate/key must be provided')
 
-        self._connect_kwargs.update(kwargs)
-
-        if self._connect_kwargs['port'] is not None:
-            port = self._connect_kwargs['port']
-        elif self._connect_kwargs['use_tls']:
-            port = SMTP_TLS_PORT
-        else:
-            port = SMTP_PORT
-
-        if self._connect_kwargs['use_tls']:
-            if self._connect_kwargs['tls_context']:
-                tls_context = self._connect_kwargs['tls_context']
+        if self.port is None:
+            if self.use_tls:
+                self.port = SMTP_TLS_PORT
             else:
+                self.port = SMTP_PORT
+
+        if self.use_tls and self._tls_context:
+            tls_context = self._tls_context
+        elif self.use_tls:
                 tls_context = configure_tls_context(
-                    validate_certs=self._connect_kwargs['validate_certs'],
-                    client_cert=self._connect_kwargs['client_cert'],
-                    client_key=self._connect_kwargs['client_key'])
+                    validate_certs=self._validate_certs,
+                    client_cert=self._client_cert, client_key=self._client_key)
         else:
             tls_context = None
 
-        self._source_address = self._connect_kwargs['source_address']
-        self._server_state = {}
+        return await self._connect(self.hostname, self.port, tls_context)
 
-        return await self._connect(
-            self._connect_kwargs['hostname'], port, tls_context)
-
-    async def _connect(self, hostname: str, port: int,
-                       tls_context: SSLContext) -> SMTPResponse:
+    async def _connect(
+            self, hostname: str, port: int,
+            tls_context: Optional[SSLContext]) -> SMTPResponse:
         """
         Make the actual connection.
         """
+        self._reset_server_state()
+
         self.reader = SMTPStreamReader(limit=MAX_LINE_LENGTH, loop=self.loop)
         self.protocol = SMTPProtocol(self.reader, loop=self.loop)
 
         try:
-            self.transport, _ = await self.loop.create_connection(
+            transport, _ = await self.loop.create_connection(  # type: ignore
                 lambda: self.protocol, host=hostname, port=port,
                 ssl=tls_context)
         except (ConnectionRefusedError, OSError) as err:
@@ -204,7 +205,8 @@ class SMTP:
                     host=hostname, port=port, err=err))
         else:
             self.writer = SMTPStreamWriter(
-                self.transport, self.protocol, self.reader, self.loop)
+                transport, self.protocol, self.reader, self.loop)
+            self.transport = transport
 
         code, message = await self.reader.read_response()
         if code != status.SMTP_220_READY:
@@ -223,7 +225,14 @@ class SMTP:
         self.writer = None
         self.protocol = None
         self.transport = None
-        self._server_state = {}
+        self._reset_server_state()
+
+    def _reset_server_state(self) -> None:
+        self._last_helo_response = None  # type: SMTPResponse
+        self._last_ehlo_response = None  # type: SMTPResponse
+        self.esmtp_extensions = {}  # type: Dict[str, str]
+        self.supports_esmtp = False
+        self.server_auth_methods = []  # type: List[str]
 
     def _raise_error_if_disconnected(self) -> None:
         """
@@ -241,6 +250,18 @@ class SMTP:
         """
         return extension.lower() in self.esmtp_extensions
 
+    def get_transport_info(self, key) -> Any:
+        """
+        Get extra info from the transport.
+        Supported keys:
+            'peername', 'socket', 'sockname', 'compression', 'cipher',
+            'peercert', 'sslcontext', 'ssl_object'
+        """
+        self._raise_error_if_disconnected()
+        assert self.transport is not None
+
+        return self.transport.get_extra_info(key)
+
     async def execute_command(self, *args: str) -> SMTPResponse:
         """
         Send the commands given and return the reply message.
@@ -248,13 +269,17 @@ class SMTP:
         Returns an SMTPResponse namedtuple.
         """
         self._raise_error_if_disconnected()
+        assert self.writer is not None
+        assert self.reader is not None
 
-        await self.writer.send_command(*args)
+        command = b' '.join([arg.encode('ascii') for arg in args])
+
+        await self.writer.send_command(command)
         code, message = await self.reader.read_response()
 
-        if code is None:
+        if code == status.SMTP_NO_RESPONSE_CODE:
             raise SMTPResponseException(
-                -1, 'Malformed SMTP response: {}'.format(message))
+                code, 'Malformed SMTP response: {}'.format(message))
         elif code == status.SMTP_421_DOMAIN_UNAVAILABLE:
             # If the server is unavailable, shut down our connection
             await self.close()
@@ -278,7 +303,7 @@ class SMTP:
             hostname = self.source_address
 
         response = await self.execute_command('HELO', hostname)
-        self._server_state['last_helo_response'] = response
+        self._last_helo_response = response
 
         if response.code != status.SMTP_250_COMPLETED:
             raise SMTPHeloError(response.code, response.message)
@@ -297,13 +322,13 @@ class SMTP:
             hostname = self.source_address
 
         response = await self.execute_command('EHLO', hostname)
-        self._server_state['last_ehlo_response'] = response
+        self._last_ehlo_response = response
 
         if response.code == status.SMTP_250_COMPLETED:
             extensions, auth_methods = parse_esmtp_extensions(response.message)
-            self._server_state['esmtp_extensions'] = extensions
-            self._server_state['supported_auth_methods'] = auth_methods
-            self._server_state['supports_esmtp'] = True
+            self.esmtp_extensions = extensions
+            self.server_auth_methods = auth_methods
+            self.supports_esmtp = True
         else:
             raise SMTPHeloError(response.code, response.message)
 
@@ -402,8 +427,8 @@ class SMTP:
         await self.close()
         return response
 
-    async def mail(self, sender: str,
-                   options: Iterable[str] = None) -> SMTPResponse:
+    async def mail(
+            self, sender: str, options: Iterable[str] = None) -> SMTPResponse:
         """
         Sends the SMTP 'mail' command (begins mail transfer session)
 
@@ -428,8 +453,9 @@ class SMTP:
 
         return response
 
-    async def rcpt(self, recipient: str,
-                   options: Iterable[str] = None) -> SMTPResponse:
+    async def rcpt(
+            self, recipient: str,
+            options: Iterable[str] = None) -> SMTPResponse:
         """
         Sends the SMTP 'rcpt' command (specifies a recipient for the message)
 
@@ -461,9 +487,12 @@ class SMTP:
         if start_response.code != status.SMTP_354_START_INPUT:
             raise SMTPDataError(start_response.code, start_response.message)
 
+        assert self.writer is not None
+        assert self.reader is not None
+
         encoded_message = encode_message_string(message)
         self.writer.write(encoded_message)
-        await self.writer.drain()
+        await self.writer.drain()  # type: ignore
 
         code, message = await self.reader.read_response()
         if code != status.SMTP_250_COMPLETED:
@@ -471,9 +500,10 @@ class SMTP:
 
         return SMTPResponse(code, message)
 
-    async def sendmail(self, sender: str, recipients: Union[str, List[str]],
-                       message: str, mail_options: List[str] = None,
-                       rcpt_options: List[str] = None):
+    async def sendmail(
+            self, sender: str, recipients: Union[str, List[str]],
+            message: str, mail_options: List[str] = None,
+            rcpt_options: List[str] = None):
         """
         This command performs an entire mail transaction.
 
@@ -576,8 +606,10 @@ class SMTP:
 
         return formatted_errors, response.message
 
-    async def send_message(self, message, sender=None, recipients=None,
-                           mail_options=None, rcpt_options=None):
+    async def send_message(
+            self, message: email.message.Message, sender: str = None,
+            recipients: Union[str, List[str]] = None,
+            mail_options: List[str] = None, rcpt_options: List[str] = None):
         """
         Converts message to a bytestring and passes it to sendmail.
 
@@ -625,8 +657,9 @@ class SMTP:
         return result
 
     # ESMTP extensions #
-    async def _auth(self, auth_method: Callable[[str, str], Any],
-                    username: str, password: str) -> SMTPResponse:
+    async def _auth(
+            self, auth_method: AuthFunctionType, username: str,
+            password: str) -> SMTPResponse:
         """
         Try a single auth method. Used as part of login.
 
@@ -667,8 +700,13 @@ class SMTP:
 
         return response
 
-    async def starttls(self, server_hostname: str = None,
-                       **kwargs) -> SMTPResponse:
+    async def starttls(
+            self, server_hostname: str = None,
+            validate_certs: Union[bool, Default] = _default,
+            client_cert: Union[str, None, Default] = _default,
+            client_key: Union[str, None, Default] = _default,
+            tls_context: Union[SSLContext, None, Default] = _default) -> \
+            SMTPResponse:
         """
         Puts the connection to the SMTP server into TLS mode.
 
@@ -690,31 +728,28 @@ class SMTP:
          ValueError               An unsupported combination of args was
                                   provided.
         """
-        allowed_kwargs = (
-            'validate_certs', 'client_cert', 'client_key', 'tls_context',
-        )
-        for kwarg in kwargs.keys():
-            if kwarg not in allowed_kwargs:
-                raise TypeError(
-                    "connect() got an unexptected keyword argument "
-                    "'{}'".format(kwarg))
+        if not isinstance(validate_certs, Default):
+            self._validate_certs = validate_certs
+        if not isinstance(client_cert, Default):
+            self._client_cert = client_cert
+        if not isinstance(client_key, Default):
+            self._client_key = client_key
+        if not isinstance(tls_context, Default):
+            self._tls_context = tls_context
 
-        if kwargs.get('tls_context') and kwargs.get('client_cert'):
+        if self._tls_context and self._client_cert:
             raise ValueError(
-                'Either an SSLContext or a certificate/key must be provided')
-
-        self._connect_kwargs.update(kwargs)
+                'Either a TLS context or a certificate/key must be provided')
 
         if server_hostname is None:
-            server_hostname = self._connect_kwargs['hostname']
+            server_hostname = self.hostname
 
-        if self._connect_kwargs['tls_context']:
-            tls_context = self._connect_kwargs['tls_context']
+        if self._tls_context:
+            tls_context = self._tls_context
         else:
             tls_context = configure_tls_context(
-                validate_certs=self._connect_kwargs['validate_certs'],
-                client_cert=self._connect_kwargs['client_cert'],
-                client_key=self._connect_kwargs['client_key'])
+                validate_certs=self._validate_certs,
+                client_cert=self._client_cert, client_key=self._client_key)
 
         await self.ehlo_or_helo_if_needed()
 
@@ -724,6 +759,8 @@ class SMTP:
 
         response = await self.execute_command('STARTTLS')
 
+        assert self.writer is not None
+
         if response.code == status.SMTP_220_READY:
             self.protocol, self.transport = await self.writer.start_tls(
                 tls_context, server_hostname=server_hostname)
@@ -732,6 +769,6 @@ class SMTP:
             # The client MUST discard any knowledge obtained from
             # the server, such as the list of SMTP service extensions,
             # which was not obtained from the TLS negotiation itself.
-            self._server_state = {}
+            self._reset_server_state()
 
         return response
