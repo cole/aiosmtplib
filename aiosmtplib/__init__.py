@@ -1,15 +1,4 @@
-from .smtp import SMTP
-from .errors import (
-    SMTPException, SMTPServerDisconnected, SMTPConnectError,
-    SMTPRecipientsRefused, SMTPResponseException, SMTPNotSupported,
-    SMTPHeloError, SMTPDataError, SMTPAuthenticationError,
-    SMTPSenderRefused, SMTPRecipientRefused,
-)
+from .errors import *  # NOQA
+from .smtp import SMTP  # NOQA
 
-
-__all__ = (
-    'SMTP', 'SMTPException', 'SMTPServerDisconnected', 'SMTPConnectError',
-    'SMTPResponseException', 'SMTPNotSupported', 'SMTPHeloError',
-    'SMTPDataError', 'SMTPAuthenticationError', 'SMTPSenderRefused',
-    'SMTPRecipientRefused', 'SMTPRecipientsRefused',
-)
+__all__ = errors.__all__ + ('SMTP', )  # NOQA

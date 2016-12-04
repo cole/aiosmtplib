@@ -5,6 +5,7 @@ import socket
 import socketserver
 import ssl
 import threading
+import time
 from email.errors import HeaderParseError
 
 
@@ -23,6 +24,9 @@ class ThreadedPresetRequestHandler(socketserver.BaseRequestHandler):
             data = self.request.recv(4096)  # Naive recv won't work for data
             self.server.requests.append(data)
 
+            if self.server.delay_next_response > 0:
+                time.sleep(self.server.delay_next_response)
+
             response = self.server.next_response
             if response:
                 self.request.sendall(response)
@@ -30,17 +34,21 @@ class ThreadedPresetRequestHandler(socketserver.BaseRequestHandler):
                 break
 
             if data[:8] == b'STARTTLS':
-                self.starttls()
+                try:
+                    self.starttls()
+                except OSError:
+                    break
 
-        # Disconnect
-        self.request.sendall(self.server.goodbye)
         try:
+            # Disconnect
+            self.request.sendall(self.server.goodbye)
             self.request.shutdown(socket.SHUT_RDWR)
         except TypeError:
             self.request.shutdown()
-        except OSError:
+        except (OSError, BrokenPipeError):
             pass
-        self.request.close()
+        finally:
+            self.request.close()
 
 
 class ThreadedPresetServer(
@@ -65,6 +73,7 @@ class ThreadedPresetServer(
             self.goodbye = b'221 Goodbye then\n'
         self.responses = collections.deque()
         self.requests = []
+        self.delay_next_response = 0
 
     @property
     def next_response(self):

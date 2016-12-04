@@ -4,7 +4,9 @@ import ssl
 
 import pytest
 
-from aiosmtplib import SMTP, SMTPConnectError, SMTPServerDisconnected, status
+from aiosmtplib import (
+    SMTP, SMTPConnectError, SMTPServerDisconnected, SMTPTimeoutError, status,
+)
 
 
 @pytest.mark.asyncio(forbid_global_loop=True)
@@ -179,7 +181,7 @@ async def test_bad_connect_response_raises_error(preset_server, event_loop):
     with pytest.raises(SMTPConnectError):
         await preset_client.connect()
 
-    await preset_client.close()
+    preset_client.close()
 
 
 @pytest.mark.asyncio(forbid_global_loop=True)
@@ -194,3 +196,83 @@ async def test_421_closes_connection(preset_server, event_loop):
 
     assert response.code == status.SMTP_421_DOMAIN_UNAVAILABLE
     assert not preset_client.is_connected
+
+
+@pytest.mark.asyncio(forbid_global_loop=True)
+async def test_timeout_with_no_server(event_loop):
+    client = SMTP(hostname='127.0.0.1', port=111125, loop=event_loop)
+
+    with pytest.raises(SMTPTimeoutError):
+        await client.connect(timeout=0.0001)
+
+
+@pytest.mark.asyncio(forbid_global_loop=True)
+async def test_context_manager_exception_quits(preset_server, event_loop):
+    preset_client = SMTP(
+        hostname='127.0.0.1', port=preset_server.port, loop=event_loop)
+
+    with pytest.raises(ZeroDivisionError):
+        async with preset_client:
+            raise ZeroDivisionError
+
+    assert b'QUIT' in preset_server.requests[-1]
+
+
+@pytest.mark.asyncio(forbid_global_loop=True)
+async def test_context_manager_connect_exception_closes(
+        preset_server, event_loop):
+    preset_client = SMTP(
+        hostname='127.0.0.1', port=preset_server.port, loop=event_loop)
+
+    with pytest.raises(SMTPTimeoutError):
+        async with preset_client:
+            raise SMTPTimeoutError('Timed out!')
+
+    assert len(preset_server.requests) == 0
+
+
+@pytest.mark.asyncio(forbid_global_loop=True)
+async def test_starttls_timeout(preset_client):
+    async with preset_client:
+        preset_client.server.responses.append(b'\n'.join([
+            b'250-localhost, hello',
+            b'250-SIZE 100000',
+            b'250 STARTTLS',
+        ]))
+        await preset_client.ehlo()
+
+        preset_client.timeout = 0.1
+        preset_client.server.responses.append(b'220 ready for TLS')
+        preset_client.server.delay_next_response = 1
+
+        with pytest.raises(SMTPTimeoutError):
+            await preset_client.starttls(validate_certs=False)
+
+
+@pytest.mark.asyncio(forbid_global_loop=True)
+async def test_tls_get_transport_info(tls_preset_client):
+    async with tls_preset_client:
+        compression = tls_preset_client.get_transport_info('compression')
+        assert compression is None  # Compression is not used here
+
+        peername = tls_preset_client.get_transport_info('peername')
+        assert peername[0] == tls_preset_client.hostname
+        assert peername[1] == tls_preset_client.port
+
+        sock = tls_preset_client.get_transport_info('socket')
+        assert sock is not None
+
+        sockname = tls_preset_client.get_transport_info('sockname')
+        assert sockname is not None
+
+        cipher = tls_preset_client.get_transport_info('cipher')
+        assert cipher is not None
+
+        peercert = tls_preset_client.get_transport_info('peercert')
+        assert peercert is not None
+
+        sslcontext = tls_preset_client.get_transport_info('sslcontext')
+        assert sslcontext is not None
+
+        sslobj = tls_preset_client.get_transport_info('ssl_object')
+        assert sslobj is not None

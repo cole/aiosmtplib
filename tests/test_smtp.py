@@ -5,7 +5,7 @@ import pytest
 
 from aiosmtplib import (
     SMTPDataError, SMTPHeloError, SMTPRecipientsRefused, SMTPResponseException,
-    status,
+    SMTPTimeoutError, status,
 )
 
 
@@ -351,3 +351,13 @@ async def test_gibberish_raises_exception(preset_client):
         preset_client.server.responses.append(b'sdfjlfwqejflqw\n')
         with pytest.raises(SMTPResponseException):
             await preset_client.execute_command('NOOP')
+
+
+@pytest.mark.asyncio
+async def test_command_timeout_error(preset_client):
+    preset_client.timeout = 0.01
+    async with preset_client:
+        preset_client.server.responses.append(b'250 Ehlo is OK')
+        preset_client.server.delay_next_response = 1
+        with pytest.raises(SMTPTimeoutError):
+            await preset_client.ehlo()

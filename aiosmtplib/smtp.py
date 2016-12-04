@@ -21,6 +21,7 @@ from aiosmtplib.errors import (
     SMTPAuthenticationError, SMTPConnectError, SMTPDataError, SMTPException,
     SMTPHeloError, SMTPRecipientRefused, SMTPRecipientsRefused,
     SMTPResponseException, SMTPSenderRefused, SMTPServerDisconnected,
+    SMTPTimeoutError,
 )
 from aiosmtplib.response import SMTPResponse
 from aiosmtplib.streams import SMTPProtocol, SMTPStreamReader, SMTPStreamWriter
@@ -53,7 +54,7 @@ class SMTP:
     def __init__(
             self, hostname: str = 'localhost', port: int = None,
             source_address: str = None,
-            timeout: Union[int, float, None] = socket._GLOBAL_DEFAULT_TIMEOUT,
+            timeout: Union[int, float, None] = 60,
             loop: asyncio.AbstractEventLoop = None,
             use_tls: bool = False, validate_certs: bool = True,
             client_cert: str = None, client_key: str = None,
@@ -88,10 +89,14 @@ class SMTP:
         return self
 
     async def __aexit__(self, exc_type, exc, traceback) -> None:
-        try:
-            await self.quit()
-        except SMTPServerDisconnected:
-            await self.close()
+        connection_errors = (ConnectionError, SMTPTimeoutError)
+        if exc_type in connection_errors:
+            self.close()
+        else:
+            try:
+                await self.quit()
+            except connection_errors:
+                self.close()
 
     @property
     def supported_auth_methods(self) -> List[Tuple[str, AuthFunctionType]]:
@@ -194,26 +199,30 @@ class SMTP:
         self.reader = SMTPStreamReader(limit=MAX_LINE_LENGTH, loop=self.loop)
         self.protocol = SMTPProtocol(self.reader, loop=self.loop)
 
+        connect_future = self.loop.create_connection(
+            lambda: self.protocol, host=hostname, port=port,
+            ssl=tls_context)  # type: ignore
         try:
-            transport, _ = await self.loop.create_connection(  # type: ignore
-                lambda: self.protocol, host=hostname, port=port,
-                ssl=tls_context)
+            transport, protocol = await asyncio.wait_for(  # type: ignore
+                connect_future, timeout=self.timeout, loop=self.loop)
         except (ConnectionRefusedError, OSError) as err:
             raise SMTPConnectError(
                 'Error connecting to {host} on port {port}: {err}'.format(
                     host=hostname, port=port, err=err))
+        except asyncio.TimeoutError as exc:
+            raise SMTPTimeoutError(str(exc))
         else:
             self.writer = SMTPStreamWriter(
                 transport, self.protocol, self.reader, self.loop)
             self.transport = transport
 
-        code, message = await self.reader.read_response()
+        code, message = await self.reader.read_response(timeout=self.timeout)
         if code != status.SMTP_220_READY:
             raise SMTPConnectError(message)
 
         return SMTPResponse(code, message)
 
-    async def close(self) -> None:
+    def close(self) -> None:
         """
         Closes the connection.
         """
@@ -273,15 +282,15 @@ class SMTP:
 
         command = b' '.join([arg.encode('ascii') for arg in args])
 
-        await self.writer.send_command(command)
-        code, message = await self.reader.read_response()
+        await self.writer.send_command(command, timeout=self.timeout)
+        code, message = await self.reader.read_response(timeout=self.timeout)
 
         if code == status.SMTP_NO_RESPONSE_CODE:
             raise SMTPResponseException(
                 code, 'Malformed SMTP response: {}'.format(message))
         elif code == status.SMTP_421_DOMAIN_UNAVAILABLE:
             # If the server is unavailable, shut down our connection
-            await self.close()
+            self.close()
 
         return SMTPResponse(code, message)
 
@@ -423,7 +432,7 @@ class SMTP:
         if response.code != status.SMTP_221_CLOSING:
             raise SMTPResponseException(response.code, response.message)
 
-        await self.close()
+        self.close()
         return response
 
     async def mail(
@@ -491,9 +500,12 @@ class SMTP:
 
         encoded_message = encode_message_string(message)
         self.writer.write(encoded_message)
-        await self.writer.drain()  # type: ignore
 
-        code, message = await self.reader.read_response()
+        drain_future = self.writer.drain()  # type: ignore
+        await asyncio.wait_for(
+            drain_future, timeout=self.timeout, loop=self.loop)
+
+        code, message = await self.reader.read_response(timeout=self.timeout)
         if code != status.SMTP_250_COMPLETED:
             raise SMTPDataError(code, message)
 
@@ -762,7 +774,8 @@ class SMTP:
 
         if response.code == status.SMTP_220_READY:
             self.protocol, self.transport = await self.writer.start_tls(
-                tls_context, server_hostname=server_hostname)
+                tls_context, server_hostname=server_hostname,
+                timeout=self.timeout)
 
             # RFC 3207 part 4.2:
             # The client MUST discard any knowledge obtained from

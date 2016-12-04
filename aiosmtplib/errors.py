@@ -3,7 +3,15 @@ Exception classes.
 
 Unlinke in standard smtplib, these do not inherit from OSError.
 """
+from asyncio import TimeoutError
 from typing import List
+
+__all__ = (
+    'SMTPAuthenticationError', 'SMTPConnectError', 'SMTPDataError',
+    'SMTPException', 'SMTPHeloError', 'SMTPNotSupported',
+    'SMTPRecipientRefused', 'SMTPRecipientsRefused', 'SMTPResponseException',
+    'SMTPSenderRefused', 'SMTPServerDisconnected', 'SMTPTimeoutError',
+)
 
 
 class SMTPException(Exception):
@@ -26,6 +34,13 @@ class SMTPServerDisconnected(SMTPException, ConnectionError):
 class SMTPConnectError(SMTPException, ConnectionError):
     """
     An error occurred while connectiong to the SMTP server.
+    """
+    pass
+
+
+class SMTPTimeoutError(SMTPException, TimeoutError):
+    """
+    A timeout occurred while performing a network operation.
     """
     pass
 
