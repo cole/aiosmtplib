@@ -5,7 +5,8 @@ import ssl
 import pytest
 
 from aiosmtplib import (
-    SMTP, SMTPConnectError, SMTPServerDisconnected, SMTPTimeoutError, status,
+    SMTP, SMTPConnectError, SMTPServerDisconnected, SMTPStatus,
+    SMTPTimeoutError,
 )
 
 
@@ -37,7 +38,7 @@ async def test_tls_connection(tls_preset_client):
 async def test_quit_then_connect_ok_with_smtpd(smtpd_client):
     async with smtpd_client:
         response = await smtpd_client.quit()
-        assert response.code == status.SMTP_221_CLOSING
+        assert response.code == SMTPStatus.closing
 
         # Next command should fail
         with pytest.raises(SMTPServerDisconnected):
@@ -47,7 +48,7 @@ async def test_quit_then_connect_ok_with_smtpd(smtpd_client):
 
         # after reconnect, it should work again
         response = await smtpd_client.noop()
-        assert response.code == status.SMTP_250_COMPLETED
+        assert response.code == SMTPStatus.completed
 
 
 @pytest.mark.asyncio(forbid_global_loop=True)
@@ -98,7 +99,7 @@ async def test_starttls(preset_client):
         ]))
         preset_client.server.responses.append(b'220 ready for TLS')
         response = await preset_client.starttls(validate_certs=False)
-        assert response.code == status.SMTP_220_READY
+        assert response.code == SMTPStatus.ready
 
         # Make sure our state has been cleared
         assert not preset_client.esmtp_extensions
@@ -111,7 +112,7 @@ async def test_starttls(preset_client):
 
         preset_client.server.responses.append(b'250 all good')
         response = await preset_client.ehlo()
-        assert response.code == status.SMTP_250_COMPLETED
+        assert response.code == SMTPStatus.completed
 
 
 def test_mock_server_starttls_with_stmplib(preset_server):
@@ -128,18 +129,18 @@ def test_mock_server_starttls_with_stmplib(preset_server):
     ]))
 
     code, message = smtp.ehlo()
-    assert code == status.SMTP_250_COMPLETED
+    assert code == SMTPStatus.completed
 
     preset_server.responses.append(b'220 ready for TLS')
     code, message = smtp.starttls()
-    assert code == status.SMTP_220_READY
+    assert code == SMTPStatus.ready
 
     # make sure our connection was actually upgraded
     assert isinstance(smtp.sock, ssl.SSLSocket)
 
     preset_server.responses.append(b'250 all good')
     code, message = smtp.ehlo()
-    assert code == 250
+    assert code == SMTPStatus.completed
 
 
 def test_tls_context_and_cert_raises():
@@ -153,7 +154,7 @@ async def test_smtp_as_context_manager(smtpd_client):
         assert smtpd_client.is_connected
 
         response = await smtpd_client.noop()
-        assert response.code == status.SMTP_250_COMPLETED
+        assert response.code == SMTPStatus.completed
 
     assert not smtpd_client.is_connected
 
@@ -164,7 +165,7 @@ async def test_smtp_context_manager_disconnect_handling(smtpd_client):
         assert smtpd_client.is_connected
 
         response = await smtpd_client.noop()
-        assert response.code == status.SMTP_250_COMPLETED
+        assert response.code == SMTPStatus.completed
 
         smtpd_client.server.stop()
         await smtpd_client.quit()
@@ -194,7 +195,7 @@ async def test_421_closes_connection(preset_server, event_loop):
         b'421 Please come back in 204232430 seconds.\n')
     response = await preset_client.execute_command('NOOP')
 
-    assert response.code == status.SMTP_421_DOMAIN_UNAVAILABLE
+    assert response.code == SMTPStatus.domain_unavailable
     assert not preset_client.is_connected
 
 

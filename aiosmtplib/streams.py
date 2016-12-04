@@ -3,10 +3,11 @@ from asyncio.sslproto import SSLProtocol, _SSLProtocolTransport  # type: ignore
 from ssl import SSLContext
 from typing import Awaitable, Tuple, Union
 
-from aiosmtplib import status
 from aiosmtplib.errors import (
     SMTPResponseException, SMTPServerDisconnected, SMTPTimeoutError,
 )
+from aiosmtplib.response import SMTPResponse
+from aiosmtplib.status import SMTPStatus
 
 
 class SMTPProtocol(asyncio.StreamReaderProtocol):
@@ -52,7 +53,7 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
 class SMTPStreamReader(asyncio.StreamReader):
 
     async def read_response(
-            self, timeout: Union[int, float, None] = None) -> Tuple[int, str]:
+            self, timeout: Union[int, float, None] = None) -> SMTPResponse:
         """
         Get a status reponse from the server.
 
@@ -66,7 +67,7 @@ class SMTPStreamReader(asyncio.StreamReader):
         Raises SMTPResponseException for codes > 500.
         """
         loop = self._loop  # type: ignore
-        code = status.SMTP_NO_RESPONSE_CODE
+        code = SMTPStatus.invalid_response.value
         response_lines = []
 
         while True:
@@ -94,10 +95,10 @@ class SMTPStreamReader(asyncio.StreamReader):
 
         full_message = '\n'.join(response_lines)
 
-        if code == status.SMTP_NO_RESPONSE_CODE and self.at_eof():
+        if code == SMTPStatus.invalid_response and self.at_eof():
             raise SMTPServerDisconnected('Server disconnected unexpectedly')
 
-        return code, full_message
+        return SMTPResponse(code, full_message)
 
 
 class SMTPStreamWriter(asyncio.StreamWriter):

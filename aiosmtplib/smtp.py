@@ -13,9 +13,8 @@ import io
 import socket
 from enum import Enum
 from ssl import SSLContext
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Union  # NOQA
+from typing import Any, Awaitable, Dict, Iterable, List, Optional, Tuple, Union  # NOQA
 
-from aiosmtplib import status
 from aiosmtplib.auth import AUTH_METHODS, AuthFunctionType
 from aiosmtplib.errors import (
     SMTPAuthenticationError, SMTPConnectError, SMTPDataError, SMTPException,
@@ -24,6 +23,7 @@ from aiosmtplib.errors import (
     SMTPTimeoutError,
 )
 from aiosmtplib.response import SMTPResponse
+from aiosmtplib.status import SMTPStatus
 from aiosmtplib.streams import SMTPProtocol, SMTPStreamReader, SMTPStreamWriter
 from aiosmtplib.textutils import (
     encode_message_string, extract_recipients, extract_sender,
@@ -216,11 +216,11 @@ class SMTP:
                 transport, self.protocol, self.reader, self.loop)
             self.transport = transport
 
-        code, message = await self.reader.read_response(timeout=self.timeout)
-        if code != status.SMTP_220_READY:
-            raise SMTPConnectError(message)
+        response = await self.reader.read_response(timeout=self.timeout)
+        if response.code != SMTPStatus.ready:
+            raise SMTPConnectError(response.message)
 
-        return SMTPResponse(code, message)
+        return response
 
     def close(self) -> None:
         """
@@ -283,16 +283,17 @@ class SMTP:
         command = b' '.join([arg.encode('ascii') for arg in args])
 
         await self.writer.send_command(command, timeout=self.timeout)
-        code, message = await self.reader.read_response(timeout=self.timeout)
+        response = await self.reader.read_response(timeout=self.timeout)
 
-        if code == status.SMTP_NO_RESPONSE_CODE:
+        if response.code == SMTPStatus.invalid_response:
             raise SMTPResponseException(
-                code, 'Malformed SMTP response: {}'.format(message))
-        elif code == status.SMTP_421_DOMAIN_UNAVAILABLE:
+                response.code,
+                'Malformed SMTP response: {}'.format(response.message))
+        elif response.code == SMTPStatus.domain_unavailable:
             # If the server is unavailable, shut down our connection
             self.close()
 
-        return SMTPResponse(code, message)
+        return response
 
     async def helo(self, hostname: str = None) -> SMTPResponse:
         """
@@ -313,7 +314,7 @@ class SMTP:
         response = await self.execute_command('HELO', hostname)
         self._last_helo_response = response
 
-        if response.code != status.SMTP_250_COMPLETED:
+        if response.code != SMTPStatus.completed:
             raise SMTPHeloError(response.code, response.message)
 
         return response
@@ -332,7 +333,7 @@ class SMTP:
         response = await self.execute_command('EHLO', hostname)
         self._last_ehlo_response = response
 
-        if response.code == status.SMTP_250_COMPLETED:
+        if response.code == SMTPStatus.completed:
             extensions, auth_methods = parse_esmtp_extensions(response.message)
             self.esmtp_extensions = extensions
             self.server_auth_methods = auth_methods
@@ -366,7 +367,11 @@ class SMTP:
         Returns help text.
         """
         response = await self.execute_command('HELP')
-        if response.code not in status.HELP_SUCCESS_STATUSES:
+        success_codes = (
+            SMTPStatus.system_status_ok, SMTPStatus.help_message,
+            SMTPStatus.completed,
+        )
+        if response.code not in success_codes:
             raise SMTPResponseException(response.code, response.message)
 
         return response.message
@@ -378,7 +383,7 @@ class SMTP:
         Returns an SMTPResponse namedtuple.
         """
         response = await self.execute_command('RSET')
-        if response.code != status.SMTP_250_COMPLETED:
+        if response.code != SMTPStatus.completed:
             raise SMTPResponseException(response.code, response.message)
 
         return response
@@ -390,7 +395,7 @@ class SMTP:
         Returns an SMTPResponse namedtuple.
         """
         response = await self.execute_command('NOOP')
-        if response.code != status.SMTP_250_COMPLETED:
+        if response.code != SMTPStatus.completed:
             raise SMTPResponseException(response.code, response.message)
 
         return response
@@ -403,7 +408,13 @@ class SMTP:
         """
         parsed_address = email.utils.parseaddr(address)[1] or address
         response = await self.execute_command('VRFY', parsed_address)
-        if response.code not in status.VRFY_SUCCESS_STATUSES:
+
+        success_codes = (
+            SMTPStatus.completed, SMTPStatus.will_forward,
+            SMTPStatus.cannot_vrfy,
+        )
+
+        if response.code not in success_codes:
             raise SMTPResponseException(response.code, response.message)
 
         return response
@@ -417,7 +428,7 @@ class SMTP:
         parsed_address = email.utils.parseaddr(address)[1] or address
         response = await self.execute_command('EXPN', parsed_address)
 
-        if response.code != status.SMTP_250_COMPLETED:
+        if response.code != SMTPStatus.completed:
             raise SMTPResponseException(response.code, response.message)
 
         return response
@@ -429,7 +440,7 @@ class SMTP:
         Returns an SMTPResponse namedtuple.
         """
         response = await self.execute_command('QUIT')
-        if response.code != status.SMTP_221_CLOSING:
+        if response.code != SMTPStatus.closing:
             raise SMTPResponseException(response.code, response.message)
 
         self.close()
@@ -450,7 +461,7 @@ class SMTP:
 
         response = await self.execute_command('MAIL', from_string, *options)
 
-        if response.code != status.SMTP_250_COMPLETED:
+        if response.code != SMTPStatus.completed:
             try:
                 await self.rset()
             except SMTPServerDisconnected:
@@ -475,7 +486,9 @@ class SMTP:
 
         response = await self.execute_command('RCPT', to, *options)
 
-        if response.code not in status.RCPT_SUCCESS_STATUSES:
+        success_codes = (SMTPStatus.completed, SMTPStatus.will_forward)
+
+        if response.code not in success_codes:
             raise SMTPRecipientRefused(
                 response.code, response.message, recipient)
 
@@ -492,7 +505,7 @@ class SMTP:
         """
         start_response = await self.execute_command('DATA')
 
-        if start_response.code != status.SMTP_354_START_INPUT:
+        if start_response.code != SMTPStatus.start_input:
             raise SMTPDataError(start_response.code, start_response.message)
 
         assert self.writer is not None
@@ -505,11 +518,11 @@ class SMTP:
         await asyncio.wait_for(
             drain_future, timeout=self.timeout, loop=self.loop)
 
-        code, message = await self.reader.read_response(timeout=self.timeout)
-        if code != status.SMTP_250_COMPLETED:
-            raise SMTPDataError(code, message)
+        response = await self.reader.read_response(timeout=self.timeout)
+        if response.code != SMTPStatus.completed:
+            raise SMTPDataError(response.code, response.message)
 
-        return SMTPResponse(code, message)
+        return response
 
     async def sendmail(
             self, sender: str, recipients: Union[str, List[str]],
@@ -679,7 +692,7 @@ class SMTP:
         request_command, auth_callback = auth_method(username, password)
         response = await self.execute_command('AUTH', request_command)
 
-        if response.code == status.SMTP_334_AUTH_CONTINUE and auth_callback:
+        if response.code == SMTPStatus.auth_continue and auth_callback:
             next_command = auth_callback(response.code, response.message)
             response = await self.execute_command(next_command)
 
@@ -701,7 +714,7 @@ class SMTP:
         for auth_name, auth_method in self.supported_auth_methods:
             response = await self._auth(auth_method, username, password)
 
-            if response.code == status.SMTP_235_AUTH_SUCCESSFUL:
+            if response.code == SMTPStatus.auth_successful:
                 break
         else:
             if response is None:
@@ -772,7 +785,7 @@ class SMTP:
 
         assert self.writer is not None
 
-        if response.code == status.SMTP_220_READY:
+        if response.code == SMTPStatus.ready:
             self.protocol, self.transport = await self.writer.start_tls(
                 tls_context, server_hostname=server_hostname,
                 timeout=self.timeout)

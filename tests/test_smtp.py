@@ -5,7 +5,7 @@ import pytest
 
 from aiosmtplib import (
     SMTPDataError, SMTPHeloError, SMTPRecipientsRefused, SMTPResponseException,
-    SMTPTimeoutError, status,
+    SMTPStatus, SMTPTimeoutError,
 )
 
 
@@ -14,7 +14,7 @@ async def test_helo_ok(smtpd_client):
     async with smtpd_client:
         response = await smtpd_client.helo()
 
-        assert response.code == status.SMTP_250_COMPLETED
+        assert response.code == SMTPStatus.completed
 
 
 @pytest.mark.asyncio
@@ -30,7 +30,7 @@ async def test_ehlo_ok(smtpd_client):
     async with smtpd_client:
         response = await smtpd_client.ehlo()
 
-        assert response.code == status.SMTP_250_COMPLETED
+        assert response.code == SMTPStatus.completed
 
 
 @pytest.mark.asyncio
@@ -81,7 +81,7 @@ async def test_rset_ok(smtpd_client):
     async with smtpd_client:
         response = await smtpd_client.rset()
 
-        assert response.code == status.SMTP_250_COMPLETED
+        assert response.code == SMTPStatus.completed
         assert response.message == 'OK'
 
 
@@ -98,7 +98,7 @@ async def test_noop_ok(smtpd_client):
     async with smtpd_client:
         response = await smtpd_client.noop()
 
-        assert response.code == status.SMTP_250_COMPLETED
+        assert response.code == SMTPStatus.completed
         assert response.message == 'OK'
 
 
@@ -116,7 +116,7 @@ async def test_vrfy_ok(smtpd_client):
     async with smtpd_client:
         response = await smtpd_client.vrfy(nice_address)
 
-        assert response.code == status.SMTP_252_CANNOT_VRFY
+        assert response.code == SMTPStatus.cannot_vrfy
 
 
 @pytest.mark.asyncio
@@ -139,7 +139,7 @@ async def test_expn_ok(preset_client):
             b'250 Alice Smith <asmith@example.com>',
         ]))
         response = await preset_client.expn('listserv-members')
-        assert response.code == status.SMTP_250_COMPLETED
+        assert response.code == SMTPStatus.completed
 
 
 @pytest.mark.asyncio
@@ -159,7 +159,7 @@ async def test_rset_after_mail_error(preset_client):
     async with preset_client:
         preset_client.server.responses.append(b'250 Hello there')
         response = await preset_client.ehlo()
-        assert response.code == status.SMTP_250_COMPLETED
+        assert response.code == SMTPStatus.completed
 
         preset_client.server.responses.append(b'501 bad address')
         preset_client.server.responses.append(b'250 ok')
@@ -200,7 +200,7 @@ async def test_supported_methods(smtpd_client):
     async with smtpd_client:
         response = await smtpd_client.ehlo()
 
-        assert response.code == status.SMTP_250_COMPLETED
+        assert response.code == SMTPStatus.completed
         assert smtpd_client.supports_extension('size')
         assert smtpd_client.supports_extension('help')
         assert not smtpd_client.supports_extension('bogus')
@@ -212,7 +212,7 @@ async def test_mail_ok(smtpd_client):
         await smtpd_client.ehlo()
         response = await smtpd_client.mail('j@example.com')
 
-        assert response.code == status.SMTP_250_COMPLETED
+        assert response.code == SMTPStatus.completed
         assert response.message == 'OK'
 
 
@@ -240,7 +240,7 @@ async def test_rcpt_ok(smtpd_client):
 
         response = await smtpd_client.rcpt('test@example.com')
 
-        assert response.code == status.SMTP_250_COMPLETED
+        assert response.code == SMTPStatus.completed
         assert response.message == 'OK'
 
 
@@ -260,7 +260,7 @@ async def test_data_ok(smtpd_client):
         await smtpd_client.rcpt('test@example.com')
         response = await smtpd_client.data(b'HELLO WORLD')
 
-        assert response.code == status.SMTP_250_COMPLETED
+        assert response.code == SMTPStatus.completed
         assert response.message == 'OK'
 
 

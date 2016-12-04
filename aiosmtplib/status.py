@@ -1,39 +1,35 @@
 """
 SMTP status codes, as constants for code readability.
 """
-SMTP_211_SYSTEM_STATUS_OK = 211
-SMTP_214_HELP_MESSAGE = 214
-SMTP_220_READY = 220
-SMTP_221_CLOSING = 221
-SMTP_235_AUTH_SUCCESSFUL = 235
-SMTP_250_COMPLETED = 250
-SMTP_251_WILL_FORWARD = 251
-SMTP_252_CANNOT_VRFY = 252
-SMTP_334_AUTH_CONTINUE = 334
-SMTP_354_START_INPUT = 354
-SMTP_421_DOMAIN_UNAVAILABLE = 421
-SMTP_450_MAILBOX_UNAVAILABLE = 450
-SMTP_451_ERROR_PROCESSING = 451
-SMTP_452_INSUFFICIENT_STORAGE = 452
-SMTP_500_UNRECOGNIZED_COMMAND = 500
-SMTP_501_UNRECOGNIZED_PARAMETERS = 501
-SMTP_502_COMMAND_NOT_IMPLEMENTED = 502
-SMTP_503_BAD_COMMAND_SEQUENCE = 503
-SMTP_504_PARAMETER_NOT_IMPLEMENTED = 504
-SMTP_521_DOMAIN_DOES_NOT_ACCEPT_MAIL = 521
-SMTP_530_ACCESS_DENIED = 530  # Sendmail specific
-SMTP_550_MAILBOX_DOES_NOT_EXIST = 550
-SMTP_551_USER_NOT_LOCAL = 551
-SMTP_552_STORAGE_EXCEEDED = 552
-SMTP_553_MAILBOX_NAME_INVALID = 553
-SMTP_554_TRANSACTION_FAILED = 554
-SMTP_555_SYNTAX_ERROR = 555
+import enum
 
-SMTP_NO_RESPONSE_CODE = -1
-RCPT_SUCCESS_STATUSES = (SMTP_250_COMPLETED, SMTP_251_WILL_FORWARD)
-HELP_SUCCESS_STATUSES = (
-    SMTP_211_SYSTEM_STATUS_OK, SMTP_214_HELP_MESSAGE, SMTP_250_COMPLETED,
-)
-VRFY_SUCCESS_STATUSES = (
-    SMTP_250_COMPLETED, SMTP_251_WILL_FORWARD, SMTP_252_CANNOT_VRFY,
-)
+
+class SMTPStatus(enum.IntEnum):
+    invalid_response = -1
+    system_status_ok = 211
+    help_message = 214
+    ready = 220
+    closing = 221
+    auth_successful = 235
+    completed = 250
+    will_forward = 251
+    cannot_vrfy = 252
+    auth_continue = 334
+    start_input = 354
+    domain_unavailable = 421
+    mailbox_unavailable = 450
+    error_processing = 451
+    insufficient_storage = 452
+    unrecognized_command = 500
+    unrecognized_parameters = 501
+    command_not_implemented = 502
+    bad_command_sequence = 503
+    parameter_not_implemented = 504
+    domain_does_not_accept_mail = 521
+    access_denied = 530  # Sendmail specific
+    mailbox_does_not_exist = 550
+    user_not_local = 551
+    storage_exceeded = 552
+    mailbox_name_invalid = 553
+    transaction_failed = 554
+    syntax_error = 555
