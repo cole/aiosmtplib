@@ -59,18 +59,17 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
         """
         assert not self._over_ssl, 'Already using TLS'
 
-        plain_transport = self._stream_reader._transport  # type: ignore
-        loop = self._loop  # type: ignore
+        plain_transport = self.transport
 
         tls_protocol = SSLProtocol(
-            loop, self, context, waiter, server_side=False,
+            self.loop, self, context, waiter, server_side=False,
             server_hostname=server_hostname)
 
         # This assignment is required, even though it's done again in
         # connection_made
         app_transport = tls_protocol._app_transport  # type: ignore
-        self._stream_reader._transport._protocol = tls_protocol  # type: ignore
-        self._stream_reader._transport = app_transport  # type: ignore
+        self.reader._transport._protocol = tls_protocol  # type: ignore
+        self.reader._transport = app_transport  # type: ignore
 
         tls_protocol.connection_made(plain_transport)
         self._over_ssl = True
