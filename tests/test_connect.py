@@ -5,8 +5,8 @@ import ssl
 import pytest
 
 from aiosmtplib import (
-    SMTP, SMTPConnectError, SMTPServerDisconnected, SMTPStatus,
-    SMTPTimeoutError,
+    SMTP, SMTPConnectError, SMTPResponseException, SMTPServerDisconnected,
+    SMTPStatus, SMTPTimeoutError,
 )
 
 
@@ -193,9 +193,10 @@ async def test_421_closes_connection(preset_server, event_loop):
     await preset_client.connect()
     preset_server.responses.append(
         b'421 Please come back in 204232430 seconds.\n')
-    response = await preset_client.execute_command('NOOP')
 
-    assert response.code == SMTPStatus.domain_unavailable
+    with pytest.raises(SMTPResponseException):
+        await preset_client.execute_command('NOOP')
+
     assert not preset_client.is_connected
 
 
