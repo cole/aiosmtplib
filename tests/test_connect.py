@@ -202,7 +202,7 @@ async def test_421_closes_connection(preset_server, event_loop):
 
 @pytest.mark.asyncio(forbid_global_loop=True)
 async def test_timeout_with_no_server(event_loop):
-    client = SMTP(hostname='127.0.0.1', port=111125, loop=event_loop)
+    client = SMTP(hostname='127.0.0.1', port=65534, loop=event_loop)
 
     with pytest.raises(SMTPTimeoutError):
         await client.connect(timeout=0.0001)
