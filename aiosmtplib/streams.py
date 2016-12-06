@@ -12,6 +12,10 @@ from aiosmtplib.status import SMTPStatus
 
 MAX_LINE_LENGTH = 8192
 
+__all__ = (
+    'SMTPProtocol', 'SMTPStreamReader', 'SMTPStreamWriter', 'open_connection',
+)
+
 
 class SMTPProtocol(asyncio.StreamReaderProtocol):
 
@@ -86,29 +90,32 @@ class SMTPStreamReader(asyncio.StreamReader):
 
         super().__init__(limit=limit, loop=loop)
 
-    async def read_response(self) -> SMTPResponse:
+    async def read_response(
+            self, timeout: Union[int, float, None] = None) -> SMTPResponse:
         """
         Get a status reponse from the server.
 
-        Returns a tuple consisting of:
+        Returns an SMTPResponse namedtuple consisting of:
 
           - server response code (e.g. 250, or such, if all goes well)
 
           - server response string corresponding to response code (multiline
             responses are converted to a single, multiline string).
-
-        Raises SMTPResponseException for codes > 500.
         """
         code = None
         response_lines = []
 
         while True:
+            read_coro = self.readline()
             try:
-                line = await self.readline()  # type: bytes
+                line = await asyncio.wait_for(
+                    read_coro, timeout, loop=self.loop)  # type: bytes
             except asyncio.LimitOverrunError:
                 raise SMTPResponseException(500, 'Line too long.')
             except ConnectionError as exc:
                 raise SMTPServerDisconnected(str(exc))
+            except asyncio.TimeoutError as exc:
+                raise SMTPTimeoutError(str(exc))
 
             try:
                 code = int(line[:3])
@@ -141,16 +148,21 @@ class SMTPStreamWriter(asyncio.StreamWriter):
         self.protocol = protocol
         super().__init__(transport, protocol, reader, loop)
 
-    async def send_command(self, command: bytes) -> None:
+    async def write_and_drain(
+            self, data: bytes,
+            timeout: Union[int, float, None] = None) -> None:
         """
         Format a command and send it to the server.
         """
-        self.write(command + b'\r\n')
+        self.write(data)
 
+        drain_coro = self.drain()  # type: ignore
         try:
-            await self.drain()  # type: ignore
+            asyncio.wait_for(drain_coro, timeout, loop=self.loop)
         except ConnectionError as exc:
             raise SMTPServerDisconnected(str(exc))
+        except asyncio.TimeoutError as exc:
+            raise SMTPTimeoutError(str(exc))
 
     async def execute_command(
             self, *args: str,
@@ -160,52 +172,20 @@ class SMTPStreamWriter(asyncio.StreamWriter):
         """
         assert self.reader is not None
 
-        command = b' '.join([arg.encode('ascii') for arg in args])
+        command = b' '.join([arg.encode('ascii') for arg in args]) + b'\r\n'
 
-        write_coroutine = self.send_command(command)
-        read_coroutine = self.reader.read_response()
-        waiter = asyncio.gather(
-            write_coroutine, read_coroutine, loop=self.loop)
+        await self.write_and_drain(command, timeout=timeout)
+        response = await self.reader.read_response(timeout=timeout)
 
-        try:
-            results = await asyncio.wait_for(waiter, timeout, loop=self.loop)
-        except asyncio.TimeoutError as exc:
-            raise SMTPTimeoutError(str(exc))
-
-        return results[1]
-
-    async def queue_command(
-            self, *args: str,
-            timeout: Union[int, float, None] = None) -> \
-            Awaitable[SMTPResponse]:
-        """
-        Send the commands given and return a future, the result of which
-        will be the reply message.
-        Whereas execute command waits for the response, queue_command does not
-        for pipelining support.
-        """
-        assert self.reader is not None
-
-        command = b' '.join([arg.encode('ascii') for arg in args])
-
-        write_coroutine = self.send_command(command)
-        read_coroutine = self.reader.read_response()
-
-        try:
-            await asyncio.wait_for(write_coroutine, timeout, loop=self.loop)
-        except asyncio.TimeoutError as exc:
-            raise SMTPTimeoutError(str(exc))
-
-        return asyncio.ensure_future(read_coroutine, loop=self.loop)
+        return response
 
     async def start_tls(
             self, context: SSLContext, server_hostname: str = None,
             timeout: Union[int, float, None] = None) -> \
             Tuple[SSLProtocol, asyncio.BaseTransport]:
-        drain_future = self.drain()  # type: ignore
+        drain_coro = self.drain()  # type: ignore
         try:
-            await asyncio.wait_for(
-                drain_future, timeout=timeout, loop=self.loop)
+            await asyncio.wait_for(drain_coro, timeout=timeout, loop=self.loop)
         except ConnectionError as exc:
             raise SMTPServerDisconnected(str(exc))
         except asyncio.TimeoutError as exc:

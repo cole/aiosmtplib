@@ -3,6 +3,8 @@ SMTP status codes, as constants for code readability.
 """
 import enum
 
+__all__ = ('SMTPStatus',)
+
 
 class SMTPStatus(enum.IntEnum):
     invalid_response = -1

@@ -1,5 +1,7 @@
 import collections
 
+__all__ = ('SMTPResponse',)
+
 ResponseBase = collections.namedtuple('SMTPResponse', ['code', 'message'])
 
 

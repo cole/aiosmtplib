@@ -36,6 +36,8 @@ from aiosmtplib.tls import configure_tls_context
 SMTP_PORT = 25
 SMTP_TLS_PORT = 465
 
+__all__ = ('SMTP',)
+
 
 class Default(Enum):
     """
@@ -145,28 +147,26 @@ class SMTP:
         """
         Open asyncio streams to the server and check response status.
         """
-        # TODO: replace isinstance checks with identity checks
-        # when mypy will handle that
         if hostname is not None:
             self.hostname = hostname
         if port is not None:
             self.port = port
         if loop is not None:
             self.loop = loop
-        if not isinstance(timeout, Default):
-            self.timeout = timeout
-        if not isinstance(use_tls, Default):
-            self.use_tls = use_tls
-        if not isinstance(source_address, Default):
-            self._source_address = source_address
-        if not isinstance(validate_certs, Default):
-            self._validate_certs = validate_certs
-        if not isinstance(client_cert, Default):
-            self._client_cert = client_cert
-        if not isinstance(client_key, Default):
-            self._client_key = client_key
-        if not isinstance(tls_context, Default):
-            self._tls_context = tls_context
+        if timeout is not _default:
+            self.timeout = timeout  # type: ignore
+        if use_tls is not _default:
+            self.use_tls = use_tls  # type: ignore
+        if source_address is not _default:
+            self._source_address = source_address  # type: ignore
+        if validate_certs is not _default:
+            self._validate_certs = validate_certs  # type: ignore
+        if client_cert is not _default:
+            self._client_cert = client_cert  # type: ignore
+        if client_key is not _default:
+            self._client_key = client_key  # type: ignore
+        if tls_context is not _default:
+            self._tls_context = tls_context  # type: ignore
 
         if self._tls_context and self._client_cert:
             raise ValueError(
@@ -273,10 +273,11 @@ class SMTP:
         self._raise_error_if_disconnected()
         assert self.writer is not None
 
-        if isinstance(timeout, Default):
-            timeout = self.timeout
+        if timeout is _default:
+            timeout = self.timeout  # type: ignore
 
-        response = await self.writer.execute_command(*args, timeout=timeout)
+        response = await self.writer.execute_command(  # type: ignore
+            *args, timeout=timeout)
         if response.code == SMTPStatus.domain_unavailable:
             self.close()
             raise SMTPResponseException(response.code, response.message)
@@ -524,10 +525,11 @@ class SMTP:
 
         Returns an SMTPResponse tuple (the last one, after all data is sent.)
         """
-        if isinstance(timeout, Default):
-            timeout = self.timeout
+        if timeout is _default:
+            timeout = self.timeout  # type: ignore
 
-        start_response = await self.execute_command('DATA', timeout=timeout)
+        start_response = await self.execute_command(  # type:  ignore
+            'DATA', timeout=timeout)
 
         if start_response.code != SMTPStatus.start_input:
             raise SMTPDataError(start_response.code, start_response.message)
@@ -536,16 +538,11 @@ class SMTP:
         assert self.reader is not None
 
         encoded_message = encode_message_string(message)
-        self.writer.write(encoded_message)
+        await self.writer.write_and_drain(   # type: ignore
+            encoded_message, timeout=timeout)
 
-        write_coroutine = self.writer.drain()  # type: ignore
-        read_coroutine = self.reader.read_response()
-        # Read and write with one timeout
-        waiter = asyncio.gather(
-            write_coroutine, read_coroutine, loop=self.loop)
-        results = await asyncio.wait_for(waiter, timeout, loop=self.loop)
-        response = results[1]
-
+        response = await self.reader.read_response(  # type: ignore
+            timeout=timeout)
         if response.code != SMTPStatus.completed:
             raise SMTPDataError(response.code, response.message)
 
@@ -791,16 +788,16 @@ class SMTP:
          ValueError               An unsupported combination of args was
                                   provided.
         """
-        if isinstance(timeout, Default):
+        if timeout is _default:
             timeout = self.timeout
-        if not isinstance(validate_certs, Default):
-            self._validate_certs = validate_certs
-        if not isinstance(client_cert, Default):
-            self._client_cert = client_cert
-        if not isinstance(client_key, Default):
-            self._client_key = client_key
-        if not isinstance(tls_context, Default):
-            self._tls_context = tls_context
+        if validate_certs is not _default:
+            self._validate_certs = validate_certs  # type: ignore
+        if client_cert is not _default:
+            self._client_cert = client_cert  # type: ignore
+        if client_key is not _default:
+            self._client_key = client_key  # type: ignore
+        if tls_context is not _default:
+            self._tls_context = tls_context  # type: ignore
 
         if self._tls_context and self._client_cert:
             raise ValueError(
@@ -827,8 +824,11 @@ class SMTP:
         assert self.writer is not None
 
         if response.code == SMTPStatus.ready:
-            self.protocol, self.transport = await self.writer.start_tls(
-                tls_context, server_hostname=server_hostname, timeout=timeout)
+            protocol, transport = await self.writer.start_tls(  # type: ignore
+                tls_context, server_hostname=server_hostname,
+                timeout=timeout)
+
+            self.protocol, self.transport = protocol, transport
 
             # RFC 3207 part 4.2:
             # The client MUST discard any knowledge obtained from

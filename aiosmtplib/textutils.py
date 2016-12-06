@@ -8,6 +8,11 @@ PERIOD_REGEX = re.compile(b'(?m)^\.')
 OLDSTYLE_AUTH_REGEX = re.compile(r'auth=(?P<auth>.*)', flags=re.I)
 EXTENSIONS_REGEX = re.compile(r'(?P<ext>[A-Za-z0-9][A-Za-z0-9\-]*) ?')
 
+__all__ = (
+    'encode_message_string', 'extract_recipients', 'extract_sender',
+    'parse_esmtp_extensions', 'quote_address',
+)
+
 
 def quote_address(address: str) -> str:
     """
