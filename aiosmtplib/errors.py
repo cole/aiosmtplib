@@ -1,7 +1,8 @@
 """
-Exception classes.
+aiosmtplib.errors
+=================
 
-Unlinke in standard smtplib, these do not inherit from OSError.
+Exception classes.
 """
 from asyncio import TimeoutError
 from typing import List

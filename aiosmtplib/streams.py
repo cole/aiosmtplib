@@ -1,3 +1,9 @@
+"""
+aiosmtplib.streams
+==================
+
+Lower level SMTP protocol handling, and STARTTLS support.
+"""
 import asyncio
 from asyncio.sslproto import SSLProtocol, _SSLProtocolTransport  # type: ignore
 from ssl import SSLContext

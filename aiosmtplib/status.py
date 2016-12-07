@@ -1,5 +1,8 @@
 """
-SMTP status codes, as constants for code readability.
+aiomsmtplib.status
+==================
+
+SMTP status codes, as an Enum for code readability.
 """
 import enum
 

@@ -1,3 +1,9 @@
+"""
+aiosmtplib.tls
+==============
+
+TLS (SSLContext) configuration.
+"""
 import ssl
 
 

@@ -1,3 +1,9 @@
+"""
+aiosmtplib.textutils
+====================
+
+String parsing/encoding utilities.
+"""
 import email.utils
 import re
 from email.message import Message

@@ -1,9 +1,13 @@
 """
+aiosmtplib.auth
+===============
+
 Authentication method handling.
-We use functions that return a tuple of (request_string, callback).
+Auth methods are implemented as simple functions that return a tuple of
+(request_string, callback).
 
 If callback is not None, it should be called with the server response code
-and message to the request.
+and message given in response to the initial request.
 """
 import base64
 import hmac

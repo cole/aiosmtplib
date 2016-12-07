@@ -1,3 +1,10 @@
+"""
+aiosmtplib
+==========
+
+When executed directly, send a single message from the command line.
+"""
+
 import asyncio
 import sys
 

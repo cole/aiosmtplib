@@ -1,9 +1,10 @@
 """
-SMTP client class for use with asyncio.
+aiosmtplib.smtp
+===============
+SMTP client class.
 
-Author: Cole Maclean <hi@cole.io>
-Based on smtplib (from the Python 3 standard library) by:
-The Dragon De Monsyne <dragondm@integral.org>
+This module handles client state, connection/disconnection and SMTP protocol
+commands.
 """
 import asyncio
 import copy

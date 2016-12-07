@@ -1,3 +1,9 @@
+"""
+aiosmtplib.response
+===================
+
+SMTPResponse object.
+"""
 import collections
 
 __all__ = ('SMTPResponse',)
