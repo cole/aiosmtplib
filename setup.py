@@ -1,17 +1,28 @@
+import re
 from pathlib import Path
 
 from setuptools import setup
 
+VERSION_REGEX = r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]'
+
+init = Path('aiosmtplib/__init__.py')
+readme = Path(__file__).with_name('README.rst')
+version_match = re.search(VERSION_REGEX, init.read_text('utf-8'), re.MULTILINE)
+
+if version_match:
+    version = version_match.group(1)
+else:
+    raise RuntimeError('Cannot find version information')
+
 setup(
     name='aiosmtplib',
     packages=['aiosmtplib'],
-    version='0.1.6',
-    description='asyncio version of smtplib',
-    long_description=Path(__file__).with_name('README.rst').read_text('utf-8'),
+    version=version,
+    description='asyncio SMTP client',
+    long_description=readme.read_text('utf-8'),
     author='Cole Maclean',
     author_email='hi@cole.io',
     url='https://github.com/cole/aiosmtplib',
-    download_url='https://github.com/cole/aiosmtplib/tarball/0.1.6',
     license='MIT',
     keywords=['smtp', 'email', 'asyncio'],
     classifiers=[
