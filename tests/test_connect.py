@@ -34,7 +34,7 @@ async def test_tls_connection(tls_preset_client):
     assert not tls_preset_client.is_connected
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio(forbid_global_loop=True)
 async def test_quit_then_connect_ok_with_smtpd(smtpd_client):
     async with smtpd_client:
         response = await smtpd_client.quit()
@@ -148,7 +148,7 @@ def test_tls_context_and_cert_raises():
         SMTP(use_tls=True, client_cert='foo.crt', tls_context=True)
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(forbid_global_loop=True)
 async def test_smtp_as_context_manager(smtpd_client):
     async with smtpd_client:
         assert smtpd_client.is_connected
@@ -159,7 +159,7 @@ async def test_smtp_as_context_manager(smtpd_client):
     assert not smtpd_client.is_connected
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(forbid_global_loop=True)
 async def test_smtp_context_manager_disconnect_handling(smtpd_client):
     async with smtpd_client:
         assert smtpd_client.is_connected
