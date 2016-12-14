@@ -95,6 +95,13 @@ class SMTPConnection:
         self.protocol = None  # type: SMTPProtocol
         self.transport = None  # type: asyncio.BaseTransport
 
+    def __del__(self):
+        """
+        Close our transport.
+        """
+        if self.is_connected:
+            self.close()
+
     @property
     def is_connected(self) -> bool:
         return bool(self.transport and not self.transport.is_closing())

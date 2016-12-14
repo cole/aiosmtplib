@@ -278,3 +278,17 @@ async def test_tls_get_transport_info(tls_preset_client):
 
         sslobj = tls_preset_client.get_transport_info('ssl_object')
         assert sslobj is not None
+
+
+@pytest.mark.asyncio(forbid_global_loop=True)
+async def test_del_client_closes_transport(preset_server, event_loop):
+    preset_client = SMTP(
+        hostname='127.0.0.1', port=preset_server.port, loop=event_loop)
+
+    await preset_client.connect()
+
+    transport = preset_client.transport
+
+    del preset_client
+
+    assert transport.is_closing()
