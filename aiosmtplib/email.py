@@ -1,0 +1,109 @@
+"""
+aiosmtplib.email
+================
+
+Email message and address formatting/parsing functions.
+"""
+import copy
+import email.generator
+import email.message
+import email.utils
+import io
+from typing import List, Tuple
+
+__all__ = ('flatten_message', 'parse_address', 'quote_address')
+
+
+def parse_address(address: str) -> str:
+    """
+    Parse an email address, falling back to the raw string given.
+    """
+    display_name, parsed_address = email.utils.parseaddr(address)
+
+    return parsed_address or address
+
+
+def quote_address(address: str) -> str:
+    """
+    Quote a subset of the email addresses defined by RFC 821.
+
+    Should be able to handle anything email.utils.parseaddr can handle.
+    """
+    display_name, parsed_address = email.utils.parseaddr(address)
+    if parsed_address:
+        quoted_address = '<{}>'.format(parsed_address)
+    # parseaddr couldn't parse it, use it as is and hope for the best.
+    elif address.lstrip().startswith('<'):
+        quoted_address = address.strip()
+    else:
+        quoted_address = '<{}>'.format(address.strip())
+
+    return quoted_address
+
+
+def flatten_message(
+        message: email.message.Message) -> Tuple[str, List[str], str]:
+    resent_dates = message.get_all('Resent-Date')
+    if resent_dates and len(resent_dates) > 1:
+        raise ValueError(
+            "Message has more than one 'Resent-' header block")
+
+    sender = _extract_sender(message, resent_dates=resent_dates)
+    recipients = _extract_recipients(message, resent_dates=resent_dates)
+
+    # Make a local copy so we can delete the bcc headers.
+    message_copy = copy.copy(message)
+    del message_copy['Bcc']
+    del message_copy['Resent-Bcc']
+
+    messageio = io.StringIO()
+    generator = email.generator.Generator(messageio)
+    generator.flatten(message_copy, linesep='\r\n')
+    flat_message = messageio.getvalue()
+
+    return sender, recipients, flat_message
+
+
+def _extract_sender(
+        message: email.message.Message, resent_dates: List[str] = None) -> str:
+    """
+    Extract the sender from the message object given.
+    """
+    if not resent_dates:
+        sender_header = 'Sender'
+        from_header = 'From'
+    else:
+        sender_header = 'Resent-Sender'
+        from_header = 'Resent-From'
+
+    # Prefer the sender field per RFC 2822:3.6.2.
+    if sender_header in message:
+        sender = message[sender_header]
+    else:
+        sender = message[from_header]
+
+    return sender or ''
+
+
+def _extract_recipients(
+        message: email.message.Message,
+        resent_dates: List[str] = None) -> List[str]:
+    """
+    Extract the recipients from the message object given.
+    """
+    recipients = []  # type: List[str]
+
+    if not resent_dates:
+        recipient_headers = ('To', 'Cc', 'Bcc')
+    else:
+        recipient_headers = ('Resent-To', 'Resent-Cc', 'Resent-Bcc')
+
+    for header in recipient_headers:
+        recipients.extend(message.get_all(header, []))
+
+    parsed_recipients = [
+        email.utils.formataddr(address)
+        for address in email.utils.getaddresses(recipients)
+    ]
+
+    return parsed_recipients

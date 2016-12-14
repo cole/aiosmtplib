@@ -195,7 +195,7 @@ async def test_421_closes_connection(preset_server, event_loop):
         b'421 Please come back in 204232430 seconds.\n')
 
     with pytest.raises(SMTPResponseException):
-        await preset_client.execute_command('NOOP')
+        await preset_client.noop()
 
     assert not preset_client.is_connected
 

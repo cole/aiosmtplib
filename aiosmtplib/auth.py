@@ -11,12 +11,10 @@ and message given in response to the initial request.
 """
 import base64
 import hmac
-from typing import Callable, Optional, Tuple
+
+from aiosmtplib.typing import AuthReturnType
 
 __all__ = ('AUTH_METHODS', 'auth_crammd5', 'auth_login', 'auth_plain')
-
-AuthReturnType = Tuple[str, Optional[Callable[[int, str], str]]]
-AuthFunctionType = Callable[[str, str], AuthReturnType]
 
 
 def _b64encode(message: str) -> str:

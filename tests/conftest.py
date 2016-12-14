@@ -43,7 +43,7 @@ def tls_preset_server(request, unused_tcp_port):
 def smtpd_client(request, smtpd_server, event_loop):
     client = SMTP(
         hostname=smtpd_server.hostname, port=smtpd_server.port,
-        loop=event_loop)
+        loop=event_loop, timeout=1)
     client.server = smtpd_server
 
     return client
@@ -53,7 +53,7 @@ def smtpd_client(request, smtpd_server, event_loop):
 def preset_client(request, preset_server, event_loop):
     client = SMTP(
         hostname=preset_server.hostname, port=preset_server.port,
-        loop=event_loop)
+        loop=event_loop, timeout=1)
     client.server = preset_server
 
     return client
@@ -63,7 +63,7 @@ def preset_client(request, preset_server, event_loop):
 def tls_preset_client(request, tls_preset_server, event_loop):
     client = SMTP(
         hostname=tls_preset_server.hostname, port=tls_preset_server.port,
-        loop=event_loop, use_tls=True, validate_certs=False)
+        loop=event_loop, use_tls=True, validate_certs=False, timeout=1)
     client.server = tls_preset_server
 
     return client

@@ -49,7 +49,7 @@ async def test_ehlo_or_helo_if_needed_ehlo_success(preset_client):
         assert preset_client.is_ehlo_or_helo_needed is True
 
         preset_client.server.responses.append(b'250 Ehlo is OK')
-        await preset_client.ehlo_or_helo_if_needed()
+        await preset_client._ehlo_or_helo_if_needed()
 
         assert preset_client.is_ehlo_or_helo_needed is False
 
@@ -62,7 +62,7 @@ async def test_ehlo_or_helo_if_needed_helo_success(preset_client):
         preset_client.server.responses.append(b'500 no ehlo')
         preset_client.server.responses.append(b'250 Helo is OK')
 
-        await preset_client.ehlo_or_helo_if_needed()
+        await preset_client._ehlo_or_helo_if_needed()
 
         assert preset_client.is_ehlo_or_helo_needed is False
 
@@ -75,7 +75,7 @@ async def test_ehlo_or_helo_if_needed_neither_succeeds(preset_client):
         preset_client.server.responses.append(b'500 no ehlo')
         preset_client.server.responses.append(b'503 no helo even!')
         with pytest.raises(SMTPHeloError):
-            await preset_client.ehlo_or_helo_if_needed()
+            await preset_client._ehlo_or_helo_if_needed()
 
 
 @pytest.mark.asyncio(forbid_global_loop=True)
@@ -222,6 +222,7 @@ async def test_mail_ok(smtpd_client):
 async def test_mail_error(preset_client):
     async with preset_client:
         preset_client.server.responses.append(b'501 oh noes')
+        preset_client.server.responses.append(b'501 rset failed too')
         with pytest.raises(SMTPResponseException):
             await preset_client.mail('test@example.com')
 
@@ -260,7 +261,7 @@ async def test_data_ok(smtpd_client):
         await smtpd_client.ehlo()
         await smtpd_client.mail('j@example.com')
         await smtpd_client.rcpt('test@example.com')
-        response = await smtpd_client.data(b'HELLO WORLD')
+        response = await smtpd_client.data('HELLO WORLD')
 
         assert response.code == SMTPStatus.completed
         assert response.message == 'OK'
@@ -271,7 +272,7 @@ async def test_data_error(preset_client):
     async with preset_client:
         preset_client.server.responses.append(b'501 oh noes')
         with pytest.raises(SMTPDataError):
-            await preset_client.data(b'TEST MESSAGE')
+            await preset_client.data('TEST MESSAGE')
 
 
 @pytest.mark.asyncio(forbid_global_loop=True)
@@ -280,7 +281,7 @@ async def test_data_complete_error(preset_client):
         preset_client.server.responses.append(b'354 lets go')
         preset_client.server.responses.append(b'501 oh noes')
         with pytest.raises(SMTPDataError):
-            await preset_client.data(b'TEST MESSAGE')
+            await preset_client.data('TEST MESSAGE')
 
 
 @pytest.mark.asyncio(forbid_global_loop=True)
@@ -462,7 +463,7 @@ async def test_gibberish_raises_exception(preset_client):
     async with preset_client:
         preset_client.server.responses.append(b'sdfjlfwqejflqw\n')
         with pytest.raises(SMTPResponseException):
-            await preset_client.execute_command('NOOP')
+            await preset_client.noop()
 
 
 @pytest.mark.asyncio(forbid_global_loop=True)

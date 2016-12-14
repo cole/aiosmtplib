@@ -4,7 +4,7 @@ aiosmtplib
 
 An asyncio SMTP client.
 
-Roughly based (with API differences) on smtplib from the Python 3 standard,
+Roughly based (with API differences) on smtplib from the Python 3 standard
 library by: The Dragon De Monsyne <dragondm@integral.org>
 
 Author: Cole Maclean <hi@cole.io>

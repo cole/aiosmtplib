@@ -2,7 +2,7 @@
 aiosmtplib.response
 ===================
 
-SMTPResponse object.
+SMTPResponse class, a simple namedtuple of (code, message).
 """
 import collections
 
