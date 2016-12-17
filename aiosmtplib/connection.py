@@ -25,6 +25,7 @@ __all__ = ('SMTPConnection', 'create_connection')
 MAX_LINE_LENGTH = 8192
 SMTP_PORT = 25
 SMTP_TLS_PORT = 465
+DEFAULT_TIMEOUT = 60
 
 
 async def create_connection(
@@ -71,7 +72,7 @@ class SMTPConnection:
     def __init__(
             self, hostname: str = 'localhost', port: int = None,
             source_address: str = None,
-            timeout: Union[int, float, None] = 60,
+            timeout: Union[int, float, None] = DEFAULT_TIMEOUT,
             loop: asyncio.AbstractEventLoop = None,
             use_tls: bool = False, validate_certs: bool = True,
             client_cert: str = None, client_key: str = None,
