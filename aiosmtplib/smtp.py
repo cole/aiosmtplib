@@ -19,7 +19,7 @@ from typing import List, Union
 from aiosmtplib.email import flatten_message
 from aiosmtplib.errors import (
     SMTPAuthenticationError, SMTPException, SMTPRecipientRefused,
-    SMTPRecipientsRefused, SMTPTimeoutError,
+    SMTPRecipientsRefused, SMTPResponseException, SMTPTimeoutError,
 )
 from aiosmtplib.esmtp import ESMTP
 from aiosmtplib.response import SMTPResponse
@@ -165,19 +165,31 @@ class SMTP(ESMTP):
             size_option = 'size={}'.format(len(message))
             mail_options.append(size_option)
 
-        await self.mail(sender, options=mail_options, timeout=timeout)
+        # For MAIL, RCPT, and DATA, if we get an error response, clear the
+        # envelope with RSET
+        try:
+            await self.mail(sender, options=mail_options, timeout=timeout)
+        except SMTPResponseException as exc:
+            await self._silent_rset(timeout=timeout)
+            raise exc
 
         recipient_errors = []
         for address in recipients:
             try:
-                await self.rcpt(address, options=rcpt_options, timeout=timeout)
+                await self.rcpt(
+                    address, options=rcpt_options, timeout=timeout)
             except SMTPRecipientRefused as exc:
                 recipient_errors.append(exc)
 
         if len(recipient_errors) == len(recipients):
+            await self._silent_rset(timeout=timeout)
             raise SMTPRecipientsRefused(recipient_errors)
 
-        response = await self.data(message, timeout=timeout)
+        try:
+            response = await self.data(message, timeout=timeout)
+        except SMTPResponseException as exc:
+            await self._silent_rset(timeout=timeout)
+            raise exc
 
         formatted_errors = {
             err.recipient: SMTPResponse(err.code, err.message)
@@ -185,6 +197,19 @@ class SMTP(ESMTP):
         }
 
         return formatted_errors, response.message
+
+    async def _silent_rset(self, timeout: OptionalDefaultNumber = _default):
+        """
+        Clear the server envelope without raising any errors.
+        Used if we fail partway through sendmail, so that the next sendmail
+        call will work.
+        """
+        try:
+            await self.rset(timeout=timeout)
+        except (ConnectionError, SMTPResponseException):
+            # If we're disconnected on the reset, or we get a bad status,
+            # don't raise that as it's confusing
+            pass
 
     async def send_message(
             self, message: email.message.Message, sender: str = None,

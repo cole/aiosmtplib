@@ -153,10 +153,10 @@ async def test_expn_error(preset_client):
 
 
 @pytest.mark.asyncio(forbid_global_loop=True)
-async def test_rset_after_mail_error(preset_client):
+async def test_rset_after_sendmail_error_response_to_mail(preset_client):
     """
-    If an error response is given to the mail command, test that
-    we reset the server session.
+    If an error response is given to the MAIL command in the sendmail method,
+    test that we reset the server session.
     """
     async with preset_client:
         preset_client.server.responses.append(b'250 Hello there')
@@ -167,7 +167,55 @@ async def test_rset_after_mail_error(preset_client):
         preset_client.server.responses.append(b'250 ok')
 
         try:
-            await preset_client.mail('>foobar<')
+            await preset_client.sendmail(
+                '>foobar<', ['test@example.com'], 'Hello World')
+        except SMTPResponseException as err:
+            assert err.code == 501
+            assert preset_client.server.requests[-1][:4] == b'RSET'
+
+
+@pytest.mark.asyncio(forbid_global_loop=True)
+async def test_rset_after_sendmail_error_response_to_rcpt(preset_client):
+    """
+    If an error response is given to the RCPT command in the sendmail method,
+    test that we reset the server session.
+    """
+    async with preset_client:
+        preset_client.server.responses.append(b'250 Hello there')
+        response = await preset_client.ehlo()
+        assert response.code == SMTPStatus.completed
+
+        preset_client.server.responses.append(b'250 ok')
+        preset_client.server.responses.append(b'501 bad address')
+        preset_client.server.responses.append(b'250 ok')
+
+        try:
+            await preset_client.sendmail(
+                'test@example.com', ['>not an addr<'], 'Hello World')
+        except SMTPRecipientsRefused as err:
+            assert err.recipients[0].code == 501
+            assert preset_client.server.requests[-1][:4] == b'RSET'
+
+
+@pytest.mark.asyncio(forbid_global_loop=True)
+async def test_rset_after_sendmail_error_response_to_data(preset_client):
+    """
+    If an error response is given to the DATA command in the sendmail method,
+    test that we reset the server session.
+    """
+    async with preset_client:
+        preset_client.server.responses.append(b'250 Hello there')
+        response = await preset_client.ehlo()
+        assert response.code == SMTPStatus.completed
+
+        preset_client.server.responses.append(b'250 ok')
+        preset_client.server.responses.append(b'250 ok')
+        preset_client.server.responses.append(b'501 bad data')
+        preset_client.server.responses.append(b'250 ok')
+
+        try:
+            await preset_client.sendmail(
+                'test@example.com', ['test2@example.com'], 'Hello World')
         except SMTPResponseException as err:
             assert err.code == 501
             assert preset_client.server.requests[-1][:4] == b'RSET'
@@ -222,17 +270,17 @@ async def test_mail_ok(smtpd_client):
 async def test_mail_error(preset_client):
     async with preset_client:
         preset_client.server.responses.append(b'501 oh noes')
-        preset_client.server.responses.append(b'501 rset failed too')
         with pytest.raises(SMTPResponseException):
             await preset_client.mail('test@example.com')
 
 
 @pytest.mark.asyncio(forbid_global_loop=True)
-async def test_mail_error_silent_rset_handles_disconnect(preset_client):
+async def test_sendmail_error_silent_rset_handles_disconnect(preset_client):
     async with preset_client:
         preset_client.server.goodbye = b'501 oh noes'
         with pytest.raises(SMTPResponseException):
-            await preset_client.mail('test@example.com')
+            await preset_client.sendmail(
+                'test@example.com', ['test2@example.com'], 'Hello World')
 
 
 @pytest.mark.asyncio(forbid_global_loop=True)

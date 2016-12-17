@@ -9,7 +9,7 @@ from aiosmtplib.connection import SMTPConnection
 from aiosmtplib.email import parse_address, quote_address
 from aiosmtplib.errors import (
     SMTPDataError, SMTPHeloError, SMTPRecipientRefused, SMTPResponseException,
-    SMTPSenderRefused, SMTPServerDisconnected,
+    SMTPSenderRefused,
 )
 from aiosmtplib.response import SMTPResponse
 from aiosmtplib.status import SMTPStatus
@@ -203,12 +203,6 @@ class SMTPCommands(SMTPConnection):
             'MAIL', from_string, *options, timeout=timeout)
 
         if response.code != SMTPStatus.completed:
-            try:
-                await self.rset(timeout=timeout)
-            except (SMTPServerDisconnected, SMTPResponseException):
-                # If we're disconnected on the reset, or we get a bad status,
-                # don't raise that as it's confusing
-                pass
             raise SMTPSenderRefused(response.code, response.message, sender)
 
         return response
