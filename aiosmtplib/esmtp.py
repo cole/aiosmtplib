@@ -50,7 +50,9 @@ class ESMTP(SMTPCommands):
 
     @property
     def is_ehlo_or_helo_needed(self) -> bool:
-        return not (self.last_ehlo_response or self.last_helo_response)
+        return (
+            self.last_ehlo_response is None and
+            self.last_helo_response is None)
 
     @property
     def supported_auth_methods(self) -> List[Tuple[str, AuthFunctionType]]:

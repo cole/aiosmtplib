@@ -13,8 +13,9 @@ Basic usage:
     asyncio.run_until_complete(send_coroutine)
 
 """
+import asyncio
 import email.message
-from typing import List, Union
+from typing import Dict, List, Union
 
 from aiosmtplib.email import flatten_message
 from aiosmtplib.errors import (
@@ -33,6 +34,11 @@ class SMTP(ESMTP):
     """
     SMTP connection client class.
     """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.sendmail_lock = asyncio.Lock(loop=self.loop)
 
     async def __aenter__(self) -> 'SMTP':
         if not self.is_connected:
@@ -151,6 +157,10 @@ class SMTP(ESMTP):
         of the three addresses, and one was rejected, with the error code
         550.  If all addresses are accepted, then the method will return an
         empty errors dictionary.
+
+        If an SMTPResponseException is raised by this method, we try to send
+        an RSET command to reset the server envelope automatically for the next
+        attempt.
         """
         if isinstance(recipients, str):
             recipients = [recipients]
@@ -159,25 +169,39 @@ class SMTP(ESMTP):
         if rcpt_options is None:
             rcpt_options = []
 
-        await self._ehlo_or_helo_if_needed()
+        async with self.sendmail_lock:
+            await self._ehlo_or_helo_if_needed()
 
-        if self.supports_extension('size'):
-            size_option = 'size={}'.format(len(message))
-            mail_options.append(size_option)
+            if self.supports_extension('size'):
+                size_option = 'size={}'.format(len(message))
+                mail_options.append(size_option)
 
-        # For MAIL, RCPT, and DATA, if we get an error response, clear the
-        # envelope with RSET
-        try:
-            await self.mail(sender, options=mail_options, timeout=timeout)
-        except SMTPResponseException as exc:
-            await self._silent_rset(timeout=timeout)
-            raise exc
+            try:
+                await self.mail(sender, options=mail_options, timeout=timeout)
+            except SMTPResponseException as exc:
+                await self._silent_rset(timeout=timeout)
+                raise exc
 
+            recipient_errors = await self._send_recipients(
+                recipients, options=rcpt_options, timeout=timeout)
+
+            try:
+                response = await self.data(message, timeout=timeout)
+            except SMTPResponseException as exc:
+                await self._silent_rset(timeout=timeout)
+                raise exc
+
+        return recipient_errors, response.message
+
+    async def _send_recipients(
+            self, recipients: List[str], options: List[str] = None,
+            timeout: OptionalDefaultNumber = _default) -> \
+            Dict[str, SMTPResponse]:
         recipient_errors = []
         for address in recipients:
             try:
                 await self.rcpt(
-                    address, options=rcpt_options, timeout=timeout)
+                    address, options=options, timeout=timeout)
             except SMTPRecipientRefused as exc:
                 recipient_errors.append(exc)
 
@@ -185,18 +209,12 @@ class SMTP(ESMTP):
             await self._silent_rset(timeout=timeout)
             raise SMTPRecipientsRefused(recipient_errors)
 
-        try:
-            response = await self.data(message, timeout=timeout)
-        except SMTPResponseException as exc:
-            await self._silent_rset(timeout=timeout)
-            raise exc
-
         formatted_errors = {
             err.recipient: SMTPResponse(err.code, err.message)
             for err in recipient_errors
         }
 
-        return formatted_errors, response.message
+        return formatted_errors
 
     async def _silent_rset(self, timeout: OptionalDefaultNumber = _default):
         """

@@ -25,6 +25,14 @@ PERIOD_REGEX = re.compile(b'(?m)^\.')
 
 
 class SMTPProtocol(asyncio.StreamReaderProtocol):
+    """
+    SMTP Protocol handling.
+
+    Interacts with StreamReader and StreamWriter to control IO.
+
+    We use a locking primitive when reading/writing to ensure that we don't
+    have multiple coroutines waiting for reads/writes at the same time.
+    """
 
     def __init__(
             self, reader: asyncio.StreamReader,
@@ -39,6 +47,8 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
 
         self.loop = loop
         self.reader = self._stream_reader
+
+        self.lock = asyncio.Lock(loop=loop)
 
     def connection_made(self, transport: asyncio.BaseTransport) -> None:
         # TODO: We won't need this anymore where 3.5.3 is released (hopefully)
@@ -95,16 +105,17 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
         response_lines = []
 
         while True:
-            read_coro = self.reader.readline()
-            try:
-                line = await asyncio.wait_for(
-                    read_coro, timeout, loop=self.loop)  # type: bytes
-            except asyncio.LimitOverrunError:
-                raise SMTPResponseException(500, 'Line too long.')
-            except ConnectionError as exc:
-                raise SMTPServerDisconnected(str(exc))
-            except asyncio.TimeoutError as exc:
-                raise SMTPTimeoutError(str(exc))
+            async with self.lock:
+                read_coro = self.reader.readline()
+                try:
+                    line = await asyncio.wait_for(
+                        read_coro, timeout, loop=self.loop)  # type: bytes
+                except asyncio.LimitOverrunError:
+                    raise SMTPResponseException(500, 'Line too long.')
+                except ConnectionError as exc:
+                    raise SMTPServerDisconnected(str(exc))
+                except asyncio.TimeoutError as exc:
+                    raise SMTPTimeoutError(str(exc))
 
             try:
                 code = int(line[:3])
@@ -133,13 +144,14 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
         """
         self.writer.write(data)
 
-        drain_coro = self.writer.drain()  # type: ignore
-        try:
-            asyncio.wait_for(drain_coro, timeout, loop=self.loop)
-        except ConnectionError as exc:
-            raise SMTPServerDisconnected(str(exc))
-        except asyncio.TimeoutError as exc:
-            raise SMTPTimeoutError(str(exc))
+        async with self.lock:
+            drain_coro = self.writer.drain()  # type: ignore
+            try:
+                asyncio.wait_for(drain_coro, timeout, loop=self.loop)
+            except ConnectionError as exc:
+                raise SMTPServerDisconnected(str(exc))
+            except asyncio.TimeoutError as exc:
+                raise SMTPTimeoutError(str(exc))
 
     async def write_message_data(
             self, data: bytes, timeout: OptionalNumber = None) -> None:

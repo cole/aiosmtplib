@@ -372,7 +372,6 @@ async def test_sendmail_multiple_times_in_sequence(smtpd_client):
             assert message != ''
 
 
-@pytest.mark.skip('Parallel sendmail does not work')
 @pytest.mark.asyncio(forbid_global_loop=True)
 async def test_sendmail_multiple_times_with_gather(smtpd_client):
     async with smtpd_client:
@@ -429,6 +428,24 @@ async def test_multiple_clients_with_gather(smtpd_server, event_loop):
         assert not errors
         assert isinstance(errors, dict)
         assert message != ''
+
+
+@pytest.mark.asyncio(forbid_global_loop=True)
+async def test_many_commands_with_gather(smtpd_client):
+    """
+    Without a lock on the reader, this raises RuntimeError.
+    """
+    async with smtpd_client:
+        tasks = [
+            smtpd_client.noop(),
+            smtpd_client.noop(),
+            smtpd_client.helo(),
+            smtpd_client.vrfy('foo@bar.com'),
+            smtpd_client.noop(),
+        ]
+        results = await asyncio.gather(*tasks, loop=smtpd_client.loop)
+        for result in results:
+            assert 200 <= result.code < 300
 
 
 @pytest.mark.asyncio(forbid_global_loop=True)
