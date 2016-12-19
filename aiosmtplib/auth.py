@@ -17,22 +17,6 @@ from aiosmtplib.typing import AuthReturnType
 __all__ = ('AUTH_METHODS', 'auth_crammd5', 'auth_login', 'auth_plain')
 
 
-def _b64encode(message: str) -> str:
-    bytes_message = message.encode('utf-8')
-    encoded = base64.b64encode(bytes_message)
-    encoded_str = encoded.decode('utf-8')
-
-    return encoded_str
-
-
-def _b64decode(message: str) -> str:
-    bytes_message = message.encode('utf-8')
-    decoded = base64.b64decode(bytes_message)
-    decoded_str = decoded.decode('utf-8')
-
-    return decoded_str
-
-
 def auth_plain(username: str, password: str) -> AuthReturnType:
     """
     PLAIN auth encodes the username and password in one Base64 encoded string.
@@ -43,8 +27,10 @@ def auth_plain(username: str, password: str) -> AuthReturnType:
     AUTH PLAIN dGVzdAB0ZXN0AHRlc3RwYXNz
     235 ok, go ahead (#2.0.0)
     """
-    username_and_password = _b64encode('\0{}\0{}'.format(username, password))
-    request = 'PLAIN {}'.format(username_and_password)
+    username_and_password = (
+        b'\0' + username.encode('utf-8') + b'\0' + password.encode('utf-8'))
+    encoded = base64.b64encode(username_and_password).decode('utf-8')
+    request = 'PLAIN {}'.format(encoded)
 
     return request, None
 
@@ -60,17 +46,18 @@ def auth_crammd5(username: str, password: str) -> AuthReturnType:
     334 PDI0NjA5LjEwNDc5MTQwNDZAcG9wbWFpbC5TcGFjZS5OZXQ+
     dGltIGI5MTNhNjAyYzdlZGE3YTQ5NWI0ZTZlNzMzNGQzODkw
     """
-    request = 'CRAM-MD5'
     password_bytes = password.encode('utf-8')
 
     def auth_crammd5_verification(code: int, response: str) -> str:
-        challenge = _b64decode(response).encode('utf-8')  # We want bytes here
+        challenge = base64.b64decode(response.encode('utf-8'))
         md5_digest = hmac.new(password_bytes, msg=challenge, digestmod='md5')
         verification = '{} {}'.format(username, md5_digest.hexdigest())
+        encoded_verification = base64.b64encode(verification.encode('utf-8'))
+        response = encoded_verification.decode('utf-8')
 
-        return _b64encode(verification)
+        return response
 
-    return request, auth_crammd5_verification
+    return 'CRAM-MD5', auth_crammd5_verification
 
 
 def auth_login(username: str, password: str) -> AuthReturnType:
@@ -83,13 +70,11 @@ def auth_login(username: str, password: str) -> AuthReturnType:
     334 VXNlcm5hbWU6
     avlsdkfj
     """
-    login_request = 'LOGIN {}'.format(_b64encode(username))
+    request_bytes = b'LOGIN ' + base64.b64encode(username.encode('utf-8'))
+    request = request_bytes.decode('utf-8')
+    verification = base64.b64encode(password.encode('utf-8')).decode('utf-8')
 
-    def auth_login_verification(code: int, response: str) -> str:
-        verification = _b64encode(password)
-        return verification
-
-    return login_request, auth_login_verification
+    return request, lambda i, s: verification
 
 
 # List of authentication methods we support: from preferred to
