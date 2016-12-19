@@ -2,7 +2,7 @@
 aiomsmtplib.connection
 ======================
 
-This module handles client connection/disconnection.
+Handles client connection/disconnection.
 """
 import asyncio
 import socket
@@ -67,7 +67,13 @@ async def create_connection(
 
 class SMTPConnection:
     """
-    Connection mixin handles connection/disconnection from the SMTP server.
+    The ``SMTPConnection`` class handles connection/disconnection from the
+    SMTP server given.
+
+    Keyword arguments can be provided either on init or when calling the
+    ``connect`` method. Note that in both cases these options are saved for
+    later use; subsequent calls to ``connect`` with use the same options,
+    unless new ones are provided.
     """
     def __init__(
             self, hostname: str = 'localhost', port: int = None,
@@ -105,6 +111,9 @@ class SMTPConnection:
 
     @property
     def is_connected(self) -> bool:
+        """
+        Check if our transport is still connected.
+        """
         return bool(self.transport and not self.transport.is_closing())
 
     @property
@@ -175,6 +184,9 @@ class SMTPConnection:
         return response
 
     def _get_tls_context(self) -> ssl.SSLContext:
+        """
+        Build an SSLContext object from the options we've been given.
+        """
         if self.tls_context:
             context = self.tls_context
         else:
@@ -194,7 +206,8 @@ class SMTPConnection:
 
     def _raise_error_if_disconnected(self) -> None:
         """
-        See if we're still connected, and if not, raise an error.
+        See if we're still connected, and if not, raise
+        ``SMTPServerDisconnected``.
         """
         if not self.transport or self.transport.is_closing():
             raise SMTPServerDisconnected('Disconnected from SMTP server')

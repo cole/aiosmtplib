@@ -12,6 +12,12 @@ ResponseBase = collections.namedtuple('SMTPResponse', ['code', 'message'])
 
 
 class SMTPResponse(ResponseBase):
+    """
+    A namedtuple with some simple convenience methods.
+
+    Consists of a server response code (e.g. 250) and a server response message
+    (e.g. 'OK').
+    """
     __slots__ = ()
 
     def __repr__(self):

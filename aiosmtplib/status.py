@@ -10,6 +10,9 @@ __all__ = ('SMTPStatus',)
 
 
 class SMTPStatus(enum.IntEnum):
+    """
+    Defines SMTP statuses for code readability.
+    """
     invalid_response = -1
     system_status_ok = 211
     help_message = 214

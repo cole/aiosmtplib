@@ -2,7 +2,7 @@
 aiosmtplib.protocol
 ===================
 
-SMTPProtocol class, for lower level IO handling
+An ``asyncio.Protocol`` subclass for lower level IO handling.
 """
 import asyncio
 import re
@@ -26,9 +26,8 @@ PERIOD_REGEX = re.compile(b'(?m)^\.')
 
 class SMTPProtocol(asyncio.StreamReaderProtocol):
     """
-    SMTP Protocol handling.
-
-    Interacts with StreamReader and StreamWriter to control IO.
+    SMTPProtocol handles sending and recieving data, through interactions
+    with ``asyncio.StreamReader`` and ``asyncio.StreamWriter``.
 
     We use a locking primitive when reading/writing to ensure that we don't
     have multiple coroutines waiting for reads/writes at the same time.
@@ -51,6 +50,10 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
         self.lock = asyncio.Lock(loop=loop)
 
     def connection_made(self, transport: asyncio.BaseTransport) -> None:
+        """
+        Modified ``connection_made`` that supports upgrading our transport in
+        place using STARTTLS.
+        """
         # TODO: We won't need this anymore where 3.5.3 is released (hopefully)
         self._stream_reader._transport = transport  # type: ignore
         self._over_ssl = transport.get_extra_info('sslcontext') is not None
@@ -95,9 +98,7 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
         Get a status reponse from the server.
 
         Returns an SMTPResponse namedtuple consisting of:
-
           - server response code (e.g. 250, or such, if all goes well)
-
           - server response string corresponding to response code (multiline
             responses are converted to a single, multiline string).
         """
@@ -172,6 +173,10 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
     async def execute_command(
             self, *args: str,
             timeout: OptionalNumber = None) -> SMTPResponse:
+        """
+        Sends an SMTP command along with any args to the server, and returns
+        a response.
+        """
         command = b' '.join([arg.encode('ascii') for arg in args]) + b'\r\n'
 
         await self.write_and_drain(command, timeout=timeout)
