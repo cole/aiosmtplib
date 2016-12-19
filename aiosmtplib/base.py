@@ -1,7 +1,7 @@
 """
-aiosmtplib.commands
-===================
-Base SMTP protocol commands.
+aiosmtplib.base
+===============
+Support for basic SMTP protocol commands.
 """
 from typing import Iterable, Union
 
@@ -15,12 +15,12 @@ from aiosmtplib.response import SMTPResponse
 from aiosmtplib.status import SMTPStatus
 from aiosmtplib.typing import OptionalDefaultNumber, _default
 
-__all__ = ('SMTPCommands',)
+__all__ = ('BaseSMTP',)
 
 
-class SMTPCommands(SMTPConnection):
+class BaseSMTP(SMTPConnection):
     """
-    Base SMTP command implementation.
+    Basic SMTP protocol commands implementation.
     """
 
     def __init__(self, *args, **kwargs):

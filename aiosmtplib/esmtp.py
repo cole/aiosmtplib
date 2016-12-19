@@ -1,6 +1,6 @@
 """
 aiosmtplib.esmtp
-===================
+================
 
 ESMTP extension handling.
 """
@@ -8,7 +8,7 @@ import re
 from typing import Dict, List, Tuple
 
 from aiosmtplib.auth import AUTH_METHODS
-from aiosmtplib.commands import SMTPCommands
+from aiosmtplib.base import BaseSMTP
 from aiosmtplib.errors import SMTPException, SMTPHeloError
 from aiosmtplib.response import SMTPResponse
 from aiosmtplib.status import SMTPStatus
@@ -23,7 +23,7 @@ OLDSTYLE_AUTH_REGEX = re.compile(r'auth=(?P<auth>.*)', flags=re.I)
 EXTENSIONS_REGEX = re.compile(r'(?P<ext>[A-Za-z0-9][A-Za-z0-9\-]*) ?')
 
 
-class ESMTP(SMTPCommands):
+class ESMTP(BaseSMTP):
     """
     This class implements support for ESMTP (the EHLO command, and the AUTH
     and STARTTLS extensions). It also keeps track of server state required
