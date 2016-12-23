@@ -47,7 +47,7 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
         self.loop = loop
         self.reader = self._stream_reader
 
-        self.lock = asyncio.Lock(loop=loop)
+        self._io_lock = asyncio.Lock(loop=loop)
 
     def connection_made(self, transport: asyncio.BaseTransport) -> None:
         """
@@ -106,7 +106,7 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
         response_lines = []
 
         while True:
-            async with self.lock:
+            async with self._io_lock:
                 read_coro = self.reader.readline()
                 try:
                     line = await asyncio.wait_for(
@@ -145,7 +145,7 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
         """
         self.writer.write(data)
 
-        async with self.lock:
+        async with self._io_lock:
             drain_coro = self.writer.drain()  # type: ignore
             try:
                 asyncio.wait_for(drain_coro, timeout, loop=self.loop)
@@ -181,10 +181,6 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
 
         await self.write_and_drain(command, timeout=timeout)
         response = await self.read_response(timeout=timeout)
-
-        if response.code == SMTPStatus.domain_unavailable:
-            self.transport.close()
-            raise SMTPResponseException(response.code, response.message)
 
         return response
 

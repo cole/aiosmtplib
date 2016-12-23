@@ -101,6 +101,7 @@ class SMTPConnection:
         self.loop = loop or asyncio.get_event_loop()
         self.protocol = None  # type: SMTPProtocol
         self.transport = None  # type: asyncio.BaseTransport
+        self._connect_lock = asyncio.Lock(loop=self.loop)
 
     def __del__(self):
         """
@@ -140,6 +141,8 @@ class SMTPConnection:
         """
         Open asyncio streams to the server and check response status.
         """
+        await self._connect_lock.acquire()
+
         if hostname is not None:
             self.hostname = hostname
         if port is not None:
@@ -210,7 +213,12 @@ class SMTPConnection:
         ``SMTPServerDisconnected``.
         """
         if not self.transport or self.transport.is_closing():
+            self._clear_connect_lock()
             raise SMTPServerDisconnected('Disconnected from SMTP server')
+
+    def _clear_connect_lock(self) -> None:
+        if self._connect_lock.locked():
+            self._connect_lock.release()
 
     def close(self) -> None:
         """
@@ -218,6 +226,9 @@ class SMTPConnection:
         """
         if self.transport and not self.transport.is_closing():
             self.transport.close()
+
+        self._clear_connect_lock()
+        self._reset_server_state()  # type: ignore
 
         self.protocol = None
         self.transport = None

@@ -411,9 +411,10 @@ async def test_multiple_clients_with_gather(smtpd_server, event_loop):
     -a tester
     """
 
+    client = SMTP(
+        hostname='127.0.0.1', port=smtpd_server.port, loop=event_loop)
+
     async def connect_and_send(*args, **kwargs):
-        client = SMTP(
-            hostname='127.0.0.1', port=smtpd_server.port, loop=event_loop)
         async with client:
             response = await client.sendmail(*args, **kwargs)
 
@@ -421,6 +422,44 @@ async def test_multiple_clients_with_gather(smtpd_server, event_loop):
 
     tasks = [
         connect_and_send(sender, [recipient], mail_text)
+        for recipient in recipients
+    ]
+    results = await asyncio.gather(*tasks, loop=event_loop)
+    for errors, message in results:
+        assert not errors
+        assert isinstance(errors, dict)
+        assert message != ''
+
+
+@pytest.mark.asyncio(forbid_global_loop=True)
+async def test_multiple_actions_in_context_manager_with_gather(
+        smtpd_server, event_loop):
+    sender = 'test@example.com'
+    recipients = [
+        'recipient1@example.com',
+        'recipient2@example.com',
+        'recipient3@example.com',
+    ]
+    mail_text = """
+    Hello world!
+
+    -a tester
+    """
+
+    client = SMTP(
+        hostname='127.0.0.1', port=smtpd_server.port, loop=event_loop)
+
+    async def connect_and_run_commands(*args, **kwargs):
+        async with client:
+            await client.ehlo()
+            await client.noop()
+            await client.help()
+            response = await client.sendmail(*args, **kwargs)
+
+        return response
+
+    tasks = [
+        connect_and_run_commands(sender, [recipient], mail_text)
         for recipient in recipients
     ]
     results = await asyncio.gather(*tasks, loop=event_loop)

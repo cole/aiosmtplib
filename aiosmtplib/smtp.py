@@ -23,7 +23,7 @@ from aiosmtplib.email import flatten_message, parse_address, quote_address
 from aiosmtplib.errors import (
     SMTPAuthenticationError, SMTPDataError, SMTPException, SMTPHeloError,
     SMTPRecipientRefused, SMTPRecipientsRefused, SMTPResponseException,
-    SMTPSenderRefused, SMTPTimeoutError,
+    SMTPSenderRefused, SMTPServerDisconnected, SMTPTimeoutError,
 )
 from aiosmtplib.esmtp import parse_esmtp_extensions
 from aiosmtplib.response import SMTPResponse
@@ -49,7 +49,8 @@ class SMTP(SMTPConnection):
         self.esmtp_extensions = {}  # type: Dict[str, str]
         self.supports_esmtp = False  # type: bool
         self.server_auth_methods = []  # type: List[str]
-        self.sendmail_lock = asyncio.Lock(loop=self.loop)
+
+        self._multiple_command_lock = asyncio.Lock(loop=self.loop)
 
     async def __aenter__(self) -> 'SMTP':
         if not self.is_connected:
@@ -113,10 +114,20 @@ class SMTP(SMTPConnection):
         if timeout is _default:
             timeout = self.timeout  # type: ignore
 
-        self._raise_error_if_disconnected()
+        try:
+            self._raise_error_if_disconnected()
 
-        return await self.protocol.execute_command(  # type: ignore
-            *args, timeout=timeout)
+            response = await self.protocol.execute_command(  # type: ignore
+                *args, timeout=timeout)
+        except SMTPServerDisconnected as exc:
+            self.close()
+            raise exc
+
+        if response.code == SMTPStatus.domain_unavailable:
+            self.close()
+            raise SMTPResponseException(response.code, response.message)
+
+        return response
 
     # base SMTP commands - defined in RFC 821 #
 
@@ -311,11 +322,15 @@ class SMTP(SMTPConnection):
         if isinstance(message, str):
             message = message.encode('utf-8')
 
-        await self.protocol.write_message_data(  # type: ignore
-            message, timeout=timeout)
+        try:
+            await self.protocol.write_message_data(  # type: ignore
+                message, timeout=timeout)
+            response = await self.protocol.read_response(  # type: ignore
+                timeout=timeout)
+        except SMTPServerDisconnected as exc:
+            self.close()
+            raise exc
 
-        response = await self.protocol.read_response(  # type: ignore
-            timeout=timeout)
         if response.code != SMTPStatus.completed:
             raise SMTPDataError(response.code, response.message)
 
@@ -346,8 +361,6 @@ class SMTP(SMTPConnection):
         If there has been no previous EHLO or HELO command this session, this
         method tries ESMTP EHLO first.
         """
-        self._raise_error_if_disconnected()
-
         if self.is_ehlo_or_helo_needed:
             try:
                 await self.ehlo()
@@ -438,9 +451,13 @@ class SMTP(SMTPConnection):
             raise SMTPException(
                 'SMTP STARTTLS extension not supported by server.')
 
-        response, tls_protocol = await self.protocol.starttls(  # type: ignore
-            tls_context, server_hostname=server_hostname, timeout=timeout)
-        self.transport = tls_protocol._app_transport
+        try:
+            response, protocol = await self.protocol.starttls(  # type: ignore
+                tls_context, server_hostname=server_hostname, timeout=timeout)
+        except SMTPServerDisconnected as exc:
+            self.close()
+            raise exc
+        self.transport = protocol._app_transport
 
         if response.code == SMTPStatus.ready:
             # RFC 3207 part 4.2:
@@ -461,25 +478,29 @@ class SMTP(SMTPConnection):
         support, so if authentication fails, we continue until we've tried
         all methods.
         """
-        await self._ehlo_or_helo_if_needed()
+        async with self._multiple_command_lock:
+            await self._ehlo_or_helo_if_needed()
 
-        if not self.supports_extension('auth'):
-            raise SMTPException('SMTP AUTH extension not supported by server.')
+            if not self.supports_extension('auth'):
+                raise SMTPException(
+                    'SMTP AUTH extension not supported by server.')
 
-        response = None
-        for auth_name, auth_method in self.supported_auth_methods:
-            response = await self.auth(
-                auth_method, username, password, timeout=timeout)
+            response = None
+            for auth_name, auth_method in self.supported_auth_methods:
+                response = await self.auth(
+                    auth_method, username, password, timeout=timeout)
 
-            if response.code == SMTPStatus.auth_successful:
-                break
-        else:
-            if response is None:
-                raise SMTPException('No suitable authentication method found.')
+                if response.code == SMTPStatus.auth_successful:
+                    break
             else:
-                raise SMTPAuthenticationError(response.code, response.message)
+                if response is None:
+                    raise SMTPException(
+                        'No suitable authentication method found.')
+                else:
+                    raise SMTPAuthenticationError(
+                        response.code, response.message)
 
-        return response
+            return response
 
     async def sendmail(
             self, sender: str, recipients: Union[str, List[str]],
@@ -552,7 +573,7 @@ class SMTP(SMTPConnection):
         if rcpt_options is None:
             rcpt_options = []
 
-        async with self.sendmail_lock:
+        async with self._multiple_command_lock:
             await self._ehlo_or_helo_if_needed()
 
             if self.supports_extension('size'):
