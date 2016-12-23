@@ -286,9 +286,24 @@ async def test_del_client_closes_transport(preset_server, event_loop):
         hostname='127.0.0.1', port=preset_server.port, loop=event_loop)
 
     await preset_client.connect()
-
     transport = preset_client.transport
 
     del preset_client
 
     assert transport.is_closing()
+
+
+@pytest.mark.asyncio(forbid_global_loop=True)
+async def test_close_works_error_on_stopped_loop(preset_server, event_loop):
+    preset_client = SMTP(
+        hostname='127.0.0.1', port=preset_server.port, loop=event_loop)
+
+    await preset_client.connect()
+    assert preset_client.is_connected
+    assert preset_client.transport is not None
+
+    event_loop.stop()
+    event_loop._closed = True  # Force the event loop to close right away
+
+    preset_client.close()
+    assert not preset_client.is_connected
