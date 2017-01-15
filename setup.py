@@ -26,7 +26,7 @@ setup(
     license='MIT',
     keywords=['smtp', 'email', 'asyncio'],
     classifiers=[
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 4 - Beta',
         'Environment :: No Input/Output (Daemon)',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: MIT License',
@@ -35,6 +35,7 @@ setup(
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3 :: Only',
         'Programming Language :: Python :: Implementation :: CPython',
         'Topic :: Communications :: Email',
