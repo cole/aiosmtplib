@@ -2,6 +2,7 @@ language: python
 python:
   - '3.5'
   - 3.5-dev
+  - '3.6'
   - 3.6-dev
   - nightly
 install: pip install tox-travis
@@ -14,5 +15,4 @@ deploy:
   distributions: sdist bdist_wheel
   on:
     tags: true
-    python: '3.5'
     repo: cole/aiosmtplib
