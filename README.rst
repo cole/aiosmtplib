@@ -1,7 +1,7 @@
 aiosmtplib
 ==========
 
-|travis|
+|travis| |pypi-version| |pypi-python-versions| |pypi-status| |pypi-license|
 
 ------------
 
@@ -93,3 +93,9 @@ issues.
 .. |travis| image:: https://travis-ci.org/cole/aiosmtplib.svg?branch=master
            :target: https://travis-ci.org/cole/aiosmtplib
            :alt: "aiosmtplib TravisCI build status"
+.. |pypi-version| image:: https://img.shields.io/pypi/v/aiosmtplib.svg
+           :target: https://pypi.python.org/pypi/aiosmtplib
+           :alt: "aiosmtplib on the Python Package Index"
+.. |pypi-python-versions| image:: https://img.shields.io/pypi/pyversions/aiosmtplib.svg
+.. |pypi-status| image:: https://img.shields.io/pypi/status/aiosmtplib.svg
+.. |pypi-license| image:: https://img.shields.io/pypi/l/aiosmtplib.svg
