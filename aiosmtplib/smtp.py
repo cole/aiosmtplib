@@ -16,7 +16,7 @@ Basic usage:
 
 import asyncio
 from email.message import Message
-from typing import Dict, Iterable, List, Tuple, Union
+from typing import Any, Dict, Iterable, List, Tuple, Union
 
 from aiosmtplib.auth import SMTPAuth
 from aiosmtplib.email import flatten_message
@@ -229,3 +229,23 @@ class SMTP(SMTPAuth):
             sender, recipients, flat_message, **kwargs)
 
         return result
+
+    def _run_sync(self, method, *args, **kwargs) -> Any:
+        assert not self.loop.is_running(), 'Event loop is already running'
+
+        if not self.is_connected:
+            self.loop.run_until_complete(self.connect())
+
+        coro = getattr(self, method)
+        result = self.loop.run_until_complete(coro(*args, **kwargs))
+
+        if self.is_connected:
+            self.loop.run_until_complete(self.quit())
+
+        return result
+
+    def sendmail_sync(self, *args, **kwargs) -> SendmailResponseType:
+        return self._run_sync('sendmail', *args, **kwargs)
+
+    def send_message_sync(self, *args, **kwargs) -> SendmailResponseType:
+        return self._run_sync('send_message', *args, **kwargs)
