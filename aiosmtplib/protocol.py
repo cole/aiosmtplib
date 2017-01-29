@@ -39,36 +39,20 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
     def __init__(
             self, reader: asyncio.StreamReader,
             loop: asyncio.AbstractEventLoop = None) -> None:
-        if loop is None:
-            loop = asyncio.get_event_loop()
-
-        self._stream_reader = None  # type: asyncio.StreamReader
-        self._stream_writer = None  # type: asyncio.StreamWriter
-
-        super().__init__(
-            reader, client_connected_cb=None, loop=loop)
-
-        self.loop = loop  # type: asyncio.AbstractEventLoop
-        self.reader = self._stream_reader  # type: asyncio.StreamReader
+        self.reader = None  # type: asyncio.StreamReader
         self.writer = None  # type: asyncio.StreamWriter
+        self.loop = loop or asyncio.get_event_loop()
 
-        self._io_lock = asyncio.Lock(loop=loop)
+        def _client_connected(
+                reader: asyncio.StreamReader,
+                writer: asyncio.StreamWriter) -> None:
+            self.reader = reader
+            self.writer = writer
 
-    def connection_made(self, transport: asyncio.BaseTransport) -> None:
-        """
-        Modified ``connection_made`` that supports upgrading our transport in
-        place using STARTTLS.
-        """
-        # TODO: We won't need this anymore where 3.5.3 is released (hopefully)
-        self._stream_reader._transport = transport  # type: ignore
-        self._over_ssl = transport.get_extra_info('sslcontext') is not None
+        super().__init__(  # type: ignore
+            reader, client_connected_cb=_client_connected, loop=self.loop)
 
-        if self._stream_writer is None:
-            self._stream_writer = asyncio.StreamWriter(
-                transport, self, self._stream_reader, self.loop)
-
-        self.writer = self._stream_writer
-        self.transport = transport
+        self._io_lock = asyncio.Lock(loop=self.loop)
 
     def upgrade_transport(
             self, context: ssl.SSLContext, server_hostname: str = None,
@@ -78,22 +62,20 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
         """
         assert not self._over_ssl, 'Already using TLS'
 
-        plain_transport = self.transport
+        plain_transport = self.reader._transport  # type: ignore
 
         tls_protocol = SSLProtocol(
             self.loop, self, context, waiter, server_side=False,
-            server_hostname=server_hostname)
+            server_hostname=server_hostname, call_connection_made=False)
 
-        # This assignment is required, even though it's done again in
-        # connection_made
-        app_transport = tls_protocol._app_transport
+        # This assignment seems a bit strange, but is all required.
         self.reader._transport._protocol = tls_protocol  # type: ignore
-        self.reader._transport = app_transport  # type: ignore
+        self.reader._transport = tls_protocol._app_transport  # type: ignore
         self.writer._transport._protocol = tls_protocol  # type: ignore
-        self.writer._transport = app_transport  # type: ignore
+        self.writer._transport = tls_protocol._app_transport  # type: ignore
 
         tls_protocol.connection_made(plain_transport)
-        self._over_ssl = True
+        self._over_ssl = True  # type: bool
 
         return tls_protocol
 
@@ -196,7 +178,7 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
         response = await self.execute_command(b'STARTTLS', timeout=timeout)
 
         if response.code == SMTPStatus.ready:
-            drain_coro = self._stream_writer.drain()  # type: ignore
+            drain_coro = self.writer.drain()  # type: ignore
             try:
                 await asyncio.wait_for(
                     drain_coro, timeout=timeout, loop=self.loop)
