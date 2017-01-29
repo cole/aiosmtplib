@@ -42,6 +42,37 @@ Initialize a new ``aiosmtplib.SMTP`` instance, then run its ``connect``
 coroutine. Unlike in smtplib, initializing an instance does not automatically
 connect to the server, as that is a blocking operation.
 
+Allowed arguments to initialize the client (or the ``connect`` method):
+
+``hostname``
+    Server name (or IP) to connect to
+``port``
+    Server port as an integer. Defaults to 25 if ``use_tls`` is False, 465
+    if ``use_tls`` is True.
+``source_address``
+    The hostname of the client. Defaults to the result of
+    ``socket.getfqdn()``. Note that this call blocks.
+``timeout``
+    Default timeout value for all operations, in seconds. Defaults to 60.
+``loop``
+    IOLoop instance to run on. Defaults to ``asyncio.get_event_loop()``.
+``use_tls``
+    If True, make the initial connection to the server over TLS/SSL. Note
+    that if the server supports STARTTLS only, this should be False; see
+    `STARTTLS`_ below.
+``validate_certs``
+    Determines if server certificates are validated if using ``use_tls``.
+    Defaults to True.
+``client_cert``
+    Path to client side certificate, if one is to be used for the TLS
+    connection.
+``client_cert``
+    Path to client side key, if one is to be used for the TLS connection.
+``tls_context``
+    An SSLContext object, used for the TLS connection. Mutually exclusive
+    with ``client_cert``/``client_key``.
+
+
 Sending messages
 ----------------
 
@@ -69,6 +100,20 @@ seconds. This value is used for all socket operations, and will raise
 will be used as the default value for commands executed on the connection.
 
 The default timeout is 60 seconds.
+
+
+STARTTLS
+--------
+Many SMTP servers support the STARTTLS extension over port 587. To connect to
+one of these, set ``use_tls`` to False, and call ``starttls`` on the client.
+
+.. code-block:: python
+
+    loop = asyncio.get_event_loop()
+    smtp = aiosmtplib.SMTP(
+        hostname='smtp.gmail.com', port=587, loop=loop, use_tls=False)
+    loop.run_until_complete(smtp.connect())
+    loop.run_until_complete(smtp.starttls())
 
 
 Parallel execution
