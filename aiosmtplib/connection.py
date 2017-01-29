@@ -236,16 +236,12 @@ class SMTPConnection:
         """
         Closes the connection.
         """
-        has_active_transport = (
-            self.transport is not None and
-            not self.transport.is_closing() and
-            not self.loop.is_closed()  # type: ignore
-        )
-        if has_active_transport:
+        if self.transport and not self.transport.is_closing():
             self.transport.close()
 
         if self._connect_lock.locked():
             self._connect_lock.release()
+
         self._reset_server_state()
 
         self.protocol = None

@@ -8,6 +8,7 @@ from aiosmtplib import (
     SMTP, SMTPConnectError, SMTPResponseException, SMTPServerDisconnected,
     SMTPStatus, SMTPTimeoutError,
 )
+from tests.env import NETWORK_AVAILABLE
 
 
 @pytest.mark.asyncio(forbid_global_loop=True)
@@ -113,6 +114,24 @@ async def test_starttls(preset_client):
         preset_client.server.responses.append(b'250 all good')
         response = await preset_client.ehlo()
         assert response.code == SMTPStatus.completed
+
+
+@pytest.mark.skipif(not NETWORK_AVAILABLE, reason="requires network")
+@pytest.mark.asyncio(forbid_global_loop=True)
+async def test_starttls_gmail(event_loop):
+    """
+    This is a bad test in that it requires gmail to be available and
+    accessible, but it's important to test connections to a real server.
+    """
+    client = SMTP(
+        hostname='smtp.gmail.com', port=587, loop=event_loop, use_tls=False)
+    await client.connect()
+    await client.ehlo()
+    await client.starttls(validate_certs=False)
+    response = await client.ehlo()
+
+    assert response.code == SMTPStatus.completed
+    assert 'smtp.gmail.com at your service' in response.message
 
 
 def test_mock_server_starttls_with_stmplib(preset_server):
@@ -293,9 +312,8 @@ async def test_del_client_closes_transport(preset_server, event_loop):
     assert transport.is_closing()
 
 
-@pytest.mark.skip('Hangs ioloop on TravisCI')
 @pytest.mark.asyncio(forbid_global_loop=True)
-async def test_close_works_error_on_stopped_loop(preset_server, event_loop):
+async def test_close_works_on_stopped_loop(preset_server, event_loop):
     preset_client = SMTP(
         hostname='127.0.0.1', port=preset_server.port, loop=event_loop)
 
@@ -304,7 +322,6 @@ async def test_close_works_error_on_stopped_loop(preset_server, event_loop):
     assert preset_client.transport is not None
 
     event_loop.stop()
-    event_loop._closed = True  # Force the event loop to close right away
 
     preset_client.close()
     assert not preset_client.is_connected
