@@ -1,6 +1,6 @@
 language: python
 python:
-  - '3.5.3'
+ # - '3.5'  3.5.3 is the new baseline, so disable 3.5 until Travis gets there
   - 3.5-dev
   - '3.6'
   - 3.6-dev
