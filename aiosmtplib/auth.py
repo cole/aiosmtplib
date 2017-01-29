@@ -21,7 +21,7 @@ def crammd5_verify(
         username: bytes, password: bytes, challenge: bytes) -> bytes:
     decoded_challenge = base64.b64decode(challenge)
     md5_digest = hmac.new(password, msg=decoded_challenge, digestmod='md5')
-    verification = username + b' ' + md5_digest.hexdigest().encode('utf-8')
+    verification = username + b' ' + md5_digest.hexdigest().encode('ascii')
     encoded_verification = base64.b64encode(verification)
 
     return encoded_verification
@@ -98,9 +98,9 @@ class SMTPAuth(ESMTP):
             raise SMTPAuthenticationError(
                 initial_response.code, initial_response.message)
 
-        password_bytes = password.encode('utf-8')
-        username_bytes = username.encode('utf-8')
-        response_bytes = initial_response.message.encode('utf-8')
+        password_bytes = password.encode('ascii')
+        username_bytes = username.encode('ascii')
+        response_bytes = initial_response.message.encode('ascii')
 
         verification_bytes = crammd5_verify(
             username_bytes, password_bytes, response_bytes)
@@ -123,9 +123,9 @@ class SMTPAuth(ESMTP):
         AUTH PLAIN dGVzdAB0ZXN0AHRlc3RwYXNz
         235 ok, go ahead (#2.0.0)
         """
-        username_and_password = (
-            b'\0' + username.encode('utf-8') + b'\0' +
-            password.encode('utf-8'))
+        username_bytes = username.encode('ascii')
+        password_bytes = password.encode('ascii')
+        username_and_password = b'\0' + username_bytes + b'\0' + password_bytes
         encoded = base64.b64encode(username_and_password)
 
         response = await self.execute_command(
@@ -159,8 +159,8 @@ class SMTPAuth(ESMTP):
         However, since most servers seem to support both, we send the username
         with the initial request.
         """
-        encoded_username = base64.b64encode(username.encode('utf-8'))
-        encoded_password = base64.b64encode(password.encode('utf-8'))
+        encoded_username = base64.b64encode(username.encode('ascii'))
+        encoded_password = base64.b64encode(password.encode('ascii'))
 
         initial_response = await self.execute_command(
             b'AUTH', b'LOGIN', encoded_username, **kwargs)

@@ -82,7 +82,7 @@ class ESMTP(SMTPConnection):
             hostname = self.source_address
 
         response = await self.execute_command(
-            b'HELO', hostname.encode('utf-8'), **kwargs)
+            b'HELO', hostname.encode('ascii'), **kwargs)
         self.last_helo_response = response
 
         if response.code != SMTPStatus.completed:
@@ -141,7 +141,7 @@ class ESMTP(SMTPConnection):
         parsed_address = parse_address(address)
 
         response = await self.execute_command(
-            b'VRFY', parsed_address.encode('utf-8'), **kwargs)
+            b'VRFY', parsed_address.encode('ascii'), **kwargs)
 
         success_codes = (
             SMTPStatus.completed, SMTPStatus.will_forward,
@@ -163,7 +163,7 @@ class ESMTP(SMTPConnection):
         parsed_address = parse_address(address)
 
         response = await self.execute_command(
-            b'EXPN', parsed_address.encode('utf-8'), **kwargs)
+            b'EXPN', parsed_address.encode('ascii'), **kwargs)
 
         if response.code != SMTPStatus.completed:
             raise SMTPResponseException(response.code, response.message)
@@ -197,8 +197,8 @@ class ESMTP(SMTPConnection):
         if options is None:
             options = []
 
-        options_bytes = [option.encode('utf-8') for option in options]
-        from_string = b'FROM:' + quote_address(sender).encode('utf-8')
+        options_bytes = [option.encode('ascii') for option in options]
+        from_string = b'FROM:' + quote_address(sender).encode('ascii')
 
         response = await self.execute_command(
             b'MAIL', from_string, *options_bytes, **kwargs)
@@ -221,8 +221,8 @@ class ESMTP(SMTPConnection):
         if options is None:
             options = []
 
-        options_bytes = [option.encode('utf-8') for option in options]
-        to = b'TO:' + quote_address(recipient).encode('utf-8')
+        options_bytes = [option.encode('ascii') for option in options]
+        to = b'TO:' + quote_address(recipient).encode('ascii')
 
         response = await self.execute_command(
             b'RCPT', to, *options_bytes, **kwargs)
@@ -247,7 +247,7 @@ class ESMTP(SMTPConnection):
             timeout = self.timeout
 
         if isinstance(message, str):
-            message = message.encode('utf8')
+            message = message.encode('ascii')
 
         start_response = await self.execute_command(b'DATA', timeout=timeout)
 
@@ -280,7 +280,7 @@ class ESMTP(SMTPConnection):
             hostname = self.source_address
 
         response = await self.execute_command(
-            b'EHLO', hostname.encode('utf-8'), **kwargs)
+            b'EHLO', hostname.encode('ascii'), **kwargs)
         self.last_ehlo_response = response
 
         if response.code != SMTPStatus.completed:

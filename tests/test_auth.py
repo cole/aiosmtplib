@@ -12,11 +12,12 @@ from aiosmtplib.status import SMTPStatus
 USERNAMES_AND_PASSWORDS = [
     ('test', 'test'),
     ('admin124', '$3cr3t$'),
-    ('jörg', 'ilöveümläüts'),
 ]
 
 
 class DummySMTPAuth(SMTPAuth):
+
+    transport = None
 
     def __init__(self, responses=None):
         self.recieved_commands = []
@@ -44,7 +45,7 @@ async def test_auth_plain(username, password):
     await authsmtp.auth_plain(username, password)
 
     b64data = base64.b64encode(
-        b'\0' + username.encode('utf8') + b'\0' + password.encode('utf8'))
+        b'\0' + username.encode('ascii') + b'\0' + password.encode('ascii'))
     assert authsmtp.recieved_commands == [b'AUTH PLAIN ' + b64data]
 
 
@@ -58,8 +59,8 @@ async def test_auth_login(username, password):
     authsmtp = DummySMTPAuth(responses=responses)
     await authsmtp.auth_login(username, password)
 
-    b64username = base64.b64encode(username.encode('utf8'))
-    b64password = base64.b64encode(password.encode('utf8'))
+    b64username = base64.b64encode(username.encode('ascii'))
+    b64password = base64.b64encode(password.encode('ascii'))
 
     assert authsmtp.recieved_commands == [
         b'AUTH LOGIN ' + b64username,
@@ -70,7 +71,7 @@ async def test_auth_login(username, password):
 @pytest.mark.asyncio(forbid_global_loop=True)
 @pytest.mark.parametrize('username,password', USERNAMES_AND_PASSWORDS)
 async def test_auth_crammd5(username, password):
-    response_str = base64.b64encode(b'secretteststring').decode('utf8')
+    response_str = base64.b64encode(b'secretteststring').decode('ascii')
     responses = [
         (SMTPStatus.auth_continue, response_str),
         (SMTPStatus.auth_successful, 'OK'),
@@ -78,9 +79,9 @@ async def test_auth_crammd5(username, password):
     authsmtp = DummySMTPAuth(responses=responses)
     await authsmtp.auth_crammd5(username, password)
 
-    password_bytes = password.encode('utf-8')
-    username_bytes = username.encode('utf-8')
-    response_bytes = response_str.encode('utf-8')
+    password_bytes = password.encode('ascii')
+    username_bytes = username.encode('ascii')
+    response_bytes = response_str.encode('ascii')
 
     expected_command = crammd5_verify(
         username_bytes, password_bytes, response_bytes)

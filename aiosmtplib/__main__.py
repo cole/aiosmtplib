@@ -24,7 +24,7 @@ def main():
             message.append(line)
 
     full_message = '\n'.join(message)
-    full_message = full_message.encode('utf8')
+    full_message = full_message.encode('ascii')
 
     print('Message length (bytes): {}'.format(len(full_message)))
 
