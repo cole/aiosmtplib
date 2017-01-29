@@ -9,14 +9,14 @@ import ssl
 from typing import Dict, Iterable, List, Tuple, Union
 
 from aiosmtplib.connection import SMTPConnection
-from aiosmtplib.default import _default, Default
+from aiosmtplib.default import Default, _default
 from aiosmtplib.email import parse_address, quote_address
-from aiosmtplib.response import SMTPResponse
-from aiosmtplib.status import SMTPStatus
 from aiosmtplib.errors import (
     SMTPDataError, SMTPException, SMTPHeloError, SMTPRecipientRefused,
     SMTPResponseException, SMTPSenderRefused, SMTPServerDisconnected,
 )
+from aiosmtplib.response import SMTPResponse
+from aiosmtplib.status import SMTPStatus
 
 
 __all__ = ('ESMTP',)

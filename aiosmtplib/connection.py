@@ -7,7 +7,7 @@ Handles client connection/disconnection.
 import asyncio
 import socket
 import ssl
-from typing import Awaitable, Any, Union  # NOQA
+from typing import Any, Awaitable, Union  # NOQA
 
 from aiosmtplib.default import Default, _default
 from aiosmtplib.errors import (

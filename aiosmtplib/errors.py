@@ -7,6 +7,7 @@ Exception classes.
 from asyncio import TimeoutError
 from typing import List
 
+
 __all__ = (
     'SMTPAuthenticationError', 'SMTPConnectError', 'SMTPDataError',
     'SMTPException', 'SMTPHeloError', 'SMTPNotSupported',

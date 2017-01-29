@@ -10,6 +10,7 @@ from aiosmtplib import (
     SMTPServerDisconnected,
 )
 
+
 CONNECTION_EXCEPTIONS = (SMTPServerDisconnected, SMTPConnectError)
 SIMPLE_RESPONSE_EXCEPTIONS = (
     SMTPNotSupported, SMTPHeloError, SMTPDataError, SMTPAuthenticationError,
