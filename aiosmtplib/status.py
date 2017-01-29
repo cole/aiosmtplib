@@ -6,6 +6,7 @@ SMTP status codes, as an Enum for code readability.
 """
 import enum
 
+
 __all__ = ('SMTPStatus',)
 
 

@@ -8,20 +8,23 @@ import asyncio
 import re
 import ssl
 from asyncio.sslproto import SSLProtocol  # type: ignore
-from typing import Awaitable, Tuple
+from typing import Awaitable, Tuple, Union
 
+# from aiosmtplib.abc import AbstractSMTPProtocol
 from aiosmtplib.errors import (
     SMTPResponseException, SMTPServerDisconnected, SMTPTimeoutError,
 )
 from aiosmtplib.response import SMTPResponse
 from aiosmtplib.status import SMTPStatus
-from aiosmtplib.typing import OptionalNumber
+
 
 __all__ = ('SMTPProtocol',)
 
-
 LINE_ENDINGS_REGEX = re.compile(b'(?:\r\n|\n|\r(?!\n))')
 PERIOD_REGEX = re.compile(b'(?m)^\.')
+
+StartTLSResponse = Tuple[SMTPResponse, SSLProtocol]
+NumType = Union[float, int]
 
 
 class SMTPProtocol(asyncio.StreamReaderProtocol):
@@ -41,11 +44,13 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
 
         self._stream_reader = None  # type: asyncio.StreamReader
         self._stream_writer = None  # type: asyncio.StreamWriter
+
         super().__init__(
             reader, client_connected_cb=None, loop=loop)
 
-        self.loop = loop
-        self.reader = self._stream_reader
+        self.loop = loop  # type: asyncio.AbstractEventLoop
+        self.reader = self._stream_reader  # type: asyncio.StreamReader
+        self.writer = None  # type: asyncio.StreamWriter
 
         self._io_lock = asyncio.Lock(loop=loop)
 
@@ -81,7 +86,7 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
 
         # This assignment is required, even though it's done again in
         # connection_made
-        app_transport = tls_protocol._app_transport  # type: ignore
+        app_transport = tls_protocol._app_transport
         self.reader._transport._protocol = tls_protocol  # type: ignore
         self.reader._transport = app_transport  # type: ignore
         self.writer._transport._protocol = tls_protocol  # type: ignore
@@ -92,8 +97,7 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
 
         return tls_protocol
 
-    async def read_response(
-            self, timeout: OptionalNumber = None) -> SMTPResponse:
+    async def read_response(self, timeout: NumType = None) -> SMTPResponse:
         """
         Get a status reponse from the server.
 
@@ -139,7 +143,7 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
         return SMTPResponse(code, full_message)
 
     async def write_and_drain(
-            self, data: bytes, timeout: OptionalNumber = None) -> None:
+            self, data: bytes, timeout: NumType = None) -> None:
         """
         Format a command and send it to the server.
         """
@@ -155,7 +159,7 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
                 raise SMTPTimeoutError(str(exc))
 
     async def write_message_data(
-            self, data: bytes, timeout: OptionalNumber = None) -> None:
+            self, data: bytes, timeout: NumType = None) -> None:
         """
         Encode and write email message data.
 
@@ -171,13 +175,12 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
         await self.write_and_drain(data, timeout=timeout)
 
     async def execute_command(
-            self, *args: str,
-            timeout: OptionalNumber = None) -> SMTPResponse:
+            self, *args: bytes, timeout: NumType = None) -> SMTPResponse:
         """
         Sends an SMTP command along with any args to the server, and returns
         a response.
         """
-        command = b' '.join([arg.encode('ascii') for arg in args]) + b'\r\n'
+        command = b' '.join(args) + b'\r\n'
 
         await self.write_and_drain(command, timeout=timeout)
         response = await self.read_response(timeout=timeout)
@@ -185,14 +188,12 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
         return response
 
     async def starttls(
-            self, tls_context: ssl.SSLContext,
-            server_hostname: str = None,
-            timeout: OptionalNumber = None) -> \
-            Tuple[SMTPResponse, SSLProtocol]:
+            self, tls_context: ssl.SSLContext, server_hostname: str = None,
+            timeout: NumType = None) -> StartTLSResponse:
         """
         Puts the connection to the SMTP server into TLS mode.
         """
-        response = await self.execute_command('STARTTLS', timeout=timeout)
+        response = await self.execute_command(b'STARTTLS', timeout=timeout)
 
         if response.code == SMTPStatus.ready:
             drain_coro = self._stream_writer.drain()  # type: ignore

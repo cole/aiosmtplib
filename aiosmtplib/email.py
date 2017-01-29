@@ -6,10 +6,11 @@ Email message and address formatting/parsing functions.
 """
 import copy
 import email.generator
-import email.message
 import email.utils
 import io
+from email.message import Message
 from typing import List, Tuple
+
 
 __all__ = ('flatten_message', 'parse_address', 'quote_address')
 
@@ -41,8 +42,7 @@ def quote_address(address: str) -> str:
     return quoted_address
 
 
-def flatten_message(
-        message: email.message.Message) -> Tuple[str, List[str], str]:
+def flatten_message(message: Message) -> Tuple[str, List[str], str]:
     resent_dates = message.get_all('Resent-Date')
     if resent_dates and len(resent_dates) > 1:
         raise ValueError(
@@ -64,17 +64,16 @@ def flatten_message(
     return sender, recipients, flat_message
 
 
-def _extract_sender(
-        message: email.message.Message, resent_dates: List[str] = None) -> str:
+def _extract_sender(message: Message, resent_dates: List[str] = None) -> str:
     """
     Extract the sender from the message object given.
     """
-    if not resent_dates:
-        sender_header = 'Sender'
-        from_header = 'From'
-    else:
+    if resent_dates:
         sender_header = 'Resent-Sender'
         from_header = 'Resent-From'
+    else:
+        sender_header = 'Sender'
+        from_header = 'From'
 
     # Prefer the sender field per RFC 2822:3.6.2.
     if sender_header in message:
@@ -86,17 +85,16 @@ def _extract_sender(
 
 
 def _extract_recipients(
-        message: email.message.Message,
-        resent_dates: List[str] = None) -> List[str]:
+        message: Message, resent_dates: List[str] = None) -> List[str]:
     """
     Extract the recipients from the message object given.
     """
     recipients = []  # type: List[str]
 
-    if not resent_dates:
-        recipient_headers = ('To', 'Cc', 'Bcc')
-    else:
+    if resent_dates:
         recipient_headers = ('Resent-To', 'Resent-Cc', 'Resent-Bcc')
+    else:
+        recipient_headers = ('To', 'Cc', 'Bcc')
 
     for header in recipient_headers:
         recipients.extend(message.get_all(header, []))

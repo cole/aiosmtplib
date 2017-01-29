@@ -4,14 +4,16 @@ aiosmtplib.response
 
 SMTPResponse class, a simple namedtuple of (code, message).
 """
-import collections
+from typing import NamedTuple
+
 
 __all__ = ('SMTPResponse',)
 
-ResponseBase = collections.namedtuple('SMTPResponse', ['code', 'message'])
+
+BaseResponse = NamedTuple('SMTPResponse', [('code', int), ('message', str)])
 
 
-class SMTPResponse(ResponseBase):
+class SMTPResponse(BaseResponse):
     """
     A namedtuple with some simple convenience methods.
 

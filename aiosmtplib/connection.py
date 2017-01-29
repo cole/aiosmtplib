@@ -7,62 +7,28 @@ Handles client connection/disconnection.
 import asyncio
 import socket
 import ssl
-from typing import Any, Tuple, Union
+from typing import Awaitable, Any, Union  # NOQA
 
+from aiosmtplib.default import Default, _default
 from aiosmtplib.errors import (
     SMTPConnectError, SMTPServerDisconnected, SMTPTimeoutError,
 )
 from aiosmtplib.protocol import SMTPProtocol
 from aiosmtplib.response import SMTPResponse
 from aiosmtplib.status import SMTPStatus
-from aiosmtplib.typing import (
-    OptionalDefaultNumber, OptionalDefaultSSLContext, OptionalDefaultStr,
-    OptionalNumber, _default,
-)
 
-__all__ = ('SMTPConnection', 'create_connection')
+
+__all__ = ('SMTPConnection',)
 
 MAX_LINE_LENGTH = 8192
 SMTP_PORT = 25
 SMTP_TLS_PORT = 465
 DEFAULT_TIMEOUT = 60
 
-
-async def create_connection(
-        hostname: str, port: int, tls_context: ssl.SSLContext,
-        loop: asyncio.AbstractEventLoop = None,
-        timeout: OptionalNumber = None) -> \
-        Tuple[SMTPProtocol, asyncio.BaseTransport, SMTPResponse]:
-    if loop is None:
-        loop = asyncio.get_event_loop()
-
-    reader = asyncio.StreamReader(limit=MAX_LINE_LENGTH, loop=loop)
-    protocol = SMTPProtocol(reader, loop=loop)
-
-    connect_future = loop.create_connection(
-        lambda: protocol, host=hostname, port=port, ssl=tls_context)
-    try:
-        transport, _ = await asyncio.wait_for(  # type: ignore
-            connect_future, timeout=timeout, loop=loop)
-    except (ConnectionRefusedError, OSError) as err:
-        raise SMTPConnectError(
-            'Error connecting to {host} on port {port}: {err}'.format(
-                host=hostname, port=port, err=err))
-    except asyncio.TimeoutError as exc:
-        raise SMTPTimeoutError(str(exc))
-
-    waiter = protocol.read_response()
-
-    response = None  # type: SMTPResponse
-    try:
-        response = await asyncio.wait_for(waiter, timeout=timeout, loop=loop)
-    except asyncio.TimeoutError as exc:
-        raise SMTPTimeoutError(str(exc))
-
-    if response.code != SMTPStatus.ready:
-        raise SMTPConnectError(str(response))
-
-    return protocol, transport, response
+DefaultNumType = Union[float, int, Default]
+DefaultStrType = Union[str, Default]
+DefaultSSLContextType = Union[ssl.SSLContext, Default]
+NumType = Union[float, int]
 
 
 class SMTPConnection:
@@ -76,9 +42,8 @@ class SMTPConnection:
     unless new ones are provided.
     """
     def __init__(
-            self, hostname: str = 'localhost', port: int = None,
-            source_address: str = None,
-            timeout: Union[int, float, None] = DEFAULT_TIMEOUT,
+            self, hostname: str = '', port: int = None,
+            source_address: str = None, timeout: NumType = None,
             loop: asyncio.AbstractEventLoop = None,
             use_tls: bool = False, validate_certs: bool = True,
             client_cert: str = None, client_key: str = None,
@@ -103,7 +68,7 @@ class SMTPConnection:
         self.transport = None  # type: asyncio.BaseTransport
         self._connect_lock = asyncio.Lock(loop=self.loop)
 
-    def __del__(self):
+    def __del__(self) -> None:
         """
         Close our transport.
         """
@@ -130,14 +95,13 @@ class SMTPConnection:
 
     async def connect(
             self, hostname: str = None, port: int = None,
-            source_address: OptionalDefaultStr = _default,
-            timeout: OptionalDefaultNumber = _default,
+            source_address: DefaultStrType = _default,
+            timeout: DefaultNumType = _default,
             loop: asyncio.AbstractEventLoop = None,
-            use_tls: bool = None,
-            validate_certs: bool = None,
-            client_cert: OptionalDefaultStr = _default,
-            client_key: OptionalDefaultStr = _default,
-            tls_context: OptionalDefaultSSLContext = _default) -> SMTPResponse:
+            use_tls: bool = None, validate_certs: bool = None,
+            client_cert: DefaultStrType = _default,
+            client_key: DefaultStrType = _default,
+            tls_context: DefaultSSLContextType = _default) -> SMTPResponse:
         """
         Open asyncio streams to the server and check response status.
         """
@@ -180,9 +144,60 @@ class SMTPConnection:
         else:
             tls_context = None
 
-        self.protocol, self.transport, response = await create_connection(
-            self.hostname, self.port, tls_context, loop=self.loop,
-            timeout=self.timeout)
+        response = await self._create_connection(tls_context)  # type: ignore
+
+        return response
+
+    async def _create_connection(
+            self, tls_context: ssl.SSLContext) -> SMTPResponse:
+        reader = asyncio.StreamReader(limit=MAX_LINE_LENGTH, loop=self.loop)
+        self.protocol = SMTPProtocol(reader, loop=self.loop)
+
+        connect_future = self.loop.create_connection(
+            lambda: self.protocol, host=self.hostname, port=self.port,
+            ssl=tls_context)
+        try:
+            self.transport, _ = await asyncio.wait_for(  # type: ignore
+                connect_future, timeout=self.timeout, loop=self.loop)
+        except (ConnectionRefusedError, OSError) as err:
+            raise SMTPConnectError(
+                'Error connecting to {host} on port {port}: {err}'.format(
+                    host=self.hostname, port=self.port, err=err))
+        except asyncio.TimeoutError as exc:
+            raise SMTPTimeoutError(str(exc))
+
+        waiter = self.protocol.read_response()  # type: Awaitable
+
+        response = None   # type: SMTPResponse
+        try:
+            response = await asyncio.wait_for(
+                waiter, timeout=self.timeout, loop=self.loop)
+        except asyncio.TimeoutError as exc:
+            raise SMTPTimeoutError(str(exc))
+
+        if response.code != SMTPStatus.ready:
+            raise SMTPConnectError(str(response))
+
+        return response
+
+    async def execute_command(
+            self, *args: bytes,
+            timeout: DefaultNumType = _default) -> SMTPResponse:
+        """
+        Check that we're connected, if we got a timeout value, and then
+        pass the command to the protocol.
+        """
+        if timeout is _default:
+            timeout = self.timeout
+
+        self._raise_error_if_disconnected()
+
+        response = await self.protocol.execute_command(  # type: ignore
+            *args, timeout=timeout)
+
+        # If the server is unavailable, be nice and close the connection
+        if response.code == SMTPStatus.domain_unavailable:
+            self.close()
 
         return response
 
@@ -213,12 +228,9 @@ class SMTPConnection:
         ``SMTPServerDisconnected``.
         """
         if not self.transport or self.transport.is_closing():
-            self._clear_connect_lock()
+            if self._connect_lock.locked():
+                self._connect_lock.release()
             raise SMTPServerDisconnected('Disconnected from SMTP server')
-
-    def _clear_connect_lock(self) -> None:
-        if self._connect_lock.locked():
-            self._connect_lock.release()
 
     def close(self) -> None:
         """
@@ -232,13 +244,14 @@ class SMTPConnection:
         if has_active_transport:
             self.transport.close()
 
-        self._clear_connect_lock()
-        self._reset_server_state()  # type: ignore
+        if self._connect_lock.locked():
+            self._connect_lock.release()
+        self._reset_server_state()
 
         self.protocol = None
         self.transport = None
 
-    def get_transport_info(self, key) -> Any:
+    def get_transport_info(self, key: str) -> Any:
         """
         Get extra info from the transport.
         Supported keys:
@@ -249,3 +262,6 @@ class SMTPConnection:
         assert self.transport is not None
 
         return self.transport.get_extra_info(key)
+
+    def _reset_server_state(self):
+        pass
