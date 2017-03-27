@@ -36,6 +36,7 @@ class SMTPStatus(enum.IntEnum):
     parameter_not_implemented = 504
     domain_does_not_accept_mail = 521
     access_denied = 530  # Sendmail specific
+    auth_failed = 535
     mailbox_does_not_exist = 550
     user_not_local = 551
     storage_exceeded = 552
