@@ -98,10 +98,11 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
 
         while True:
             async with self._io_lock:
-                read_coro = self.reader.readline()
+                read_task = asyncio.Task(
+                    self.reader.readline(), loop=self.loop)
                 try:
                     line = await asyncio.wait_for(
-                        read_coro, timeout, loop=self.loop)  # type: bytes
+                        read_task, timeout, loop=self.loop)  # type: bytes
                 except asyncio.LimitOverrunError:
                     raise SMTPResponseException(500, 'Line too long.')
                 except ConnectionError as exc:
@@ -196,9 +197,9 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
         assert self.writer is not None, 'Client not connected'
 
         # Wrapping drain in a task makes mypy happy
-        # drain_task = asyncio.Task(, loop=self.loop)
+        drain_task = asyncio.Task(self.writer.drain(), loop=self.loop)
         try:
-            await asyncio.wait_for(self.writer.drain(), timeout, loop=self.loop)
+            await asyncio.wait_for(drain_task, timeout, loop=self.loop)
         except ConnectionError as exc:
             raise SMTPServerDisconnected(str(exc))
         except asyncio.TimeoutError as exc:

@@ -167,7 +167,7 @@ class SMTPConnection:
         except asyncio.TimeoutError as exc:
             raise SMTPTimeoutError(str(exc))
 
-        waiter = self.protocol.read_response()
+        waiter = asyncio.Task(self.protocol.read_response(), loop=self.loop)
 
         try:
             response = await asyncio.wait_for(
