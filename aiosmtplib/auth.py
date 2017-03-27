@@ -8,11 +8,11 @@ import base64
 import hmac
 from typing import List, Optional, Union  # NOQA
 
-from aiosmtplib.default import Default, _default
-from aiosmtplib.errors import SMTPAuthenticationError, SMTPException
-from aiosmtplib.esmtp import ESMTP
-from aiosmtplib.response import SMTPResponse
-from aiosmtplib.status import SMTPStatus
+from .default import Default, _default
+from .errors import SMTPAuthenticationError, SMTPException
+from .esmtp import ESMTP
+from .response import SMTPResponse
+from .status import SMTPStatus
 
 
 __all__ = ('SMTPAuth', 'crammd5_verify', )

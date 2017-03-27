@@ -10,11 +10,11 @@ import ssl
 from asyncio.sslproto import SSLProtocol  # type: ignore
 from typing import Awaitable, Optional, Tuple, Union  # NOQA
 
-from aiosmtplib.errors import (
+from .errors import (
     SMTPResponseException, SMTPServerDisconnected, SMTPTimeoutError,
 )
-from aiosmtplib.response import SMTPResponse
-from aiosmtplib.status import SMTPStatus
+from .response import SMTPResponse
+from .status import SMTPStatus
 
 
 __all__ = ('SMTPProtocol',)

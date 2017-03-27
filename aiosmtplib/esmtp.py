@@ -8,15 +8,15 @@ import re
 import ssl
 from typing import Dict, Iterable, List, Optional, Tuple, Union  # NOQA
 
-from aiosmtplib.connection import SMTPConnection
-from aiosmtplib.default import Default, _default
-from aiosmtplib.email import parse_address, quote_address
-from aiosmtplib.errors import (
+from .connection import SMTPConnection
+from .default import Default, _default
+from .email import parse_address, quote_address
+from .errors import (
     SMTPDataError, SMTPException, SMTPHeloError, SMTPRecipientRefused,
     SMTPResponseException, SMTPSenderRefused, SMTPServerDisconnected,
 )
-from aiosmtplib.response import SMTPResponse
-from aiosmtplib.status import SMTPStatus
+from .response import SMTPResponse
+from .status import SMTPStatus
 
 
 __all__ = ('ESMTP',)

@@ -9,13 +9,11 @@ import socket
 import ssl
 from typing import Any, Awaitable, Optional, Union  # NOQA
 
-from aiosmtplib.default import Default, _default
-from aiosmtplib.errors import (
-    SMTPConnectError, SMTPServerDisconnected, SMTPTimeoutError,
-)
-from aiosmtplib.protocol import SMTPProtocol
-from aiosmtplib.response import SMTPResponse
-from aiosmtplib.status import SMTPStatus
+from .default import Default, _default
+from .errors import SMTPConnectError, SMTPServerDisconnected, SMTPTimeoutError
+from .protocol import SMTPProtocol
+from .response import SMTPResponse
+from .status import SMTPStatus
 
 
 __all__ = ('SMTPConnection',)

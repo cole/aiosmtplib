@@ -17,14 +17,14 @@ import asyncio
 from email.message import Message
 from typing import Any, Callable, Dict, Iterable, List, Tuple, Type, Union
 
-from aiosmtplib.auth import SMTPAuth
-from aiosmtplib.default import Default, _default
-from aiosmtplib.email import flatten_message
-from aiosmtplib.errors import (
+from .auth import SMTPAuth
+from .default import Default, _default
+from .email import flatten_message
+from .errors import (
     SMTPRecipientRefused, SMTPRecipientsRefused, SMTPResponseException,
     SMTPTimeoutError,
 )
-from aiosmtplib.response import SMTPResponse
+from .response import SMTPResponse
 
 
 __all__ = ('SMTP',)
