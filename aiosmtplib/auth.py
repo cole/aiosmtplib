@@ -64,8 +64,9 @@ class SMTPAuth(ESMTP):
         response = None  # type: Optional[SMTPResponse]
         exception = None  # type: Optional[SMTPAuthenticationError]
         for auth_name in self.supported_auth_methods:
+            method_name = 'auth_{}'.format(auth_name.replace('-', ''))
             try:
-                auth_method = getattr(self, 'auth_'.format(auth_name))
+                auth_method = getattr(self, method_name)
             except AttributeError:
                 raise RuntimeError(
                     'Missing handler for auth method {}'.format(auth_name))

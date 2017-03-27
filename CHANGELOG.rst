@@ -13,6 +13,8 @@ master
 
 - Bugfix: RuntimeError on client cleanup if event loop was closed
 
+- Bugfix: CRAM-MD5 auth was not working
+
 1.0.0
 -----
 Initial feature complete release with stable API; future changes will be
