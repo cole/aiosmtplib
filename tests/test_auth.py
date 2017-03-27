@@ -1,5 +1,4 @@
 import base64
-import random
 from collections import deque
 
 import pytest
