@@ -44,7 +44,7 @@ def quote_address(address: str) -> str:
 
 def flatten_message(message: Message) -> Tuple[str, List[str], str]:
     resent_dates = message.get_all('Resent-Date')
-    if resent_dates and len(resent_dates) > 1:
+    if resent_dates is not None and len(resent_dates) > 1:
         raise ValueError(
             "Message has more than one 'Resent-' header block")
 

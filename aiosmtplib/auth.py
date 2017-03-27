@@ -6,8 +6,9 @@ Authentication method handling.
 """
 import base64
 import hmac
-from typing import List
+from typing import List, Optional, Union  # NOQA
 
+from aiosmtplib.default import Default, _default
 from aiosmtplib.errors import SMTPAuthenticationError, SMTPException
 from aiosmtplib.esmtp import ESMTP
 from aiosmtplib.response import SMTPResponse
@@ -15,6 +16,9 @@ from aiosmtplib.status import SMTPStatus
 
 
 __all__ = ('SMTPAuth', 'crammd5_verify', )
+
+
+DefaultNumType = Union[float, int, Default]
 
 
 def crammd5_verify(
@@ -39,11 +43,12 @@ class SMTPAuth(ESMTP):
         """
         return [
             auth for auth in self.AUTH_METHODS
-            if auth in self.server_auth_methods  # type: ignore
+            if auth in self.server_auth_methods
         ]
 
     async def login(
-            self, username: str, password: str, **kwargs) -> SMTPResponse:
+            self, username: str, password: str,
+            timeout: DefaultNumType = _default) -> SMTPResponse:
         """
         Tries to login with supported auth methods.
 
@@ -56,8 +61,8 @@ class SMTPAuth(ESMTP):
         if not self.supports_extension('auth'):
             raise SMTPException('SMTP AUTH extension not supported by server.')
 
-        response = None
-        exception = None
+        response = None  # type: Optional[SMTPResponse]
+        exception = None  # type: Optional[SMTPAuthenticationError]
         for auth_name in self.supported_auth_methods:
             try:
                 auth_method = getattr(self, 'auth_'.format(auth_name))
@@ -65,22 +70,23 @@ class SMTPAuth(ESMTP):
                 raise RuntimeError(
                     'Missing handler for auth method {}'.format(auth_name))
             try:
-                response = await auth_method(username, password, **kwargs)
+                response = await auth_method(
+                    username, password, timeout=timeout)
             except SMTPAuthenticationError as exc:
                 exception = exc
             else:
                 # No exception means we're good
                 break
-        else:
-            if exception is None:
-                raise SMTPException('No suitable authentication method found.')
-            else:
-                raise exception
+
+        if response is None:
+            raise exception or SMTPException(
+                'No suitable authentication method found.')
 
         return response
 
     async def auth_crammd5(
-            self, username: str, password: str, **kwargs) -> SMTPResponse:
+            self, username: str, password: str,
+            timeout: DefaultNumType = _default) -> SMTPResponse:
         """
         CRAM-MD5 auth uses the password as a shared secret to MD5 the server's
         response.
@@ -92,7 +98,7 @@ class SMTPAuth(ESMTP):
         dGltIGI5MTNhNjAyYzdlZGE3YTQ5NWI0ZTZlNzMzNGQzODkw
         """
         initial_response = await self.execute_command(
-            b'AUTH', b'CRAM-MD5', **kwargs)
+            b'AUTH', b'CRAM-MD5', timeout=timeout)
 
         if initial_response.code != SMTPStatus.auth_continue:
             raise SMTPAuthenticationError(
@@ -113,7 +119,8 @@ class SMTPAuth(ESMTP):
         return response
 
     async def auth_plain(
-            self, username: str, password: str, **kwargs) -> SMTPResponse:
+            self, username: str, password: str,
+            timeout: DefaultNumType = _default) -> SMTPResponse:
         """
         PLAIN auth encodes the username and password in one Base64 encoded
         string. No verification message is required.
@@ -129,7 +136,7 @@ class SMTPAuth(ESMTP):
         encoded = base64.b64encode(username_and_password)
 
         response = await self.execute_command(
-            b'AUTH', b'PLAIN', encoded, **kwargs)
+            b'AUTH', b'PLAIN', encoded, timeout=timeout)
 
         if response.code != SMTPStatus.auth_successful:
             raise SMTPAuthenticationError(response.code, response.message)
@@ -137,7 +144,8 @@ class SMTPAuth(ESMTP):
         return response
 
     async def auth_login(
-            self, username: str, password: str, **kwargs) -> SMTPResponse:
+            self, username: str, password: str,
+            timeout: DefaultNumType = _default) -> SMTPResponse:
         """
         LOGIN auth sends the Base64 encoded username and password in sequence.
 
@@ -163,13 +171,14 @@ class SMTPAuth(ESMTP):
         encoded_password = base64.b64encode(password.encode('ascii'))
 
         initial_response = await self.execute_command(
-            b'AUTH', b'LOGIN', encoded_username, **kwargs)
+            b'AUTH', b'LOGIN', encoded_username, timeout=timeout)
 
         if initial_response.code != SMTPStatus.auth_continue:
             raise SMTPAuthenticationError(
                 initial_response.code, initial_response.message)
 
-        response = await self.execute_command(encoded_password, **kwargs)
+        response = await self.execute_command(
+            encoded_password, timeout=timeout)
 
         if response.code != SMTPStatus.auth_successful:
             raise SMTPAuthenticationError(response.code, response.message)

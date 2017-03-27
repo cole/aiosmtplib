@@ -22,8 +22,8 @@ class SMTPResponse(BaseResponse):
     """
     __slots__ = ()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return '({self.code}, {self.message})'.format(self=self)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return '{self.code} {self.message}'.format(self=self)

@@ -7,7 +7,7 @@ Handles client connection/disconnection.
 import asyncio
 import socket
 import ssl
-from typing import Any, Awaitable, Union  # NOQA
+from typing import Any, Awaitable, Optional, Union  # NOQA
 
 from aiosmtplib.default import Default, _default
 from aiosmtplib.errors import (
@@ -20,10 +20,12 @@ from aiosmtplib.status import SMTPStatus
 
 __all__ = ('SMTPConnection',)
 
+
 MAX_LINE_LENGTH = 8192
 SMTP_PORT = 25
 SMTP_TLS_PORT = 465
 DEFAULT_TIMEOUT = 60
+
 
 DefaultNumType = Union[float, int, Default]
 DefaultStrType = Union[str, Default]
@@ -49,7 +51,7 @@ class SMTPConnection:
             client_cert: str = None, client_key: str = None,
             tls_context: ssl.SSLContext = None) -> None:
         # Kwarg defaults are provided here, and saved for connect.
-        if tls_context and client_cert:
+        if tls_context is not None and client_cert is not None:
             raise ValueError(
                 'Either a TLS context or a certificate/key must be provided')
 
@@ -64,8 +66,8 @@ class SMTPConnection:
         self.tls_context = tls_context
 
         self.loop = loop or asyncio.get_event_loop()
-        self.protocol = None  # type: SMTPProtocol
-        self.transport = None  # type: asyncio.BaseTransport
+        self.protocol = None  # type: Optional[SMTPProtocol]
+        self.transport = None  # type: Optional[asyncio.BaseTransport]
         self._connect_lock = asyncio.Lock(loop=self.loop)
 
     def __del__(self) -> None:
@@ -109,14 +111,18 @@ class SMTPConnection:
 
         if hostname is not None:
             self.hostname = hostname
-        if port is not None:
-            self.port = port
         if loop is not None:
             self.loop = loop
         if use_tls is not None:
             self.use_tls = use_tls
         if validate_certs is not None:
             self.validate_certs = validate_certs
+
+        if port is not None:
+            self.port = port
+
+        if self.port is None:
+            self.port = SMTP_TLS_PORT if self.use_tls else SMTP_PORT
 
         if timeout is not _default:
             self.timeout = timeout  # type: ignore
@@ -129,29 +135,24 @@ class SMTPConnection:
         if tls_context is not _default:
             self.tls_context = tls_context  # type: ignore
 
-        if self.tls_context and self.client_cert:
+        if self.tls_context is not None and self.client_cert is not None:
             raise ValueError(
                 'Either a TLS context or a certificate/key must be provided')
 
-        if self.port is None:
-            if self.use_tls:
-                self.port = SMTP_TLS_PORT
-            else:
-                self.port = SMTP_PORT
-
-        if self.use_tls:
-            tls_context = self._get_tls_context()
-        else:
-            tls_context = None
-
-        response = await self._create_connection(tls_context)  # type: ignore
+        response = await self._create_connection()
 
         return response
 
-    async def _create_connection(
-            self, tls_context: ssl.SSLContext) -> SMTPResponse:
+    async def _create_connection(self) -> SMTPResponse:
+        assert self.hostname is not None, 'Hostname must be set'
+        assert self.port is not None, 'Port must be set'
+
         reader = asyncio.StreamReader(limit=MAX_LINE_LENGTH, loop=self.loop)
         self.protocol = SMTPProtocol(reader, loop=self.loop)
+
+        tls_context = None  # type: Optional[ssl.SSLContext]
+        if self.use_tls:
+            tls_context = self._get_tls_context()
 
         connect_future = self.loop.create_connection(
             lambda: self.protocol, host=self.hostname, port=self.port,
@@ -166,9 +167,8 @@ class SMTPConnection:
         except asyncio.TimeoutError as exc:
             raise SMTPTimeoutError(str(exc))
 
-        waiter = self.protocol.read_response()  # type: Awaitable
+        waiter = self.protocol.read_response()
 
-        response = None   # type: SMTPResponse
         try:
             response = await asyncio.wait_for(
                 waiter, timeout=self.timeout, loop=self.loop)
@@ -188,9 +188,10 @@ class SMTPConnection:
         pass the command to the protocol.
         """
         if timeout is _default:
-            timeout = self.timeout
+            timeout = self.timeout  # type: ignore
 
         self._raise_error_if_disconnected()
+        assert self.protocol is not None, 'Not connected'
 
         response = await self.protocol.execute_command(  # type: ignore
             *args, timeout=timeout)
@@ -205,7 +206,7 @@ class SMTPConnection:
         """
         Build an SSLContext object from the options we've been given.
         """
-        if self.tls_context:
+        if self.tls_context is not None:
             context = self.tls_context
         else:
             # SERVER_AUTH is what we want for a client side socket
@@ -216,7 +217,7 @@ class SMTPConnection:
             else:
                 context.verify_mode = ssl.CERT_NONE
 
-            if self.client_cert:
+            if self.client_cert is not None:
                 context.load_cert_chain(
                     self.client_cert, keyfile=self.client_key)
 
@@ -227,7 +228,7 @@ class SMTPConnection:
         See if we're still connected, and if not, raise
         ``SMTPServerDisconnected``.
         """
-        if not self.transport or self.transport.is_closing():
+        if self.transport is None or self.transport.is_closing():
             if self._connect_lock.locked():
                 self._connect_lock.release()
             raise SMTPServerDisconnected('Disconnected from SMTP server')
@@ -236,13 +237,11 @@ class SMTPConnection:
         """
         Closes the connection.
         """
-        if self.transport and not self.transport.is_closing():
+        if self.transport is not None and not self.transport.is_closing():
             self.transport.close()
 
         if self._connect_lock.locked():
             self._connect_lock.release()
-
-        self._reset_server_state()
 
         self.protocol = None
         self.transport = None
@@ -258,6 +257,3 @@ class SMTPConnection:
         assert self.transport is not None
 
         return self.transport.get_extra_info(key)
-
-    def _reset_server_state(self):
-        pass

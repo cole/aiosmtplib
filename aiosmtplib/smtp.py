@@ -13,12 +13,12 @@ Basic usage:
     asyncio.run_until_complete(send_coroutine)
 
 """
-
 import asyncio
 from email.message import Message
-from typing import Any, Dict, Iterable, List, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, List, Tuple, Type, Union
 
 from aiosmtplib.auth import SMTPAuth
+from aiosmtplib.default import Default, _default
 from aiosmtplib.email import flatten_message
 from aiosmtplib.errors import (
     SMTPRecipientRefused, SMTPRecipientsRefused, SMTPResponseException,
@@ -29,6 +29,8 @@ from aiosmtplib.response import SMTPResponse
 
 __all__ = ('SMTP',)
 
+
+DefaultNumType = Union[float, int, Default]
 RecipientsType = Union[str, Iterable[str]]
 RecipientErrorsType = Dict[str, SMTPResponse]
 SendmailResponseType = Tuple[RecipientErrorsType, str]
@@ -44,7 +46,7 @@ class SMTP(SMTPAuth):
     `SMTPConnection` - connection handling
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
         self._command_lock = asyncio.Lock(loop=self.loop)
@@ -55,7 +57,9 @@ class SMTP(SMTPAuth):
 
         return self
 
-    async def __aexit__(self, exc_type, exc, traceback) -> None:
+    async def __aexit__(
+            self, exc_type: Type[Exception], exc: Exception,
+            traceback: Any) -> None:
         connection_errors = (ConnectionError, SMTPTimeoutError)
         if exc_type in connection_errors or not self.is_connected:
             self.close()
@@ -68,8 +72,8 @@ class SMTP(SMTPAuth):
     async def sendmail(
             self, sender: str, recipients: RecipientsType,
             message: Union[str, bytes], mail_options: Iterable[str] = None,
-            rcpt_options: Iterable[str] = None, **kwargs) -> \
-            SendmailResponseType:
+            rcpt_options: Iterable[str] = None,
+            timeout: DefaultNumType = _default) -> SendmailResponseType:
         """
         This command performs an entire mail transaction.
 
@@ -152,14 +156,14 @@ class SMTP(SMTPAuth):
                 mail_options.append(size_option)
 
             try:
-                await self.mail(sender, options=mail_options, **kwargs)
+                await self.mail(sender, options=mail_options, timeout=timeout)
                 recipient_errors = await self._send_recipients(
-                    recipients, options=rcpt_options, **kwargs)
-                response = await self.data(message, **kwargs)
+                    recipients, options=rcpt_options, timeout=timeout)
+                response = await self.data(message, timeout=timeout)
             except (SMTPResponseException, SMTPRecipientsRefused) as exc:
                 # If we got an error, reset the envelope.
                 try:
-                    await self.rset(**kwargs)
+                    await self.rset(timeout=timeout)
                 except (ConnectionError, SMTPResponseException):
                     # If we're disconnected on the reset, or we get a bad
                     # status, don't raise that as it's confusing
@@ -170,14 +174,14 @@ class SMTP(SMTPAuth):
 
     async def _send_recipients(
             self, recipients: List[str], options: List[str] = None,
-            **kwargs) -> RecipientErrorsType:
+            timeout: DefaultNumType = _default) -> RecipientErrorsType:
         """
         Send the recipients given to the server. Used as part of ``sendmail``.
         """
         recipient_errors = []
         for address in recipients:
             try:
-                await self.rcpt(address, **kwargs)
+                await self.rcpt(address, timeout=timeout)
             except SMTPRecipientRefused as exc:
                 recipient_errors.append(exc)
 
@@ -195,8 +199,8 @@ class SMTP(SMTPAuth):
             self, message: Message, sender: str = None,
             recipients: RecipientsType = None,
             mail_options: Iterable[str] = None,
-            rcpt_options: Iterable[str] = None, **kwargs) -> \
-            SendmailResponseType:
+            rcpt_options: Iterable[str] = None,
+            timeout: DefaultNumType = _default) -> SendmailResponseType:
         """
         Converts an ``email.message.Message`` object to a string and
         passes it to sendmail.
@@ -226,26 +230,44 @@ class SMTP(SMTPAuth):
             recipients = header_recipients
 
         result = await self.sendmail(
-            sender, recipients, flat_message, **kwargs)
+            sender, recipients, flat_message, timeout=timeout)
 
         return result
 
-    def _run_sync(self, method, *args, **kwargs) -> Any:
+    def _run_sync(self, method: Callable, *args, **kwargs) -> Any:
+        """
+        Utility method to run commands synchronously for testing.
+        """
         assert not self.loop.is_running(), 'Event loop is already running'
 
         if not self.is_connected:
             self.loop.run_until_complete(self.connect())
 
-        coro = getattr(self, method)
-        result = self.loop.run_until_complete(coro(*args, **kwargs))
+        task = asyncio.Task(method(*args, **kwargs), loop=self.loop)
+        result = self.loop.run_until_complete(task)
 
         if self.is_connected:
             self.loop.run_until_complete(self.quit())
 
         return result
 
-    def sendmail_sync(self, *args, **kwargs) -> SendmailResponseType:
-        return self._run_sync('sendmail', *args, **kwargs)
+    def sendmail_sync(
+            self, sender: str, recipients: RecipientsType,
+            message: Union[str, bytes], mail_options: Iterable[str] = None,
+            rcpt_options: Iterable[str] = None,
+            timeout: DefaultNumType = _default) -> SendmailResponseType:
+        return self._run_sync(
+            self.sendmail, sender, recipients, message,
+            mail_options=mail_options, rcpt_options=rcpt_options,
+            timeout=timeout)
 
-    def send_message_sync(self, *args, **kwargs) -> SendmailResponseType:
-        return self._run_sync('send_message', *args, **kwargs)
+    def send_message_sync(
+            self, message: Message, sender: str = None,
+            recipients: RecipientsType = None,
+            mail_options: Iterable[str] = None,
+            rcpt_options: Iterable[str] = None,
+            timeout: DefaultNumType = _default) -> SendmailResponseType:
+        return self._run_sync(
+            self.send_message, message, sender=sender, recipients=recipients,
+            mail_options=mail_options, rcpt_options=rcpt_options,
+            timeout=timeout)
