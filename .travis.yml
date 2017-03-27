@@ -1,4 +1,5 @@
 language: python
+cache: pip
 python:
  # - '3.5'  3.5.3 is the new baseline, so disable 3.5 until Travis gets there
   - 3.5-dev
