@@ -8,7 +8,6 @@ from aiosmtplib import (
     SMTP, SMTPConnectError, SMTPResponseException, SMTPServerDisconnected,
     SMTPStatus, SMTPTimeoutError,
 )
-from tests.env import NETWORK_AVAILABLE
 
 
 @pytest.mark.asyncio(forbid_global_loop=True)
@@ -114,24 +113,6 @@ async def test_starttls(preset_client):
         preset_client.server.responses.append(b'250 all good')
         response = await preset_client.ehlo()
         assert response.code == SMTPStatus.completed
-
-
-@pytest.mark.skipif(not NETWORK_AVAILABLE, reason="requires network")
-@pytest.mark.asyncio(forbid_global_loop=True)
-async def test_starttls_gmail(event_loop):
-    """
-    This is a bad test in that it requires gmail to be available and
-    accessible, but it's important to test connections to a real server.
-    """
-    client = SMTP(
-        hostname='smtp.gmail.com', port=587, loop=event_loop, use_tls=False)
-    await client.connect()
-    await client.ehlo()
-    await client.starttls(validate_certs=False)
-    response = await client.ehlo()
-
-    assert response.code == SMTPStatus.completed
-    assert 'smtp.gmail.com at your service' in response.message
 
 
 def test_mock_server_starttls_with_stmplib(preset_server):
