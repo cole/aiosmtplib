@@ -11,7 +11,7 @@ from aiosmtplib import SMTP, SMTPAuthenticationError, SMTPStatus
 
 
 pytestmark = pytest.mark.skipif(
-    os.environ.get('TRAVIS', False),
+    os.environ.get('TRAVIS') == 'true',
     reason='No tests against real servers on TravisCI')
 
 
