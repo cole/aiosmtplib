@@ -1,8 +1,11 @@
-dist/
-TODO
+.cache/
+.tox/
+.coverage
+.coveralls.yml
 aiosmtplib.egg-info/
+coverage/
+dist/
+venv/
 aiosmtplib.sublime-project
 aiosmtplib.sublime-workspace
-.coverage
-coverage/
-venv/
+TODO

@@ -1,11 +1,11 @@
 import re
 from pathlib import Path
 
-from setuptools import setup
+from setuptools import find_packages, setup
 
 VERSION_REGEX = r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]'
 
-init = Path('aiosmtplib/__init__.py')
+init = Path('src/aiosmtplib/__init__.py')
 readme = Path(__file__).with_name('README.rst')
 version_match = re.search(VERSION_REGEX, init.read_text('utf-8'), re.MULTILINE)
 
@@ -16,13 +16,14 @@ else:
 
 setup(
     name='aiosmtplib',
-    packages=['aiosmtplib'],
     version=version,
     description='asyncio SMTP client',
     long_description=readme.read_text('utf-8'),
     author='Cole Maclean',
     author_email='hi@cole.io',
     url='https://github.com/cole/aiosmtplib',
+    packages=find_packages('src'),
+    package_dir={'': 'src'},
     license='MIT',
     keywords=['smtp', 'email', 'asyncio'],
     classifiers=[
