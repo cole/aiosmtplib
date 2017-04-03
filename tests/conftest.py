@@ -1,12 +1,46 @@
 """
 Pytest fixtures and config.
 """
+import asyncio
+
 import pytest
 
 from aiosmtplib import SMTP
 from tests.server import (
     ThreadedPresetServer, ThreadedSMTPDServer, TLSThreadedPresetServer,
 )
+
+
+try:
+    import uvloop
+except ImportError:
+    _has_uvloop = False
+else:
+    _has_uvloop = True
+
+
+def pytest_addoption(parser):
+    parser.addoption(
+        '--event-loop', action='store', default='asyncio',
+        choices=['asyncio', 'uvloop'])
+
+
+@pytest.yield_fixture()
+def event_loop(request):
+    loop_type = request.config.getoption('--event-loop')
+    if loop_type == 'uvloop' and not _has_uvloop:
+        raise RuntimeError('uvloop not installed.')
+
+    if loop_type == 'asyncio':
+        loop = asyncio.new_event_loop()
+    elif loop_type == 'uvloop':
+        loop = uvloop.new_event_loop()
+    else:
+        raise ValueError('Unknown event loop type: {}'.format(loop_type))
+
+    yield loop
+
+    loop.close()
 
 
 @pytest.fixture()

@@ -6,6 +6,9 @@ python:
   - '3.6'
   - 3.6-dev
   - nightly
+before_install:
+  - sudo apt-get -qq update
+  - sudo apt-get install -y libuv-dev
 install: pip install tox-travis
 script: tox
 deploy:
