@@ -1,7 +1,7 @@
 aiosmtplib changes
 ==================
 
-master
+1.0.1
 ------
 
 - Bugfix: Commands were getting out of order when using the client as a context
@@ -14,6 +14,8 @@ master
 - Bugfix: RuntimeError on client cleanup if event loop was closed
 
 - Bugfix: CRAM-MD5 auth was not working
+
+- Bugfix: AttributeError on STARTTLS under uvloop
 
 1.0.0
 -----
