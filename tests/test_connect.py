@@ -135,7 +135,6 @@ async def test_disconnected_server_raises_on_client_write(
     preset_server.responses.append(b'250 noop')
     # due to our weird server loop, it's easier just to drop on second read
     preset_server.drop_connection_before_next_read = True
-    preset_server.responses.append(b'250 noop')
 
     await preset_client.execute_command(b'NOOP')
     with pytest.raises(SMTPServerDisconnected):
