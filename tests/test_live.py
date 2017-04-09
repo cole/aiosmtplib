@@ -10,12 +10,14 @@ import pytest
 from aiosmtplib import SMTP, SMTPAuthenticationError, SMTPStatus
 
 
-pytestmark = pytest.mark.skipif(
-    os.environ.get('TRAVIS') == 'true',
-    reason='No tests against real servers on TravisCI')
+pytestmark = [
+    pytest.mark.skipif(
+        os.environ.get('TRAVIS') == 'true',
+        reason='No tests against real servers on TravisCI'),
+    pytest.mark.asyncio(forbid_global_loop=True)
+]
 
 
-@pytest.mark.asyncio(forbid_global_loop=True)
 async def test_starttls_gmail(event_loop):
     client = SMTP(
         hostname='smtp.gmail.com', port=587, loop=event_loop, use_tls=False)
@@ -26,13 +28,11 @@ async def test_starttls_gmail(event_loop):
 
     assert response.code == SMTPStatus.completed
     assert 'smtp.gmail.com at your service' in response.message
-
     with pytest.raises(SMTPAuthenticationError):
         await client.login('test', 'test')
 
 
 @pytest.mark.skip(reason='No support for UTF8 yet')
-@pytest.mark.asyncio(forbid_global_loop=True)
 async def test_qq_login(event_loop):
     client = SMTP(
         hostname='smtp.qq.com', port=587, loop=event_loop, use_tls=False)

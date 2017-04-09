@@ -1,5 +1,5 @@
 """
-Test error class imports, arguments, and inheritance
+Test error class imports, arguments, and inheritance.
 """
 import pytest
 
