@@ -57,6 +57,8 @@ async def test_sendmail_simple_failure(smtpd_client):
 
 async def test_sendmail_error_silent_rset_handles_disconnect(preset_client):
     async with preset_client:
+        preset_client.server.responses.append(b'250 Hello there')
+
         preset_client.server.goodbye = b'501 oh noes'
         with pytest.raises(SMTPResponseException):
             await preset_client.sendmail(

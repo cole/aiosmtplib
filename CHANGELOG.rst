@@ -1,8 +1,14 @@
 aiosmtplib changes
 ==================
 
-1.0.1
+master
 ------
+
+- Bugfix: Disconnected clients would raise SMTPResponseException: (-1 ...)
+  instead of SMTPServerDisconnected
+
+1.0.1
+-----
 
 - Bugfix: Commands were getting out of order when using the client as a context
   manager within a task

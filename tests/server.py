@@ -17,14 +17,22 @@ class ThreadedPresetRequestHandler(socketserver.BaseRequestHandler):
         self.request = context.wrap_socket(self.request, server_side=True)
         self.request.settimeout(None)
 
-    def handle(self):
+    def setup(self):
         self.request.sendall(self.server.greeting)
 
+    def handle(self):
         while True:
+            if self.server.drop_connection_before_next_read:
+                self.request.close()
+                break
+
             data = self.request.recv(4096)  # Naive recv won't work for data
             self.server.requests.append(data)
 
-            if self.server.delay_next_response > 0:
+            if self.server.drop_connection_after_next_read:
+                self.request.close()
+                break
+            elif self.server.delay_next_response > 0:
                 time.sleep(self.server.delay_next_response)
 
             response = self.server.next_response
@@ -39,6 +47,7 @@ class ThreadedPresetRequestHandler(socketserver.BaseRequestHandler):
                 except OSError:
                     break
 
+    def finish(self):
         try:
             # Disconnect
             self.request.sendall(self.server.goodbye)
@@ -51,8 +60,7 @@ class ThreadedPresetRequestHandler(socketserver.BaseRequestHandler):
             self.request.close()
 
 
-class ThreadedPresetServer(
-        socketserver.ThreadingMixIn, socketserver.TCPServer):
+class ThreadedPresetServer(socketserver.ThreadingTCPServer):
 
     def __init__(self, hostname, port, certfile='tests/certs/selfsigned.crt',
                  keyfile='tests/certs/selfsigned.key', greeting=None,
@@ -74,6 +82,8 @@ class ThreadedPresetServer(
         self.responses = collections.deque()
         self.requests = []
         self.delay_next_response = 0
+        self.drop_connection_before_next_read = False
+        self.drop_connection_after_next_read = False
 
     @property
     def next_response(self):

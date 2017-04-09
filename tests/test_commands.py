@@ -72,6 +72,13 @@ async def test_ehlo_or_helo_if_needed_neither_succeeds(preset_client):
             await preset_client._ehlo_or_helo_if_needed()
 
 
+async def test_ehlo_or_helo_if_needed_disconnect_on_ehlo(preset_client):
+    async with preset_client:
+        preset_client.server.goodbye = b'501 oh noes'
+        with pytest.raises(SMTPHeloError):
+            await preset_client._ehlo_or_helo_if_needed()
+
+
 async def test_rset_ok(smtpd_client):
     async with smtpd_client:
         response = await smtpd_client.rset()

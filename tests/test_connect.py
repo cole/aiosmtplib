@@ -109,6 +109,41 @@ async def test_del_client_closes_transport(preset_server, event_loop):
     assert transport.is_closing()
 
 
+async def test_disconnected_server_raises_on_client_read(
+        preset_server, event_loop):
+    preset_client = SMTP(
+        hostname='127.0.0.1', port=preset_server.port, loop=event_loop)
+
+    await preset_client.connect()
+
+    preset_server.responses.append(b'250 noop')
+    preset_server.drop_connection_after_next_read = True
+
+    with pytest.raises(SMTPServerDisconnected):
+        await preset_client.execute_command(b'NOOP')
+
+    preset_client.close()
+
+
+async def test_disconnected_server_raises_on_client_write(
+        preset_server, event_loop):
+    preset_client = SMTP(
+        hostname='127.0.0.1', port=preset_server.port, loop=event_loop)
+
+    await preset_client.connect()
+
+    preset_server.responses.append(b'250 noop')
+    # due to our weird server loop, it's easier just to drop on second read
+    preset_server.drop_connection_before_next_read = True
+    preset_server.responses.append(b'250 noop')
+
+    await preset_client.execute_command(b'NOOP')
+    with pytest.raises(SMTPServerDisconnected):
+        await preset_client.execute_command(b'NOOP')
+
+    preset_client.close()
+
+
 async def test_context_manager(smtpd_client):
     async with smtpd_client:
         assert smtpd_client.is_connected

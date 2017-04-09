@@ -63,7 +63,7 @@ class SMTP(SMTPAuth):
         connection_errors = (ConnectionError, SMTPTimeoutError)
         if exc_type in connection_errors or not self.is_connected:
             self.close()
-        else:
+        elif self.is_connected:
             try:
                 await self.quit()
             except connection_errors:

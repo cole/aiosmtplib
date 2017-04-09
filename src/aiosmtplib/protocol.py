@@ -121,18 +121,7 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
 
         while True:
             async with self._io_lock:
-                read_task = asyncio.Task(
-                    self._stream_reader.readline(), loop=self._loop)
-                try:
-                    line = await asyncio.wait_for(
-                        read_task, timeout, loop=self._loop)  # type: bytes
-                except asyncio.LimitOverrunError:
-                    raise SMTPResponseException(500, 'Line too long.')
-                except ConnectionError as exc:
-                    raise SMTPServerDisconnected(str(exc))
-                except asyncio.TimeoutError as exc:
-                    raise SMTPTimeoutError(str(exc))
-
+                line = await self._readline(timeout=timeout)
             try:
                 code = int(line[:3])
             except ValueError:
@@ -217,6 +206,9 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
         return response, tls_protocol
 
     async def _drain_writer(self, timeout: NumType = None) -> None:
+        """
+        Wraps writer.drain() with error handling.
+        """
         assert self._stream_writer is not None, 'Client not connected'
 
         # Wrapping drain in a task makes mypy happy
@@ -227,3 +219,30 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
             raise SMTPServerDisconnected(str(exc))
         except asyncio.TimeoutError as exc:
             raise SMTPTimeoutError(str(exc))
+
+    async def _readline(self, timeout: NumType = None):
+        """
+        Wraps reader.readuntil() with error handling.
+        """
+        read_task = asyncio.Task(
+            self._stream_reader.readuntil(separator=b'\n'), loop=self._loop)
+        try:
+            line = await asyncio.wait_for(
+                read_task, timeout, loop=self._loop)  # type: bytes
+        except ConnectionError as exc:
+            raise SMTPServerDisconnected(str(exc))
+        except asyncio.LimitOverrunError:
+            raise SMTPResponseException(500, 'Line too long.')
+        except asyncio.TimeoutError as exc:
+            raise SMTPTimeoutError(str(exc))
+        except asyncio.IncompleteReadError as exc:
+            if exc.partial == b'':  # type: ignore
+                # if we just got an EOF, raise SMTPServerDisconnected
+                raise SMTPServerDisconnected(str(exc))
+            else:
+                # otherwise, close our connection but try to parse the
+                # response anyways
+                self._stream_writer.close()
+                line = exc.partial  # type: ignore
+
+        return line

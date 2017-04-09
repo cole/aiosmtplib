@@ -322,8 +322,11 @@ class ESMTP(SMTPConnection):
         if self.is_ehlo_or_helo_needed:
             try:
                 await self.ehlo()
-            except SMTPHeloError:
-                await self.helo()
+            except SMTPHeloError as exc:
+                if self.is_connected:
+                    await self.helo()
+                else:
+                    raise exc
 
     def _reset_server_state(self) -> None:
         """
