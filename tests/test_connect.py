@@ -97,6 +97,16 @@ async def test_timeout_with_no_server(event_loop):
         await client.connect(timeout=0.0001)
 
 
+async def test_timeout_on_initial_read(preset_server, event_loop):
+    client = SMTP(
+        hostname='127.0.0.1', port=preset_server.port, loop=event_loop)
+
+    preset_server.delay_greeting = 1
+
+    with pytest.raises(SMTPTimeoutError):
+        await client.connect(timeout=0.5)
+
+
 async def test_del_client_closes_transport(preset_server, event_loop):
     preset_client = SMTP(
         hostname='127.0.0.1', port=preset_server.port, loop=event_loop)

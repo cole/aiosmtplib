@@ -18,6 +18,9 @@ class ThreadedPresetRequestHandler(socketserver.BaseRequestHandler):
         self.request.settimeout(None)
 
     def setup(self):
+        if self.server.delay_greeting > 0:
+            time.sleep(self.server.delay_greeting)
+
         self.request.sendall(self.server.greeting)
 
     def handle(self):
@@ -82,6 +85,7 @@ class ThreadedPresetServer(socketserver.ThreadingTCPServer):
         self.responses = collections.deque()
         self.requests = []
         self.delay_next_response = 0
+        self.delay_greeting = 0
         self.drop_connection_before_next_read = False
         self.drop_connection_after_next_read = False
 
