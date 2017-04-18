@@ -164,7 +164,6 @@ class SMTPConnection:
             self.transport, _ = await asyncio.wait_for(  # type: ignore
                 connect_future, timeout=self.timeout, loop=self.loop)
         except (ConnectionRefusedError, OSError) as err:
-            raise
             raise SMTPConnectError(
                 'Error connecting to {host} on port {port}: {err}'.format(
                     host=self.hostname, port=self.port, err=err))
