@@ -191,8 +191,13 @@ class SMTPConnection:
         self._raise_error_if_disconnected()
         assert self.protocol is not None, 'Not connected'
 
-        response = await self.protocol.execute_command(  # type: ignore
-            *args, timeout=timeout)
+        try:
+            response = await self.protocol.execute_command(  # type: ignore
+                *args, timeout=timeout)
+        except SMTPServerDisconnected:
+            # On disconnect, clean up the connection.
+            self.close()
+            raise
 
         # If the server is unavailable, be nice and close the connection
         if response.code == SMTPStatus.domain_unavailable:
@@ -227,8 +232,7 @@ class SMTPConnection:
         ``SMTPServerDisconnected``.
         """
         if self.transport is None or self.transport.is_closing():
-            if self._connect_lock.locked():
-                self._connect_lock.release()
+            self.close()
             raise SMTPServerDisconnected('Disconnected from SMTP server')
 
     def close(self) -> None:

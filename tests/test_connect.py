@@ -122,7 +122,10 @@ async def test_disconnected_server_raises_on_client_read(
     with pytest.raises(SMTPServerDisconnected):
         await preset_client.execute_command(b'NOOP')
 
-    preset_client.close()
+    # Verify that the connection was closed
+    assert not preset_client._connect_lock.locked()
+    assert preset_client.protocol is None
+    assert preset_client.transport is None
 
 
 async def test_disconnected_server_raises_on_client_write(
@@ -141,7 +144,10 @@ async def test_disconnected_server_raises_on_client_write(
         await preset_client.execute_command(b'NOOP')
         await preset_client.execute_command(b'NOOP')
 
-    preset_client.close()
+    # Verify that the connection was closed
+    assert not preset_client._connect_lock.locked()
+    assert preset_client.protocol is None
+    assert preset_client.transport is None
 
 
 async def test_context_manager(smtpd_client):
