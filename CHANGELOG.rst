@@ -4,6 +4,8 @@ aiosmtplib changes
 master
 ------
 
+- Bugfix: Close connection lock on on SMTPServerDisconnected
+
 - Feature: Added cert_bundle argument to connection init and connect methods
 
 - Bugfix: Disconnected clients would raise SMTPResponseException: (-1 ...)
