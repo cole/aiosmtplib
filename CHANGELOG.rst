@@ -4,6 +4,8 @@ aiosmtplib changes
 master
 ------
 
+- Feature: Added cert_bundle argument to connection init and connect methods
+
 - Bugfix: Disconnected clients would raise SMTPResponseException: (-1 ...)
   instead of SMTPServerDisconnected
 

@@ -47,7 +47,8 @@ class SMTPConnection:
             loop: asyncio.AbstractEventLoop = None,
             use_tls: bool = False, validate_certs: bool = True,
             client_cert: str = None, client_key: str = None,
-            tls_context: ssl.SSLContext = None) -> None:
+            tls_context: ssl.SSLContext = None,
+            cert_bundle: str = None) -> None:
         # Kwarg defaults are provided here, and saved for connect.
         if tls_context is not None and client_cert is not None:
             raise ValueError(
@@ -62,6 +63,7 @@ class SMTPConnection:
         self.client_cert = client_cert
         self.client_key = client_key
         self.tls_context = tls_context
+        self.cert_bundle = cert_bundle
 
         self.loop = loop or asyncio.get_event_loop()
         self.protocol = None  # type: Optional[SMTPProtocol]
@@ -101,7 +103,8 @@ class SMTPConnection:
             use_tls: bool = None, validate_certs: bool = None,
             client_cert: DefaultStrType = _default,
             client_key: DefaultStrType = _default,
-            tls_context: DefaultSSLContextType = _default) -> SMTPResponse:
+            tls_context: DefaultSSLContextType = _default,
+            cert_bundle: DefaultStrType = _default) -> SMTPResponse:
         """
         Open asyncio streams to the server and check response status.
         """
@@ -132,6 +135,8 @@ class SMTPConnection:
             self.client_key = client_key  # type: ignore
         if tls_context is not _default:
             self.tls_context = tls_context  # type: ignore
+        if cert_bundle is not _default:
+            self.cert_bundle = cert_bundle  # type: ignore
 
         if self.tls_context is not None and self.client_cert is not None:
             raise ValueError(
@@ -159,6 +164,7 @@ class SMTPConnection:
             self.transport, _ = await asyncio.wait_for(  # type: ignore
                 connect_future, timeout=self.timeout, loop=self.loop)
         except (ConnectionRefusedError, OSError) as err:
+            raise
             raise SMTPConnectError(
                 'Error connecting to {host} on port {port}: {err}'.format(
                     host=self.hostname, port=self.port, err=err))
@@ -219,6 +225,9 @@ class SMTPConnection:
                 context.verify_mode = ssl.CERT_REQUIRED
             else:
                 context.verify_mode = ssl.CERT_NONE
+
+            if self.cert_bundle is not None:
+                context.load_verify_locations(cafile=self.cert_bundle)
 
             if self.client_cert is not None:
                 context.load_cert_chain(

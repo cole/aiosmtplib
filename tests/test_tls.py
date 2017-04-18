@@ -2,6 +2,8 @@
 TLS and STARTTLS handling.
 """
 import asyncio.sslproto
+import ssl
+from pathlib import Path
 
 import pytest
 
@@ -100,3 +102,30 @@ async def test_tls_smtp_connect_to_non_tls_server(preset_server, event_loop):
     with pytest.raises(SMTPConnectError):
         await tls_client.connect()
     assert not tls_client.is_connected
+
+
+async def test_tls_connection_with_existing_sslcontext(tls_preset_client):
+    context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+    context.check_hostname = False
+    context.verify_mode = ssl.CERT_NONE
+
+    await tls_preset_client.connect(tls_context=context)
+    assert tls_preset_client.is_connected
+
+    assert tls_preset_client.tls_context is context
+
+    await tls_preset_client.quit()
+    assert not tls_preset_client.is_connected
+
+
+async def test_tls_connection_with_client_cert(tls_preset_client):
+    cert_path = str(Path('tests/certs/selfsigned.crt'))
+    key_path = str(Path('tests/certs/selfsigned.key'))
+
+    await tls_preset_client.connect(
+        hostname='localhost', validate_certs=True, client_cert=cert_path,
+        client_key=key_path, cert_bundle=cert_path)
+    assert tls_preset_client.is_connected
+
+    await tls_preset_client.quit()
+    assert not tls_preset_client.is_connected
