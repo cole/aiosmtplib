@@ -342,6 +342,7 @@ class ESMTP(SMTPConnection):
             self, server_hostname: str = None, validate_certs: bool = None,
             client_cert: DefaultStrType = _default,
             client_key: DefaultStrType = _default,
+            cert_bundle: DefaultStrType = _default,
             tls_context: DefaultSSLContextType = _default,
             timeout: DefaultNumType = _default) -> SMTPResponse:
         """
@@ -369,6 +370,8 @@ class ESMTP(SMTPConnection):
             self.client_cert = client_cert  # type: ignore
         if client_key is not _default:
             self.client_key = client_key  # type: ignore
+        if cert_bundle is not _default:
+            self.cert_bundle = cert_bundle  # type: ignore
         if tls_context is not _default:
             self.tls_context = tls_context  # type: ignore
 

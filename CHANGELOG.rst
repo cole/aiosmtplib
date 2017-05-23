@@ -6,10 +6,12 @@ master
 
 - Bugfix: Close connection lock on on SMTPServerDisconnected
 
-- Feature: Added cert_bundle argument to connection init and connect methods
+- Feature: Added cert_bundle argument to connection init, connect and starttls
+  methods
 
 - Bugfix: Disconnected clients would raise SMTPResponseException: (-1 ...)
   instead of SMTPServerDisconnected
+
 
 1.0.1
 -----
