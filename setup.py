@@ -3,6 +3,7 @@ from pathlib import Path
 
 from setuptools import find_packages, setup
 
+
 VERSION_REGEX = r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]'
 
 init = Path('src/aiosmtplib/__init__.py')
@@ -44,10 +45,12 @@ setup(
     ],
     extras_require={
         'testing': [
-            'pytest >= 3.0.2',
-            'pytest-asyncio ~= 0.5.0',
-            'pytest-cov ~= 2.4',
-            'wheel[signatures]'
+            'pytest>=3.0,<3.1',
+            'pytest-asyncio>=0.5,<0.6',
+            'pytest-cov>=2.4,<2.5',
+            'hypothesis>=3.0,<4.0',
+            'hypothesis-pytest>=0.19,<1.0',
+            'wheel[signatures]',
         ]
     }
 )
