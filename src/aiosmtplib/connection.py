@@ -49,11 +49,14 @@ class SMTPConnection:
             client_cert: str = None, client_key: str = None,
             tls_context: ssl.SSLContext = None,
             cert_bundle: str = None) -> None:
-        # Kwarg defaults are provided here, and saved for connect.
+        self.protocol = None  # type: Optional[SMTPProtocol]
+        self.transport = None  # type: Optional[asyncio.BaseTransport]
+
         if tls_context is not None and client_cert is not None:
             raise ValueError(
                 'Either a TLS context or a certificate/key must be provided')
 
+        # Kwarg defaults are provided here, and saved for connect.
         self.hostname = hostname
         self.port = port
         self.timeout = timeout
@@ -66,8 +69,6 @@ class SMTPConnection:
         self.cert_bundle = cert_bundle
 
         self.loop = loop or asyncio.get_event_loop()
-        self.protocol = None  # type: Optional[SMTPProtocol]
-        self.transport = None  # type: Optional[asyncio.BaseTransport]
         self._connect_lock = asyncio.Lock(loop=self.loop)
 
     def __del__(self) -> None:

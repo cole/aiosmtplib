@@ -47,7 +47,7 @@ def event_loop(request):
 
 @pytest.fixture()
 def smtpd_server(request, unused_tcp_port):
-    server = ThreadedSMTPDServer('127.0.0.1', unused_tcp_port)
+    server = ThreadedSMTPDServer('localhost', unused_tcp_port)
     server.start()
 
     request.addfinalizer(server.stop)
@@ -57,7 +57,7 @@ def smtpd_server(request, unused_tcp_port):
 
 @pytest.fixture()
 def preset_server(request, unused_tcp_port):
-    server = ThreadedPresetServer('127.0.0.1', unused_tcp_port)
+    server = ThreadedPresetServer('localhost', unused_tcp_port)
     server.start()
 
     request.addfinalizer(server.stop)
@@ -67,7 +67,7 @@ def preset_server(request, unused_tcp_port):
 
 @pytest.fixture()
 def tls_preset_server(request, unused_tcp_port):
-    server = TLSThreadedPresetServer('127.0.0.1', unused_tcp_port)
+    server = TLSThreadedPresetServer('localhost', unused_tcp_port)
     server.start()
 
     request.addfinalizer(server.stop)

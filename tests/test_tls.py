@@ -11,6 +11,8 @@ from aiosmtplib import SMTP, SMTPConnectError, SMTPStatus, SMTPTimeoutError
 
 
 pytestmark = pytest.mark.asyncio(forbid_global_loop=True)
+cert_path = str(Path('tests/certs/selfsigned.crt'))
+key_path = str(Path('tests/certs/selfsigned.key'))
 
 
 async def test_tls_connection(tls_preset_client):
@@ -33,6 +35,7 @@ async def test_starttls(preset_client):
         ]))
         preset_client.server.responses.append(b'220 ready for TLS')
         response = await preset_client.starttls(validate_certs=False)
+
         assert response.code == SMTPStatus.ready
 
         # Make sure our state has been cleared
@@ -66,13 +69,29 @@ async def test_starttls_timeout(preset_client):
             await preset_client.starttls(validate_certs=False)
 
 
+async def test_starttls_with_client_cert(preset_client):
+    async with preset_client:
+        preset_client.server.responses.append(b'\n'.join([
+            b'250-localhost, hello',
+            b'250 STARTTLS',
+        ]))
+        preset_client.server.responses.append(b'220 ready for TLS')
+        response = await preset_client.starttls(
+            client_cert=cert_path, client_key=key_path, cert_bundle=cert_path)
+
+        assert response.code == SMTPStatus.ready
+        assert preset_client.client_cert == cert_path
+        assert preset_client.client_key == key_path
+        assert preset_client.cert_bundle == cert_path
+
+
 async def test_tls_get_transport_info(tls_preset_client):
     async with tls_preset_client:
         compression = tls_preset_client.get_transport_info('compression')
         assert compression is None  # Compression is not used here
 
         peername = tls_preset_client.get_transport_info('peername')
-        assert peername[0] == tls_preset_client.hostname
+        assert peername[0] == '127.0.0.1'
         assert peername[1] == tls_preset_client.port
 
         sock = tls_preset_client.get_transport_info('socket')
@@ -119,9 +138,6 @@ async def test_tls_connection_with_existing_sslcontext(tls_preset_client):
 
 
 async def test_tls_connection_with_client_cert(tls_preset_client):
-    cert_path = str(Path('tests/certs/selfsigned.crt'))
-    key_path = str(Path('tests/certs/selfsigned.key'))
-
     await tls_preset_client.connect(
         hostname='localhost', validate_certs=True, client_cert=cert_path,
         client_key=key_path, cert_bundle=cert_path)

@@ -38,5 +38,7 @@ async def test_qq_login(event_loop):
         hostname='smtp.qq.com', port=587, loop=event_loop, use_tls=False)
     await client.connect()
     await client.ehlo()
+    await client.starttls(validate_certs=False)
+
     with pytest.raises(SMTPAuthenticationError):
         await client.login('test', 'test')

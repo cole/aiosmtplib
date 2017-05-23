@@ -73,7 +73,8 @@ async def test_connect_and_sendmail_multiple_times_with_gather(
     """
 
     client = SMTP(
-        hostname='127.0.0.1', port=smtpd_server.port, loop=event_loop)
+        hostname=smtpd_server.hostname, port=smtpd_server.port,
+        loop=event_loop)
 
     async def connect_and_send(*args, **kwargs):
         async with client:
@@ -107,7 +108,8 @@ async def test_multiple_clients_with_gather(smtpd_server, event_loop):
 
     async def connect_and_send(*args, **kwargs):
         client = SMTP(
-            hostname='127.0.0.1', port=smtpd_server.port, loop=event_loop)
+            hostname=smtpd_server.hostname, port=smtpd_server.port,
+            loop=event_loop)
         async with client:
             response = await client.sendmail(*args, **kwargs)
 
@@ -139,7 +141,8 @@ async def test_multiple_actions_in_context_manager_with_gather(
     """
 
     client = SMTP(
-        hostname='127.0.0.1', port=smtpd_server.port, loop=event_loop)
+        hostname=smtpd_server.hostname, port=smtpd_server.port,
+        loop=event_loop)
 
     async def connect_and_run_commands(*args, **kwargs):
         async with client:
@@ -180,7 +183,8 @@ async def test_many_commands_with_gather(smtpd_client):
 
 async def test_close_works_on_stopped_loop(preset_server, event_loop):
     preset_client = SMTP(
-        hostname='127.0.0.1', port=preset_server.port, loop=event_loop)
+        hostname=preset_server.hostname, port=preset_server.port,
+        loop=event_loop)
 
     await preset_client.connect()
     assert preset_client.is_connected
