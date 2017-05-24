@@ -13,7 +13,7 @@ def test_tls_context_and_cert_raises():
         SMTP(use_tls=True, client_cert='foo.crt', tls_context=True)
 
 
-@pytest.mark.asyncio(forbid_global_loop=True)
+@pytest.mark.asyncio(forbid_global_loop=False)
 async def test_tls_context_and_cert_to_connect_raises():
     client = SMTP(use_tls=True, tls_context=True)
 
@@ -33,7 +33,7 @@ async def test_tls_context_and_cert_to_starttls_raises(
             await client.starttls(client_cert='test.cert', tls_context=True)
 
 
-@pytest.mark.asyncio(forbid_global_loop=True)
+@pytest.mark.asyncio(forbid_global_loop=False)
 async def test_config_via_connect_kwargs(preset_server, event_loop):
     client = SMTP(
         hostname='', use_tls=True, port=preset_server.port + 1,
