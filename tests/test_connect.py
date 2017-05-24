@@ -160,6 +160,87 @@ async def test_disconnected_server_raises_on_client_write(
     assert preset_client.transport is None
 
 
+async def test_disconnected_server_raises_on_data_read(preset_client):
+    """
+    The `data` command is a special case - it access protocol directly,
+    rather than using `execute_command`.
+    """
+    await preset_client.connect()
+
+    preset_client.server.responses.append(b'250 Hello there')
+    await preset_client.ehlo()
+
+    preset_client.server.responses.append(b'250 ok')
+    await preset_client.mail('sender@example.com')
+
+    preset_client.server.responses.append(b'250 ok')
+    await preset_client.rcpt('recipient@example.com')
+
+    preset_client.server.responses.append(b'354 lets go')
+    preset_client.server.drop_connection_after_next_read = True
+
+    with pytest.raises(SMTPServerDisconnected):
+        await preset_client.data('A MESSAGE')
+
+    # Verify that the connection was closed
+    assert not preset_client._connect_lock.locked()
+    assert preset_client.protocol is None
+    assert preset_client.transport is None
+
+
+async def test_disconnected_server_raises_on_data_write(preset_client):
+    """
+    The `data` command is a special case - it access protocol directly,
+    rather than using `execute_command`.
+    """
+    await preset_client.connect()
+
+    preset_client.server.responses.append(b'250 Hello there')
+    await preset_client.ehlo()
+
+    preset_client.server.responses.append(b'250 ok')
+    await preset_client.mail('sender@example.com')
+
+    preset_client.server.responses.append(b'250 ok')
+    await preset_client.rcpt('recipient@example.com')
+
+    preset_client.server.responses.append(b'354 lets go')
+    preset_client.server.drop_connection_before_next_read = True
+
+    with pytest.raises(SMTPServerDisconnected):
+        await preset_client.data('A MESSAGE')
+
+    # Verify that the connection was closed
+    assert not preset_client._connect_lock.locked()
+    assert preset_client.protocol is None
+    assert preset_client.transport is None
+
+
+async def test_disconnected_server_raises_on_starttls(preset_client):
+    """
+    The `data` command is a special case - it access protocol directly,
+    rather than using `execute_command`.
+    """
+    await preset_client.connect()
+    preset_client.server.responses.append(b'\n'.join([
+        b'250-localhost, hello',
+        b'250-SIZE 100000',
+        b'250 STARTTLS',
+    ]))
+    await preset_client.ehlo()
+
+    preset_client.server.responses.append(b'220 begin TLS pls')
+    preset_client.server.drop_connection_after_next_read = True
+
+    with pytest.raises(SMTPServerDisconnected):
+        await preset_client.starttls(validate_certs=False)
+
+    # Verify that the connection was closed
+    assert not preset_client._connect_lock.locked()
+    assert preset_client.protocol is None
+    assert preset_client.transport is None
+
+
 async def test_context_manager(smtpd_client):
     async with smtpd_client:
         assert smtpd_client.is_connected

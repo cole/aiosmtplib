@@ -7,7 +7,9 @@ from pathlib import Path
 
 import pytest
 
-from aiosmtplib import SMTP, SMTPConnectError, SMTPStatus, SMTPTimeoutError
+from aiosmtplib import (
+    SMTP, SMTPConnectError, SMTPException, SMTPStatus, SMTPTimeoutError,
+)
 
 
 pytestmark = pytest.mark.asyncio(forbid_global_loop=True)
@@ -66,6 +68,18 @@ async def test_starttls_timeout(preset_client):
         preset_client.server.delay_next_response = 1
 
         with pytest.raises(SMTPTimeoutError):
+            await preset_client.starttls(validate_certs=False)
+
+
+async def test_starttls_not_supported(preset_client):
+    async with preset_client:
+        preset_client.server.responses.append(b'\n'.join([
+            b'250-localhost, hello',
+            b'250 SIZE 100000',
+        ]))
+        await preset_client.ehlo()
+
+        with pytest.raises(SMTPException):
             await preset_client.starttls(validate_certs=False)
 
 

@@ -193,15 +193,17 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
 
         response = await self.execute_command(b'STARTTLS', timeout=timeout)
 
-        if response.code == SMTPStatus.ready:
-            await self._drain_writer(timeout)
+        if response.code != SMTPStatus.ready:
+            raise SMTPResponseException(response.code, response.message)
 
-            waiter = asyncio.Future(loop=self._loop)  # type: asyncio.Future
+        await self._drain_writer(timeout)
 
-            tls_protocol = self.upgrade_transport(
-                tls_context, server_hostname=server_hostname, waiter=waiter)
+        waiter = asyncio.Future(loop=self._loop)  # type: asyncio.Future
 
-            await asyncio.wait_for(waiter, timeout=timeout, loop=self._loop)
+        tls_protocol = self.upgrade_transport(
+            tls_context, server_hostname=server_hostname, waiter=waiter)
+
+        await asyncio.wait_for(waiter, timeout=timeout, loop=self._loop)
 
         return response, tls_protocol
 
