@@ -1,10 +1,14 @@
 .cache/
+.hypothesis/
+.mypy_cache/
 .tox/
 .coverage
+.coverage.*
 .coveralls.yml
 aiosmtplib.egg-info/
 coverage/
 dist/
+docs/_build/
 venv/
 aiosmtplib.sublime-project
 aiosmtplib.sublime-workspace
