@@ -1,9 +1,3 @@
-"""
-aiosmtplib.errors
-=================
-
-Exception classes.
-"""
 from asyncio import TimeoutError
 from typing import List
 
@@ -35,7 +29,7 @@ class SMTPServerDisconnected(SMTPException, ConnectionError):
 
 class SMTPConnectError(SMTPException, ConnectionError):
     """
-    An error occurred while connectiong to the SMTP server.
+    An error occurred while connecting to the SMTP server.
     """
     pass
 
@@ -80,7 +74,7 @@ class SMTPDataError(SMTPResponseException):
 
 class SMTPAuthenticationError(SMTPResponseException):
     """
-    Server refused our AUTH request, probably due to bad login information.
+    Server refused our AUTH request; may be caused by invalid credentials.
     """
     pass
 
@@ -109,7 +103,7 @@ class SMTPRecipientRefused(SMTPResponseException):
 
 class SMTPRecipientsRefused(SMTPException):
     """
-    Wraps a list of SMTPRecipientRefused exceptions.
+    SMTP server refused multiple recipients.
     """
     def __init__(self, recipients: List[SMTPRecipientRefused]) -> None:
         self.recipients = recipients

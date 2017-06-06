@@ -1,8 +1,5 @@
 """
-aiosmtplib.auth
-===============
-
-Authentication method handling.
+Authentication methods.
 """
 import base64
 import hmac
@@ -32,14 +29,17 @@ def crammd5_verify(
 
 
 class SMTPAuth(ESMTP):
-    # Auth methods we support, with preferred methods first
-    AUTH_METHODS = ('cram-md5', 'plain', 'login')
+    """
+    Handles ESMTP Authentication support.
+
+    CRAM-MD5, PLAIN, and LOGIN auth methods are supported.
+    """
+    AUTH_METHODS = ('cram-md5', 'plain', 'login')  # Preferred methods first
 
     @property
     def supported_auth_methods(self) -> List[str]:
         """
-        Get all AUTH methods supported by the server and by us.
-        Returns a list of (auth_name, auth_function) tuples.
+        Get all AUTH methods supported by the both server and by us.
         """
         return [
             auth for auth in self.AUTH_METHODS
@@ -92,11 +92,13 @@ class SMTPAuth(ESMTP):
         CRAM-MD5 auth uses the password as a shared secret to MD5 the server's
         response.
 
-        Something like:
-        250 AUTH CRAM-MD5
-        auth cram-md5
-        334 PDI0NjA5LjEwNDc5MTQwNDZAcG9wbWFpbC5TcGFjZS5OZXQ+
-        dGltIGI5MTNhNjAyYzdlZGE3YTQ5NWI0ZTZlNzMzNGQzODkw
+        Example::
+
+            250 AUTH CRAM-MD5
+            auth cram-md5
+            334 PDI0NjA5LjEwNDc5MTQwNDZAcG9wbWFpbC5TcGFjZS5OZXQ+
+            dGltIGI5MTNhNjAyYzdlZGE3YTQ5NWI0ZTZlNzMzNGQzODkw
+
         """
         initial_response = await self.execute_command(
             b'AUTH', b'CRAM-MD5', timeout=timeout)
@@ -126,10 +128,12 @@ class SMTPAuth(ESMTP):
         PLAIN auth encodes the username and password in one Base64 encoded
         string. No verification message is required.
 
-        Something like:
-        220-esmtp.example.com
-        AUTH PLAIN dGVzdAB0ZXN0AHRlc3RwYXNz
-        235 ok, go ahead (#2.0.0)
+        Example::
+
+            220-esmtp.example.com
+            AUTH PLAIN dGVzdAB0ZXN0AHRlc3RwYXNz
+            235 ok, go ahead (#2.0.0)
+
         """
         username_bytes = username.encode('ascii')
         password_bytes = password.encode('ascii')
@@ -150,20 +154,22 @@ class SMTPAuth(ESMTP):
         """
         LOGIN auth sends the Base64 encoded username and password in sequence.
 
-        Something like:
-        250 AUTH LOGIN PLAIN CRAM-MD5
-        auth login avlsdkfj
-        334 UGFzc3dvcmQ6
-        avlsdkfj
+        Example::
+
+            250 AUTH LOGIN PLAIN CRAM-MD5
+            auth login avlsdkfj
+            334 UGFzc3dvcmQ6
+            avlsdkfj
 
         Note that there is an alternate version sends the username
-        as a seperate command:
-        250 AUTH LOGIN PLAIN CRAM-MD5
-        auth login
-        334 VXNlcm5hbWU6
-        avlsdkfj
-        334 UGFzc3dvcmQ6
-        avlsdkfj
+        as a separate command::
+
+            250 AUTH LOGIN PLAIN CRAM-MD5
+            auth login
+            334 VXNlcm5hbWU6
+            avlsdkfj
+            334 UGFzc3dvcmQ6
+            avlsdkfj
 
         However, since most servers seem to support both, we send the username
         with the initial request.

@@ -1,7 +1,4 @@
 """
-aiomsmtplib.connection
-======================
-
 Handles client connection/disconnection.
 """
 import asyncio
@@ -33,13 +30,12 @@ NumType = Union[float, int]
 
 class SMTPConnection:
     """
-    The ``SMTPConnection`` class handles connection/disconnection from the
-    SMTP server given.
+    Handles connection/disconnection from the SMTP server provided.
 
-    Keyword arguments can be provided either on init or when calling the
-    ``connect`` method. Note that in both cases these options are saved for
-    later use; subsequent calls to ``connect`` with use the same options,
-    unless new ones are provided.
+    Keyword arguments can be provided either on :meth:`__init__` or when
+    calling the :meth:`connect` method. Note that in both cases these options
+    are saved for later use; subsequent calls to :meth:`connect` will use the
+    same options, unless new ones are provided.
     """
     def __init__(
             self, hostname: str = '', port: int = None,
@@ -49,6 +45,31 @@ class SMTPConnection:
             client_cert: str = None, client_key: str = None,
             tls_context: ssl.SSLContext = None,
             cert_bundle: str = None) -> None:
+        """
+        :keyword hostname:  Server name (or IP) to connect to
+        :keyword port: Server port. Defaults to ``25`` if ``use_tls`` is
+            ``False``, ``465`` if ``use_tls`` is ``True``.
+        :keyword source_address: The hostname of the client. Defaults to the
+            result of :func:`socket.getfqdn`. Note that this call blocks.
+        :keyword timeout: Default timeout value for the connection, in seconds.
+            Defaults to 60.
+        :keyword loop: event loop  to run on. If not set, uses
+            :func:`asyncio.get_event_loop()`.
+        :keyword use_tls: If True, make the initial connection to the server
+            over TLS/SSL. Note that if the server supports STARTTLS only, this
+            should be False.
+        :keyword validate_certs: Determines if server certificates are
+            validated. Defaults to True.
+        :keyword client_cert: Path to client side certificate, for TLS
+            verification.
+        :keyword client_key: Path to client side key, for TLS verification.
+        :keyword tls_context: An existing :class:`ssl.SSLContext`, for TLS
+            verification. Mutually exclusive with ``client_cert``/
+            ``client_key``.
+        :keyword cert_bundle: Path to certificate bundle, for TLS verification.
+
+        :raises ValueError: mutually exclusive options provided
+        """
         self.protocol = None  # type: Optional[SMTPProtocol]
         self.transport = None  # type: Optional[asyncio.BaseTransport]
 
@@ -89,7 +110,7 @@ class SMTPConnection:
     def source_address(self) -> str:
         """
         Get the system hostname to be sent to the SMTP server.
-        Simply caches the result of socket.getfqdn.
+        Simply caches the result of :func:`socket.getfqdn`.
         """
         if self._source_address is None:
             self._source_address = socket.getfqdn()
@@ -107,7 +128,31 @@ class SMTPConnection:
             tls_context: DefaultSSLContextType = _default,
             cert_bundle: DefaultStrType = _default) -> SMTPResponse:
         """
-        Open asyncio streams to the server and check response status.
+        Initialize a connection to the server. Options provided to
+        :meth:`connect` take precedence over those used to initialize the
+        class.
+
+        :keyword hostname:  Server name (or IP) to connect to
+        :keyword port: Server port. Defaults to 25 if ``use_tls`` is
+            False, 465 if ``use_tls`` is True.
+        :keyword source_address: The hostname of the client. Defaults to the
+            result of :func:`socket.getfqdn`. Note that this call blocks.
+        :keyword timeout: Default timeout value for the connection, in seconds.
+            Defaults to 60.
+        :keyword loop: event loop to run on. If not set, uses
+            :func:`asyncio.get_event_loop()`.
+        :keyword use_tls: If True, make the initial connection to the server
+            over TLS/SSL. Note that if the server supports STARTTLS only, this
+            should be False.
+        :keyword validate_certs: Determines if server certificates are
+            validated. Defaults to True.
+        :keyword client_cert: Path to client side certificate, for TLS.
+        :keyword client_key: Path to client side key, for TLS.
+        :keyword tls_context: An existing :class:`ssl.SSLContext`, for TLS.
+            Mutually exclusive with ``client_cert``/``client_key``.
+        :keyword cert_bundle: Path to certificate bundle, for TLS verification.
+
+        :raises ValueError: mutually exclusive options provided
         """
         await self._connect_lock.acquire()
 
@@ -190,6 +235,8 @@ class SMTPConnection:
         """
         Check that we're connected, if we got a timeout value, and then
         pass the command to the protocol.
+
+        :raises SMTPServerDisconnected: connection lost
         """
         if timeout is _default:
             timeout = self.timeout  # type: ignore
@@ -261,8 +308,17 @@ class SMTPConnection:
         """
         Get extra info from the transport.
         Supported keys:
-            'peername', 'socket', 'sockname', 'compression', 'cipher',
-            'peercert', 'sslcontext', 'ssl_object'
+
+            - ``peername``
+            - ``socket``
+            - ``sockname``
+            - ``compression``
+            - ``cipher``
+            - ``peercert``
+            - ``sslcontext``
+            - ``sslobject``
+
+        :raises SMTPServerDisconnected: connection lost
         """
         self._raise_error_if_disconnected()
         assert self.transport is not None

@@ -1,7 +1,4 @@
 """
-aiosmtplib.response
-===================
-
 SMTPResponse class, a simple namedtuple of (code, message).
 """
 from typing import NamedTuple
@@ -15,10 +12,18 @@ BaseResponse = NamedTuple('SMTPResponse', [('code', int), ('message', str)])
 
 class SMTPResponse(BaseResponse):
     """
-    A namedtuple with some simple convenience methods.
+    NamedTuple of server response code and server response message.
 
-    Consists of a server response code (e.g. 250) and a server response message
-    (e.g. 'OK').
+    ``code`` and ``message`` can be accessed via attributes or indexes:
+
+        >>> response = SMTPResponse(200, 'OK')
+        >>> response.message
+        'OK'
+        >>> response[0]
+        200
+        >>> response.code
+        200
+
     """
     __slots__ = ()
 

@@ -1,28 +1,22 @@
 """
-aiomsmtplib.smtp
-================
+Public API.
 
-The SMTP class is the public API for aiosmtplib.
+Implementation is split into the following classes:
 
-Basic usage:
-    loop = asyncio.get_event_loop()
-    smtp = aiosmtplib.SMTP(hostname='localhost', port=1025, loop=loop)
-    send_coroutine = smtp.sendmail(
-        'root@localhost', ['somebody@localhost'], "Hello World")
-    asyncio.run_until_complete(smtp.connect())
-    asyncio.run_until_complete(send_coroutine)
-
+    * :class:`.auth.SMTPAuth` - login and authentication methods
+    * :class:`.esmtp.ESMTP` - ESMTP command support
+    * :class:`.connection.SMTPConnection` - connection handling
 """
 import asyncio
 from email.message import Message
-from typing import Any, Callable, Dict, Iterable, List, Tuple, Type, Union
+from typing import Any, Callable, Dict, Iterable, List, Tuple, Union
 
 from .auth import SMTPAuth
+from .connection import SMTPConnection
 from .default import Default, _default
 from .email import flatten_message
 from .errors import (
     SMTPRecipientRefused, SMTPRecipientsRefused, SMTPResponseException,
-    SMTPTimeoutError,
 )
 from .response import SMTPResponse
 
@@ -38,12 +32,20 @@ SendmailResponseType = Tuple[RecipientErrorsType, str]
 
 class SMTP(SMTPAuth):
     """
-    SMTP client class.
+    Main SMTP client class.
 
-    Actual implementation is split into the following classes:
-    `SMTPAuth` - login and authentication methods
-    `ESMTP` - SMTP/ESMTP command support
-    `SMTPConnection` - connection handling
+    Basic usage:
+
+        >>> loop = asyncio.get_event_loop()
+        >>> smtp = aiosmtplib.SMTP(hostname='localhost', port=10025, loop=loop)
+        >>> loop.run_until_complete(smtp.connect())
+        (220, ...)
+        >>> sender = 'root@localhost'
+        >>> recipients = ['somebody@localhost']
+        >>> message = 'Hello World'
+        >>> send = smtp.sendmail(sender, recipients, 'Hello World')
+        >>> loop.run_until_complete(send)
+        ({}, 'OK')
     """
 
     def __init__(self, *args, **kwargs) -> None:
@@ -51,23 +53,8 @@ class SMTP(SMTPAuth):
 
         self._command_lock = asyncio.Lock(loop=self.loop)
 
-    async def __aenter__(self) -> 'SMTP':
-        if not self.is_connected:
-            await self.connect()
-
-        return self
-
-    async def __aexit__(
-            self, exc_type: Type[Exception], exc: Exception,
-            traceback: Any) -> None:
-        connection_errors = (ConnectionError, SMTPTimeoutError)
-        if exc_type in connection_errors or not self.is_connected:
-            self.close()
-        elif self.is_connected:
-            try:
-                await self.quit()
-            except connection_errors:
-                self.close()
+    # Hack to make Sphinx find the SMTPConnection docstring
+    __init__.__doc__ = SMTPConnection.__init__.__doc__
 
     async def sendmail(
             self, sender: str, recipients: RecipientsType,
@@ -78,18 +65,18 @@ class SMTP(SMTPAuth):
         This command performs an entire mail transaction.
 
         The arguments are:
-            - sender       : The address sending this mail.
-            - recipients   : A list of addresses to send this mail to.  A bare
-                             string will be treated as a list with 1 address.
-            - message      : The message string to send.
-            - mail_options : List of options (such as ESMTP 8bitmime) for the
-                             mail command.
-            - rcpt_options : List of options (such as DSN commands) for
-                             all the rcpt commands.
+            - sender: The address sending this mail.
+            - recipients: A list of addresses to send this mail to.  A bare
+                string will be treated as a list with 1 address.
+            - message: The message string to send.
+            - mail_options: List of options (such as ESMTP 8bitmime) for the
+                MAIL command.
+            - rcpt_options: List of options (such as DSN commands) for all the
+                RCPT commands.
 
         message must be a string containing characters in the ASCII range.
-        The string is encoded to bytes using the ascii codec, and lone \\r and
-        \\n characters are converted to \\r\\n characters.
+        The string is encoded to bytes using the ascii codec, and lone \\\\r
+        and \\\\n characters are converted to \\\\r\\\\n characters.
 
         If there has been no previous HELO or EHLO command this session, this
         method tries EHLO first.
@@ -97,41 +84,47 @@ class SMTP(SMTPAuth):
         This method will return normally if the mail is accepted for at least
         one recipient.  It returns a tuple consisting of:
 
-            - an error dictionary, with one entry for each
-                recipient that was refused.  Each entry contains a tuple of the
-                SMTP error code and the accompanying error message sent by the
-                server.
+            - an error dictionary, with one entry for each recipient that was
+                refused.  Each entry contains a tuple of the SMTP error code
+                and the accompanying error message sent by the server.
             - the message sent by the server in response to the DATA command
                 (often containing a message id)
 
+        Example:
 
-        Example usage:..
-
-             >>> import asyncio
-             >>> import aiosmtplib
              >>> loop = asyncio.get_event_loop()
-             >>> smtp = aiosmtplib.SMTP(hostname='localhost', port=25)
+             >>> smtp = aiosmtplib.SMTP(hostname='localhost', port=10025)
              >>> loop.run_until_complete(smtp.connect())
-             >>> recipients = ['one@one.org', 'two@two.org','nobody@three.org']
-             >>> message = 'From: Me@my.org\nSubject: testing...\nHello World'
-             >>> loop.run_until_complete(
-             >>>     smtp.sendmail('me@my.org', recipients, message))
+             (220, ...)
+             >>> recipients = ['one@one.org', 'two@two.org', '3@three.org']
+             >>> message = "From: Me@my.org\\nSubject: testing\\nHello World"
+             >>> send_coro = smtp.sendmail('me@my.org', recipients, message)
+             >>> loop.run_until_complete(send_coro)
+             ({}, 'OK')
+             >>> loop.run_until_complete(smtp.quit())
+             (221, Bye)
+
+        In the above example, the message was accepted for delivery for all
+        three addresses. If delivery had been only successful to two
+        of the three addresses, and one was rejected, the response would look
+        something like::
+
              (
                  {
                     'nobody@three.org': (550 ,'User unknown'),
                  },
                  'Written safely to disk. #902487694.289148.12219.',
              )
-             >>> loop.run_until_complete(smtp.quit())
 
-        In the above example, the message was accepted for delivery to two
-        of the three addresses, and one was rejected, with the error code
-        550.  If all addresses are accepted, then the method will return an
-        empty errors dictionary.
+        If delivery is not successful to any addresses,
+        :exc:`SMTPRecipientsRefused` is raised.
 
-        If an SMTPResponseException is raised by this method, we try to send
-        an RSET command to reset the server envelope automatically for the next
-        attempt.
+        If :exc:`SMTPResponseException` is raised by this method, we try to
+        send an RSET command to reset the server envelope automatically for
+        the next attempt.
+
+        :raises SMTPRecipientsRefused: delivery to all recipients failed
+        :raises SMTPResponseException: on invalid response
         """
         if isinstance(recipients, str):
             recipients = [recipients]
@@ -176,7 +169,8 @@ class SMTP(SMTPAuth):
             self, recipients: List[str], options: List[str] = None,
             timeout: DefaultNumType = _default) -> RecipientErrorsType:
         """
-        Send the recipients given to the server. Used as part of ``sendmail``.
+        Send the recipients given to the server. Used as part of
+        :meth:`SMTP.sendmail`.
         """
         recipient_errors = []
         for address in recipients:
@@ -202,24 +196,26 @@ class SMTP(SMTPAuth):
             rcpt_options: Iterable[str] = None,
             timeout: DefaultNumType = _default) -> SendmailResponseType:
         """
-        Converts an ``email.message.Message`` object to a string and
-        passes it to sendmail.
+        Sends an :class:`email.message.Message` object.
 
-        The arguments are as for ``sendmail``, except that messsage is an
-        ``email.message.Message`` object.  If sender is None or recipients is
-        None, these arguments are taken from the headers of the Message as
-        described in RFC 2822 (a ValueError is raised if there is more than
-        one set of 'Resent-' headers).  Regardless of the values of sender and
+        Arguments are as for :meth:`SMTP.sendmail`, except that message is an
+        :class:`email.message.Message` object.  If sender is None or recipients
+        is None, these arguments are taken from the headers of the Message as
+        described in RFC 2822.  Regardless of the values of sender and
         recipients, any Bcc field (or Resent-Bcc field, when the Message is a
-        resent) of the Message object won't be transmitted.  The Message
-        object is then serialized using ``email.generator.Generator`` and
-        ``sendmail`` is called to transmit the message.
+        resent) of the Message object will not be transmitted.  The Message
+        object is then serialized using :class:`email.generator.Generator` and
+        :meth:`SMTP.sendmail` is called to transmit the message.
 
         'Resent-Date' is a mandatory field if the Message is resent (RFC 2822
-        Section 3.6.6). In such a case, we use the 'Resent-*' fields.
+        Section 3.6.6). In such a case, we use the 'Resent-\*' fields.
         However, if there is more than one 'Resent-' block there's no way to
         unambiguously determine which one is the most recent in all cases,
         so rather than guess we raise a ``ValueError`` in that case.
+
+        :raises ValueError: on more than one Resent header block
+        :raises SMTPRecipientsRefused: delivery to all recipients failed
+        :raises SMTPResponseException: on invalid response
         """
         header_sender, header_recipients, flat_message = flatten_message(
             message)
@@ -256,6 +252,10 @@ class SMTP(SMTPAuth):
             message: Union[str, bytes], mail_options: Iterable[str] = None,
             rcpt_options: Iterable[str] = None,
             timeout: DefaultNumType = _default) -> SendmailResponseType:
+        """
+        Synchronous version of :meth:`SMTP.sendmail`. This method starts
+        the event loop to connect, send the message, and disconnect.
+        """
         return self._run_sync(
             self.sendmail, sender, recipients, message,
             mail_options=mail_options, rcpt_options=rcpt_options,
@@ -267,6 +267,10 @@ class SMTP(SMTPAuth):
             mail_options: Iterable[str] = None,
             rcpt_options: Iterable[str] = None,
             timeout: DefaultNumType = _default) -> SendmailResponseType:
+        """
+        Synchronous version of :meth:`SMTP.send_message`. This method
+        starts the event loop to connect, send the message, and disconnect.
+        """
         return self._run_sync(
             self.send_message, message, sender=sender, recipients=recipients,
             mail_options=mail_options, rcpt_options=rcpt_options,

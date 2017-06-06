@@ -1,7 +1,4 @@
 """
-aiosmtplib.protocol
-===================
-
 An ``asyncio.Protocol`` subclass for lower level IO handling.
 """
 import asyncio
@@ -160,7 +157,8 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
         Encode and write email message data.
 
         Automatically quotes lines beginning with a period per RFC821.
-        Lone '\r' and '\n' characters are converted to '\r\n' characters.
+        Lone \\\\r and \\\\n characters are converted to \\\\r\\\\n
+        characters.
         """
         data = LINE_ENDINGS_REGEX.sub(b'\r\n', data)
         data = PERIOD_REGEX.sub(b'..', data)

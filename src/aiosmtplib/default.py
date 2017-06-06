@@ -1,7 +1,4 @@
 """
-aiosmtplib.default
-==================
-
 A default enum, used for kwarg default values.
 """
 import enum

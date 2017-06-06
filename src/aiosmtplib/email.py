@@ -1,7 +1,4 @@
 """
-aiosmtplib.email
-================
-
 Email message and address formatting/parsing functions.
 """
 import copy

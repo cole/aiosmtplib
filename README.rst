@@ -6,109 +6,114 @@ aiosmtplib
 
 ------------
 
+aiosmtplib is an asynchronous SMTP client for use with asyncio.
 
-Introduction
-------------
 
-aiosmtplib is an SMTP client for use with asyncio.
-
-Basic usage:
+Quickstart
+----------
 
 .. code-block:: python
+.. testcode::
 
     import asyncio
+    from email.mime.text import MIMEText
+
     import aiosmtplib
 
     loop = asyncio.get_event_loop()
-    smtp = aiosmtplib.SMTP(hostname='localhost', port=1025, loop=loop)
+    smtp = aiosmtplib.SMTP(hostname='localhost', port=10025, loop=loop)
     loop.run_until_complete(smtp.connect())
 
-    async def send_a_message():
-        sender = 'root@localhost'
-        recipient = 'somebody@localhost'
-        message = "Hello World"
-        await smtp.sendmail(sender, [recipient], message)
+    message = MIMEText('Sent via aiosmtplib')
+    message['From'] = 'root@localhost'
+    message['To'] = 'somebody@example.com'
+    message['Subject'] = 'Hello World!'
 
-    loop.run_until_complete(send_a_message())
+    loop.run_until_complete(smtp.send_message(message))
 
 
 Requirements
 ------------
 Python 3.5+, compiled with SSL support, is required.
 
+
 Connecting to an SMTP server
 ----------------------------
 
-Initialize a new ``aiosmtplib.SMTP`` instance, then run its ``connect``
-coroutine. Unlike in smtplib, initializing an instance does not automatically
-connect to the server, as that is a blocking operation.
+Initialize a new :class:`SMTP` instance, then await its
+:meth:`connect` coroutine. Initializing an instance does not
+automatically connect to the server, as that is a blocking operation.
 
-Allowed arguments to initialize the client (or the ``connect`` method):
+.. code-block:: python
+.. testcode::
 
-``hostname``
-    Server name (or IP) to connect to
-``port``
-    Server port as an integer. Defaults to 25 if ``use_tls`` is False, 465
-    if ``use_tls`` is True.
-``source_address``
-    The hostname of the client. Defaults to the result of
-    ``socket.getfqdn()``. Note that this call blocks.
-``timeout``
-    Default timeout value for all operations, in seconds. Defaults to 60.
-``loop``
-    IOLoop instance to run on. Defaults to ``asyncio.get_event_loop()``.
-``use_tls``
-    If True, make the initial connection to the server over TLS/SSL. Note
-    that if the server supports STARTTLS only, this should be False; see
-    `STARTTLS`_ below.
-``validate_certs``
-    Determines if server certificates are validated if using ``use_tls``.
-    Defaults to True.
-``client_cert``
-    Path to client side certificate, if one is to be used for the TLS
-    connection.
-``client_cert``
-    Path to client side key, if one is to be used for the TLS connection.
-``tls_context``
-    An SSLContext object, used for the TLS connection. Mutually exclusive
-    with ``client_cert``/``client_key``.
+    gmail_client = SMTP()
+
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(
+        gmail_client.connect(hostname='smtp.gmail.com', port=587))
 
 
 Sending messages
 ----------------
 
-Use ``SMTP.sendmail`` to send raw messages. Allowed arguments are:
+:meth:`SMTP.send_message`
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
-``sender``
-    The address sending this mail.
-``recipients``
-    A list of addresses to send this mail to.  A bare string will be treated
-    as a list with 1 address.
-``message``
-    The message string to send.
-``mail_options``
-    List of options (such as ESMTP 8bitmime) for the mail command.
-``rcpt_options``
-    List of options (such as DSN commands) for all the rcpt commands.
-
-Use ``SMTP.send_message`` to send ``email.message.Message`` objects.
-
-Timeouts
---------
-All commands accept a ``timeout`` keyword argument of a numerical value in
-seconds. This value is used for all socket operations, and will raise
-``STMPTimeoutError`` if exceeded. Timeout values passed to init or ``connect``
-will be used as the default value for commands executed on the connection.
-
-The default timeout is 60 seconds.
-
-
-STARTTLS
---------
-Many SMTP servers support the STARTTLS extension over port 587. To connect to
-one of these, set ``use_tls`` to False, and call ``starttls`` on the client.
+Use :meth:`send_message` to send :class:`email.message.Message` objects.
 
 .. code-block:: python
+.. testcode::
+
+    message = MIMEText('Sent via aiosmtplib')
+    message['From'] = 'root@localhost'
+    message['To'] = 'somebody@example.com'
+    message['Subject'] = 'Hello World!'
+
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(smtp.send_message(message))
+
+
+This is the simplest API, and is the recommended way to send messages, as it
+makes it easy to set headers correctly and handle multi part messages. For
+details on creating :class:`email.message.Message` objects, see `the
+stdlib documentation examples
+<https://docs.python.org/3.5/library/email-examples.html>`_.
+
+
+:meth:`SMTP.sendmail`
+~~~~~~~~~~~~~~~~~~~~~
+
+Use :meth:`sendmail` to send raw messages.
+
+.. code-block:: python
+.. testcode::
+
+    sender = 'root@localhost'
+    recipients = ['somebody@example.com']
+    message = '''To: somebody@example.com
+    From: root@localhost
+    Subject: Hello World!
+
+    Sent via aiosmtplib
+    '''
+
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(smtp.sendmail(sender, recipients, message))
+
+
+Note that when using this method, you must format the message headers yourself.
+
+
+STARTTLS Connections
+--------------------
+Many SMTP servers support the STARTTLS extension over port 587. To connect to
+one of these, set ``use_tls`` to False when connecting, and call
+:meth:`starttls` on the client.
+
+
+.. code-block:: python
+.. testcode::
 
     loop = asyncio.get_event_loop()
     smtp = aiosmtplib.SMTP(
@@ -117,23 +122,35 @@ one of these, set ``use_tls`` to False, and call ``starttls`` on the client.
     loop.run_until_complete(smtp.starttls())
 
 
+Timeouts
+--------
+All commands accept a :`timeout` keyword argument of a numerical value in
+seconds. This value is used for all socket operations, and will raise
+:exc:`STMPTimeoutError` if exceeded. Timeout values passed to
+:meth:`__init__` or :meth:`connect` will be used as the default value for
+commands executed on the connection.
+
+The default timeout is 60 seconds.
+
+
 Parallel execution
 ------------------
 SMTP is a sequential protocol. Multiple commands must be sent to send an
 email, and they must be sent in the correct sequence. As a consequence of
-this, executing multiple sendmail tasks in parallell (i.e. with 
-``asyncio.gather``) is not any more efficient than executing in sequence, as
-the client must wait until one mail is sent before beginning the next.
+this, executing multiple :meth:`sendmail` tasks in parallel (i.e. with 
+:func:`asyncio.gather`) is not any more efficient than executing in sequence,
+as the client must wait until one mail is sent before beginning the next.
 
 If you have a lot of emails to send, consider creating multiple connections
-(``SMTP`` instances) and splitting the work between them.
+(:class:`SMTP` instances) and splitting the work between them.
 
 
 Roadmap
 -------
-aiosmtplib is now feature complete, however test coverage and documentation
-need a lot of work. Feature requests and bug reports are welcome via Github
-issues.
+:mod:`aiosmtplib` is now feature complete, however test coverage and
+documentation need a lot of work. Feature requests and bug reports are welcome
+via Github issues.
+
 
 
 .. |travis| image:: https://travis-ci.org/cole/aiosmtplib.svg?branch=master

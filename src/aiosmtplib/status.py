@@ -1,8 +1,5 @@
 """
-aiomsmtplib.status
-==================
-
-SMTP status codes, as an Enum for code readability.
+SMTP status codes.
 """
 import enum
 
@@ -13,6 +10,8 @@ __all__ = ('SMTPStatus',)
 class SMTPStatus(enum.IntEnum):
     """
     Defines SMTP statuses for code readability.
+
+    See also: http://www.greenend.org.uk/rjk/tech/smtpreplies.html
     """
     invalid_response = -1
     system_status_ok = 211
