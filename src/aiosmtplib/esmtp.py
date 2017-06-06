@@ -44,7 +44,7 @@ class ESMTP(SMTPConnection):
         self.supports_esmtp = False
         self.server_auth_methods = []  # type: List[str]
 
-    async def __aenter__(self) -> 'SMTP':
+    async def __aenter__(self) -> 'ESMTP':
         if not self.is_connected:
             await self.connect()
 
