@@ -5,7 +5,7 @@
     from aiosmtpd.controller import Controller
 
     import aiosmtplib
-    from aiosmtplib import SMTP, SMTPResponse
+    from aiosmtplib import SMTP
 
     controller = Controller(object(), hostname='localhost', port=10025)
     controller.start()
@@ -18,5 +18,8 @@
 Overview
 ========
 
+aiosmtplib is an asynchronous SMTP client for use with asyncio.
+
+
 .. include:: ../README.rst
-    :start-line: 8
+    :start-line: 13

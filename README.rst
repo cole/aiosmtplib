@@ -8,11 +8,12 @@ aiosmtplib
 
 aiosmtplib is an asynchronous SMTP client for use with asyncio.
 
+For complete documentation, see `Read The Docs`_.
+
 
 Quickstart
 ----------
 
-.. code-block:: python
 .. testcode::
 
     import asyncio
@@ -44,7 +45,6 @@ Initialize a new :class:`SMTP` instance, then await its
 :meth:`connect` coroutine. Initializing an instance does not
 automatically connect to the server, as that is a blocking operation.
 
-.. code-block:: python
 .. testcode::
 
     gmail_client = SMTP()
@@ -62,7 +62,6 @@ Sending messages
 
 Use :meth:`send_message` to send :class:`email.message.Message` objects.
 
-.. code-block:: python
 .. testcode::
 
     message = MIMEText('Sent via aiosmtplib')
@@ -86,7 +85,6 @@ stdlib documentation examples
 
 Use :meth:`sendmail` to send raw messages.
 
-.. code-block:: python
 .. testcode::
 
     sender = 'root@localhost'
@@ -108,11 +106,10 @@ Note that when using this method, you must format the message headers yourself.
 STARTTLS Connections
 --------------------
 Many SMTP servers support the STARTTLS extension over port 587. To connect to
-one of these, set ``use_tls`` to False when connecting, and call
+one of these, set ``use_tls`` to ``False`` when connecting, and call
 :meth:`starttls` on the client.
 
 
-.. code-block:: python
 .. testcode::
 
     loop = asyncio.get_event_loop()
@@ -124,7 +121,7 @@ one of these, set ``use_tls`` to False when connecting, and call
 
 Timeouts
 --------
-All commands accept a :`timeout` keyword argument of a numerical value in
+All commands accept a ``timeout`` keyword argument of a numerical value in
 seconds. This value is used for all socket operations, and will raise
 :exc:`STMPTimeoutError` if exceeded. Timeout values passed to
 :meth:`__init__` or :meth:`connect` will be used as the default value for
@@ -164,3 +161,4 @@ via Github issues.
 .. |pypi-license| image:: https://img.shields.io/pypi/l/aiosmtplib.svg
 .. |coveralls| image:: https://coveralls.io/repos/github/cole/aiosmtplib/badge.svg?branch=master
               :target: https://coveralls.io/github/cole/aiosmtplib?branch=master
+.. _Read The Docs: https://aiosmtplib.readthedocs.io/en/latest/

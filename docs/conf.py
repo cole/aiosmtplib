@@ -61,7 +61,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'aiosmtplib'
-copyright = '2017, Cole Maclean'
+copyright = '2017 Cole Maclean'
 author = 'Cole Maclean'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -175,7 +175,7 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
     (master_doc, 'aiosmtplib', 'aiosmtplib Documentation',
-     author, 'aiosmtplib', 'One line description of project.',
+     author, 'aiosmtplib', 'asyncio SMTP client',
      'Miscellaneous'),
 ]
 
