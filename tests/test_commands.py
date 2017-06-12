@@ -19,6 +19,13 @@ async def test_helo_ok(smtpd_client):
         assert response.code == SMTPStatus.completed
 
 
+async def test_helo_with_hostname(smtpd_client):
+    async with smtpd_client:
+        response = await smtpd_client.helo(hostname='example.com')
+
+        assert response.code == SMTPStatus.completed
+
+
 async def test_helo_error(preset_client):
     async with preset_client:
         preset_client.server.responses.append(b'501 oh noes')
@@ -29,6 +36,13 @@ async def test_helo_error(preset_client):
 async def test_ehlo_ok(smtpd_client):
     async with smtpd_client:
         response = await smtpd_client.ehlo()
+
+        assert response.code == SMTPStatus.completed
+
+
+async def test_ehlo_with_hostname(smtpd_client):
+    async with smtpd_client:
+        response = await smtpd_client.ehlo(hostname='example.com')
 
         assert response.code == SMTPStatus.completed
 
@@ -203,6 +217,21 @@ async def test_rcpt_ok(smtpd_client):
         assert response.message == 'OK'
 
 
+async def test_rcpt_options(preset_client):
+    async with preset_client:
+        preset_client.server.responses.append(b'250 ehlo OK')
+        preset_client.server.responses.append(b'250 mail OK')
+        preset_client.server.responses.append(b'250 rcpt OK')
+
+        await preset_client.ehlo()
+        await preset_client.mail('j@example.com')
+
+        response = await preset_client.rcpt(
+            'test@example.com', options=['NOTIFY=FAILURE,DELAY'])
+
+        assert response.code == SMTPStatus.completed
+
+
 async def test_rcpt_error(preset_client):
     async with preset_client:
         preset_client.server.responses.append(b'501 oh noes')
@@ -216,6 +245,17 @@ async def test_data_ok(smtpd_client):
         await smtpd_client.mail('j@example.com')
         await smtpd_client.rcpt('test@example.com')
         response = await smtpd_client.data('HELLO WORLD')
+
+        assert response.code == SMTPStatus.completed
+        assert response.message == 'OK'
+
+
+async def test_data_with_timeout_arg(smtpd_client):
+    async with smtpd_client:
+        await smtpd_client.ehlo()
+        await smtpd_client.mail('j@example.com')
+        await smtpd_client.rcpt('test@example.com')
+        response = await smtpd_client.data('HELLO WORLD', timeout=10)
 
         assert response.code == SMTPStatus.completed
         assert response.message == 'OK'

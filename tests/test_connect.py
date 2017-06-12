@@ -251,17 +251,19 @@ async def test_context_manager(smtpd_client):
     assert not smtpd_client.is_connected
 
 
-async def test_context_manager_disconnect_handling(smtpd_client):
-    async with smtpd_client:
-        assert smtpd_client.is_connected
+async def test_context_manager_disconnect_handling(preset_server, event_loop):
+    preset_client = SMTP(
+        hostname='127.0.0.1', port=preset_server.port, loop=event_loop)
 
-        response = await smtpd_client.noop()
-        assert response.code == SMTPStatus.completed
+    async with preset_client:
+        assert preset_client.is_connected
 
-        smtpd_client.server.stop()
-        await smtpd_client.quit()
+        preset_server.responses.append(b'250 noop')
+        preset_server.drop_connection_before_next_read = True
 
-    assert not smtpd_client.is_connected
+        await preset_client.noop()
+
+    assert not preset_client.is_connected
 
 
 async def test_context_manager_exception_quits(preset_server, event_loop):
@@ -285,3 +287,18 @@ async def test_context_manager_connect_exception_closes(
             raise SMTPTimeoutError('Timed out!')
 
     assert len(preset_server.requests) == 0
+
+
+async def test_context_manager_with_manual_connection(smtpd_client):
+    await smtpd_client.connect()
+
+    assert smtpd_client.is_connected
+
+    async with smtpd_client:
+        assert smtpd_client.is_connected
+
+        await smtpd_client.quit()
+
+        assert not smtpd_client.is_connected
+
+    assert not smtpd_client.is_connected

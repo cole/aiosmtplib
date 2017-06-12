@@ -242,8 +242,7 @@ class SMTP(SMTPAuth):
         task = asyncio.Task(method(*args, **kwargs), loop=self.loop)
         result = self.loop.run_until_complete(task)
 
-        if self.is_connected:
-            self.loop.run_until_complete(self.quit())
+        self.loop.run_until_complete(self.quit())
 
         return result
 

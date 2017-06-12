@@ -8,7 +8,8 @@ from pathlib import Path
 import pytest
 
 from aiosmtplib import (
-    SMTP, SMTPConnectError, SMTPException, SMTPStatus, SMTPTimeoutError,
+    SMTP, SMTPConnectError, SMTPException, SMTPResponseException, SMTPStatus,
+    SMTPTimeoutError,
 )
 
 
@@ -63,12 +64,24 @@ async def test_starttls_timeout(preset_client):
         ]))
         await preset_client.ehlo()
 
-        preset_client.timeout = 0.1
-        preset_client.server.responses.append(b'220 ready for TLS')
         preset_client.server.delay_next_response = 1
 
         with pytest.raises(SMTPTimeoutError):
-            await preset_client.starttls(validate_certs=False)
+            await preset_client.starttls(validate_certs=False, timeout=0.001)
+
+
+async def test_starttls_with_explicit_server_hostname(preset_client):
+    async with preset_client:
+        preset_client.server.responses.append(b'\n'.join([
+            b'250-localhost, hello',
+            b'250-SIZE 100000',
+            b'250 STARTTLS',
+        ]))
+        await preset_client.ehlo()
+
+        preset_client.server.responses.append(b'220 ready for TLS')
+        await preset_client.starttls(
+            validate_certs=False, server_hostname='example.com')
 
 
 async def test_starttls_not_supported(preset_client):
@@ -81,6 +94,25 @@ async def test_starttls_not_supported(preset_client):
 
         with pytest.raises(SMTPException):
             await preset_client.starttls(validate_certs=False)
+
+
+async def test_starttls_bad_response_preserves_state(preset_client):
+    async with preset_client:
+        preset_client.server.responses.append(b'\n'.join([
+            b'250-localhost, hello',
+            b'250-AUTH LOGIN BOGUS',
+            b'250 STARTTLS',
+        ]))
+        await preset_client.ehlo()
+
+        preset_client.server.responses.append(b'555 uh oh')
+        with pytest.raises(SMTPResponseException):
+            await preset_client.starttls(validate_certs=False)
+
+        # Make sure our state has *not* been cleared
+        assert preset_client.esmtp_extensions
+        assert preset_client.supported_auth_methods
+        assert preset_client.supports_esmtp is True
 
 
 async def test_starttls_with_client_cert(preset_client):

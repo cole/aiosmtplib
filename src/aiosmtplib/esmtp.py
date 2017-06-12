@@ -400,9 +400,10 @@ class ESMTP(SMTPConnection):
         try:
             response, protocol = await self.protocol.starttls(  # type: ignore
                 tls_context, server_hostname=server_hostname, timeout=timeout)
-        except SMTPServerDisconnected as exc:
+        except SMTPServerDisconnected:
             self.close()
-            raise exc
+            raise
+
         self.transport = protocol._app_transport
 
         if response.code == SMTPStatus.ready:

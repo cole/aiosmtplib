@@ -7,7 +7,10 @@ import ssl
 from typing import Any, Awaitable, Optional, Type, Union  # NOQA
 
 from .default import Default, _default
-from .errors import SMTPConnectError, SMTPServerDisconnected, SMTPTimeoutError
+from .errors import (
+    SMTPConnectError, SMTPResponseException, SMTPServerDisconnected,
+    SMTPTimeoutError,
+)
 from .protocol import SMTPProtocol
 from .response import SMTPResponse
 from .status import SMTPStatus
@@ -108,13 +111,13 @@ class SMTPConnection:
     async def __aexit__(
             self, exc_type: Type[Exception], exc: Exception,
             traceback: Any) -> None:
-        connection_errors = (ConnectionError, SMTPTimeoutError)
-        if exc_type in connection_errors or not self.is_connected:
+        is_connection_error = exc_type in (ConnectionError, SMTPTimeoutError)
+        if is_connection_error or not self.is_connected:
             self.close()
-        elif self.is_connected:
+        else:
             try:
                 await self.quit()
-            except connection_errors:
+            except (ConnectionError, SMTPResponseException, SMTPTimeoutError):
                 self.close()
 
     @property
