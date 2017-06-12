@@ -3,7 +3,7 @@ Low level ESMTP command API.
 """
 import re
 import ssl
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Type, Union  # NOQA
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union  # NOQA
 
 from .connection import SMTPConnection
 from .default import Default, _default
@@ -11,7 +11,6 @@ from .email import parse_address, quote_address
 from .errors import (
     SMTPDataError, SMTPException, SMTPHeloError, SMTPRecipientRefused,
     SMTPResponseException, SMTPSenderRefused, SMTPServerDisconnected,
-    SMTPTimeoutError,
 )
 from .response import SMTPResponse
 from .status import SMTPStatus
@@ -43,24 +42,6 @@ class ESMTP(SMTPConnection):
         self.esmtp_extensions = {}  # type: Dict[str, str]
         self.supports_esmtp = False
         self.server_auth_methods = []  # type: List[str]
-
-    async def __aenter__(self) -> 'ESMTP':
-        if not self.is_connected:
-            await self.connect()
-
-        return self
-
-    async def __aexit__(
-            self, exc_type: Type[Exception], exc: Exception,
-            traceback: Any) -> None:
-        connection_errors = (ConnectionError, SMTPTimeoutError)
-        if exc_type in connection_errors or not self.is_connected:
-            self.close()
-        elif self.is_connected:
-            try:
-                await self.quit()
-            except connection_errors:
-                self.close()
 
     @property
     def last_ehlo_response(self) -> Union[SMTPResponse, None]:

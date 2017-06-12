@@ -4,7 +4,7 @@ Handles client connection/disconnection.
 import asyncio
 import socket
 import ssl
-from typing import Any, Awaitable, Optional, Union  # NOQA
+from typing import Any, Awaitable, Optional, Type, Union  # NOQA
 
 from .default import Default, _default
 from .errors import SMTPConnectError, SMTPServerDisconnected, SMTPTimeoutError
@@ -98,6 +98,24 @@ class SMTPConnection:
         """
         if self.is_connected:
             self.close()
+
+    async def __aenter__(self) -> 'SMTPConnection':
+        if not self.is_connected:
+            await self.connect()
+
+        return self
+
+    async def __aexit__(
+            self, exc_type: Type[Exception], exc: Exception,
+            traceback: Any) -> None:
+        connection_errors = (ConnectionError, SMTPTimeoutError)
+        if exc_type in connection_errors or not self.is_connected:
+            self.close()
+        elif self.is_connected:
+            try:
+                await self.quit()
+            except connection_errors:
+                self.close()
 
     @property
     def is_connected(self) -> bool:
@@ -257,6 +275,9 @@ class SMTPConnection:
             self.close()
 
         return response
+
+    async def quit(self, timeout: DefaultNumType = _default) -> SMTPResponse:
+        raise NotImplementedError
 
     def _get_tls_context(self) -> ssl.SSLContext:
         """
