@@ -45,12 +45,17 @@ setup(
         'Topic :: System :: Networking',
     ],
     extras_require={
+        'docs': [
+            'sphinx>=1.6,<1.7',
+            'sphinx_autodoc_typehints>=1.2,<1.3',
+        ],
         'testing': [
+            'aiosmtpd>=1.0,<1.1',
+            'hypothesis>=3.0,<4.0',
+            'hypothesis-pytest>=0.19,<1.0',
             'pytest>=3.0,<3.1',
             'pytest-asyncio>=0.5,<0.6',
             'pytest-cov>=2.4,<2.5',
-            'hypothesis>=3.0,<4.0',
-            'hypothesis-pytest>=0.19,<1.0',
             'wheel[signatures]',
         ]
     }
