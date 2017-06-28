@@ -252,6 +252,10 @@ async def test_context_manager(smtpd_client):
 
 
 async def test_context_manager_disconnect_handling(preset_server, event_loop):
+    """
+    Exceptions can be raised, but the context manager should handle
+    disconnection.
+    """
     preset_client = SMTP(
         hostname='127.0.0.1', port=preset_server.port, loop=event_loop)
 
@@ -261,7 +265,10 @@ async def test_context_manager_disconnect_handling(preset_server, event_loop):
         preset_server.responses.append(b'250 noop')
         preset_server.drop_connection_before_next_read = True
 
-        await preset_client.noop()
+        try:
+            await preset_client.noop()
+        except SMTPServerDisconnected:
+            pass
 
     assert not preset_client.is_connected
 
