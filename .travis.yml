@@ -1,5 +1,4 @@
 dist: trusty
-sudo: required
 language: python
 cache: pip
 python:
@@ -8,9 +7,10 @@ python:
   - '3.6'
   - 3.6-dev
   - 3.7-dev
-before_install:
-  - sudo apt-get -qq update
-  - sudo apt-get install -y libuv-dev
+addons:
+  apt:
+    packages:
+    - libuv-dev
 install: pip install tox-travis
 script: tox
 deploy:
