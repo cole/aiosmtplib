@@ -29,7 +29,7 @@ if __name__ == '__main__':
 
     def main() -> None:
         hostname = input('SMTP server hostname [localhost]: ') or 'localhost'
-        port = int(input('SMTP server port [25]: ') or 25)
+        port = int(input('SMTP server port [25]: ') or '25')
         sender = input('From: ')
         recipients = input('To: ').split(',')
 
