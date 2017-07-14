@@ -228,7 +228,7 @@ class SMTPConnection:
             lambda: self.protocol, host=self.hostname, port=self.port,
             ssl=tls_context)
         try:
-            self.transport, _ = await asyncio.wait_for(  # type: ignore
+            self.transport, _ = await asyncio.wait_for(
                 connect_future, timeout=self.timeout, loop=self.loop)
         except (ConnectionRefusedError, OSError) as err:
             raise SMTPConnectError(
@@ -260,7 +260,7 @@ class SMTPConnection:
         :raises SMTPServerDisconnected: connection lost
         """
         if timeout is _default:
-            timeout = self.timeout  # type: ignore
+            timeout = self.timeout
 
         self._raise_error_if_disconnected()
         assert self.protocol is not None, 'Not connected'

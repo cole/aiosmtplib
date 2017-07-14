@@ -41,7 +41,7 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
         self._stream_writer = None  # type: Optional[asyncio.StreamWriter]
         self._loop = loop or asyncio.get_event_loop()
 
-        super().__init__(  # type: ignore
+        super().__init__(
             reader, client_connected_cb=self.on_connect, loop=self._loop)
 
         self._io_lock = asyncio.Lock(loop=self._loop)
@@ -64,12 +64,11 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
         self._over_ssl = transport.get_extra_info('sslcontext') is not None
         if self._client_connected_cb is not None:  # type: ignore
             self._stream_writer = asyncio.StreamWriter(
-                transport, self, self._stream_reader,
-                self._loop)  # type: ignore
+                transport, self, self._stream_reader, self._loop)
             res = self._client_connected_cb(  # type: ignore
                 self._stream_reader, self._stream_writer)
             if asyncio.iscoroutine(res):
-                self._loop.create_task(res)  # type: ignore
+                self._loop.create_task(res)
 
     def upgrade_transport(
             self, context: ssl.SSLContext, server_hostname: str = None,
@@ -87,12 +86,12 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
             self._loop, self, context, waiter, server_side=False,
             server_hostname=server_hostname)
 
-        app_transport = tls_protocol._app_transport  # type: ignore
+        app_transport = tls_protocol._app_transport
         # Use set_protocol if we can
         if hasattr(transport, 'set_protocol'):
             transport.set_protocol(tls_protocol)
         else:
-            transport._protocol = tls_protocol  # type: ignore
+            transport._protocol = tls_protocol
 
         self._stream_reader._transport = app_transport  # type: ignore
         self._stream_writer._transport = app_transport  # type: ignore
