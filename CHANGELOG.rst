@@ -1,8 +1,8 @@
 aiosmtplib changes
 ==================
 
-master
-------
+1.0.2
+-----
 
 - Bugfix: Close connection lock on on SMTPServerDisconnected
 

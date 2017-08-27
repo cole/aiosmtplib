@@ -16,7 +16,7 @@ from .status import *  # NOQA
 
 
 __title__ = 'aiosmtplib'
-__version__ = '1.0.1'
+__version__ = '1.0.2'
 __author__ = 'Cole Maclean'
 __license__ = 'MIT'
 __copyright__ = 'Copyright 2017 Cole Maclean'
