@@ -8,9 +8,7 @@ import pytest
 from aiosmtplib import SMTP
 
 from .auth import DummySMTPAuth
-from .server import (
-    ThreadedPresetServer, ThreadedSMTPDServer, TLSThreadedPresetServer,
-)
+from .server import PresetServer, ThreadedSMTPDServer
 
 
 try:
@@ -57,8 +55,10 @@ def smtpd_server(request, unused_tcp_port):
 
 @pytest.fixture()
 def preset_server(request, unused_tcp_port):
-    server = ThreadedPresetServer('localhost', unused_tcp_port)
+    server = PresetServer('localhost', unused_tcp_port)
+    server.daemon = True
     server.start()
+    server.ready.wait()
 
     request.addfinalizer(server.stop)
 
@@ -67,8 +67,10 @@ def preset_server(request, unused_tcp_port):
 
 @pytest.fixture()
 def tls_preset_server(request, unused_tcp_port):
-    server = TLSThreadedPresetServer('localhost', unused_tcp_port)
+    server = PresetServer('localhost', unused_tcp_port, use_tls=True)
+    server.daemon = True
     server.start()
+    server.ready.wait()
 
     request.addfinalizer(server.stop)
 

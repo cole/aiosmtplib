@@ -1,5 +1,6 @@
 import asyncore
 import collections
+import select
 import smtpd
 import socket
 import socketserver
@@ -9,124 +10,125 @@ import time
 from email.errors import HeaderParseError
 
 
-class ThreadedPresetRequestHandler(socketserver.BaseRequestHandler):
-
-    def starttls(self):
-        context = self.server.get_tls_context()
-        self.request.settimeout(30)
-        self.request = context.wrap_socket(self.request, server_side=True)
-        self.request.settimeout(None)
-
-    def setup(self):
-        if self.server.delay_greeting > 0:
-            time.sleep(self.server.delay_greeting)
-
-        self.request.sendall(self.server.greeting)
-
-    def handle(self):
-        while True:
-            if self.server.drop_connection_before_next_read:
-                self.request.close()
-                break
-
-            data = self.request.recv(4096)  # Naive recv won't work for data
-            self.server.requests.append(data)
-
-            if self.server.drop_connection_after_next_read:
-                self.request.close()
-                break
-            elif self.server.delay_next_response > 0:
-                time.sleep(self.server.delay_next_response)
-
-            response = self.server.next_response
-            if response:
-                self.request.sendall(response)
-            else:
-                break
-
-            if data[:8] == b'STARTTLS':
-                try:
-                    self.starttls()
-                except OSError:
-                    break
-
-    def finish(self):
-        try:
-            # Disconnect
-            self.request.sendall(self.server.goodbye)
-            self.request.shutdown(socket.SHUT_RDWR)
-        except TypeError:
-            self.request.shutdown()
-        except (OSError, BrokenPipeError):
-            pass
-        finally:
-            self.request.close()
-
-
-class ThreadedPresetServer(socketserver.ThreadingTCPServer):
+class PresetServer(threading.Thread):
 
     def __init__(self, hostname, port, certfile='tests/certs/selfsigned.crt',
-                 keyfile='tests/certs/selfsigned.key', greeting=None,
-                 goodbye=None):
-        super().__init__((hostname, port), ThreadedPresetRequestHandler)
+                 keyfile='tests/certs/selfsigned.key', use_tls=False,
+                 greeting=b'220 Hello world!\n',
+                 goodbye=b'221 Goodbye then\n'):
+        super().__init__()
         self.hostname = hostname
         self.port = port
         self.certfile = certfile
         self.keyfile = keyfile
-
-        if greeting is not None:
-            self.greeting = greeting
-        else:
-            self.greeting = b'220 Hello world!\n'
-        if goodbye is not None:
-            self.goodbye = goodbye
-        else:
-            self.goodbye = b'221 Goodbye then\n'
+        self.use_tls = use_tls
+        self.greeting = greeting
+        self.goodbye = goodbye
         self.responses = collections.deque()
         self.requests = []
         self.delay_next_response = 0
         self.delay_greeting = 0
-        self.drop_connection_before_next_read = False
-        self.drop_connection_after_next_read = False
+
+        self.ready = threading.Barrier(2, timeout=2.0)
+        self.stop_event = threading.Event()
+        self.drop_connection_event = threading.Event()
 
     @property
-    def next_response(self):
-        try:
-            response = self.responses.popleft()
-        except IndexError:
-            response = b''
-        else:
-            response = bytes(response)
-            if response and not response.endswith(b'\n'):
-                response = response + b'\n'
-
-        return response
-
-    def start(self):
-        self.server_thread = threading.Thread(target=self.serve_forever)
-        # Exit the server thread when the main thread terminates
-        self.server_thread.daemon = True
-        self.server_thread.start()
-
-    def stop(self):
-        self.shutdown()
-        self.server_close()
-
-    def get_tls_context(self):
+    def tls_context(self):
         context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
         context.load_cert_chain(self.certfile, keyfile=self.keyfile)
 
         return context
 
+    def next_response(self):
+        response = self.responses.popleft()
+        response = bytes(response)
+        if response and not response.endswith(b'\n'):
+            response = response + b'\n'
 
-class TLSThreadedPresetServer(ThreadedPresetServer):
+        return response
 
-    def get_request(self):
-        socket, from_address = self.socket.accept()
-        context = self.get_tls_context()
-        wrapped_socket = context.wrap_socket(socket, server_side=True)
+    def wrap_socket(self):
+        self.connection.settimeout(1)
+        self.connection = self.tls_context.wrap_socket(
+            self.connection, server_side=True)
+        self.connection.settimeout(None)
 
-        return wrapped_socket, from_address
+    def handle_connection(self):
+        if self.delay_greeting > 0:
+            time.sleep(self.delay_greeting)
+
+        self.connection.sendall(self.greeting)
+
+        while not self.stop_event.is_set():
+            if self.drop_connection_event.is_set():
+                break
+
+            data = self.connection.recv(65536)
+            self.requests.append(data)
+
+            if self.drop_connection_event.is_set():
+                break
+
+            if self.delay_next_response > 0:
+                time.sleep(self.delay_next_response)
+
+            try:
+                response = self.next_response()
+            except IndexError:
+                break
+
+            self.connection.sendall(response)
+
+            if data[:8] == b'STARTTLS':
+                try:
+                    self.wrap_socket()
+                except OSError:
+                    break
+
+        if not self.drop_connection_event.is_set():
+            try:
+                self.connection.sendall(self.goodbye)
+                self.connection.shutdown(socket.SHUT_RDWR)
+            except TypeError:
+                self.connection.shutdown()
+            except (OSError, BrokenPipeError):
+                pass
+
+        try:
+            self.connection.close()
+        except (NameError, IOError):
+            pass
+
+    def run(self):
+        try:
+            self.socket = socket.socket()
+            self.socket.bind((self.hostname, self.port))
+            self.socket.listen(0)
+
+            if self.port == 0:
+                self.port = self.socket.getsockname()[1]
+
+            self.ready.wait()
+            while not self.stop_event.is_set():
+                socket_ready, _, _ = select.select([self.socket], [], [], 0.1)
+                if not socket_ready:
+                    break
+                self.connection, _ = self.socket.accept()
+                if self.use_tls:
+                    self.wrap_socket()
+                self.handle_connection()
+
+        finally:
+            try:
+                self.socket.close()
+            except IOError:
+                pass
+
+    def stop(self):
+        self.ready.abort()
+        self.stop_event.set()
+        self.join(0.1)
 
 
 class TestSMTPDChannel(smtpd.SMTPChannel):

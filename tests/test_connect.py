@@ -42,7 +42,8 @@ async def test_quit_then_connect_ok_with_smtpd(smtpd_client):
 async def test_quit_then_connect_ok_with_preset_server(
         preset_server, event_loop):
     preset_client = SMTP(
-        hostname='127.0.0.1', port=preset_server.port, loop=event_loop)
+        hostname=preset_server.hostname, port=preset_server.port,
+        loop=event_loop)
 
     response = await preset_client.connect()
     assert response.code == 220
@@ -67,7 +68,8 @@ async def test_quit_then_connect_ok_with_preset_server(
 
 async def test_bad_connect_response_raises_error(preset_server, event_loop):
     preset_client = SMTP(
-        hostname='127.0.0.1', port=preset_server.port, loop=event_loop)
+        hostname=preset_server.hostname, port=preset_server.port,
+        loop=event_loop)
 
     preset_server.greeting = b'421 Please come back in 204232430 seconds.\n'
     with pytest.raises(SMTPConnectError):
@@ -78,7 +80,8 @@ async def test_bad_connect_response_raises_error(preset_server, event_loop):
 
 async def test_421_closes_connection(preset_server, event_loop):
     preset_client = SMTP(
-        hostname='127.0.0.1', port=preset_server.port, loop=event_loop)
+        hostname=preset_server.hostname, port=preset_server.port,
+        loop=event_loop)
 
     await preset_client.connect()
     preset_server.responses.append(
@@ -99,7 +102,8 @@ async def test_timeout_with_no_server(event_loop):
 
 async def test_timeout_on_initial_read(preset_server, event_loop):
     client = SMTP(
-        hostname='127.0.0.1', port=preset_server.port, loop=event_loop)
+        hostname=preset_server.hostname, port=preset_server.port,
+        loop=event_loop)
 
     preset_server.delay_greeting = 1
 
@@ -109,7 +113,8 @@ async def test_timeout_on_initial_read(preset_server, event_loop):
 
 async def test_del_client_closes_transport(preset_server, event_loop):
     preset_client = SMTP(
-        hostname='127.0.0.1', port=preset_server.port, loop=event_loop)
+        hostname=preset_server.hostname, port=preset_server.port,
+        loop=event_loop)
 
     await preset_client.connect()
     transport = preset_client.transport
@@ -122,12 +127,13 @@ async def test_del_client_closes_transport(preset_server, event_loop):
 async def test_disconnected_server_raises_on_client_read(
         preset_server, event_loop):
     preset_client = SMTP(
-        hostname='127.0.0.1', port=preset_server.port, loop=event_loop)
+        hostname=preset_server.hostname, port=preset_server.port,
+        loop=event_loop)
 
     await preset_client.connect()
 
     preset_server.responses.append(b'250 noop')
-    preset_server.drop_connection_after_next_read = True
+    preset_server.drop_connection_event.set()
 
     with pytest.raises(SMTPServerDisconnected):
         await preset_client.execute_command(b'NOOP')
@@ -141,12 +147,13 @@ async def test_disconnected_server_raises_on_client_read(
 async def test_disconnected_server_raises_on_client_write(
         preset_server, event_loop):
     preset_client = SMTP(
-        hostname='127.0.0.1', port=preset_server.port, loop=event_loop)
+        hostname=preset_server.hostname, port=preset_server.port,
+        loop=event_loop)
 
     await preset_client.connect()
 
     preset_server.responses.append(b'250 noop')
-    preset_server.drop_connection_before_next_read = True
+    preset_server.drop_connection_event.set()
 
     # There seems to be a race condition here where the thread doesn't always
     # drop the connection right away, so just try twice, and one will fail
@@ -177,7 +184,7 @@ async def test_disconnected_server_raises_on_data_read(preset_client):
     await preset_client.rcpt('recipient@example.com')
 
     preset_client.server.responses.append(b'354 lets go')
-    preset_client.server.drop_connection_after_next_read = True
+    preset_client.server.drop_connection_event.set()
 
     with pytest.raises(SMTPServerDisconnected):
         await preset_client.data('A MESSAGE')
@@ -205,7 +212,7 @@ async def test_disconnected_server_raises_on_data_write(preset_client):
     await preset_client.rcpt('recipient@example.com')
 
     preset_client.server.responses.append(b'354 lets go')
-    preset_client.server.drop_connection_before_next_read = True
+    preset_client.server.drop_connection_event.set()
 
     with pytest.raises(SMTPServerDisconnected):
         await preset_client.data('A MESSAGE')
@@ -230,7 +237,7 @@ async def test_disconnected_server_raises_on_starttls(preset_client):
     await preset_client.ehlo()
 
     preset_client.server.responses.append(b'220 begin TLS pls')
-    preset_client.server.drop_connection_after_next_read = True
+    preset_client.server.drop_connection_event.set()
 
     with pytest.raises(SMTPServerDisconnected):
         await preset_client.starttls(validate_certs=False)
@@ -257,13 +264,14 @@ async def test_context_manager_disconnect_handling(preset_server, event_loop):
     disconnection.
     """
     preset_client = SMTP(
-        hostname='127.0.0.1', port=preset_server.port, loop=event_loop)
+        hostname=preset_server.hostname, port=preset_server.port,
+        loop=event_loop)
 
     async with preset_client:
         assert preset_client.is_connected
 
         preset_server.responses.append(b'250 noop')
-        preset_server.drop_connection_before_next_read = True
+        preset_server.drop_connection_event.set()
 
         try:
             await preset_client.noop()
@@ -275,7 +283,8 @@ async def test_context_manager_disconnect_handling(preset_server, event_loop):
 
 async def test_context_manager_exception_quits(preset_server, event_loop):
     preset_client = SMTP(
-        hostname='127.0.0.1', port=preset_server.port, loop=event_loop)
+        hostname=preset_server.hostname, port=preset_server.port,
+        loop=event_loop)
 
     with pytest.raises(ZeroDivisionError):
         async with preset_client:
@@ -287,7 +296,8 @@ async def test_context_manager_exception_quits(preset_server, event_loop):
 async def test_context_manager_connect_exception_closes(
         preset_server, event_loop):
     preset_client = SMTP(
-        hostname='127.0.0.1', port=preset_server.port, loop=event_loop)
+        hostname=preset_server.hostname, port=preset_server.port,
+        loop=event_loop)
 
     with pytest.raises(SMTPTimeoutError):
         async with preset_client:
