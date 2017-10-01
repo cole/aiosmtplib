@@ -16,7 +16,8 @@ addons:
   apt:
     packages:
     - libuv-dev
-install: pip install tox-travis
+install:
+  - pip install tox-travis pytest-travis-fold coveralls codecov
 script: tox
 deploy:
   provider: pypi
@@ -27,3 +28,6 @@ deploy:
   on:
     tags: true
     repo: cole/aiosmtplib
+after_success:
+  - coveralls
+  - codecov
