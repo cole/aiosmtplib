@@ -150,7 +150,7 @@ class SMTPConnection:
             cert_bundle: DefaultStrType = _default) -> SMTPResponse:
         """
         Initialize a connection to the server. Options provided to
-        :meth:`connect` take precedence over those used to initialize the
+        :meth:`.connect` take precedence over those used to initialize the
         class.
 
         :keyword hostname:  Server name (or IP) to connect to

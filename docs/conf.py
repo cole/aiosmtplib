@@ -191,3 +191,8 @@ html_sidebars = {
         'searchbox.html',
     ],
 }
+
+nitpick_ignore = [
+    ('py:class', 'typing.Tuple'),
+    ('py:class', 'concurrent.futures._base.TimeoutError'),
+]

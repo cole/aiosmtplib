@@ -117,9 +117,9 @@ class SMTP(SMTPAuth):
              )
 
         If delivery is not successful to any addresses,
-        :exc:`SMTPRecipientsRefused` is raised.
+        :exc:`.SMTPRecipientsRefused` is raised.
 
-        If :exc:`SMTPResponseException` is raised by this method, we try to
+        If :exc:`.SMTPResponseException` is raised by this method, we try to
         send an RSET command to reset the server envelope automatically for
         the next attempt.
 
@@ -170,7 +170,7 @@ class SMTP(SMTPAuth):
             timeout: DefaultNumType = _default) -> RecipientErrorsType:
         """
         Send the recipients given to the server. Used as part of
-        :meth:`SMTP.sendmail`.
+        :meth:`.sendmail`.
         """
         recipient_errors = []
         for address in recipients:
@@ -198,14 +198,14 @@ class SMTP(SMTPAuth):
         """
         Sends an :class:`email.message.Message` object.
 
-        Arguments are as for :meth:`SMTP.sendmail`, except that message is an
+        Arguments are as for :meth:`.sendmail`, except that message is an
         :class:`email.message.Message` object.  If sender is None or recipients
         is None, these arguments are taken from the headers of the Message as
         described in RFC 2822.  Regardless of the values of sender and
         recipients, any Bcc field (or Resent-Bcc field, when the Message is a
         resent) of the Message object will not be transmitted.  The Message
         object is then serialized using :class:`email.generator.Generator` and
-        :meth:`SMTP.sendmail` is called to transmit the message.
+        :meth:`.sendmail` is called to transmit the message.
 
         'Resent-Date' is a mandatory field if the Message is resent (RFC 2822
         Section 3.6.6). In such a case, we use the 'Resent-\*' fields.
@@ -252,7 +252,7 @@ class SMTP(SMTPAuth):
             rcpt_options: Iterable[str] = None,
             timeout: DefaultNumType = _default) -> SendmailResponseType:
         """
-        Synchronous version of :meth:`SMTP.sendmail`. This method starts
+        Synchronous version of :meth:`.sendmail`. This method starts
         the event loop to connect, send the message, and disconnect.
         """
         return self._run_sync(
@@ -267,7 +267,7 @@ class SMTP(SMTPAuth):
             rcpt_options: Iterable[str] = None,
             timeout: DefaultNumType = _default) -> SendmailResponseType:
         """
-        Synchronous version of :meth:`SMTP.send_message`. This method
+        Synchronous version of :meth:`.send_message`. This method
         starts the event loop to connect, send the message, and disconnect.
         """
         return self._run_sync(
