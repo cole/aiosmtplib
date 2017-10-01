@@ -7,7 +7,7 @@ import ssl
 from aiosmtplib import SMTPStatus
 
 
-def test_mock_server_starttls_with_stmplib(preset_server):
+def test_mock_server_starttls_with_smtplib(preset_server):
     smtp = smtplib.SMTP()
     smtp._host = preset_server.hostname  # Hack around smtplib SNI bug
     smtp.connect(host=preset_server.hostname, port=preset_server.port)
