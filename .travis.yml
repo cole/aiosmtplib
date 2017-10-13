@@ -8,14 +8,45 @@ python:
   - '3.6'
   - 3.6-dev
   - nightly
+env:
+  - EVENT_LOOP=asyncio
+  - EVENT_LOOP=uvloop
 matrix:
+  include:
+    - python: '3.5'
+      env: EVENT_LOOP=uvloop
+      addons:
+        apt:
+          packages:
+            - libuv-dev
+    - python: 3.5-dev
+      env: EVENT_LOOP=uvloop
+      addons:
+        apt:
+          packages:
+            - libuv-dev
+    - python: '3.6'
+      env: EVENT_LOOP=uvloop
+      addons:
+        apt:
+          packages:
+            - libuv-dev
+    - python: 3.6-dev
+      env: EVENT_LOOP=uvloop
+      addons:
+        apt:
+          packages:
+            - libuv-dev
+    - python: nightly
+      env: EVENT_LOOP=uvloop
+      addons:
+        apt:
+          packages:
+            - gcc
   fast_finish: true
   allow_failures:
     - python: nightly
-addons:
-  apt:
-    packages:
-    - libuv-dev
+      env: EVENT_LOOP=uvloop
 install:
   - pip install tox-travis pytest-travis-fold coveralls codecov
 script: tox
