@@ -43,7 +43,7 @@ matrix:
       addons:
         apt:
           packages:
-            - gcc
+            - libuv-dev
   fast_finish: true
   allow_failures:
     - python: nightly
