@@ -2,17 +2,18 @@ dist: trusty
 sudo: false
 language: python
 cache: pip
-python:
-  - '3.5'
-  - 3.5-dev
-  - '3.6'
-  - 3.6-dev
-  - nightly
-env:
-  - EVENT_LOOP=asyncio
-  - EVENT_LOOP=uvloop
 matrix:
   include:
+    - python: '3.5'
+      env: EVENT_LOOP=asyncio
+    - python: 3.5-dev
+      env: EVENT_LOOP=asyncio
+    - python: '3.6'
+      env: EVENT_LOOP=asyncio
+    - python: 3.6-dev
+      env: EVENT_LOOP=asyncio
+    - python: nightly
+      env: EVENT_LOOP=asyncio
     - python: '3.5'
       env: EVENT_LOOP=uvloop
       addons:
