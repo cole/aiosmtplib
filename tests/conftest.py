@@ -40,7 +40,10 @@ def event_loop(request):
 
     yield loop
 
-    loop.close()
+    if not loop.is_closed():
+        loop.call_soon(loop.stop)
+        loop.run_forever()
+        loop.close()
 
 
 @pytest.fixture()
@@ -53,26 +56,31 @@ def smtpd_server(request, unused_tcp_port):
     return server
 
 
-@pytest.fixture()
-def preset_server(request, unused_tcp_port):
-    server = PresetServer('localhost', unused_tcp_port)
-    server.daemon = True
-    server.start()
-    server.ready.wait()
+@pytest.fixture(scope='function')
+def preset_server(request, event_loop, unused_tcp_port):
+    server = PresetServer('localhost', unused_tcp_port, loop=event_loop)
 
-    request.addfinalizer(server.stop)
+    event_loop.run_until_complete(server.start())
+
+    def close_server():
+        event_loop.run_until_complete(server.stop())
+
+    request.addfinalizer(close_server)
 
     return server
 
 
 @pytest.fixture()
-def tls_preset_server(request, unused_tcp_port):
-    server = PresetServer('localhost', unused_tcp_port, use_tls=True)
-    server.daemon = True
-    server.start()
-    server.ready.wait()
+def tls_preset_server(request, event_loop, unused_tcp_port):
+    server = PresetServer(
+        'localhost', unused_tcp_port, loop=event_loop, use_tls=True)
 
-    request.addfinalizer(server.stop)
+    event_loop.run_until_complete(server.start())
+
+    def close_server():
+        event_loop.run_until_complete(server.stop())
+
+    request.addfinalizer(close_server)
 
     return server
 

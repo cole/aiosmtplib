@@ -1,21 +1,22 @@
+import asyncio
 import asyncore
 import collections
-import select
 import smtpd
 import socket
-import socketserver
 import ssl
 import threading
-import time
+from asyncio.sslproto import SSLProtocol
 from email.errors import HeaderParseError
 
 
-class PresetServer(threading.Thread):
+class PresetServer:
 
-    def __init__(self, hostname, port, certfile='tests/certs/selfsigned.crt',
+    def __init__(self, hostname, port, loop=None,
+                 certfile='tests/certs/selfsigned.crt',
                  keyfile='tests/certs/selfsigned.key', use_tls=False,
                  greeting=b'220 Hello world!\n',
                  goodbye=b'221 Goodbye then\n'):
+
         super().__init__()
         self.hostname = hostname
         self.port = port
@@ -29,9 +30,11 @@ class PresetServer(threading.Thread):
         self.delay_next_response = 0
         self.delay_greeting = 0
 
-        self.ready = threading.Barrier(2, timeout=2.0)
-        self.stop_event = threading.Event()
-        self.drop_connection_event = threading.Event()
+        self.loop = loop
+        self.closed = False
+        self.server, self.stream_reader, self.stream_writer = None, None, None
+
+        self.drop_connection_event = asyncio.Event(loop=self.loop)
 
     @property
     def tls_context(self):
@@ -48,87 +51,84 @@ class PresetServer(threading.Thread):
 
         return response
 
-    def wrap_socket(self):
-        self.connection.settimeout(1)
-        self.connection = self.tls_context.wrap_socket(
-            self.connection, server_side=True)
-        self.connection.settimeout(None)
+    def wrap_transport(self, waiter):
+        old_transport = self.stream_writer._transport
+        old_protocol = self.stream_writer._protocol
 
-    def handle_connection(self):
+        tls_protocol = SSLProtocol(
+            self.loop, old_protocol, self.tls_context, waiter,
+            server_side=True, call_connection_made=False)
+
+        old_transport._protocol = tls_protocol
+        self.stream_reader._transport = tls_protocol._app_transport
+        self.stream_writer._transport = tls_protocol._app_transport
+
+        tls_protocol.connection_made(old_transport)
+        tls_protocol._over_ssl = True
+
+        return old_transport
+
+    async def start(self):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.bind((self.hostname, self.port))
+
+        if self.port == 0:
+            self.port = socket.getsockname()[1]
+
+        tls_context = self.tls_context if self.use_tls else None
+        self.server = await asyncio.start_server(
+            self.on_connect, ssl=tls_context, sock=sock, loop=self.loop)
+
+    async def stop(self):
+        self.server.close()
+        await self.server.wait_closed()
+
+    async def on_connect(self, reader, writer):
+        self.stream_reader = reader
+        self.stream_writer = writer
+
         if self.delay_greeting > 0:
-            time.sleep(self.delay_greeting)
+            await asyncio.sleep(self.delay_greeting, loop=self.loop)
 
-        self.connection.sendall(self.greeting)
+        self.stream_writer.write(self.greeting)
+        await self.stream_writer.drain()
 
-        while not self.stop_event.is_set():
-            if self.drop_connection_event.is_set():
-                break
+        await self.process_requests()
 
-            data = self.connection.recv(65536)
+        if not self.drop_connection_event.is_set():
+            self.stream_writer.write(self.goodbye)
+            if self.stream_writer.can_write_eof():
+                self.stream_writer.write_eof()
+            await self.stream_writer.drain()
+
+        self.stream_writer.close()
+
+    async def process_requests(self):
+        while not self.drop_connection_event.is_set():
+            data = await self.stream_reader.readuntil(b'\r\n')
             self.requests.append(data)
 
+            if self.delay_next_response > 0:
+                await asyncio.sleep(self.delay_next_response, loop=self.loop)
+
             if self.drop_connection_event.is_set():
                 break
-
-            if self.delay_next_response > 0:
-                time.sleep(self.delay_next_response)
 
             try:
                 response = self.next_response()
             except IndexError:
                 break
 
-            self.connection.sendall(response)
+            self.stream_writer.write(response)
+            await self.stream_writer.drain()
+
+            if self.drop_connection_event.is_set():
+                break
 
             if data[:8] == b'STARTTLS':
-                try:
-                    self.wrap_socket()
-                except OSError:
-                    break
-
-        if not self.drop_connection_event.is_set():
-            try:
-                self.connection.sendall(self.goodbye)
-                self.connection.shutdown(socket.SHUT_RDWR)
-            except TypeError:
-                self.connection.shutdown()
-            except (OSError, BrokenPipeError):
-                pass
-
-        try:
-            self.connection.close()
-        except (NameError, IOError):
-            pass
-
-    def run(self):
-        try:
-            self.socket = socket.socket()
-            self.socket.bind((self.hostname, self.port))
-            self.socket.listen(0)
-
-            if self.port == 0:
-                self.port = self.socket.getsockname()[1]
-
-            self.ready.wait()
-            while not self.stop_event.is_set():
-                socket_ready, _, _ = select.select([self.socket], [], [], 0.1)
-                if not socket_ready:
-                    break
-                self.connection, _ = self.socket.accept()
-                if self.use_tls:
-                    self.wrap_socket()
-                self.handle_connection()
-
-        finally:
-            try:
-                self.socket.close()
-            except IOError:
-                pass
-
-    def stop(self):
-        self.ready.abort()
-        self.stop_event.set()
-        self.join(0.1)
+                waiter = asyncio.Future(loop=self.loop)
+                self.wrap_transport(waiter)
+                await asyncio.wait_for(waiter, 10.0)
 
 
 class TestSMTPDChannel(smtpd.SMTPChannel):

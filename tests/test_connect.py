@@ -43,7 +43,7 @@ async def test_quit_then_connect_ok_with_preset_server(
         preset_server, event_loop):
     preset_client = SMTP(
         hostname=preset_server.hostname, port=preset_server.port,
-        loop=event_loop)
+        loop=event_loop, timeout=1.0)
 
     response = await preset_client.connect()
     assert response.code == 220
@@ -69,7 +69,7 @@ async def test_quit_then_connect_ok_with_preset_server(
 async def test_bad_connect_response_raises_error(preset_server, event_loop):
     preset_client = SMTP(
         hostname=preset_server.hostname, port=preset_server.port,
-        loop=event_loop)
+        loop=event_loop, timeout=1.0)
 
     preset_server.greeting = b'421 Please come back in 204232430 seconds.\n'
     with pytest.raises(SMTPConnectError):
@@ -81,7 +81,7 @@ async def test_bad_connect_response_raises_error(preset_server, event_loop):
 async def test_421_closes_connection(preset_server, event_loop):
     preset_client = SMTP(
         hostname=preset_server.hostname, port=preset_server.port,
-        loop=event_loop)
+        loop=event_loop, timeout=1.0)
 
     await preset_client.connect()
     preset_server.responses.append(
@@ -114,7 +114,7 @@ async def test_timeout_on_initial_read(preset_server, event_loop):
 async def test_del_client_closes_transport(preset_server, event_loop):
     preset_client = SMTP(
         hostname=preset_server.hostname, port=preset_server.port,
-        loop=event_loop)
+        loop=event_loop, timeout=1.0)
 
     await preset_client.connect()
     transport = preset_client.transport
@@ -128,11 +128,13 @@ async def test_disconnected_server_raises_on_client_read(
         preset_server, event_loop):
     preset_client = SMTP(
         hostname=preset_server.hostname, port=preset_server.port,
-        loop=event_loop)
+        loop=event_loop, timeout=1.0)
 
     await preset_client.connect()
 
     preset_server.responses.append(b'250 noop')
+    # The delay makes sure the server drops the connection before responding
+    preset_server.delay_next_response = 0.5
     preset_server.drop_connection_event.set()
 
     with pytest.raises(SMTPServerDisconnected):
@@ -155,10 +157,7 @@ async def test_disconnected_server_raises_on_client_write(
     preset_server.responses.append(b'250 noop')
     preset_server.drop_connection_event.set()
 
-    # There seems to be a race condition here where the thread doesn't always
-    # drop the connection right away, so just try twice, and one will fail
     with pytest.raises(SMTPServerDisconnected):
-        await preset_client.execute_command(b'NOOP')
         await preset_client.execute_command(b'NOOP')
 
     # Verify that the connection was closed
@@ -197,7 +196,7 @@ async def test_disconnected_server_raises_on_data_read(preset_client):
 
 async def test_disconnected_server_raises_on_data_write(preset_client):
     """
-    The `data` command is a special case - it access protocol directly,
+    The `data` command is a special case - it accesses protocol directly,
     rather than using `execute_command`.
     """
     await preset_client.connect()
@@ -225,7 +224,7 @@ async def test_disconnected_server_raises_on_data_write(preset_client):
 
 async def test_disconnected_server_raises_on_starttls(preset_client):
     """
-    The `data` command is a special case - it access protocol directly,
+    The `starttls` command is a special case - it accesses protocol directly,
     rather than using `execute_command`.
     """
     await preset_client.connect()
