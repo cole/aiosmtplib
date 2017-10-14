@@ -277,8 +277,9 @@ async def test_data_complete_error(preset_client):
 
 
 async def test_command_timeout_error(preset_client):
-    preset_client.timeout = 0.01
     async with preset_client:
+        # Set timeout *after connecting*, so the connection doesn't fail
+        preset_client.timeout = 0.01
         preset_client.server.responses.append(b'250 Ehlo is OK')
         preset_client.server.delay_next_response = 1
         with pytest.raises(SMTPTimeoutError):
