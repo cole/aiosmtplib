@@ -14,6 +14,8 @@ matrix:
       env: EVENT_LOOP=asyncio
     - python: nightly
       env: EVENT_LOOP=asyncio
+    - python: pypy3.5-5.9.0
+      env: EVENT_LOOP=asyncio
     - python: '3.5'
       env: EVENT_LOOP=uvloop
       addons:
@@ -46,6 +48,8 @@ matrix:
             - libuv-dev
   fast_finish: true
   allow_failures:
+    - python: pypy3.5-5.9.0
+      env: EVENT_LOOP=asyncio
     - python: nightly
       env: EVENT_LOOP=uvloop
 install:
