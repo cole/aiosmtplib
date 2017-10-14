@@ -140,7 +140,7 @@ async def test_vrfy_with_blank_address(smtpd_client):
 
 async def test_expn_ok(preset_client):
     """
-    EXPN is not implemented by aiosmtpd (or anyone, really), so just fake a
+    EXPN is not implemented by smtpd (or anyone, really), so just fake a
     response.
     """
     async with preset_client:

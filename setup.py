@@ -50,7 +50,6 @@ setup(
             'sphinx_autodoc_typehints>=1.2,<1.3',
         ],
         'testing': [
-            'aiosmtpd>=1.0,<1.1',
             'hypothesis>=3.0,<4.0',
             'hypothesis-pytest>=0.19,<1.0',
             'pytest>=3.0,<3.1',
