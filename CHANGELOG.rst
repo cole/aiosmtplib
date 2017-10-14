@@ -1,6 +1,12 @@
 aiosmtplib changes
 ==================
 
+master
+------
+
+- Bugfix: Removed buggy close connection on __del__
+
+
 1.0.2
 -----
 

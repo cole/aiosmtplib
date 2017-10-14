@@ -95,13 +95,6 @@ class SMTPConnection:
         self.loop = loop or asyncio.get_event_loop()
         self._connect_lock = asyncio.Lock(loop=self.loop)
 
-    def __del__(self) -> None:
-        """
-        Close our transport.
-        """
-        if self.is_connected:
-            self.close()
-
     async def __aenter__(self) -> 'SMTPConnection':
         if not self.is_connected:
             await self.connect()

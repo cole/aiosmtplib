@@ -111,19 +111,6 @@ async def test_timeout_on_initial_read(preset_server, event_loop):
         await client.connect(timeout=0.5)
 
 
-async def test_del_client_closes_transport(preset_server, event_loop):
-    preset_client = SMTP(
-        hostname=preset_server.hostname, port=preset_server.port,
-        loop=event_loop, timeout=1.0)
-
-    await preset_client.connect()
-    transport = preset_client.transport
-
-    del preset_client
-
-    assert transport.is_closing()
-
-
 async def test_disconnected_server_raises_on_client_read(
         preset_server, event_loop):
     preset_client = SMTP(
