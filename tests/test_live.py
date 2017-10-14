@@ -33,6 +33,7 @@ async def test_starttls_gmail(event_loop):
 
 
 @pytest.mark.skip(reason='No support for UTF8 yet')
+@pytest.mark.asyncio(forbid_global_loop=True)
 async def test_qq_login(event_loop):
     client = SMTP(
         hostname='smtp.qq.com', port=587, loop=event_loop, use_tls=False)

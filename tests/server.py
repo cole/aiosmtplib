@@ -59,14 +59,12 @@ class PresetServer:
             self.loop, old_protocol, self.tls_context, waiter,
             server_side=True, call_connection_made=False)
 
-        old_transport._protocol = tls_protocol
+        old_transport.set_protocol(tls_protocol)
         self.stream_reader._transport = tls_protocol._app_transport
         self.stream_writer._transport = tls_protocol._app_transport
 
         tls_protocol.connection_made(old_transport)
         tls_protocol._over_ssl = True
-
-        return old_transport
 
     async def start(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
