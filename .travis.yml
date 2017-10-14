@@ -51,6 +51,8 @@ matrix:
     - python: pypy3.5-5.9.0
       env: EVENT_LOOP=asyncio
     - python: nightly
+      env: EVENT_LOOP=asyncio
+    - python: nightly
       env: EVENT_LOOP=uvloop
 install:
   - pip install tox-travis pytest-travis-fold coveralls codecov
