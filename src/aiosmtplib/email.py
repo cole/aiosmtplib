@@ -31,8 +31,6 @@ def quote_address(address: str) -> str:
     if parsed_address:
         quoted_address = '<{}>'.format(parsed_address)
     # parseaddr couldn't parse it, use it as is and hope for the best.
-    elif address.lstrip().startswith('<'):
-        quoted_address = address.strip()
     else:
         quoted_address = '<{}>'.format(address.strip())
 
