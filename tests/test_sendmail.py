@@ -45,6 +45,53 @@ async def test_sendmail_binary_content(smtpd_client):
         assert message != ''
 
 
+async def test_sendmail_with_recipients_string(smtpd_client):
+    async with smtpd_client:
+        test_address = 'test@example.com'
+        mail_text = "Hello world!"
+
+        errors, message = await smtpd_client.sendmail(
+            test_address, test_address, mail_text)
+
+        assert not errors
+        assert message != ''
+
+
+async def test_sendmail_with_mail_option(preset_client):
+    async with preset_client:
+        test_address = 'test@example.com'
+        mail_text = "Hello world!"
+        preset_client.server.responses.append(b'250 Hello there')
+        preset_client.server.responses.append(b'250 ok')
+        preset_client.server.responses.append(b'250 ok')
+        preset_client.server.responses.append(b'354 go ahead')
+        preset_client.server.responses.append(b'250 ok')
+
+        errors, message = await preset_client.sendmail(
+            test_address, [test_address], mail_text, mail_options=['SMTPUTF8'])
+
+        assert not errors
+        assert message != ''
+
+
+async def test_sendmail_with_rcpt_option(preset_client):
+    async with preset_client:
+        test_address = 'test@example.com'
+        mail_text = "Hello world!"
+        preset_client.server.responses.append(b'250 Hello there')
+        preset_client.server.responses.append(b'250 ok')
+        preset_client.server.responses.append(b'250 ok')
+        preset_client.server.responses.append(b'354 go ahead')
+        preset_client.server.responses.append(b'250 ok')
+
+        errors, message = await preset_client.sendmail(
+            test_address, [test_address], mail_text,
+            rcpt_options=['NOTIFY=FAILURE,DELAY'])
+
+        assert not errors
+        assert message != ''
+
+
 async def test_sendmail_simple_failure(smtpd_client):
     async with smtpd_client:
         sender = 'test@example.com'
@@ -143,6 +190,22 @@ async def test_send_message(smtpd_client):
 
     async with smtpd_client:
         errors, message = await smtpd_client.send_message(message)
+
+    assert not errors
+    assert isinstance(errors, dict)
+    assert message != ''
+
+
+async def test_send_message_with_sender_and_recipient_args(smtpd_client):
+    message = email.mime.multipart.MIMEMultipart()
+    message['Subject'] = 'test message'
+    body = email.mime.text.MIMEText("Hello, world")
+    message.attach(body)
+
+    async with smtpd_client:
+        errors, message = await smtpd_client.send_message(
+            message, sender='sender@example.com',
+            recipients=['recipient1@example.com', 'recipient2@example.com'])
 
     assert not errors
     assert isinstance(errors, dict)
