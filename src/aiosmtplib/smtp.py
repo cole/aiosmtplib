@@ -37,7 +37,7 @@ class SMTP(SMTPAuth):
     Basic usage:
 
         >>> loop = asyncio.get_event_loop()
-        >>> smtp = aiosmtplib.SMTP(hostname='localhost', port=port, loop=loop)
+        >>> smtp = aiosmtplib.SMTP(hostname='localhost', port=1025, loop=loop)
         >>> loop.run_until_complete(smtp.connect())
         (220, ...)
         >>> sender = 'root@localhost'
@@ -93,7 +93,7 @@ class SMTP(SMTPAuth):
         Example:
 
              >>> loop = asyncio.get_event_loop()
-             >>> smtp = aiosmtplib.SMTP(hostname='localhost', port=port)
+             >>> smtp = aiosmtplib.SMTP(hostname='localhost', port=1025)
              >>> loop.run_until_complete(smtp.connect())
              (220, ...)
              >>> recipients = ['one@one.org', 'two@two.org', '3@three.org']
