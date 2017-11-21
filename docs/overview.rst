@@ -13,7 +13,7 @@
     aiosmtpd_logger = logging.getLogger('mail.log')
     aiosmtpd_logger.setLevel(logging.ERROR)
 
-    controller = Controller(object(), hostname='0.0.0.0', port=1025)
+    controller = Controller(object(), hostname='127.0.0.1', port=1025)
     controller.start()
 
 .. testcleanup:: *
