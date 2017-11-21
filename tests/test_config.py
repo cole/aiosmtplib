@@ -60,7 +60,7 @@ async def test_default_port_on_connect(event_loop):
 
     try:
         await client.connect(use_tls=False, timeout=0.01)
-    except:
+    except Exception:
         pass  # Ignore connection failure
 
     assert client.port == 25
@@ -74,7 +74,7 @@ async def test_default_tls_port_on_connect(event_loop):
 
     try:
         await client.connect(use_tls=True, timeout=0.01)
-    except:
+    except Exception:
         pass  # Ignore connection failure
 
     assert client.port == 465
