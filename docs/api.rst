@@ -1,11 +1,15 @@
 .. testsetup:: *
     
     import asyncio
+    import logging
 
     from aiosmtpd.controller import Controller
 
     import aiosmtplib
     from aiosmtplib import SMTP, SMTPResponse
+
+    aiosmtpd_logger = logging.getLogger('mail.log')
+    aiosmtpd_logger.setLevel(logging.ERROR)
 
     controller = Controller(object(), hostname='localhost', port=10025)
     controller.start()

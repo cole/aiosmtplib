@@ -61,7 +61,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'aiosmtplib'
-copyright = '2017 Cole Maclean'
+copyright = '2017, Cole Maclean'
 author = 'Cole Maclean'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -180,7 +180,7 @@ texinfo_documents = [
 ]
 
 intersphinx_mapping = {
-    'python': ('https://docs.python.org/3.5', None),
+    'python': ('https://docs.python.org/3.6', None),
 }
 
 html_sidebars = {
