@@ -54,6 +54,44 @@ async def test_ehlo_error(preset_client):
             await preset_client.ehlo()
 
 
+async def test_ehlo_parses_esmtp_extensions(preset_client):
+    ehlo_response = bytes("""250-example.com offers FIFTEEN extensions:
+250-8BITMIME
+250-PIPELINING
+250-DSN
+250-ENHANCEDSTATUSCODES
+250-EXPN
+250-HELP
+250-SAML
+250-SEND
+250-SOML
+250-TURN
+250-XADR
+250-XSTA
+250-ETRN
+250-XGEN
+250 SIZE 51200000""", 'ascii')
+    async with preset_client:
+        preset_client.server.responses.append(ehlo_response)
+
+        await preset_client.ehlo()
+
+        assert preset_client.supports_extension('8bitmime')
+        assert preset_client.supports_extension('pipelining')
+        assert preset_client.supports_extension('ENHANCEDSTATUSCODES')
+        assert preset_client.supports_extension('size')
+        assert not preset_client.supports_extension('notreal')
+
+
+async def test_ehlo_with_no_extensions(preset_client):
+    async with preset_client:
+        preset_client.server.responses.append(b'250 all good')
+
+        await preset_client.ehlo()
+
+        assert not preset_client.supports_extension('size')
+
+
 async def test_ehlo_or_helo_if_needed_ehlo_success(preset_client):
     async with preset_client:
         assert preset_client.is_ehlo_or_helo_needed is True
