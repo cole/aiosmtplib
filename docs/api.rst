@@ -11,10 +11,11 @@
     aiosmtpd_logger = logging.getLogger('mail.log')
     aiosmtpd_logger.setLevel(logging.ERROR)
 
-    controller = Controller(object(), hostname='localhost', port=10025)
+    controller = Controller(object(), hostname='localhost', port=0)
     controller.start()
+    port = controller.server.sockets[0].getsockname()[1]
 
-    smtp = SMTP(hostname='localhost', port=10025)
+    smtp = SMTP(hostname='localhost', port=port)
 
 .. testcleanup:: *
 

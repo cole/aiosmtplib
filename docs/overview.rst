@@ -13,8 +13,9 @@
     aiosmtpd_logger = logging.getLogger('mail.log')
     aiosmtpd_logger.setLevel(logging.ERROR)
 
-    controller = Controller(object(), hostname='localhost', port=10025)
+    controller = Controller(object(), hostname='localhost', port=0)
     controller.start()
+    port = controller.server.sockets[0].getsockname()[1]
 
 .. testcleanup:: *
 
@@ -37,7 +38,7 @@ Quickstart
     import aiosmtplib
 
     loop = asyncio.get_event_loop()
-    smtp = aiosmtplib.SMTP(hostname='localhost', port=10025, loop=loop)
+    smtp = aiosmtplib.SMTP(hostname='localhost', port=port, loop=loop)
     loop.run_until_complete(smtp.connect())
 
     message = MIMEText('Sent via aiosmtplib')
