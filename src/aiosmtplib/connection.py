@@ -256,7 +256,6 @@ class SMTPConnection:
             timeout = self.timeout
 
         self._raise_error_if_disconnected()
-        assert self.protocol is not None, 'Not connected'
 
         try:
             response = await self.protocol.execute_command(  # type: ignore
@@ -304,7 +303,8 @@ class SMTPConnection:
         See if we're still connected, and if not, raise
         ``SMTPServerDisconnected``.
         """
-        if self.transport is None or self.transport.is_closing():
+        if (self.transport is None or self.protocol is None or
+                self.transport.is_closing()):
             self.close()
             raise SMTPServerDisconnected('Disconnected from SMTP server')
 
@@ -338,6 +338,5 @@ class SMTPConnection:
         :raises SMTPServerDisconnected: connection lost
         """
         self._raise_error_if_disconnected()
-        assert self.transport is not None
 
         return self.transport.get_extra_info(key)

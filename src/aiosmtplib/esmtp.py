@@ -259,7 +259,7 @@ class ESMTP(SMTPConnection):
         """
         # As data accesses protocol directly, some handling is required
         self._raise_error_if_disconnected()
-        assert self.protocol is not None, 'Not connected'
+
         if timeout is _default:
             timeout = self.timeout
 
@@ -367,7 +367,6 @@ class ESMTP(SMTPConnection):
         :raises ValueError: invalid options provided
         """
         self._raise_error_if_disconnected()
-        assert self.protocol is not None, 'Not connected'
 
         if validate_certs is not None:
             self.validate_certs = validate_certs

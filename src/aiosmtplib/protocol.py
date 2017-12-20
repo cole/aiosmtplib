@@ -76,9 +76,10 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
         """
         Upgrade our transport to TLS in place.
         """
-        assert self._stream_reader is not None, 'Client not connected'
-        assert self._stream_writer is not None, 'Client not connected'
         assert not self._over_ssl, 'Already using TLS'
+
+        if self._stream_reader is None or self._stream_writer is None:
+            raise SMTPServerDisconnected('Client not connected')
 
         transport = self._stream_reader._transport  # type: ignore
 
@@ -110,7 +111,8 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
           - server response string corresponding to response code (multiline
             responses are converted to a single, multiline string).
         """
-        assert self._stream_reader is not None, 'Client not connected'
+        if self._stream_reader is None:
+            raise SMTPServerDisconnected('Client not connected')
 
         code = None
         response_lines = []
@@ -143,7 +145,8 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
         """
         Format a command and send it to the server.
         """
-        assert self._stream_writer is not None, 'Client not connected'
+        if self._stream_writer is None:
+            raise SMTPServerDisconnected('Client not connected')
 
         self._stream_writer.write(data)
 
@@ -186,7 +189,8 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
         """
         Puts the connection to the SMTP server into TLS mode.
         """
-        assert self._stream_writer is not None, 'Client not connected'
+        if self._stream_writer is None:
+            raise SMTPServerDisconnected('Client not connected')
 
         response = await self.execute_command(b'STARTTLS', timeout=timeout)
 
@@ -208,7 +212,8 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
         """
         Wraps writer.drain() with error handling.
         """
-        assert self._stream_writer is not None, 'Client not connected'
+        if self._stream_writer is None:
+            raise SMTPServerDisconnected('Client not connected')
 
         # Wrapping drain in a task makes mypy happy
         drain_task = asyncio.Task(self._stream_writer.drain(), loop=self._loop)
