@@ -5,8 +5,9 @@ import copy
 import email.generator
 import email.utils
 import io
+from email.header import Header
 from email.message import Message
-from typing import List, Tuple
+from typing import List, Tuple, Union
 
 
 __all__ = ('flatten_message', 'parse_address', 'quote_address')
@@ -54,12 +55,13 @@ def flatten_message(message: Message) -> Tuple[str, List[str], str]:
     messageio = io.StringIO()
     generator = email.generator.Generator(messageio)
     generator.flatten(message_copy, linesep='\r\n')
-    flat_message = messageio.getvalue()
+    flat = messageio.getvalue()
 
-    return sender, recipients, flat_message
+    return str(sender), [str(recipient) for recipient in recipients], flat
 
 
-def _extract_sender(message: Message, resent_dates: List[str] = None) -> str:
+def _extract_sender(message: Message,
+                    resent_dates: List[Union[str, Header]] = None) -> str:
     """
     Extract the sender from the message object given.
     """
@@ -76,11 +78,12 @@ def _extract_sender(message: Message, resent_dates: List[str] = None) -> str:
     else:
         sender = message[from_header]
 
-    return sender or ''
+    return str(sender) if sender else ''
 
 
-def _extract_recipients(
-        message: Message, resent_dates: List[str] = None) -> List[str]:
+def _extract_recipients(message: Message,
+                        resent_dates: List[Union[str, Header]] = None) -> \
+                        List[str]:
     """
     Extract the recipients from the message object given.
     """
@@ -92,10 +95,10 @@ def _extract_recipients(
         recipient_headers = ('To', 'Cc', 'Bcc')
 
     for header in recipient_headers:
-        recipients.extend(message.get_all(header, []))
+        recipients.extend(message.get_all(header, []))  # type: ignore
 
     parsed_recipients = [
-        email.utils.formataddr(address)
+        str(email.utils.formataddr(address))
         for address in email.utils.getaddresses(recipients)
     ]
 
