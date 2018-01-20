@@ -1,9 +1,11 @@
 .. module:: aiosmtplib
 
 .. testsetup:: *
-    
+
     import asyncio
     import logging
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
 
     from aiosmtpd.controller import Controller
 
@@ -87,6 +89,21 @@ Use :meth:`SMTP.send_message` to send :class:`email.message.Message` objects.
     loop = asyncio.get_event_loop()
     loop.run_until_complete(smtp.send_message(message))
 
+Use :meth:`SMTP.send_message` to send :class:`email.mime.multipart.MIMEMultipart` objects
+with HTML text or plain text.
+
+.. testcode::
+
+    message = MIMEMultipart('alternative')
+    message['From'] = 'root@localhost'
+    message['To'] = 'somebody@example.com'
+    message['Subject'] = 'Hello World!'
+
+    message.attach(MIMEText('hello', 'plain', 'utf-8'))
+    message.attach(MIMEText('<html><body><h1>Hello</h1></body></html>', 'html', 'utf-8'))
+
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(smtp.send_message(message))
 
 This is the simplest API, and is the recommended way to send messages, as it
 makes it easy to set headers correctly and handle multi part messages. For
@@ -149,7 +166,7 @@ Parallel execution
 ------------------
 SMTP is a sequential protocol. Multiple commands must be sent to send an
 email, and they must be sent in the correct sequence. As a consequence of
-this, executing multiple :meth:`SMTP.sendmail` tasks in parallel (i.e. with 
+this, executing multiple :meth:`SMTP.sendmail` tasks in parallel (i.e. with
 :func:`asyncio.gather`) is not any more efficient than executing in sequence,
 as the client must wait until one mail is sent before beginning the next.
 
@@ -162,6 +179,3 @@ Roadmap
 :mod:`aiosmtplib` is now feature complete, however test coverage and
 documentation need a lot of work. Feature requests and bug reports are welcome
 via Github issues.
-
-
-
