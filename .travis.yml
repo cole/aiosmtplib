@@ -4,7 +4,7 @@ language: python
 cache: pip
 matrix:
   include:
-    - python: '3.5'
+    - python: '3.5.2'
       env: EVENT_LOOP=asyncio
     - python: 3.5-dev
       env: EVENT_LOOP=asyncio
@@ -16,7 +16,7 @@ matrix:
       env: EVENT_LOOP=asyncio
     - python: pypy3
       env: EVENT_LOOP=asyncio
-    - python: '3.5'
+    - python: '3.5.2'
       env: EVENT_LOOP=uvloop
       addons:
         apt:
