@@ -17,6 +17,7 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 
+import datetime
 import os
 import pathlib
 import re
@@ -61,8 +62,8 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'aiosmtplib'
-copyright = '2017, Cole Maclean'
 author = 'Cole Maclean'
+copyright = f'{datetime.date.today().year}, {author}'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
