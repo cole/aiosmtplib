@@ -6,6 +6,8 @@ matrix:
   include:
     - python: '3.5.2'
       env: EVENT_LOOP=asyncio
+    - python: '3.5'
+      env: EVENT_LOOP=asyncio
     - python: 3.5-dev
       env: EVENT_LOOP=asyncio
     - python: '3.6'
@@ -17,6 +19,12 @@ matrix:
     - python: pypy3
       env: EVENT_LOOP=asyncio
     - python: '3.5.2'
+      env: EVENT_LOOP=uvloop
+      addons:
+        apt:
+          packages:
+            - libuv-dev
+    - python: '3.5'
       env: EVENT_LOOP=uvloop
       addons:
         apt:
