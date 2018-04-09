@@ -63,7 +63,8 @@ master_doc = 'index'
 # General information about the project.
 project = 'aiosmtplib'
 author = 'Cole Maclean'
-copyright = f'{datetime.date.today().year}, {author}'
+year = datetime.date.today().year
+copyright = '{year}, {author}'.format(year=year, author=author)
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
