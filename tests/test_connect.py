@@ -111,6 +111,24 @@ async def test_timeout_on_initial_read(preset_server, event_loop):
         await client.connect(timeout=0.5)
 
 
+async def test_timeout_on_starttls(preset_client):
+    await preset_client.connect()
+    preset_client.server.responses.append(b'\n'.join([
+        b'250-localhost, hello',
+        b'250-SIZE 100000',
+        b'250 STARTTLS',
+    ]))
+    await preset_client.ehlo()
+
+    preset_client.server.responses.append(b'220 begin TLS pls')
+    preset_client.server.delay_next_response = 0.5
+
+    with pytest.raises(SMTPTimeoutError):
+        await preset_client.starttls(validate_certs=False, timeout=0.1)
+
+    preset_client.server.drop_connection_event.set()
+
+
 async def test_disconnected_server_raises_on_client_read(
         preset_server, event_loop):
     preset_client = SMTP(

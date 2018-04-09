@@ -204,7 +204,10 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
         tls_protocol = self.upgrade_transport(
             tls_context, server_hostname=server_hostname, waiter=waiter)
 
-        await asyncio.wait_for(waiter, timeout=timeout, loop=self._loop)
+        try:
+            await asyncio.wait_for(waiter, timeout=timeout, loop=self._loop)
+        except asyncio.TimeoutError as exc:
+            raise SMTPTimeoutError(str(exc))
 
         return response, tls_protocol
 
