@@ -387,7 +387,8 @@ class SSLProtocol(protocols.Protocol):
             raise RuntimeError('stdlib ssl module not available')
 
         if not sslcontext:
-            sslcontext = _create_transport_context(server_side, server_hostname)
+            sslcontext = _create_transport_context(
+                server_side, server_hostname)
 
         self._server_side = server_side
         if server_hostname and not server_side:
