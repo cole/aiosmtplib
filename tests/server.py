@@ -5,8 +5,9 @@ import smtpd
 import socket
 import ssl
 import threading
-from asyncio.sslproto import SSLProtocol
 from email.errors import HeaderParseError
+
+from .sslproto import SSLProtocol
 
 
 class PresetServer:
@@ -58,8 +59,11 @@ class PresetServer:
         tls_protocol = SSLProtocol(
             self.loop, old_protocol, self.tls_context, waiter,
             server_side=True, call_connection_made=False)
+        if hasattr(old_transport, 'set_protocol'):
+            old_transport.set_protocol(tls_protocol)
+        else:
+            old_transport._protocol = tls_protocol
 
-        old_transport.set_protocol(tls_protocol)
         self.stream_reader._transport = tls_protocol._app_transport
         self.stream_writer._transport = tls_protocol._app_transport
 
