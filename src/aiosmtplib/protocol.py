@@ -243,13 +243,13 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
         except asyncio.TimeoutError as exc:
             raise SMTPTimeoutError(str(exc))
         except asyncio.IncompleteReadError as exc:
-            if exc.partial == b'':  # type: ignore
+            if exc.partial == b'':
                 # if we got only an EOF, raise SMTPServerDisconnected
                 raise SMTPServerDisconnected('Unexpected EOF received')
             else:
                 # otherwise, close our connection but try to parse the
                 # response anyways
                 self._stream_writer.close()
-                line = exc.partial  # type: ignore
+                line = exc.partial
 
         return line
