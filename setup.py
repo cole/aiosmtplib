@@ -46,15 +46,14 @@ setup(
     ],
     extras_require={
         'docs': [
-            'sphinx>=1.6,<1.7',
-            'sphinx_autodoc_typehints>=1.2,<1.3',
+            'sphinx>=1.8,<2.0',
+            'sphinx_autodoc_typehints>=1.3,<2.0',
         ],
         'testing': [
             'hypothesis>=3.0,<4.0',
-            'hypothesis-pytest>=0.19,<1.0',
-            'pytest>=3.0,<3.1',
-            'pytest-asyncio>=0.5,<0.6',
-            'pytest-cov>=2.4,<2.5',
+            'pytest>=3.0,<4.0',
+            'pytest-asyncio>=0.8,<1.0',
+            'pytest-cov>=2.5,<3.0',
             'wheel[signatures]',
         ]
     }
