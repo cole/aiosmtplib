@@ -456,9 +456,8 @@ def parse_esmtp_extensions(message: str) -> Tuple[Dict[str, str], List[str]]:
         #    support using the old style.
         auth_match = OLDSTYLE_AUTH_REGEX.match(line)
         if auth_match is not None:
-            auth_type = auth_match.group('auth')[0]
-            if auth_type not in auth_types:
-                auth_types.append(auth_type.lower().strip())
+            auth_type = auth_match.group('auth')
+            auth_types.append(auth_type.lower().strip())
 
         # RFC 1869 requires a space between ehlo keyword and parameters.
         # It's actually stricter, in that only spaces are allowed between

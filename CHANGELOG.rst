@@ -6,6 +6,8 @@ master
 
 - Bugfix: Removed buggy close connection on __del__
 
+- Bugfix: Fixed old style auth method parsing in ESMPT response.
+
 
 1.0.2
 -----
