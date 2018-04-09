@@ -1,6 +1,8 @@
 """
 Connectivity tests.
 """
+import sys
+
 import pytest
 
 from aiosmtplib import (
@@ -93,10 +95,19 @@ async def test_421_closes_connection(preset_server, event_loop):
     assert not preset_client.is_connected
 
 
-async def test_timeout_with_no_server(event_loop):
+async def test_connect_with_no_server(event_loop):
+    """
+    Python 3.7+ raises ConnectionRefusedError here, whereas earlier versions
+    raise a TimeoutError.
+    """
+    if sys.version_info >= (3, 7):
+        expected_error = SMTPConnectError
+    else:
+        expected_error = SMTPTimeoutError
+
     client = SMTP(hostname='127.0.0.1', port=65534, loop=event_loop)
 
-    with pytest.raises(SMTPTimeoutError):
+    with pytest.raises(expected_error):
         await client.connect(timeout=0.0001)
 
 
