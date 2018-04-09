@@ -1,27 +1,5 @@
 .. module:: aiosmtplib
 
-.. testsetup:: *
-
-    import asyncio
-    import logging
-    from email.mime.multipart import MIMEMultipart
-    from email.mime.text import MIMEText
-
-    from aiosmtpd.controller import Controller
-
-    import aiosmtplib
-    from aiosmtplib import SMTP
-
-    aiosmtpd_logger = logging.getLogger('mail.log')
-    aiosmtpd_logger.setLevel(logging.ERROR)
-
-    controller = Controller(object(), hostname='127.0.0.1', port=1025)
-    controller.start()
-
-.. testcleanup:: *
-
-    controller.stop()
-
 Overview
 ========
 
@@ -55,31 +33,79 @@ Requirements
 Python 3.5+, compiled with SSL support, is required.
 
 
-Connecting to an SMTP server
+Connecting to an SMTP Server
 ----------------------------
 
-Initialize a new :class:`SMTP` instance, then await its
-:meth:`SMTP.connect` coroutine. Initializing an instance does not
-automatically connect to the server, as that is a blocking operation.
+Initialize a new :class:`SMTP` instance, then await its :meth:`SMTP.connect`
+coroutine. Initializing an instance does not automatically connect to the
+server, as that is a blocking operation.
 
-.. testcode::
+.. Since this code requires a server on port 25, don't test it, at least for
+   now.
 
-    gmail_client = SMTP()
+.. code-block:: python
+
+    client = SMTP()
 
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(
-        gmail_client.connect(hostname='smtp.gmail.com', port=587))
+    loop.run_until_complete(client.connect(hostname='localhost', port=25))
 
 
-Sending messages
+Connecting over TLS/SSL
+~~~~~~~~~~~~~~~~~~~~~~~
+
+If an SMTP server supports direct connection via TLS/SSL, pass ``use_tls=True``
+when initializing the SMTP instance (or when calling :meth:`SMTP.connect`).
+
+.. Since this code requires Gmail, don't test it, at least for now.
+
+.. code-block:: python
+
+
+    loop = asyncio.get_event_loop()
+    smtp = aiosmtplib.SMTP(
+        hostname='smtp.gmail.com', port=465, loop=loop, use_tls=True)
+    loop.run_until_complete(smtp.connect())
+
+
+STARTTLS
+~~~~~~~~
+Many SMTP servers support the STARTTLS extension over port 587. In this case,
+the initial connection is made over plaintext, and after connecting a STARTTLS
+command is sent, which initiates upgrading the existing connection. To connect
+to one of these, set ``use_tls`` to ``False`` when connecting, and call
+:meth:`SMTP.starttls` on the client.
+
+.. Since this code requires Gmail, don't test it, at least for now.
+
+.. code-block:: python
+
+    loop = asyncio.get_event_loop()
+    smtp = aiosmtplib.SMTP(
+        hostname='smtp.gmail.com', port=587, loop=loop, use_tls=False)
+    loop.run_until_complete(smtp.connect())
+    loop.run_until_complete(smtp.starttls())
+
+
+Sending Messages
 ----------------
 
 :meth:`SMTP.send_message`
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Use :meth:`SMTP.send_message` to send :class:`email.message.Message` objects.
+This is the simplest API, and is the recommended way to send messages, as it
+makes it easy to set headers correctly and handle multi part messages. For
+details on creating :class:`email.message.Message` objects, see `the
+stdlib documentation examples
+<https://docs.python.org/3.6/library/email.examples.html>`_.
+
+Use :meth:`SMTP.send_message` to send :class:`email.message.Message` objects,
+including :mod:`email.mime` subclasses such as
+:class:`email.mime.text.MIMEText`.
 
 .. testcode::
+
+    from email.mime.text import MIMEText
 
     message = MIMEText('Sent via aiosmtplib')
     message['From'] = 'root@localhost'
@@ -89,10 +115,15 @@ Use :meth:`SMTP.send_message` to send :class:`email.message.Message` objects.
     loop = asyncio.get_event_loop()
     loop.run_until_complete(smtp.send_message(message))
 
-Use :meth:`SMTP.send_message` to send :class:`email.mime.multipart.MIMEMultipart` objects
-with HTML text or plain text.
+
+Pass :class:`email.mime.multipart.MIMEMultipart` objects to
+:meth:`SMTP.send_message` to send messages with both HTML text and plain text
+alternatives.
 
 .. testcode::
+
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
 
     message = MIMEMultipart('alternative')
     message['From'] = 'root@localhost'
@@ -100,22 +131,18 @@ with HTML text or plain text.
     message['Subject'] = 'Hello World!'
 
     message.attach(MIMEText('hello', 'plain', 'utf-8'))
-    message.attach(MIMEText('<html><body><h1>Hello</h1></body></html>', 'html', 'utf-8'))
+    message.attach(
+        MIMEText('<html><body><h1>Hello</h1></body></html>', 'html', 'utf-8'))
 
     loop = asyncio.get_event_loop()
     loop.run_until_complete(smtp.send_message(message))
-
-This is the simplest API, and is the recommended way to send messages, as it
-makes it easy to set headers correctly and handle multi part messages. For
-details on creating :class:`email.message.Message` objects, see `the
-stdlib documentation examples
-<https://docs.python.org/3.5/library/email-examples.html>`_.
 
 
 :meth:`SMTP.sendmail`
 ~~~~~~~~~~~~~~~~~~~~~
 
-Use :meth:`SMTP.sendmail` to send raw messages.
+Use :meth:`SMTP.sendmail` to send raw messages. Note that when using this
+method, you must format the message headers yourself.
 
 .. testcode::
 
@@ -132,25 +159,6 @@ Use :meth:`SMTP.sendmail` to send raw messages.
     loop.run_until_complete(smtp.sendmail(sender, recipients, message))
 
 
-Note that when using this method, you must format the message headers yourself.
-
-
-STARTTLS Connections
---------------------
-Many SMTP servers support the STARTTLS extension over port 587. To connect to
-one of these, set ``use_tls`` to ``False`` when connecting, and call
-:meth:`SMTP.starttls` on the client.
-
-
-.. testcode::
-
-    loop = asyncio.get_event_loop()
-    smtp = aiosmtplib.SMTP(
-        hostname='smtp.gmail.com', port=587, loop=loop, use_tls=False)
-    loop.run_until_complete(smtp.connect())
-    loop.run_until_complete(smtp.starttls())
-
-
 Timeouts
 --------
 All commands accept a ``timeout`` keyword argument of a numerical value in
@@ -162,7 +170,7 @@ for commands executed on the connection.
 The default timeout is 60 seconds.
 
 
-Parallel execution
+Parallel Execution
 ------------------
 SMTP is a sequential protocol. Multiple commands must be sent to send an
 email, and they must be sent in the correct sequence. As a consequence of
