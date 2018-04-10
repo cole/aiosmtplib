@@ -405,12 +405,11 @@ class ESMTP(SMTPConnection):
 
         self.transport = protocol._app_transport
 
-        if response.code == SMTPStatus.ready:
-            # RFC 3207 part 4.2:
-            # The client MUST discard any knowledge obtained from
-            # the server, such as the list of SMTP service extensions,
-            # which was not obtained from the TLS negotiation itself.
-            self._reset_server_state()
+        # RFC 3207 part 4.2:
+        # The client MUST discard any knowledge obtained from the server, such
+        # as the list of SMTP service extensions, which was not obtained from
+        # the TLS negotiation itself.
+        self._reset_server_state()
 
         return response
 
