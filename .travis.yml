@@ -75,5 +75,5 @@ deploy:
     tags: true
     repo: cole/aiosmtplib
 after_success:
-  - coveralls
+  - COVERALLS_PARALLEL=true coveralls
   - codecov
