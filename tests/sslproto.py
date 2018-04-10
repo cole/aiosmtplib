@@ -4,7 +4,7 @@ SSLProtocol from Python 3.6. Makes testing on 3.5.2 a bit simpler.
 import collections
 import ssl
 import warnings
-from asyncio import base_events, compat, protocols, transports
+from asyncio import base_events, protocols, transports
 from asyncio.log import logger
 
 
@@ -302,14 +302,10 @@ class _SSLProtocolTransport(transports._FlowControlMixin,
         self._closed = True
         self._ssl_protocol._start_shutdown()
 
-    # On Python 3.3 and older, objects with a destructor part of a reference
-    # cycle are never destroyed. It's not more the case on Python 3.4 thanks
-    # to the PEP 442.
-    if compat.PY34:
-        def __del__(self):
-            if not self._closed:
-                warnings.warn("unclosed transport %r" % self, ResourceWarning)
-                self.close()
+    def __del__(self):
+        if not self._closed:
+            warnings.warn("unclosed transport %r" % self, ResourceWarning)
+            self.close()
 
     def pause_reading(self):
         """Pause the receiving end.
