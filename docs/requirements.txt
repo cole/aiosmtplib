@@ -1,0 +1,3 @@
+# Required by Read the Docs.
+sphinx
+sphinx_autodoc_typehints
