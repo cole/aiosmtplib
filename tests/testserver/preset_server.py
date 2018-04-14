@@ -1,11 +1,7 @@
 import asyncio
-import asyncore
 import collections
-import smtpd
 import socket
 import ssl
-import threading
-from email.errors import HeaderParseError
 
 from .sslproto import SSLProtocol
 
@@ -36,6 +32,8 @@ class PresetServer:
         self.server, self.stream_reader, self.stream_writer = None, None, None
 
         self.drop_connection_event = asyncio.Event(loop=self.loop)
+        self.drop_connection_after_request = None
+        self.drop_connection_after_response = None
 
     @property
     def tls_context(self):
@@ -46,6 +44,11 @@ class PresetServer:
 
     def next_response(self):
         response = self.responses.popleft()
+
+        if (self.drop_connection_after_response and
+                response == self.drop_connection_after_response):
+            self.drop_connection_event.set()
+
         response = bytes(response)
         if response and not response.endswith(b'\n'):
             response = response + b'\n'
@@ -106,73 +109,62 @@ class PresetServer:
         self.stream_writer.close()
 
     async def process_requests(self):
-        while not self.drop_connection_event.is_set():
-            data = await self.stream_reader.readuntil(b'\r\n')
-            self.requests.append(data)
+        reading_message_data = False
 
-            if self.delay_next_response > 0:
-                await asyncio.sleep(self.delay_next_response, loop=self.loop)
+        while not self.drop_connection_event.is_set():
+            if reading_message_data:
+                data = await self.read(delimiter=b'.\r\n')
+                reading_message_data = False
+            else:
+                data = await self.read(delimiter=b'\r\n')
+
+            if not data:
+                break
+
+            self.requests.append(data)
 
             if self.drop_connection_event.is_set():
                 break
+
+            if self.delay_next_response > 0:
+                await asyncio.sleep(self.delay_next_response, loop=self.loop)
 
             try:
                 response = self.next_response()
             except IndexError:
                 break
 
-            self.stream_writer.write(response)
-            await self.stream_writer.drain()
+            await self.write(response)
 
             if self.drop_connection_event.is_set():
                 break
 
-            if data[:8] == b'STARTTLS':
+            if data[:4] == b'DATA' and response[:3] == b'354':
+                reading_message_data = True
+            elif data[:8] == b'STARTTLS':
                 waiter = asyncio.Future(loop=self.loop)
                 self.wrap_transport(waiter)
-                await asyncio.wait_for(waiter, 10.0)
+                await asyncio.wait_for(waiter, 1.0)
 
+    async def write(self, data):
+        self.stream_writer.write(data)
+        await self.stream_writer.drain()
 
-class TestSMTPDChannel(smtpd.SMTPChannel):
-
-    def _getaddr(self, arg):
+    async def read(self, delimiter=b'\r\n'):
         """
-        Don't raise an exception on unparsable email address
+        Read char by char so that we can drop the connection partway through a
+        request.
         """
-        try:
-            return super()._getaddr(arg)
-        except HeaderParseError:
-            return None, ''
+        data = bytearray()
 
+        while not data[-len(delimiter):] == delimiter:
+            chunk = await self.stream_reader.read(n=1)
+            if chunk == b'':
+                break
 
-class TestSMTPD(smtpd.SMTPServer):
-    channel_class = TestSMTPDChannel
+            data.extend(chunk)
+            if (data == self.drop_connection_after_request):
+                self.drop_connection_event.set()
+                break
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.messages = []
-
-    def process_message(self, peer, mailfrom, rcpttos, data, **kwargs):
-        self.messages.append((peer, mailfrom, rcpttos, data, kwargs))
-
-
-class ThreadedSMTPDServer:
-
-    def __init__(self, hostname, port):
-        self.hostname = hostname
-        self.port = port
-        self.smtpd = TestSMTPD((self.hostname, self.port), None)
-
-    def start(self):
-        self.server_thread = threading.Thread(target=self.serve_forever)
-        # Exit the server thread when the main thread terminates
-        self.server_thread.daemon = True
-        self.server_thread.start()
-
-    def serve_forever(self):
-        # We use poll here - select doesn't seem to work.
-        asyncore.loop(1, True)
-
-    def stop(self):
-        self.smtpd.close()
-        self.server_thread.join(timeout=0.5)
+        return bytes(data)

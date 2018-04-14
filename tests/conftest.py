@@ -6,9 +6,7 @@ import asyncio
 import pytest
 
 from aiosmtplib import SMTP
-
-from .auth import DummySMTPAuth
-from .server import PresetServer, ThreadedSMTPDServer
+from testserver import PresetServer, ThreadedSMTPDServer
 
 
 try:
@@ -113,8 +111,3 @@ def tls_preset_client(request, tls_preset_server, event_loop):
     client.server = tls_preset_server
 
     return client
-
-
-@pytest.fixture()
-def mock_auth(request):
-    return DummySMTPAuth()

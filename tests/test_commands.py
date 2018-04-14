@@ -4,8 +4,8 @@ Lower level SMTP command tests.
 import pytest
 
 from aiosmtplib import (
-    SMTPDataError, SMTPHeloError, SMTPResponseException, SMTPStatus,
-    SMTPTimeoutError,
+    SMTPDataError, SMTPHeloError, SMTPResponseException,
+    SMTPServerDisconnected, SMTPStatus, SMTPTimeoutError,
 )
 
 

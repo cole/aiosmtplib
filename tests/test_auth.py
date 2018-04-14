@@ -1,8 +1,9 @@
 import base64
+from collections import deque
 
 import pytest
 
-from aiosmtplib.auth import crammd5_verify
+from aiosmtplib.auth import SMTPAuth, crammd5_verify
 from aiosmtplib.errors import SMTPAuthenticationError, SMTPException
 from aiosmtplib.response import SMTPResponse
 from aiosmtplib.status import SMTPStatus
@@ -10,12 +11,40 @@ from aiosmtplib.status import SMTPStatus
 
 pytestmark = pytest.mark.asyncio(forbid_global_loop=True)
 
+
 USERNAMES_AND_PASSWORDS = [
     ('test', 'test'),
     ('admin124', '$3cr3t$'),
 ]
 SUCCESS_RESPONSE = SMTPResponse(SMTPStatus.auth_successful, 'OK')
 FAILURE_RESPONSE = SMTPResponse(SMTPStatus.auth_failed, 'Nope')
+
+
+class DummySMTPAuth(SMTPAuth):
+
+    transport = None
+
+    def __init__(self):
+        self.recieved_commands = []
+        self.responses = deque()
+        self.esmtp_extensions = {'auth': ''}
+        self.server_auth_methods = ['cram-md5', 'login', 'plain']
+        self.supports_esmtp = True
+
+    async def execute_command(self, *args, **kwargs):
+        self.recieved_commands.append(b' '.join(args))
+
+        response = self.responses.popleft()
+
+        return SMTPResponse(*response)
+
+    async def _ehlo_or_helo_if_needed(self):
+        pass
+
+
+@pytest.fixture()
+def mock_auth(request):
+    return DummySMTPAuth()
 
 
 async def test_login_without_extension_raises_error(mock_auth):

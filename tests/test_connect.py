@@ -139,8 +139,6 @@ async def test_timeout_on_starttls(preset_client):
     with pytest.raises(SMTPTimeoutError):
         await preset_client.starttls(validate_certs=False, timeout=0.1)
 
-    preset_client.server.drop_connection_event.set()
-
 
 async def test_disconnected_server_raises_on_client_read(
         preset_server, event_loop):
@@ -151,9 +149,7 @@ async def test_disconnected_server_raises_on_client_read(
     await preset_client.connect()
 
     preset_server.responses.append(b'250 noop')
-    # The delay makes sure the server drops the connection before responding
-    preset_server.delay_next_response = 0.5
-    preset_server.drop_connection_event.set()
+    preset_server.drop_connection_after_request = b'NOOP\r\n'
 
     with pytest.raises(SMTPServerDisconnected):
         await preset_client.execute_command(b'NOOP')
@@ -173,7 +169,7 @@ async def test_disconnected_server_raises_on_client_write(
     await preset_client.connect()
 
     preset_server.responses.append(b'250 noop')
-    preset_server.drop_connection_event.set()
+    preset_server.drop_connection_after_request = b'NO'
 
     with pytest.raises(SMTPServerDisconnected):
         await preset_client.execute_command(b'NOOP')
@@ -201,7 +197,7 @@ async def test_disconnected_server_raises_on_data_read(preset_client):
     await preset_client.rcpt('recipient@example.com')
 
     preset_client.server.responses.append(b'354 lets go')
-    preset_client.server.drop_connection_event.set()
+    preset_client.server.drop_connection_after_request = b'A MESSAGE\r\n.\r\n'
 
     with pytest.raises(SMTPServerDisconnected):
         await preset_client.data('A MESSAGE')
@@ -229,7 +225,7 @@ async def test_disconnected_server_raises_on_data_write(preset_client):
     await preset_client.rcpt('recipient@example.com')
 
     preset_client.server.responses.append(b'354 lets go')
-    preset_client.server.drop_connection_event.set()
+    preset_client.server.drop_connection_after_request = b'A MESS'
 
     with pytest.raises(SMTPServerDisconnected):
         await preset_client.data('A MESSAGE')
