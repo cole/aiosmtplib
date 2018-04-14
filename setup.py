@@ -45,7 +45,7 @@ setup(
         'Programming Language :: Python :: Implementation :: PyPy',
         'Topic :: Communications :: Email',
     ],
-    python_requires='>=3.5.0',
+    python_requires='>=3.5.2',
     extras_require={
         'docs': [
             'sphinx',

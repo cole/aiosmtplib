@@ -35,7 +35,7 @@ Quickstart
 
 Requirements
 ------------
-Python 3.5+, compiled with SSL support, is required.
+Python 3.5.2+, compiled with SSL support, is required.
 
 
 Connecting to an SMTP server
