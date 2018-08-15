@@ -332,3 +332,13 @@ async def test_context_manager_with_manual_connection(smtpd_client):
         assert not smtpd_client.is_connected
 
     assert not smtpd_client.is_connected
+
+
+async def test_connect_error_second_attempt(event_loop):
+    client = SMTP(hostname='127.0.0.1', port=65534, loop=event_loop)
+
+    with pytest.raises(SMTPConnectError):
+        await client.connect(timeout=0.1)
+
+    with pytest.raises(SMTPConnectError):
+        await client.connect(timeout=0.1)

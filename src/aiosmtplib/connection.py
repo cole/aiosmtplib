@@ -224,10 +224,12 @@ class SMTPConnection:
             transport, _ = await asyncio.wait_for(
                 connect_future, timeout=self.timeout, loop=self.loop)
         except (ConnectionRefusedError, OSError) as err:
+            self.close()
             raise SMTPConnectError(
                 'Error connecting to {host} on port {port}: {err}'.format(
                     host=self.hostname, port=self.port, err=err))
         except asyncio.TimeoutError as exc:
+            self.close()
             raise SMTPTimeoutError(str(exc))
 
         waiter = asyncio.Task(protocol.read_response(), loop=self.loop)
@@ -236,9 +238,11 @@ class SMTPConnection:
             response = await asyncio.wait_for(
                 waiter, timeout=self.timeout, loop=self.loop)
         except asyncio.TimeoutError as exc:
+            self.close()
             raise SMTPTimeoutError(str(exc))
 
         if response.code != SMTPStatus.ready:
+            self.close()
             raise SMTPConnectError(str(response))
 
         self.protocol = protocol
