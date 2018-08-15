@@ -60,6 +60,9 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
         are setting the _transport directly on the StreamReader, rather than
         calling set_transport (which will raise an AssertionError on upgrade).
         """
+        if self._stream_reader is None:
+            raise SMTPServerDisconnected('Client not connected')
+
         self._stream_reader._transport = transport  # type: ignore
         self._over_ssl = transport.get_extra_info('sslcontext') is not None
         if self._client_connected_cb is not None:  # type: ignore
@@ -231,6 +234,9 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
         """
         Wraps reader.readuntil() with error handling.
         """
+        if self._stream_reader is None or self._stream_writer is None:
+            raise SMTPServerDisconnected('Client not connected')
+
         read_task = asyncio.Task(
             self._stream_reader.readuntil(separator=b'\n'), loop=self._loop)
         try:

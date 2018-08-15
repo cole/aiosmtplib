@@ -261,7 +261,7 @@ class ESMTP(SMTPConnection):
         self._raise_error_if_disconnected()
 
         if timeout is _default:
-            timeout = self.timeout
+            timeout = self.timeout  # type: ignore
 
         if isinstance(message, str):
             message = message.encode('ascii')
@@ -371,7 +371,7 @@ class ESMTP(SMTPConnection):
         if validate_certs is not None:
             self.validate_certs = validate_certs
         if timeout is _default:
-            timeout = self.timeout
+            timeout = self.timeout  # type: ignore
         if client_cert is not _default:
             self.client_cert = client_cert  # type: ignore
         if client_key is not _default:

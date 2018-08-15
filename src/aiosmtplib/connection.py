@@ -211,17 +211,17 @@ class SMTPConnection:
         assert self.port is not None, 'Port must be set'
 
         reader = asyncio.StreamReader(limit=MAX_LINE_LENGTH, loop=self.loop)
-        self.protocol = SMTPProtocol(reader, loop=self.loop)
+        protocol = SMTPProtocol(reader, loop=self.loop)
 
         tls_context = None  # type: Optional[ssl.SSLContext]
         if self.use_tls:
             tls_context = self._get_tls_context()
 
         connect_future = self.loop.create_connection(
-            lambda: self.protocol, host=self.hostname, port=self.port,
+            lambda: protocol, host=self.hostname, port=self.port,
             ssl=tls_context)
         try:
-            self.transport, _ = await asyncio.wait_for(
+            transport, _ = await asyncio.wait_for(
                 connect_future, timeout=self.timeout, loop=self.loop)
         except (ConnectionRefusedError, OSError) as err:
             raise SMTPConnectError(
@@ -230,7 +230,7 @@ class SMTPConnection:
         except asyncio.TimeoutError as exc:
             raise SMTPTimeoutError(str(exc))
 
-        waiter = asyncio.Task(self.protocol.read_response(), loop=self.loop)
+        waiter = asyncio.Task(protocol.read_response(), loop=self.loop)
 
         try:
             response = await asyncio.wait_for(
@@ -240,6 +240,9 @@ class SMTPConnection:
 
         if response.code != SMTPStatus.ready:
             raise SMTPConnectError(str(response))
+
+        self.protocol = protocol
+        self.transport = transport
 
         return response
 
@@ -253,7 +256,7 @@ class SMTPConnection:
         :raises SMTPServerDisconnected: connection lost
         """
         if timeout is _default:
-            timeout = self.timeout
+            timeout = self.timeout  # type: ignore
 
         self._raise_error_if_disconnected()
 
@@ -339,4 +342,4 @@ class SMTPConnection:
         """
         self._raise_error_if_disconnected()
 
-        return self.transport.get_extra_info(key)
+        return self.transport.get_extra_info(key)  # type: ignore
