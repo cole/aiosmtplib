@@ -8,6 +8,8 @@ master
 
 - Bugfix: Fixed old style auth method parsing in ESMPT response.
 
+- Bugfix: Cleanup transport on exception in connect method.
+
 
 1.0.2
 -----
