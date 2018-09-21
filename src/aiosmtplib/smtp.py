@@ -15,13 +15,11 @@ from .auth import SMTPAuth
 from .connection import SMTPConnection
 from .default import Default, _default
 from .email import flatten_message
-from .errors import (
-    SMTPRecipientRefused, SMTPRecipientsRefused, SMTPResponseException,
-)
+from .errors import SMTPRecipientRefused, SMTPRecipientsRefused, SMTPResponseException
 from .response import SMTPResponse
 
 
-__all__ = ('SMTP',)
+__all__ = ("SMTP",)
 
 
 DefaultNumType = Union[float, int, Default]
@@ -57,10 +55,14 @@ class SMTP(SMTPAuth):
     __init__.__doc__ = SMTPConnection.__init__.__doc__
 
     async def sendmail(
-            self, sender: str, recipients: RecipientsType,
-            message: Union[str, bytes], mail_options: Iterable[str] = None,
-            rcpt_options: Iterable[str] = None,
-            timeout: DefaultNumType = _default) -> SendmailResponseType:
+        self,
+        sender: str,
+        recipients: RecipientsType,
+        message: Union[str, bytes],
+        mail_options: Iterable[str] = None,
+        rcpt_options: Iterable[str] = None,
+        timeout: DefaultNumType = _default,
+    ) -> SendmailResponseType:
         """
         This command performs an entire mail transaction.
 
@@ -144,14 +146,15 @@ class SMTP(SMTPAuth):
         async with self._command_lock:
             await self._ehlo_or_helo_if_needed()
 
-            if self.supports_extension('size'):
-                size_option = 'size={}'.format(len(message))
+            if self.supports_extension("size"):
+                size_option = "size={}".format(len(message))
                 mail_options.append(size_option)
 
             try:
                 await self.mail(sender, options=mail_options, timeout=timeout)
                 recipient_errors = await self._send_recipients(
-                    recipients, options=rcpt_options, timeout=timeout)
+                    recipients, options=rcpt_options, timeout=timeout
+                )
                 response = await self.data(message, timeout=timeout)
             except (SMTPResponseException, SMTPRecipientsRefused) as exc:
                 # If we got an error, reset the envelope.
@@ -166,8 +169,11 @@ class SMTP(SMTPAuth):
         return recipient_errors, response.message
 
     async def _send_recipients(
-            self, recipients: List[str], options: List[str] = None,
-            timeout: DefaultNumType = _default) -> RecipientErrorsType:
+        self,
+        recipients: List[str],
+        options: List[str] = None,
+        timeout: DefaultNumType = _default,
+    ) -> RecipientErrorsType:
         """
         Send the recipients given to the server. Used as part of
         :meth:`.sendmail`.
@@ -190,11 +196,14 @@ class SMTP(SMTPAuth):
         return formatted_errors
 
     async def send_message(
-            self, message: Message, sender: str = None,
-            recipients: RecipientsType = None,
-            mail_options: Iterable[str] = None,
-            rcpt_options: Iterable[str] = None,
-            timeout: DefaultNumType = _default) -> SendmailResponseType:
+        self,
+        message: Message,
+        sender: str = None,
+        recipients: RecipientsType = None,
+        mail_options: Iterable[str] = None,
+        rcpt_options: Iterable[str] = None,
+        timeout: DefaultNumType = _default,
+    ) -> SendmailResponseType:
         """
         Sends an :class:`email.message.Message` object.
 
@@ -217,16 +226,14 @@ class SMTP(SMTPAuth):
         :raises SMTPRecipientsRefused: delivery to all recipients failed
         :raises SMTPResponseException: on invalid response
         """
-        header_sender, header_recipients, flat_message = flatten_message(
-            message)
+        header_sender, header_recipients, flat_message = flatten_message(message)
 
         if sender is None:
             sender = header_sender
         if recipients is None:
             recipients = header_recipients
 
-        result = await self.sendmail(
-            sender, recipients, flat_message, timeout=timeout)
+        result = await self.sendmail(sender, recipients, flat_message, timeout=timeout)
 
         return result
 
@@ -234,7 +241,7 @@ class SMTP(SMTPAuth):
         """
         Utility method to run commands synchronously for testing.
         """
-        assert not self.loop.is_running(), 'Event loop is already running'
+        assert not self.loop.is_running(), "Event loop is already running"
 
         if not self.is_connected:
             self.loop.run_until_complete(self.connect())
@@ -247,30 +254,47 @@ class SMTP(SMTPAuth):
         return result
 
     def sendmail_sync(
-            self, sender: str, recipients: RecipientsType,
-            message: Union[str, bytes], mail_options: Iterable[str] = None,
-            rcpt_options: Iterable[str] = None,
-            timeout: DefaultNumType = _default) -> SendmailResponseType:
+        self,
+        sender: str,
+        recipients: RecipientsType,
+        message: Union[str, bytes],
+        mail_options: Iterable[str] = None,
+        rcpt_options: Iterable[str] = None,
+        timeout: DefaultNumType = _default,
+    ) -> SendmailResponseType:
         """
         Synchronous version of :meth:`.sendmail`. This method starts
         the event loop to connect, send the message, and disconnect.
         """
         return self._run_sync(
-            self.sendmail, sender, recipients, message,
-            mail_options=mail_options, rcpt_options=rcpt_options,
-            timeout=timeout)
+            self.sendmail,
+            sender,
+            recipients,
+            message,
+            mail_options=mail_options,
+            rcpt_options=rcpt_options,
+            timeout=timeout,
+        )
 
     def send_message_sync(
-            self, message: Message, sender: str = None,
-            recipients: RecipientsType = None,
-            mail_options: Iterable[str] = None,
-            rcpt_options: Iterable[str] = None,
-            timeout: DefaultNumType = _default) -> SendmailResponseType:
+        self,
+        message: Message,
+        sender: str = None,
+        recipients: RecipientsType = None,
+        mail_options: Iterable[str] = None,
+        rcpt_options: Iterable[str] = None,
+        timeout: DefaultNumType = _default,
+    ) -> SendmailResponseType:
         """
         Synchronous version of :meth:`.send_message`. This method
         starts the event loop to connect, send the message, and disconnect.
         """
         return self._run_sync(
-            self.send_message, message, sender=sender, recipients=recipients,
-            mail_options=mail_options, rcpt_options=rcpt_options,
-            timeout=timeout)
+            self.send_message,
+            message,
+            sender=sender,
+            recipients=recipients,
+            mail_options=mail_options,
+            rcpt_options=rcpt_options,
+            timeout=timeout,
+        )

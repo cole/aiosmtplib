@@ -4,7 +4,7 @@ SMTP status codes.
 import enum
 
 
-__all__ = ('SMTPStatus',)
+__all__ = ("SMTPStatus",)
 
 
 class SMTPStatus(enum.IntEnum):
@@ -13,6 +13,7 @@ class SMTPStatus(enum.IntEnum):
 
     See also: http://www.greenend.org.uk/rjk/tech/smtpreplies.html
     """
+
     invalid_response = -1
     system_status_ok = 211
     help_message = 214

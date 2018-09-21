@@ -7,18 +7,16 @@ import ssl
 from asyncio.sslproto import SSLProtocol  # type: ignore
 from typing import Awaitable, Optional, Tuple, Union  # NOQA
 
-from .errors import (
-    SMTPResponseException, SMTPServerDisconnected, SMTPTimeoutError,
-)
+from .errors import SMTPResponseException, SMTPServerDisconnected, SMTPTimeoutError
 from .response import SMTPResponse
 from .status import SMTPStatus
 
 
-__all__ = ('SMTPProtocol',)
+__all__ = ("SMTPProtocol",)
 
 
-LINE_ENDINGS_REGEX = re.compile(b'(?:\r\n|\n|\r(?!\n))')
-PERIOD_REGEX = re.compile(b'(?m)^\.')
+LINE_ENDINGS_REGEX = re.compile(b"(?:\r\n|\n|\r(?!\n))")
+PERIOD_REGEX = re.compile(b"(?m)^\.")
 
 
 StartTLSResponse = Tuple[SMTPResponse, SSLProtocol]
@@ -35,19 +33,17 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
     """
 
     def __init__(
-            self, reader: asyncio.StreamReader,
-            loop: asyncio.AbstractEventLoop = None) -> None:
+        self, reader: asyncio.StreamReader, loop: asyncio.AbstractEventLoop = None
+    ) -> None:
         self._stream_reader = None  # type: Optional[asyncio.StreamReader]
         self._stream_writer = None  # type: Optional[asyncio.StreamWriter]
         self._loop = loop or asyncio.get_event_loop()
 
-        super().__init__(
-            reader, client_connected_cb=self.on_connect, loop=self._loop)
+        super().__init__(reader, client_connected_cb=self.on_connect, loop=self._loop)
 
         self._io_lock = asyncio.Lock(loop=self._loop)
 
-    def on_connect(
-            self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
+    def on_connect(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         self._stream_reader = reader
         self._stream_writer = writer
 
@@ -60,35 +56,45 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
         set_transport (which will raise an AssertionError on upgrade).
         """
         if self._stream_reader is None:
-            raise SMTPServerDisconnected('Client not connected')
+            raise SMTPServerDisconnected("Client not connected")
 
         self._stream_reader._transport = transport  # type: ignore
-        self._over_ssl = transport.get_extra_info('sslcontext') is not None
+        self._over_ssl = transport.get_extra_info("sslcontext") is not None
         self._stream_writer = asyncio.StreamWriter(
-            transport, self, self._stream_reader, self._loop)
+            transport, self, self._stream_reader, self._loop
+        )
         self._client_connected_cb(  # type: ignore
-            self._stream_reader, self._stream_writer)
+            self._stream_reader, self._stream_writer
+        )
 
     def upgrade_transport(
-            self, context: ssl.SSLContext, server_hostname: str = None,
-            waiter: Awaitable = None) -> SSLProtocol:
+        self,
+        context: ssl.SSLContext,
+        server_hostname: str = None,
+        waiter: Awaitable = None,
+    ) -> SSLProtocol:
         """
         Upgrade our transport to TLS in place.
         """
-        assert not self._over_ssl, 'Already using TLS'
+        assert not self._over_ssl, "Already using TLS"
 
         if self._stream_reader is None or self._stream_writer is None:
-            raise SMTPServerDisconnected('Client not connected')
+            raise SMTPServerDisconnected("Client not connected")
 
         transport = self._stream_reader._transport  # type: ignore
 
         tls_protocol = SSLProtocol(
-            self._loop, self, context, waiter, server_side=False,
-            server_hostname=server_hostname)
+            self._loop,
+            self,
+            context,
+            waiter,
+            server_side=False,
+            server_hostname=server_hostname,
+        )
 
         app_transport = tls_protocol._app_transport
         # Use set_protocol if we can
-        if hasattr(transport, 'set_protocol'):
+        if hasattr(transport, "set_protocol"):
             transport.set_protocol(tls_protocol)
         else:
             transport._protocol = tls_protocol
@@ -111,7 +117,7 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
             responses are converted to a single, multiline string).
         """
         if self._stream_reader is None:
-            raise SMTPServerDisconnected('Client not connected')
+            raise SMTPServerDisconnected("Client not connected")
 
         code = None
         response_lines = []
@@ -124,36 +130,35 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
             except ValueError:
                 pass
 
-            message = line[4:].strip(b' \t\r\n').decode('ascii')
+            message = line[4:].strip(b" \t\r\n").decode("ascii")
             response_lines.append(message)
 
-            if line[3:4] != b'-':
+            if line[3:4] != b"-":
                 break
 
-        full_message = '\n'.join(response_lines)
+        full_message = "\n".join(response_lines)
 
         if code is None:
             raise SMTPResponseException(
                 SMTPStatus.invalid_response.value,
-                'Malformed SMTP response: {}'.format(full_message))
+                "Malformed SMTP response: {}".format(full_message),
+            )
 
         return SMTPResponse(code, full_message)
 
-    async def write_and_drain(
-            self, data: bytes, timeout: NumType = None) -> None:
+    async def write_and_drain(self, data: bytes, timeout: NumType = None) -> None:
         """
         Format a command and send it to the server.
         """
         if self._stream_writer is None:
-            raise SMTPServerDisconnected('Client not connected')
+            raise SMTPServerDisconnected("Client not connected")
 
         self._stream_writer.write(data)
 
         async with self._io_lock:
             await self._drain_writer(timeout)
 
-    async def write_message_data(
-            self, data: bytes, timeout: NumType = None) -> None:
+    async def write_message_data(self, data: bytes, timeout: NumType = None) -> None:
         """
         Encode and write email message data.
 
@@ -161,21 +166,22 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
         Lone \\\\r and \\\\n characters are converted to \\\\r\\\\n
         characters.
         """
-        data = LINE_ENDINGS_REGEX.sub(b'\r\n', data)
-        data = PERIOD_REGEX.sub(b'..', data)
-        if not data.endswith(b'\r\n'):
-            data += b'\r\n'
-        data += b'.\r\n'
+        data = LINE_ENDINGS_REGEX.sub(b"\r\n", data)
+        data = PERIOD_REGEX.sub(b"..", data)
+        if not data.endswith(b"\r\n"):
+            data += b"\r\n"
+        data += b".\r\n"
 
         await self.write_and_drain(data, timeout=timeout)
 
     async def execute_command(
-            self, *args: bytes, timeout: NumType = None) -> SMTPResponse:
+        self, *args: bytes, timeout: NumType = None
+    ) -> SMTPResponse:
         """
         Sends an SMTP command along with any args to the server, and returns
         a response.
         """
-        command = b' '.join(args) + b'\r\n'
+        command = b" ".join(args) + b"\r\n"
 
         await self.write_and_drain(command, timeout=timeout)
         response = await self.read_response(timeout=timeout)
@@ -183,15 +189,18 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
         return response
 
     async def starttls(
-            self, tls_context: ssl.SSLContext, server_hostname: str = None,
-            timeout: NumType = None) -> StartTLSResponse:
+        self,
+        tls_context: ssl.SSLContext,
+        server_hostname: str = None,
+        timeout: NumType = None,
+    ) -> StartTLSResponse:
         """
         Puts the connection to the SMTP server into TLS mode.
         """
         if self._stream_reader is None or self._stream_writer is None:
-            raise SMTPServerDisconnected('Client not connected')
+            raise SMTPServerDisconnected("Client not connected")
 
-        response = await self.execute_command(b'STARTTLS', timeout=timeout)
+        response = await self.execute_command(b"STARTTLS", timeout=timeout)
 
         if response.code != SMTPStatus.ready:
             raise SMTPResponseException(response.code, response.message)
@@ -201,7 +210,8 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
         waiter = asyncio.Future(loop=self._loop)  # type: asyncio.Future
 
         tls_protocol = self.upgrade_transport(
-            tls_context, server_hostname=server_hostname, waiter=waiter)
+            tls_context, server_hostname=server_hostname, waiter=waiter
+        )
 
         try:
             await asyncio.wait_for(waiter, timeout=timeout, loop=self._loop)
@@ -215,7 +225,7 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
         Wraps writer.drain() with error handling.
         """
         if self._stream_writer is None:
-            raise SMTPServerDisconnected('Client not connected')
+            raise SMTPServerDisconnected("Client not connected")
 
         # Wrapping drain in a task makes mypy happy
         drain_task = asyncio.Task(self._stream_writer.drain(), loop=self._loop)
@@ -231,23 +241,25 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
         Wraps reader.readuntil() with error handling.
         """
         if self._stream_reader is None or self._stream_writer is None:
-            raise SMTPServerDisconnected('Client not connected')
+            raise SMTPServerDisconnected("Client not connected")
 
         read_task = asyncio.Task(
-            self._stream_reader.readuntil(separator=b'\n'), loop=self._loop)
+            self._stream_reader.readuntil(separator=b"\n"), loop=self._loop
+        )
         try:
             line = await asyncio.wait_for(
-                read_task, timeout, loop=self._loop)  # type: bytes
+                read_task, timeout, loop=self._loop
+            )  # type: bytes
         except ConnectionError as exc:
             raise SMTPServerDisconnected(str(exc))
         except asyncio.LimitOverrunError:
-            raise SMTPResponseException(500, 'Line too long.')
+            raise SMTPResponseException(500, "Line too long.")
         except asyncio.TimeoutError as exc:
             raise SMTPTimeoutError(str(exc))
         except asyncio.IncompleteReadError as exc:
-            if exc.partial == b'':
+            if exc.partial == b"":
                 # if we got only an EOF, raise SMTPServerDisconnected
-                raise SMTPServerDisconnected('Unexpected EOF received')
+                raise SMTPServerDisconnected("Unexpected EOF received")
             else:
                 # otherwise, close our connection but try to parse the
                 # response anyways

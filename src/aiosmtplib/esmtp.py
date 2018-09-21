@@ -9,18 +9,23 @@ from .connection import SMTPConnection
 from .default import Default, _default
 from .email import parse_address, quote_address
 from .errors import (
-    SMTPDataError, SMTPException, SMTPHeloError, SMTPRecipientRefused,
-    SMTPResponseException, SMTPSenderRefused, SMTPServerDisconnected,
+    SMTPDataError,
+    SMTPException,
+    SMTPHeloError,
+    SMTPRecipientRefused,
+    SMTPResponseException,
+    SMTPSenderRefused,
+    SMTPServerDisconnected,
 )
 from .response import SMTPResponse
 from .status import SMTPStatus
 
 
-__all__ = ('ESMTP',)
+__all__ = ("ESMTP",)
 
 
-OLDSTYLE_AUTH_REGEX = re.compile(r'auth=(?P<auth>.*)', flags=re.I)
-EXTENSIONS_REGEX = re.compile(r'(?P<ext>[A-Za-z0-9][A-Za-z0-9\-]*) ?')
+OLDSTYLE_AUTH_REGEX = re.compile(r"auth=(?P<auth>.*)", flags=re.I)
+EXTENSIONS_REGEX = re.compile(r"(?P<ext>[A-Za-z0-9][A-Za-z0-9\-]*) ?")
 
 
 DefaultNumType = Union[float, int, Default]
@@ -64,9 +69,7 @@ class ESMTP(SMTPConnection):
         """
         Check if we've already received a response to an EHLO or HELO command.
         """
-        return (
-            self.last_ehlo_response is None and
-            self.last_helo_response is None)
+        return self.last_ehlo_response is None and self.last_helo_response is None
 
     def close(self) -> None:
         """
@@ -78,8 +81,8 @@ class ESMTP(SMTPConnection):
     # Base SMTP commands #
 
     async def helo(
-            self, hostname: str = None,
-            timeout: DefaultNumType = _default) -> SMTPResponse:
+        self, hostname: str = None, timeout: DefaultNumType = _default
+    ) -> SMTPResponse:
         """
         Send the SMTP HELO command.
         Hostname to send for this command defaults to the FQDN of the local
@@ -91,7 +94,8 @@ class ESMTP(SMTPConnection):
             hostname = self.source_address
 
         response = await self.execute_command(
-            b'HELO', hostname.encode('ascii'), timeout=timeout)
+            b"HELO", hostname.encode("ascii"), timeout=timeout
+        )
         self.last_helo_response = response
 
         if response.code != SMTPStatus.completed:
@@ -105,9 +109,10 @@ class ESMTP(SMTPConnection):
 
         :raises SMTPResponseException: on unexpected server response code
         """
-        response = await self.execute_command(b'HELP', timeout=timeout)
+        response = await self.execute_command(b"HELP", timeout=timeout)
         success_codes = (
-            SMTPStatus.system_status_ok, SMTPStatus.help_message,
+            SMTPStatus.system_status_ok,
+            SMTPStatus.help_message,
             SMTPStatus.completed,
         )
         if response.code not in success_codes:
@@ -122,7 +127,7 @@ class ESMTP(SMTPConnection):
 
         :raises SMTPResponseException: on unexpected server response code
         """
-        response = await self.execute_command(b'RSET', timeout=timeout)
+        response = await self.execute_command(b"RSET", timeout=timeout)
         if response.code != SMTPStatus.completed:
             raise SMTPResponseException(response.code, response.message)
 
@@ -134,15 +139,15 @@ class ESMTP(SMTPConnection):
 
         :raises SMTPResponseException: on unexpected server response code
         """
-        response = await self.execute_command(b'NOOP', timeout=timeout)
+        response = await self.execute_command(b"NOOP", timeout=timeout)
         if response.code != SMTPStatus.completed:
             raise SMTPResponseException(response.code, response.message)
 
         return response
 
     async def vrfy(
-            self, address: str,
-            timeout: DefaultNumType = _default) -> SMTPResponse:
+        self, address: str, timeout: DefaultNumType = _default
+    ) -> SMTPResponse:
         """
         Send an SMTP VRFY command, which tests an address for validity.
         Not many servers support this command.
@@ -152,10 +157,12 @@ class ESMTP(SMTPConnection):
         parsed_address = parse_address(address)
 
         response = await self.execute_command(
-            b'VRFY', parsed_address.encode('ascii'), timeout=timeout)
+            b"VRFY", parsed_address.encode("ascii"), timeout=timeout
+        )
 
         success_codes = (
-            SMTPStatus.completed, SMTPStatus.will_forward,
+            SMTPStatus.completed,
+            SMTPStatus.will_forward,
             SMTPStatus.cannot_vrfy,
         )
 
@@ -165,8 +172,8 @@ class ESMTP(SMTPConnection):
         return response
 
     async def expn(
-            self, address: str,
-            timeout: DefaultNumType = _default) -> SMTPResponse:
+        self, address: str, timeout: DefaultNumType = _default
+    ) -> SMTPResponse:
         """
         Send an SMTP EXPN command, which expands a mailing list.
         Not many servers support this command.
@@ -176,7 +183,8 @@ class ESMTP(SMTPConnection):
         parsed_address = parse_address(address)
 
         response = await self.execute_command(
-            b'EXPN', parsed_address.encode('ascii'), timeout=timeout)
+            b"EXPN", parsed_address.encode("ascii"), timeout=timeout
+        )
 
         if response.code != SMTPStatus.completed:
             raise SMTPResponseException(response.code, response.message)
@@ -190,7 +198,7 @@ class ESMTP(SMTPConnection):
 
         :raises SMTPResponseException: on unexpected server response code
         """
-        response = await self.execute_command(b'QUIT', timeout=timeout)
+        response = await self.execute_command(b"QUIT", timeout=timeout)
         if response.code != SMTPStatus.closing:
             raise SMTPResponseException(response.code, response.message)
 
@@ -199,8 +207,11 @@ class ESMTP(SMTPConnection):
         return response
 
     async def mail(
-            self, sender: str, options: Iterable[str] = None,
-            timeout: DefaultNumType = _default) -> SMTPResponse:
+        self,
+        sender: str,
+        options: Iterable[str] = None,
+        timeout: DefaultNumType = _default,
+    ) -> SMTPResponse:
         """
         Send an SMTP MAIL command, which specifies the message sender and
         begins a new mail transfer session ("envelope").
@@ -210,11 +221,12 @@ class ESMTP(SMTPConnection):
         if options is None:
             options = []
 
-        options_bytes = [option.encode('ascii') for option in options]
-        from_string = b'FROM:' + quote_address(sender).encode('ascii')
+        options_bytes = [option.encode("ascii") for option in options]
+        from_string = b"FROM:" + quote_address(sender).encode("ascii")
 
         response = await self.execute_command(
-            b'MAIL', from_string, *options_bytes, timeout=timeout)
+            b"MAIL", from_string, *options_bytes, timeout=timeout
+        )
 
         if response.code != SMTPStatus.completed:
             raise SMTPSenderRefused(response.code, response.message, sender)
@@ -222,8 +234,11 @@ class ESMTP(SMTPConnection):
         return response
 
     async def rcpt(
-            self, recipient: str, options: Iterable[str] = None,
-            timeout: DefaultNumType = _default) -> SMTPResponse:
+        self,
+        recipient: str,
+        options: Iterable[str] = None,
+        timeout: DefaultNumType = _default,
+    ) -> SMTPResponse:
         """
         Send an SMTP RCPT command, which specifies a single recipient for
         the message. This command is sent once per recipient and must be
@@ -234,22 +249,22 @@ class ESMTP(SMTPConnection):
         if options is None:
             options = []
 
-        options_bytes = [option.encode('ascii') for option in options]
-        to = b'TO:' + quote_address(recipient).encode('ascii')
+        options_bytes = [option.encode("ascii") for option in options]
+        to = b"TO:" + quote_address(recipient).encode("ascii")
 
         response = await self.execute_command(
-            b'RCPT', to, *options_bytes, timeout=timeout)
+            b"RCPT", to, *options_bytes, timeout=timeout
+        )
 
         success_codes = (SMTPStatus.completed, SMTPStatus.will_forward)
         if response.code not in success_codes:
-            raise SMTPRecipientRefused(
-                response.code, response.message, recipient)
+            raise SMTPRecipientRefused(response.code, response.message, recipient)
 
         return response
 
     async def data(
-            self, message: Union[str, bytes],
-            timeout: DefaultNumType = _default) -> SMTPResponse:
+        self, message: Union[str, bytes], timeout: DefaultNumType = _default
+    ) -> SMTPResponse:
         """
         Send an SMTP DATA command, followed by the message given.
         This method transfers the actual email content to the server.
@@ -264,18 +279,20 @@ class ESMTP(SMTPConnection):
             timeout = self.timeout  # type: ignore
 
         if isinstance(message, str):
-            message = message.encode('ascii')
+            message = message.encode("ascii")
 
-        start_response = await self.execute_command(b'DATA', timeout=timeout)
+        start_response = await self.execute_command(b"DATA", timeout=timeout)
 
         if start_response.code != SMTPStatus.start_input:
             raise SMTPDataError(start_response.code, start_response.message)
 
         try:
             await self.protocol.write_message_data(  # type: ignore
-                message, timeout=timeout)
+                message, timeout=timeout
+            )
             response = await self.protocol.read_response(  # type: ignore
-                timeout=timeout)
+                timeout=timeout
+            )
         except SMTPServerDisconnected as exc:
             self.close()
             raise exc
@@ -288,8 +305,8 @@ class ESMTP(SMTPConnection):
     # ESMTP commands #
 
     async def ehlo(
-            self, hostname: str = None,
-            timeout: DefaultNumType = _default) -> SMTPResponse:
+        self, hostname: str = None, timeout: DefaultNumType = _default
+    ) -> SMTPResponse:
         """
         Send the SMTP EHLO command.
         Hostname to send for this command defaults to the FQDN of the local
@@ -301,7 +318,8 @@ class ESMTP(SMTPConnection):
             hostname = self.source_address
 
         response = await self.execute_command(
-            b'EHLO', hostname.encode('ascii'), timeout=timeout)
+            b"EHLO", hostname.encode("ascii"), timeout=timeout
+        )
         self.last_ehlo_response = response
 
         if response.code != SMTPStatus.completed:
@@ -342,12 +360,15 @@ class ESMTP(SMTPConnection):
         self.server_auth_methods = []
 
     async def starttls(
-            self, server_hostname: str = None, validate_certs: bool = None,
-            client_cert: DefaultStrType = _default,
-            client_key: DefaultStrType = _default,
-            cert_bundle: DefaultStrType = _default,
-            tls_context: DefaultSSLContextType = _default,
-            timeout: DefaultNumType = _default) -> SMTPResponse:
+        self,
+        server_hostname: str = None,
+        validate_certs: bool = None,
+        client_cert: DefaultStrType = _default,
+        client_key: DefaultStrType = _default,
+        cert_bundle: DefaultStrType = _default,
+        tls_context: DefaultSSLContextType = _default,
+        timeout: DefaultNumType = _default,
+    ) -> SMTPResponse:
         """
         Puts the connection to the SMTP server into TLS mode.
 
@@ -383,7 +404,8 @@ class ESMTP(SMTPConnection):
 
         if self.tls_context is not None and self.client_cert is not None:
             raise ValueError(
-                'Either a TLS context or a certificate/key must be provided')
+                "Either a TLS context or a certificate/key must be provided"
+            )
 
         if server_hostname is None:
             server_hostname = self.hostname
@@ -392,13 +414,13 @@ class ESMTP(SMTPConnection):
 
         await self._ehlo_or_helo_if_needed()
 
-        if not self.supports_extension('starttls'):
-            raise SMTPException(
-                'SMTP STARTTLS extension not supported by server.')
+        if not self.supports_extension("starttls"):
+            raise SMTPException("SMTP STARTTLS extension not supported by server.")
 
         try:
             response, protocol = await self.protocol.starttls(  # type: ignore
-                tls_context, server_hostname=server_hostname, timeout=timeout)
+                tls_context, server_hostname=server_hostname, timeout=timeout
+            )
         except SMTPServerDisconnected:
             self.close()
             raise
@@ -443,7 +465,7 @@ def parse_esmtp_extensions(message: str) -> Tuple[Dict[str, str], List[str]]:
     esmtp_extensions = {}
     auth_types = []  # type: List[str]
 
-    response_lines = message.split('\n')
+    response_lines = message.split("\n")
 
     # ignore the first line
     for line in response_lines[1:]:
@@ -455,7 +477,7 @@ def parse_esmtp_extensions(message: str) -> Tuple[Dict[str, str], List[str]]:
         #    support using the old style.
         auth_match = OLDSTYLE_AUTH_REGEX.match(line)
         if auth_match is not None:
-            auth_type = auth_match.group('auth')
+            auth_type = auth_match.group("auth")
             auth_types.append(auth_type.lower().strip())
 
         # RFC 1869 requires a space between ehlo keyword and parameters.
@@ -464,12 +486,11 @@ def parse_esmtp_extensions(message: str) -> Tuple[Dict[str, str], List[str]]:
         # that the space isn't present if there are no parameters.
         extensions = EXTENSIONS_REGEX.match(line)
         if extensions is not None:
-            extension = extensions.group('ext').lower()
-            params = extensions.string[extensions.end('ext'):].strip()
+            extension = extensions.group("ext").lower()
+            params = extensions.string[extensions.end("ext") :].strip()
             esmtp_extensions[extension] = params
 
-            if extension == 'auth':
-                auth_types.extend(
-                    [param.strip().lower() for param in params.split()])
+            if extension == "auth":
+                auth_types.extend([param.strip().lower() for param in params.split()])
 
     return esmtp_extensions, auth_types

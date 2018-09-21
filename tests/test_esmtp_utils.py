@@ -25,10 +25,10 @@ SIZE 51200000
     """
     extensions, auth_types = parse_esmtp_extensions(response)
 
-    assert 'size' in extensions
-    assert extensions['size'] == '51200000'
-    assert 'saml' in extensions
-    assert 'size.does.matter.af.mil' not in extensions
+    assert "size" in extensions
+    assert extensions["size"] == "51200000"
+    assert "saml" in extensions
+    assert "size.does.matter.af.mil" not in extensions
     assert auth_types == []
 
 
@@ -47,9 +47,9 @@ AUTH FOO BAR
     """
     extensions, auth_types = parse_esmtp_extensions(response)
 
-    assert 'foo' in auth_types
-    assert 'bar' in auth_types
-    assert 'bogus' not in auth_types
+    assert "foo" in auth_types
+    assert "bar" in auth_types
+    assert "bogus" not in auth_types
 
 
 def test_old_school_auth_type_parsing():
@@ -58,8 +58,8 @@ AUTH=PLAIN
     """
     extensions, auth_types = parse_esmtp_extensions(response)
 
-    assert 'plain' in auth_types
-    assert 'cram-md5' not in auth_types
+    assert "plain" in auth_types
+    assert "cram-md5" not in auth_types
 
 
 def test_mixed_auth_type_parsing():
@@ -69,5 +69,5 @@ AUTH CRAM-MD5
     """
     extensions, auth_types = parse_esmtp_extensions(response)
 
-    assert 'plain' in auth_types
-    assert 'cram-md5' in auth_types
+    assert "plain" in auth_types
+    assert "cram-md5" in auth_types

@@ -22,22 +22,22 @@ else:
 
 def pytest_addoption(parser):
     parser.addoption(
-        '--event-loop', action='store', default='asyncio',
-        choices=['asyncio', 'uvloop'])
+        "--event-loop", action="store", default="asyncio", choices=["asyncio", "uvloop"]
+    )
 
 
 @pytest.fixture()
 def event_loop(request):
-    loop_type = request.config.getoption('--event-loop')
-    if loop_type == 'uvloop' and not HAS_UVLOOP:
-        raise RuntimeError('uvloop not installed.')
+    loop_type = request.config.getoption("--event-loop")
+    if loop_type == "uvloop" and not HAS_UVLOOP:
+        raise RuntimeError("uvloop not installed.")
 
-    if loop_type == 'asyncio':
+    if loop_type == "asyncio":
         loop = asyncio.new_event_loop()
-    elif loop_type == 'uvloop':
+    elif loop_type == "uvloop":
         loop = uvloop.new_event_loop()
     else:
-        raise ValueError('Unknown event loop type: {}'.format(loop_type))
+        raise ValueError("Unknown event loop type: {}".format(loop_type))
 
     yield loop
 
@@ -52,7 +52,8 @@ def event_loop(request):
             task.cancel()
         try:
             loop.run_until_complete(
-                asyncio.wait(cleanup_tasks, loop=loop, timeout=0.01))
+                asyncio.wait(cleanup_tasks, loop=loop, timeout=0.01)
+            )
         except RuntimeError:
             # Event loop was probably already stopping.
             pass
@@ -68,7 +69,7 @@ def event_loop(request):
 
 @pytest.fixture()
 def smtpd_server(request, unused_tcp_port):
-    server = ThreadedSMTPDServer('localhost', unused_tcp_port)
+    server = ThreadedSMTPDServer("localhost", unused_tcp_port)
     server.start()
 
     request.addfinalizer(server.stop)
@@ -78,7 +79,7 @@ def smtpd_server(request, unused_tcp_port):
 
 @pytest.fixture()
 def preset_server(request, event_loop, unused_tcp_port):
-    server = SMTPPresetServer('localhost', unused_tcp_port, loop=event_loop)
+    server = SMTPPresetServer("localhost", unused_tcp_port, loop=event_loop)
 
     event_loop.run_until_complete(server.start())
 
@@ -93,8 +94,11 @@ def preset_server(request, event_loop, unused_tcp_port):
 @pytest.fixture()
 def smtpd_client(request, smtpd_server, event_loop):
     client = SMTP(
-        hostname=smtpd_server.hostname, port=smtpd_server.port,
-        loop=event_loop, timeout=1)
+        hostname=smtpd_server.hostname,
+        port=smtpd_server.port,
+        loop=event_loop,
+        timeout=1,
+    )
     client.server = smtpd_server
 
     return client
@@ -103,8 +107,11 @@ def smtpd_client(request, smtpd_server, event_loop):
 @pytest.fixture()
 def preset_client(request, preset_server, event_loop):
     client = SMTP(
-        hostname=preset_server.hostname, port=preset_server.port,
-        loop=event_loop, timeout=1)
+        hostname=preset_server.hostname,
+        port=preset_server.port,
+        loop=event_loop,
+        timeout=1,
+    )
     client.server = preset_server
 
     return client

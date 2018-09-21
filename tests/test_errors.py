@@ -6,16 +6,26 @@ from hypothesis import given
 from hypothesis.strategies import integers, lists, text
 
 from aiosmtplib import (
-    SMTPAuthenticationError, SMTPConnectError, SMTPDataError, SMTPException,
-    SMTPHeloError, SMTPNotSupported, SMTPRecipientRefused,
-    SMTPRecipientsRefused, SMTPResponseException, SMTPSenderRefused,
+    SMTPAuthenticationError,
+    SMTPConnectError,
+    SMTPDataError,
+    SMTPException,
+    SMTPHeloError,
+    SMTPNotSupported,
+    SMTPRecipientRefused,
+    SMTPRecipientsRefused,
+    SMTPResponseException,
+    SMTPSenderRefused,
     SMTPServerDisconnected,
 )
 
 
 CONNECTION_EXCEPTIONS = (SMTPServerDisconnected, SMTPConnectError)
 SIMPLE_RESPONSE_EXCEPTIONS = (
-    SMTPNotSupported, SMTPHeloError, SMTPDataError, SMTPAuthenticationError,
+    SMTPNotSupported,
+    SMTPHeloError,
+    SMTPDataError,
+    SMTPAuthenticationError,
 )
 
 
@@ -37,7 +47,7 @@ def test_raise_smtp_response_exception(code, message):
     assert excinfo.value.message == message
 
 
-@pytest.mark.parametrize('error_class', CONNECTION_EXCEPTIONS)
+@pytest.mark.parametrize("error_class", CONNECTION_EXCEPTIONS)
 @given(code=integers(), message=text())
 def test_connection_exceptions(code, message, error_class):
     with pytest.raises(error_class) as excinfo:
@@ -48,7 +58,7 @@ def test_connection_exceptions(code, message, error_class):
     assert excinfo.value.message == message
 
 
-@pytest.mark.parametrize('error_class', SIMPLE_RESPONSE_EXCEPTIONS)
+@pytest.mark.parametrize("error_class", SIMPLE_RESPONSE_EXCEPTIONS)
 @given(code=integers(), message=text())
 def test_simple_response_exceptions(code, message, error_class):
     with pytest.raises(error_class) as excinfo:

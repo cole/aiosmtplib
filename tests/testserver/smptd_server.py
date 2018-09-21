@@ -5,7 +5,6 @@ from email.errors import HeaderParseError
 
 
 class TestSMTPDChannel(smtpd.SMTPChannel):
-
     def _getaddr(self, arg):
         """
         Don't raise an exception on unparsable email address
@@ -13,7 +12,7 @@ class TestSMTPDChannel(smtpd.SMTPChannel):
         try:
             return super()._getaddr(arg)
         except HeaderParseError:
-            return None, ''
+            return None, ""
 
 
 class TestSMTPD(smtpd.SMTPServer):
@@ -28,7 +27,6 @@ class TestSMTPD(smtpd.SMTPServer):
 
 
 class ThreadedSMTPDServer:
-
     def __init__(self, hostname, port):
         self.hostname = hostname
         self.port = port

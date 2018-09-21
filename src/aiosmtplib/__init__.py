@@ -15,11 +15,9 @@ from .smtp import *  # NOQA
 from .status import *  # NOQA
 
 
-__title__ = 'aiosmtplib'
-__version__ = '1.0.3dev'
-__author__ = 'Cole Maclean'
-__license__ = 'MIT'
-__copyright__ = 'Copyright 2018 Cole Maclean'
-__all__ = (
-    errors.__all__ + response.__all__ + smtp.__all__ + status.__all__  # NOQA
-)
+__title__ = "aiosmtplib"
+__version__ = "1.0.3dev"
+__author__ = "Cole Maclean"
+__license__ = "MIT"
+__copyright__ = "Copyright 2018 Cole Maclean"
+__all__ = errors.__all__ + response.__all__ + smtp.__all__ + status.__all__  # NOQA

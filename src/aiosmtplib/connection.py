@@ -8,7 +8,9 @@ from typing import Any, Optional, Type, Union  # NOQA
 
 from .default import Default, _default
 from .errors import (
-    SMTPConnectError, SMTPResponseException, SMTPServerDisconnected,
+    SMTPConnectError,
+    SMTPResponseException,
+    SMTPServerDisconnected,
     SMTPTimeoutError,
 )
 from .protocol import SMTPProtocol
@@ -16,7 +18,7 @@ from .response import SMTPResponse
 from .status import SMTPStatus
 
 
-__all__ = ('SMTPConnection',)
+__all__ = ("SMTPConnection",)
 
 
 MAX_LINE_LENGTH = 8192
@@ -40,14 +42,21 @@ class SMTPConnection:
     are saved for later use; subsequent calls to :meth:`connect` will use the
     same options, unless new ones are provided.
     """
+
     def __init__(
-            self, hostname: str = '', port: int = None,
-            source_address: str = None, timeout: NumType = None,
-            loop: asyncio.AbstractEventLoop = None,
-            use_tls: bool = False, validate_certs: bool = True,
-            client_cert: str = None, client_key: str = None,
-            tls_context: ssl.SSLContext = None,
-            cert_bundle: str = None) -> None:
+        self,
+        hostname: str = "",
+        port: int = None,
+        source_address: str = None,
+        timeout: NumType = None,
+        loop: asyncio.AbstractEventLoop = None,
+        use_tls: bool = False,
+        validate_certs: bool = True,
+        client_cert: str = None,
+        client_key: str = None,
+        tls_context: ssl.SSLContext = None,
+        cert_bundle: str = None,
+    ) -> None:
         """
         :keyword hostname:  Server name (or IP) to connect to
         :keyword port: Server port. Defaults to ``25`` if ``use_tls`` is
@@ -78,7 +87,8 @@ class SMTPConnection:
 
         if tls_context is not None and client_cert is not None:
             raise ValueError(
-                'Either a TLS context or a certificate/key must be provided')
+                "Either a TLS context or a certificate/key must be provided"
+            )
 
         # Kwarg defaults are provided here, and saved for connect.
         self.hostname = hostname
@@ -95,15 +105,15 @@ class SMTPConnection:
         self.loop = loop or asyncio.get_event_loop()
         self._connect_lock = asyncio.Lock(loop=self.loop)
 
-    async def __aenter__(self) -> 'SMTPConnection':
+    async def __aenter__(self) -> "SMTPConnection":
         if not self.is_connected:
             await self.connect()
 
         return self
 
     async def __aexit__(
-            self, exc_type: Type[Exception], exc: Exception,
-            traceback: Any) -> None:
+        self, exc_type: Type[Exception], exc: Exception, traceback: Any
+    ) -> None:
         is_connection_error = exc_type in (ConnectionError, SMTPTimeoutError)
         if is_connection_error or not self.is_connected:
             self.close()
@@ -132,15 +142,19 @@ class SMTPConnection:
         return self._source_address
 
     async def connect(
-            self, hostname: str = None, port: int = None,
-            source_address: DefaultStrType = _default,
-            timeout: DefaultNumType = _default,
-            loop: asyncio.AbstractEventLoop = None,
-            use_tls: bool = None, validate_certs: bool = None,
-            client_cert: DefaultStrType = _default,
-            client_key: DefaultStrType = _default,
-            tls_context: DefaultSSLContextType = _default,
-            cert_bundle: DefaultStrType = _default) -> SMTPResponse:
+        self,
+        hostname: str = None,
+        port: int = None,
+        source_address: DefaultStrType = _default,
+        timeout: DefaultNumType = _default,
+        loop: asyncio.AbstractEventLoop = None,
+        use_tls: bool = None,
+        validate_certs: bool = None,
+        client_cert: DefaultStrType = _default,
+        client_key: DefaultStrType = _default,
+        tls_context: DefaultSSLContextType = _default,
+        cert_bundle: DefaultStrType = _default,
+    ) -> SMTPResponse:
         """
         Initialize a connection to the server. Options provided to
         :meth:`.connect` take precedence over those used to initialize the
@@ -200,15 +214,16 @@ class SMTPConnection:
 
         if self.tls_context is not None and self.client_cert is not None:
             raise ValueError(
-                'Either a TLS context or a certificate/key must be provided')
+                "Either a TLS context or a certificate/key must be provided"
+            )
 
         response = await self._create_connection()
 
         return response
 
     async def _create_connection(self) -> SMTPResponse:
-        assert self.hostname is not None, 'Hostname must be set'
-        assert self.port is not None, 'Port must be set'
+        assert self.hostname is not None, "Hostname must be set"
+        assert self.port is not None, "Port must be set"
 
         reader = asyncio.StreamReader(limit=MAX_LINE_LENGTH, loop=self.loop)
         protocol = SMTPProtocol(reader, loop=self.loop)
@@ -218,16 +233,19 @@ class SMTPConnection:
             tls_context = self._get_tls_context()
 
         connect_future = self.loop.create_connection(
-            lambda: protocol, host=self.hostname, port=self.port,
-            ssl=tls_context)
+            lambda: protocol, host=self.hostname, port=self.port, ssl=tls_context
+        )
         try:
             transport, _ = await asyncio.wait_for(
-                connect_future, timeout=self.timeout, loop=self.loop)
+                connect_future, timeout=self.timeout, loop=self.loop
+            )
         except (ConnectionRefusedError, OSError) as err:
             self.close()
             raise SMTPConnectError(
-                'Error connecting to {host} on port {port}: {err}'.format(
-                    host=self.hostname, port=self.port, err=err))
+                "Error connecting to {host} on port {port}: {err}".format(
+                    host=self.hostname, port=self.port, err=err
+                )
+            )
         except asyncio.TimeoutError as exc:
             self.close()
             raise SMTPTimeoutError(str(exc))
@@ -236,7 +254,8 @@ class SMTPConnection:
 
         try:
             response = await asyncio.wait_for(
-                waiter, timeout=self.timeout, loop=self.loop)
+                waiter, timeout=self.timeout, loop=self.loop
+            )
         except asyncio.TimeoutError as exc:
             self.close()
             raise SMTPTimeoutError(str(exc))
@@ -251,8 +270,8 @@ class SMTPConnection:
         return response
 
     async def execute_command(
-            self, *args: bytes,
-            timeout: DefaultNumType = _default) -> SMTPResponse:
+        self, *args: bytes, timeout: DefaultNumType = _default
+    ) -> SMTPResponse:
         """
         Check that we're connected, if we got a timeout value, and then
         pass the command to the protocol.
@@ -266,7 +285,8 @@ class SMTPConnection:
 
         try:
             response = await self.protocol.execute_command(  # type: ignore
-                *args, timeout=timeout)
+                *args, timeout=timeout
+            )
         except SMTPServerDisconnected:
             # On disconnect, clean up the connection.
             self.close()
@@ -300,8 +320,7 @@ class SMTPConnection:
                 context.load_verify_locations(cafile=self.cert_bundle)
 
             if self.client_cert is not None:
-                context.load_cert_chain(
-                    self.client_cert, keyfile=self.client_key)
+                context.load_cert_chain(self.client_cert, keyfile=self.client_key)
 
         return context
 
@@ -310,10 +329,13 @@ class SMTPConnection:
         See if we're still connected, and if not, raise
         ``SMTPServerDisconnected``.
         """
-        if (self.transport is None or self.protocol is None or
-                self.transport.is_closing()):
+        if (
+            self.transport is None
+            or self.protocol is None
+            or self.transport.is_closing()
+        ):
             self.close()
-            raise SMTPServerDisconnected('Disconnected from SMTP server')
+            raise SMTPServerDisconnected("Disconnected from SMTP server")
 
     def close(self) -> None:
         """
