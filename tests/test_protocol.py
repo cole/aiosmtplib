@@ -123,6 +123,30 @@ async def test_protocol_connected_check_on_drain_writer(
         await disconnected_smtp_protocol._drain_writer(timeout=1)
 
 
+async def test_protocol_reader_connected_check_on_connection_made(
+        disconnected_smtp_protocol):
+    disconnected_smtp_protocol._stream_reader = None
+
+    with pytest.raises(SMTPServerDisconnected):
+        await disconnected_smtp_protocol.connection_made(None)
+
+
+async def test_protocol_reader_connected_check_on_readline(
+        disconnected_smtp_protocol):
+    disconnected_smtp_protocol._stream_reader = None
+
+    with pytest.raises(SMTPServerDisconnected):
+        await disconnected_smtp_protocol._readline(timeout=1)
+
+
+async def test_protocol_writer_connected_check_on_readline(
+        disconnected_smtp_protocol):
+    disconnected_smtp_protocol._stream_writer = None
+
+    with pytest.raises(SMTPServerDisconnected):
+        await disconnected_smtp_protocol._readline(timeout=1)
+
+
 async def test_protocol_timeout_on_starttls(
         smtp_protocol, raw_preset_server, tls_context):
     raw_preset_server.responses.append(b'220 Go ahead\n')
@@ -130,3 +154,26 @@ async def test_protocol_timeout_on_starttls(
 
     with pytest.raises(SMTPTimeoutError):
         await smtp_protocol.starttls(tls_context, timeout=0.00000001)
+
+
+async def test_protocol_timeout_on_drain_writer(smtp_protocol):
+    smtp_protocol.pause_writing()
+    smtp_protocol._stream_writer.write(b'1234')
+
+    with pytest.raises(SMTPTimeoutError):
+        await smtp_protocol._drain_writer(timeout=0.00000000000001)
+
+
+async def test_connectionerror_on_drain_writer(smtp_protocol):
+    smtp_protocol.pause_writing()
+    smtp_protocol._stream_reader._transport.close()
+
+    with pytest.raises(ConnectionError):
+        await smtp_protocol._drain_writer(timeout=1)
+
+
+async def test_connectionerror_on_readline(smtp_protocol):
+    smtp_protocol._stream_reader._transport.close()
+
+    with pytest.raises(ConnectionError):
+        await smtp_protocol._readline(timeout=1)
