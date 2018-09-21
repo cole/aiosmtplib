@@ -11,7 +11,7 @@ master
 
 - Bugfix: Cleanup transport on exception in connect method.
 
-- Cleanup: Simplified SMTPProtocol.connection_made
+- Cleanup: Simplified SMTPProtocol.connection_made, __main__
 
 
 1.0.2
