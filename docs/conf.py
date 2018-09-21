@@ -22,8 +22,9 @@ import os
 import pathlib
 import re
 import sys
-sys.path.insert(0, os.path.abspath('../src'))  # NOQA
-sys.path.insert(0, os.path.abspath('.'))  # NOQA
+
+sys.path.insert(0, os.path.abspath("../src"))  # NOQA
+sys.path.insert(0, os.path.abspath("."))  # NOQA
 
 
 VERSION_REGEX = r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]'
@@ -39,41 +40,41 @@ VERSION_REGEX = r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'sphinx.ext.autodoc',
-    'sphinx.ext.doctest',
-    'sphinx.ext.todo',
-    'sphinx.ext.coverage',
-    'sphinx.ext.viewcode',
-    'sphinx.ext.intersphinx',
-    'sphinx_autodoc_typehints',
+    "sphinx.ext.autodoc",
+    "sphinx.ext.doctest",
+    "sphinx.ext.todo",
+    "sphinx.ext.coverage",
+    "sphinx.ext.viewcode",
+    "sphinx.ext.intersphinx",
+    "sphinx_autodoc_typehints",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ['_templates']
+templates_path = ["_templates"]
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
 #
 # source_suffix = ['.rst', '.md']
-source_suffix = '.rst'
+source_suffix = ".rst"
 
 # The master toctree document.
-master_doc = 'index'
+master_doc = "index"
 
 # General information about the project.
-project = 'aiosmtplib'
-author = 'Cole Maclean'
+project = "aiosmtplib"
+author = "Cole Maclean"
 year = datetime.date.today().year
-copyright = '{year}, {author}'.format(year=year, author=author)
+copyright = "{year}, {author}".format(year=year, author=author)
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
 # built documents.
 
-init = pathlib.Path('../src/aiosmtplib/__init__.py')
-version_match = re.search(VERSION_REGEX, init.read_text('utf8'), re.MULTILINE)
+init = pathlib.Path("../src/aiosmtplib/__init__.py")
+version_match = re.search(VERSION_REGEX, init.read_text("utf8"), re.MULTILINE)
 if not version_match:
-    raise RuntimeError('Cannot find version information')
+    raise RuntimeError("Cannot find version information")
 
 # The short X.Y version.
 version = version_match.group(1)
@@ -91,10 +92,10 @@ language = None
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This patterns also effect to html_static_path and html_extra_path
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 # The name of the Pygments (syntax highlighting) style to use.
-pygments_style = 'sphinx'
+pygments_style = "sphinx"
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = True
@@ -105,30 +106,30 @@ todo_include_todos = True
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'alabaster'
+html_theme = "alabaster"
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
 #
 html_theme_options = {
-    'show_powered_by': False,
-    'github_user': 'cole',
-    'github_repo': 'aiosmtplib',
-    'github_banner': False,
-    'show_related': False
+    "show_powered_by": False,
+    "github_user": "cole",
+    "github_repo": "aiosmtplib",
+    "github_banner": False,
+    "show_related": False,
 }
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+html_static_path = ["_static"]
 
 
 # -- Options for HTMLHelp output ------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'aiosmtplibdoc'
+htmlhelp_basename = "aiosmtplibdoc"
 
 
 # -- Options for LaTeX output ---------------------------------------------
@@ -137,15 +138,12 @@ latex_elements = {
     # The paper size ('letterpaper' or 'a4paper').
     #
     # 'papersize': 'letterpaper',
-
     # The font size ('10pt', '11pt' or '12pt').
     #
     # 'pointsize': '10pt',
-
     # Additional stuff for the LaTeX preamble.
     #
     # 'preamble': '',
-
     # Latex figure (float) alignment
     #
     # 'figure_align': 'htbp',
@@ -155,8 +153,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'aiosmtplib.tex', 'aiosmtplib Documentation',
-     'Cole Maclean', 'manual'),
+    (master_doc, "aiosmtplib.tex", "aiosmtplib Documentation", "Cole Maclean", "manual")
 ]
 
 
@@ -164,10 +161,7 @@ latex_documents = [
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [
-    (master_doc, 'aiosmtplib', 'aiosmtplib Documentation',
-     [author], 1)
-]
+man_pages = [(master_doc, "aiosmtplib", "aiosmtplib Documentation", [author], 1)]
 
 
 # -- Options for Texinfo output -------------------------------------------
@@ -176,27 +170,26 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'aiosmtplib', 'aiosmtplib Documentation',
-     author, 'aiosmtplib', 'asyncio SMTP client',
-     'Miscellaneous'),
+    (
+        master_doc,
+        "aiosmtplib",
+        "aiosmtplib Documentation",
+        author,
+        "aiosmtplib",
+        "asyncio SMTP client",
+        "Miscellaneous",
+    )
 ]
 
-intersphinx_mapping = {
-    'python': ('https://docs.python.org/3.6', None),
-}
+intersphinx_mapping = {"python": ("https://docs.python.org/3.6", None)}
 
 html_sidebars = {
-    '**': [
-        'globaltoc.html',
-        'relations.html',
-        'sourcelink.html',
-        'searchbox.html',
-    ],
+    "**": ["globaltoc.html", "relations.html", "sourcelink.html", "searchbox.html"]
 }
 
 nitpick_ignore = [
-    ('py:class', 'typing.Tuple'),
-    ('py:class', 'concurrent.futures._base.TimeoutError'),
+    ("py:class", "typing.Tuple"),
+    ("py:class", "concurrent.futures._base.TimeoutError"),
 ]
 
 doctest_global_setup = """
