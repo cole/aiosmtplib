@@ -87,3 +87,5 @@ deploy:
 after_success:
   - COVERALLS_PARALLEL=true coveralls
   - codecov
+notifications:
+  webhooks: https://coveralls.io/webhook
