@@ -9,6 +9,7 @@ import pytest
 from aiosmtplib import SMTP
 from testserver import SMTPPresetServer, ThreadedSMTPDServer
 
+
 PY36_OR_LATER = sys.version_info[:2] >= (3, 6)
 PY37_OR_LATER = sys.version_info[:2] >= (3, 7)
 try:
