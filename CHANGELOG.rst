@@ -1,6 +1,7 @@
 aiosmtplib changes
 ==================
 
+
 master
 ------
 
@@ -9,6 +10,8 @@ master
 - Bugfix: Fixed old style auth method parsing in ESMPT response.
 
 - Bugfix: Cleanup transport on exception in connect method.
+
+- Cleanup: Simplified SMTPProtocol.connection_made
 
 
 1.0.2
@@ -39,7 +42,9 @@ master
 
 - Bugfix: AttributeError on STARTTLS under uvloop
 
+
 1.0.0
 -----
+
 Initial feature complete release with stable API; future changes will be
 documented here.

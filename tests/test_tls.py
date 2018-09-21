@@ -11,6 +11,7 @@ from aiosmtplib import (
     SMTP, SMTPConnectError, SMTPException, SMTPResponseException, SMTPStatus,
     SMTPTimeoutError,
 )
+from testserver import SMTPPresetServer
 
 
 pytestmark = pytest.mark.asyncio(forbid_global_loop=True)
@@ -18,6 +19,31 @@ cert_path = str(Path('tests/certs/selfsigned.crt'))
 key_path = str(Path('tests/certs/selfsigned.key'))
 invalid_cert_path = str(Path('tests/certs/invalid.crt'))
 invalid_key_path = str(Path('tests/certs/invalid.key'))
+
+
+@pytest.fixture(scope='function')
+def tls_preset_server(request, event_loop, unused_tcp_port):
+    server = SMTPPresetServer(
+        'localhost', unused_tcp_port, loop=event_loop, use_tls=True)
+
+    event_loop.run_until_complete(server.start())
+
+    def close_server():
+        event_loop.run_until_complete(server.stop())
+
+    request.addfinalizer(close_server)
+
+    return server
+
+
+@pytest.fixture(scope='function')
+def tls_preset_client(request, tls_preset_server, event_loop):
+    client = SMTP(
+        hostname=tls_preset_server.hostname, port=tls_preset_server.port,
+        loop=event_loop, use_tls=True, validate_certs=False, timeout=1)
+    client.server = tls_preset_server
+
+    return client
 
 
 async def test_tls_connection(tls_preset_client):

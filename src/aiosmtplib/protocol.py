@@ -56,22 +56,18 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
         Modified ``connection_made`` that supports upgrading our transport in
         place using STARTTLS.
 
-        The only difference here from StreamReaderProtocol's version is we
-        are setting the _transport directly on the StreamReader, rather than
-        calling set_transport (which will raise an AssertionError on upgrade).
+        We set the _transport directly on the StreamReader, rather than calling
+        set_transport (which will raise an AssertionError on upgrade).
         """
         if self._stream_reader is None:
             raise SMTPServerDisconnected('Client not connected')
 
         self._stream_reader._transport = transport  # type: ignore
         self._over_ssl = transport.get_extra_info('sslcontext') is not None
-        if self._client_connected_cb is not None:  # type: ignore
-            self._stream_writer = asyncio.StreamWriter(
-                transport, self, self._stream_reader, self._loop)
-            res = self._client_connected_cb(  # type: ignore
-                self._stream_reader, self._stream_writer)
-            if asyncio.iscoroutine(res):
-                self._loop.create_task(res)
+        self._stream_writer = asyncio.StreamWriter(
+            transport, self, self._stream_reader, self._loop)
+        self._client_connected_cb(  # type: ignore
+            self._stream_reader, self._stream_writer)
 
     def upgrade_transport(
             self, context: ssl.SSLContext, server_hostname: str = None,
@@ -192,7 +188,7 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
         """
         Puts the connection to the SMTP server into TLS mode.
         """
-        if self._stream_writer is None:
+        if self._stream_reader is None or self._stream_writer is None:
             raise SMTPServerDisconnected('Client not connected')
 
         response = await self.execute_command(b'STARTTLS', timeout=timeout)
