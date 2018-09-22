@@ -17,20 +17,20 @@ Quickstart
     import aiosmtplib
 
     loop = asyncio.get_event_loop()
-    smtp = aiosmtplib.SMTP(hostname='127.0.0.1', port=1025, loop=loop)
+    smtp = aiosmtplib.SMTP(hostname="127.0.0.1", port=1025, loop=loop)
     loop.run_until_complete(smtp.connect())
 
-    message = MIMEText('Sent via aiosmtplib')
-    message['From'] = 'root@localhost'
-    message['To'] = 'somebody@example.com'
-    message['Subject'] = 'Hello World!'
+    message = MIMEText("Sent via aiosmtplib")
+    message["From"] = "root@localhost"
+    message["To"] = "somebody@example.com"
+    message["Subject"] = "Hello World!"
 
     loop.run_until_complete(smtp.send_message(message))
 
 
 Requirements
 ------------
-Python 3.5+, compiled with SSL support, is required.
+Python 3.5.2+, compiled with SSL support, is required.
 
 
 Connecting to an SMTP Server
@@ -48,7 +48,8 @@ server, as that is a blocking operation.
     client = SMTP()
 
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(client.connect(hostname='localhost', port=25))
+    loop.run_until_complete(client.connect(hostname="localhost", port=25))
+
 
 
 Connecting over TLS/SSL
@@ -63,8 +64,7 @@ when initializing the SMTP instance (or when calling :meth:`SMTP.connect`).
 
 
     loop = asyncio.get_event_loop()
-    smtp = aiosmtplib.SMTP(
-        hostname='smtp.gmail.com', port=465, loop=loop, use_tls=True)
+    smtp = aiosmtplib.SMTP(hostname="smtp.gmail.com", port=465, loop=loop, use_tls=True)
     loop.run_until_complete(smtp.connect())
 
 
@@ -81,8 +81,7 @@ to one of these, set ``use_tls`` to ``False`` when connecting, and call
 .. code-block:: python
 
     loop = asyncio.get_event_loop()
-    smtp = aiosmtplib.SMTP(
-        hostname='smtp.gmail.com', port=587, loop=loop, use_tls=False)
+    smtp = aiosmtplib.SMTP(hostname="smtp.gmail.com", port=587, loop=loop, use_tls=False)
     loop.run_until_complete(smtp.connect())
     loop.run_until_complete(smtp.starttls())
 
@@ -107,10 +106,10 @@ including :mod:`email.mime` subclasses such as
 
     from email.mime.text import MIMEText
 
-    message = MIMEText('Sent via aiosmtplib')
-    message['From'] = 'root@localhost'
-    message['To'] = 'somebody@example.com'
-    message['Subject'] = 'Hello World!'
+    message = MIMEText("Sent via aiosmtplib")
+    message["From"] = "root@localhost"
+    message["To"] = "somebody@example.com"
+    message["Subject"] = "Hello World!"
 
     loop = asyncio.get_event_loop()
     loop.run_until_complete(smtp.send_message(message))
@@ -125,17 +124,17 @@ alternatives.
     from email.mime.multipart import MIMEMultipart
     from email.mime.text import MIMEText
 
-    message = MIMEMultipart('alternative')
-    message['From'] = 'root@localhost'
-    message['To'] = 'somebody@example.com'
-    message['Subject'] = 'Hello World!'
+    message = MIMEMultipart("alternative")
+    message["From"] = "root@localhost"
+    message["To"] = "somebody@example.com"
+    message["Subject"] = "Hello World!"
 
-    message.attach(MIMEText('hello', 'plain', 'utf-8'))
-    message.attach(
-        MIMEText('<html><body><h1>Hello</h1></body></html>', 'html', 'utf-8'))
+    message.attach(MIMEText("hello", "plain", "utf-8"))
+    message.attach(MIMEText("<html><body><h1>Hello</h1></body></html>", "html", "utf-8"))
 
     loop = asyncio.get_event_loop()
     loop.run_until_complete(smtp.send_message(message))
+
 
 
 :meth:`SMTP.sendmail`
@@ -146,14 +145,14 @@ method, you must format the message headers yourself.
 
 .. testcode::
 
-    sender = 'root@localhost'
-    recipients = ['somebody@example.com']
-    message = '''To: somebody@example.com
+    sender = "root@localhost"
+    recipients = ["somebody@example.com"]
+    message = """To: somebody@example.com
     From: root@localhost
     Subject: Hello World!
 
     Sent via aiosmtplib
-    '''
+    """
 
     loop = asyncio.get_event_loop()
     loop.run_until_complete(smtp.sendmail(sender, recipients, message))

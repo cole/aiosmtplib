@@ -16,7 +16,7 @@ class SMTPResponse(BaseResponse):
 
     ``code`` and ``message`` can be accessed via attributes or indexes:
 
-        >>> response = SMTPResponse(200, 'OK')
+        >>> response = SMTPResponse(200, "OK")
         >>> response.message
         'OK'
         >>> response[0]

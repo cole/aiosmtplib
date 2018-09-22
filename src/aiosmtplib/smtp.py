@@ -35,13 +35,13 @@ class SMTP(SMTPAuth):
     Basic usage:
 
         >>> loop = asyncio.get_event_loop()
-        >>> smtp = aiosmtplib.SMTP(hostname='127.0.0.1', port=1025, loop=loop)
+        >>> smtp = aiosmtplib.SMTP(hostname="127.0.0.1", port=1025, loop=loop)
         >>> loop.run_until_complete(smtp.connect())
         (220, ...)
-        >>> sender = 'root@localhost'
-        >>> recipients = ['somebody@localhost']
-        >>> message = 'Hello World'
-        >>> send = smtp.sendmail(sender, recipients, 'Hello World')
+        >>> sender = "root@localhost"
+        >>> recipients = ["somebody@localhost"]
+        >>> message = "Hello World"
+        >>> send = smtp.sendmail(sender, recipients, "Hello World")
         >>> loop.run_until_complete(send)
         ({}, 'OK')
     """
@@ -95,12 +95,12 @@ class SMTP(SMTPAuth):
         Example:
 
              >>> loop = asyncio.get_event_loop()
-             >>> smtp = aiosmtplib.SMTP(hostname='127.0.0.1', port=1025)
+             >>> smtp = aiosmtplib.SMTP(hostname="127.0.0.1", port=1025)
              >>> loop.run_until_complete(smtp.connect())
              (220, ...)
-             >>> recipients = ['one@one.org', 'two@two.org', '3@three.org']
+             >>> recipients = ["one@one.org", "two@two.org", "3@three.org"]
              >>> message = "From: Me@my.org\\nSubject: testing\\nHello World"
-             >>> send_coro = smtp.sendmail('me@my.org', recipients, message)
+             >>> send_coro = smtp.sendmail("me@my.org", recipients, message)
              >>> loop.run_until_complete(send_coro)
              ({}, 'OK')
              >>> loop.run_until_complete(smtp.quit())
@@ -111,12 +111,11 @@ class SMTP(SMTPAuth):
         of the three addresses, and one was rejected, the response would look
         something like::
 
-             (
-                 {
-                    'nobody@three.org': (550 ,'User unknown'),
-                 },
-                 'Written safely to disk. #902487694.289148.12219.',
-             )
+            (
+                {"nobody@three.org": (550, "User unknown")},
+                "Written safely to disk. #902487694.289148.12219.",
+            )
+
 
         If delivery is not successful to any addresses,
         :exc:`.SMTPRecipientsRefused` is raised.
