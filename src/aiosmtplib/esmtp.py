@@ -194,7 +194,7 @@ class ESMTP(SMTPConnection):
     async def quit(self, timeout: DefaultNumType = _default) -> SMTPResponse:
         """
         Send the SMTP QUIT command, which closes the connection.
-        Also closes the connection from our side after a response is recieved.
+        Also closes the connection from our side after a response is received.
 
         :raises SMTPResponseException: on unexpected server response code
         """
