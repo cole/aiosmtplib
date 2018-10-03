@@ -19,6 +19,8 @@ class TestSMTPD(smtpd.SMTPServer):
     channel_class = TestSMTPDChannel
 
     def __init__(self, *args, **kwargs):
+        if 'decode_data' not in kwargs:
+            kwargs['decode_data'] = False
         super().__init__(*args, **kwargs)
         self.messages = []
 
