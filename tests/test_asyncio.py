@@ -35,7 +35,7 @@ async def test_sendmail_multiple_times_in_sequence(smtpd_client):
             assert message != ""
 
 
-async def test_sendmail_multiple_times_with_gather(smtpd_client):
+async def test_sendmail_multiple_times_with_gather(smtpd_client, event_loop):
     async with smtpd_client:
         sender = "test@example.com"
         recipients = [
@@ -52,7 +52,7 @@ async def test_sendmail_multiple_times_with_gather(smtpd_client):
             smtpd_client.sendmail(sender, [recipient], mail_text)
             for recipient in recipients
         ]
-        results = await asyncio.gather(*tasks, loop=smtpd_client.loop)
+        results = await asyncio.gather(*tasks, loop=event_loop)
         for errors, message in results:
             assert not errors
             assert isinstance(errors, dict)
@@ -60,7 +60,7 @@ async def test_sendmail_multiple_times_with_gather(smtpd_client):
 
 
 async def test_connect_and_sendmail_multiple_times_with_gather(
-    smtpd_server, event_loop
+    smtpd_server, event_loop, hostname, port
 ):
     sender = "test@example.com"
     recipients = [
@@ -74,9 +74,7 @@ async def test_connect_and_sendmail_multiple_times_with_gather(
     -a tester
     """
 
-    client = SMTP(
-        hostname=smtpd_server.hostname, port=smtpd_server.port, loop=event_loop
-    )
+    client = SMTP(hostname=hostname, port=port, loop=event_loop)
 
     async def connect_and_send(*args, **kwargs):
         async with client:
@@ -94,7 +92,7 @@ async def test_connect_and_sendmail_multiple_times_with_gather(
         assert message != ""
 
 
-async def test_multiple_clients_with_gather(smtpd_server, event_loop):
+async def test_multiple_clients_with_gather(smtpd_server, event_loop, hostname, port):
     sender = "test@example.com"
     recipients = [
         "recipient1@example.com",
@@ -108,9 +106,7 @@ async def test_multiple_clients_with_gather(smtpd_server, event_loop):
     """
 
     async def connect_and_send(*args, **kwargs):
-        client = SMTP(
-            hostname=smtpd_server.hostname, port=smtpd_server.port, loop=event_loop
-        )
+        client = SMTP(hostname=hostname, port=port, loop=event_loop)
         async with client:
             response = await client.sendmail(*args, **kwargs)
 
@@ -127,7 +123,7 @@ async def test_multiple_clients_with_gather(smtpd_server, event_loop):
 
 
 async def test_multiple_actions_in_context_manager_with_gather(
-    smtpd_server, event_loop
+    smtpd_server, event_loop, hostname, port
 ):
     sender = "test@example.com"
     recipients = [
@@ -141,9 +137,7 @@ async def test_multiple_actions_in_context_manager_with_gather(
     -a tester
     """
 
-    client = SMTP(
-        hostname=smtpd_server.hostname, port=smtpd_server.port, loop=event_loop
-    )
+    client = SMTP(hostname=hostname, port=port, loop=event_loop)
 
     async def connect_and_run_commands(*args, **kwargs):
         async with client:
@@ -165,7 +159,7 @@ async def test_multiple_actions_in_context_manager_with_gather(
         assert message != ""
 
 
-async def test_many_commands_with_gather(smtpd_client):
+async def test_many_commands_with_gather(smtpd_client, event_loop):
     """
     Without a lock on the reader, this raises RuntimeError.
     """
@@ -177,7 +171,7 @@ async def test_many_commands_with_gather(smtpd_client):
             smtpd_client.vrfy("foo@bar.com"),
             smtpd_client.noop(),
         ]
-        results = await asyncio.gather(*tasks, loop=smtpd_client.loop)
+        results = await asyncio.gather(*tasks, loop=event_loop)
         for result in results:
             assert 200 <= result.code < 300
 

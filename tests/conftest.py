@@ -7,7 +7,7 @@ import sys
 import pytest
 
 from aiosmtplib import SMTP
-from testserver import SMTPPresetServer, ThreadedSMTPDServer
+from testserver import SMTPPresetServer, TestHandler, TestSMTPD
 
 
 PY36_OR_LATER = sys.version_info[:2] >= (3, 6)
@@ -67,12 +67,36 @@ def event_loop(request):
     loop.close()
 
 
-@pytest.fixture()
-def smtpd_server(request, unused_tcp_port):
-    server = ThreadedSMTPDServer("localhost", unused_tcp_port)
-    server.start()
+@pytest.fixture(scope="function")
+def messages_recieved(request):
+    return []
 
-    request.addfinalizer(server.stop)
+
+@pytest.fixture()
+def hostname(request):
+    return "localhost"
+
+
+@pytest.fixture()
+def port(request, unused_tcp_port):
+    """Alias for ununsed_tcp_port."""
+    return unused_tcp_port
+
+
+@pytest.fixture()
+def smtpd_server(request, event_loop, hostname, port, messages_recieved):
+    def factory():
+        return TestSMTPD(TestHandler(messages_recieved), enable_SMTPUTF8=False)
+
+    server = event_loop.run_until_complete(
+        event_loop.create_server(factory, host=hostname, port=port)
+    )
+
+    def close_server():
+        server.close()
+        event_loop.run_until_complete(server.wait_closed())
+
+    request.addfinalizer(close_server)
 
     return server
 
@@ -92,26 +116,15 @@ def preset_server(request, event_loop, unused_tcp_port):
 
 
 @pytest.fixture()
-def smtpd_client(request, smtpd_server, event_loop):
-    client = SMTP(
-        hostname=smtpd_server.hostname,
-        port=smtpd_server.port,
-        loop=event_loop,
-        timeout=1,
-    )
-    client.server = smtpd_server
+def smtpd_client(request, smtpd_server, event_loop, hostname, port):
+    client = SMTP(hostname=hostname, port=port, loop=event_loop, timeout=1)
 
     return client
 
 
 @pytest.fixture()
-def preset_client(request, preset_server, event_loop):
-    client = SMTP(
-        hostname=preset_server.hostname,
-        port=preset_server.port,
-        loop=event_loop,
-        timeout=1,
-    )
+def preset_client(request, preset_server, event_loop, hostname, port):
+    client = SMTP(hostname=hostname, port=port, loop=event_loop, timeout=1)
     client.server = preset_server
 
     return client
