@@ -83,10 +83,15 @@ def port(request, unused_tcp_port):
     return unused_tcp_port
 
 
+@pytest.fixture(scope="function")
+def smtpd_handler(request, messages_recieved):
+    return TestHandler(messages_recieved)
+
+
 @pytest.fixture()
-def smtpd_server(request, event_loop, hostname, port, messages_recieved):
+def smtpd_server(request, event_loop, hostname, port, smtpd_handler):
     def factory():
-        return TestSMTPD(TestHandler(messages_recieved), enable_SMTPUTF8=False)
+        return TestSMTPD(smtpd_handler, enable_SMTPUTF8=False)
 
     server = event_loop.run_until_complete(
         event_loop.create_server(factory, host=hostname, port=port)

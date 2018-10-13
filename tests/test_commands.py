@@ -29,11 +29,15 @@ async def test_helo_with_hostname(smtpd_client):
         assert response.code == SMTPStatus.completed
 
 
-async def test_helo_error(preset_client):
-    async with preset_client:
-        preset_client.server.responses.append(b"501 oh noes")
+async def test_helo_error(smtpd_client, smtpd_handler, monkeypatch):
+    async def helo_response(self, session, envelope, hostname):
+        return "501 oh noes"
+
+    monkeypatch.setattr(smtpd_handler, "handle_HELO", helo_response, raising=False)
+
+    async with smtpd_client:
         with pytest.raises(SMTPHeloError):
-            await preset_client.helo()
+            await smtpd_client.helo()
 
 
 async def test_ehlo_ok(smtpd_client):
@@ -50,18 +54,20 @@ async def test_ehlo_with_hostname(smtpd_client):
         assert response.code == SMTPStatus.completed
 
 
-async def test_ehlo_error(preset_client):
-    async with preset_client:
-        preset_client.server.responses.append(b"501 oh noes")
+async def test_ehlo_error(smtpd_client, smtpd_handler, monkeypatch):
+    async def ehlo_response(self, session, envelope, hostname):
+        return "501 oh noes"
+
+    monkeypatch.setattr(smtpd_handler, "handle_EHLO", ehlo_response, raising=False)
+
+    async with smtpd_client:
         with pytest.raises(SMTPHeloError):
-            await preset_client.ehlo()
+            await smtpd_client.ehlo()
 
 
-async def test_ehlo_parses_esmtp_extensions(preset_client):
-    ehlo_response = bytes(
-        """250-example.com offers FIFTEEN extensions:
-250-8BITMIME
-250-PIPELINING
+async def test_ehlo_parses_esmtp_extensions(smtpd_client, smtpd_handler, monkeypatch):
+    async def ehlo_response(self, session, envelope, hostname):
+        return """250-PIPELINING
 250-DSN
 250-ENHANCEDSTATUSCODES
 250-EXPN
@@ -73,20 +79,20 @@ async def test_ehlo_parses_esmtp_extensions(preset_client):
 250-XADR
 250-XSTA
 250-ETRN
-250-XGEN
-250 SIZE 51200000""",
-        "ascii",
-    )
-    async with preset_client:
-        preset_client.server.responses.append(ehlo_response)
+250 XGEN"""
 
-        await preset_client.ehlo()
+    monkeypatch.setattr(smtpd_handler, "handle_EHLO", ehlo_response, raising=False)
 
-        assert preset_client.supports_extension("8bitmime")
-        assert preset_client.supports_extension("pipelining")
-        assert preset_client.supports_extension("ENHANCEDSTATUSCODES")
-        assert preset_client.supports_extension("size")
-        assert not preset_client.supports_extension("notreal")
+    async with smtpd_client:
+        await smtpd_client.ehlo()
+
+        # 8BITMIME and SIZE are supported by default in aiosmtpd.
+        assert smtpd_client.supports_extension("8bitmime")
+        assert smtpd_client.supports_extension("size")
+
+        assert smtpd_client.supports_extension("pipelining")
+        assert smtpd_client.supports_extension("ENHANCEDSTATUSCODES")
+        assert not smtpd_client.supports_extension("notreal")
 
 
 async def test_ehlo_with_no_extensions(preset_client):
@@ -98,14 +104,13 @@ async def test_ehlo_with_no_extensions(preset_client):
         assert not preset_client.supports_extension("size")
 
 
-async def test_ehlo_or_helo_if_needed_ehlo_success(preset_client):
-    async with preset_client:
-        assert preset_client.is_ehlo_or_helo_needed is True
+async def test_ehlo_or_helo_if_needed_ehlo_success(smtpd_client):
+    async with smtpd_client:
+        assert smtpd_client.is_ehlo_or_helo_needed is True
 
-        preset_client.server.responses.append(b"250 Ehlo is OK")
-        await preset_client._ehlo_or_helo_if_needed()
+        await smtpd_client._ehlo_or_helo_if_needed()
 
-        assert preset_client.is_ehlo_or_helo_needed is False
+        assert smtpd_client.is_ehlo_or_helo_needed is False
 
 
 async def test_ehlo_or_helo_if_needed_helo_success(preset_client):
@@ -145,11 +150,15 @@ async def test_rset_ok(smtpd_client):
         assert response.message == "OK"
 
 
-async def test_rset_error(preset_client):
-    async with preset_client:
-        preset_client.server.responses.append(b"501 oh noes")
+async def test_rset_error(smtpd_client, smtpd_handler, monkeypatch):
+    async def rset_response(self, session, envelope):
+        return "501 oh noes"
+
+    monkeypatch.setattr(smtpd_handler, "handle_RSET", rset_response, raising=False)
+
+    async with smtpd_client:
         with pytest.raises(SMTPResponseException):
-            await preset_client.rset()
+            await smtpd_client.rset()
 
 
 async def test_noop_ok(smtpd_client):
@@ -160,11 +169,15 @@ async def test_noop_ok(smtpd_client):
         assert response.message == "OK"
 
 
-async def test_noop_error(preset_client):
-    async with preset_client:
-        preset_client.server.responses.append(b"501 oh noes")
+async def test_noop_error(smtpd_client, smtpd_handler, monkeypatch):
+    async def noop_response(self, session, envelope, arg):
+        return "501 oh noes"
+
+    monkeypatch.setattr(smtpd_handler, "handle_NOOP", noop_response, raising=False)
+
+    async with smtpd_client:
         with pytest.raises(SMTPResponseException):
-            await preset_client.noop()
+            await smtpd_client.noop()
 
 
 async def test_vrfy_ok(smtpd_client):
@@ -184,7 +197,7 @@ async def test_vrfy_with_blank_address(smtpd_client):
 
 async def test_expn_ok(preset_client):
     """
-    EXPN is not implemented by smtpd (or anyone, really), so just fake a
+    EXPN is not implemented by aiosmtpd (or anyone, really), so just fake a
     response.
     """
     async with preset_client:
@@ -200,11 +213,13 @@ async def test_expn_ok(preset_client):
         assert response.code == SMTPStatus.completed
 
 
-async def test_expn_error(preset_client):
-    async with preset_client:
-        preset_client.server.responses.append(b"501 oh noes")
+async def test_expn_error(smtpd_client):
+    """
+    Since EXPN isn't implemented by aiosmtpd, it raises an exception by default.
+    """
+    async with smtpd_client:
         with pytest.raises(SMTPResponseException):
-            await preset_client.expn("a-list")
+            await smtpd_client.expn("a-list")
 
 
 async def test_help_ok(smtpd_client):
