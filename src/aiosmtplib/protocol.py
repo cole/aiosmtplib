@@ -15,8 +15,8 @@ from .status import SMTPStatus
 __all__ = ("SMTPProtocol",)
 
 
-LINE_ENDINGS_REGEX = re.compile(b"(?:\r\n|\n|\r(?!\n))")
-PERIOD_REGEX = re.compile(b"(?m)^\.")
+LINE_ENDINGS_REGEX = re.compile(rb"(?:\r\n|\n|\r(?!\n))")
+PERIOD_REGEX = re.compile(rb"(?m)^\.")
 
 
 StartTLSResponse = Tuple[SMTPResponse, SSLProtocol]
