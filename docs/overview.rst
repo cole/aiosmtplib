@@ -86,6 +86,26 @@ to one of these, set ``use_tls`` to ``False`` when connecting, and call
     loop.run_until_complete(smtp.starttls())
 
 
+Connecting via async context manager
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Instances of the :class:`SMTP` class can also be used as an async context
+manager, which will automatically connect/disconnect on entry/exit.
+
+.. testcode::
+
+    async def send_message():
+        message = MIMEText("Sent via aiosmtplib")
+        message["From"] = "root@localhost"
+        message["To"] = "somebody@example.com"
+        message["Subject"] = "Hello World!"
+
+        async with aiosmtplib.SMTP(hostname="127.0.0.1", port=1025, loop=loop):
+            smtp.send_message(message)
+
+    loop.run_until_complete(send_message())
+
+
 Sending Messages
 ----------------
 
