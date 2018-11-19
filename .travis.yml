@@ -15,9 +15,15 @@ matrix:
   - python: 3.7
     env: EVENT_LOOP=asyncio
     dist: xenial
-    sudo: true
+  - python: 3.7-dev
+    env: EVENT_LOOP=asyncio
+    dist: xenial
+  - python: 3.8-dev
+    env: EVENT_LOOP=asyncio
+    dist: xenial
   - python: nightly
     env: EVENT_LOOP=asyncio
+    dist: xenial
   - python: pypy3
     env: EVENT_LOOP=asyncio
   - python: 3.5.2
@@ -53,13 +59,27 @@ matrix:
   - python: 3.7
     env: EVENT_LOOP=uvloop
     dist: xenial
-    sudo: true
+    addons:
+      apt:
+        packages:
+        - libuv-dev
+  - python: 3.7-dev
+    env: EVENT_LOOP=uvloop
+    dist: xenial
+    addons:
+      apt:
+        packages:
+        - libuv-dev
+  - python: 3.8-dev
+    env: EVENT_LOOP=uvloop
+    dist: xenial
     addons:
       apt:
         packages:
         - libuv-dev
   - python: nightly
     env: EVENT_LOOP=uvloop
+    dist: xenial
     addons:
       apt:
         packages:
@@ -68,6 +88,22 @@ matrix:
   allow_failures:
   - python: pypy3
     env: EVENT_LOOP=asyncio
+  - python: 3.5-dev
+    env: EVENT_LOOP=asyncio
+  - python: 3.5-dev
+    env: EVENT_LOOP=uvloop
+  - python: 3.6-dev
+    env: EVENT_LOOP=asyncio
+  - python: 3.6-dev
+    env: EVENT_LOOP=uvloop
+  - python: 3.7-dev
+    env: EVENT_LOOP=asyncio
+  - python: 3.7-dev
+    env: EVENT_LOOP=uvloop
+  - python: 3.8-dev
+    env: EVENT_LOOP=asyncio
+  - python: 3.8-dev
+    env: EVENT_LOOP=uvloop
   - python: nightly
     env: EVENT_LOOP=asyncio
   - python: nightly
