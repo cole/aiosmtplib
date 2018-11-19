@@ -203,7 +203,7 @@ class SMTP(SMTPAuth):
         rcpt_options: Iterable[str] = None,
         timeout: DefaultNumType = _default,
     ) -> SendmailResponseType:
-        """
+        r"""
         Sends an :class:`email.message.Message` object.
 
         Arguments are as for :meth:`.sendmail`, except that message is an
@@ -216,7 +216,7 @@ class SMTP(SMTPAuth):
         :meth:`.sendmail` is called to transmit the message.
 
         'Resent-Date' is a mandatory field if the Message is resent (RFC 2822
-        Section 3.6.6). In such a case, we use the 'Resent-*' fields.
+        Section 3.6.6). In such a case, we use the 'Resent-\*' fields.
         However, if there is more than one 'Resent-' block there's no way to
         unambiguously determine which one is the most recent in all cases,
         so rather than guess we raise a ``ValueError`` in that case.
