@@ -2,7 +2,7 @@ language: python
 dist: xenial
 cache: pip
 stages:
-  - check
+  - lint
   - docs
   - test
   - release
@@ -40,21 +40,23 @@ notifications:
   webhooks: 'https://coveralls.io/webhook'
 jobs:
   include:
-    - stage: check
+    - stage: lint
       script: 'tox -e check'
-      install: skip
+      install: 'pip install tox'
       after_success: skip
       python: '3.6'
       env: EVENT_LOOP=asyncio
     - stage: docs
       script: 'tox -e docs'
-      install: skip
+      install: 'pip install tox'
       after_success: skip
       python: '3.6'
       env: EVENT_LOOP=asyncio
     - stage: release
       script: skip
       install: skip
+      python: '3.6'
+      env: EVENT_LOOP=asyncio
       deploy:
         provider: pypi
         user: colemaclean
@@ -64,5 +66,3 @@ jobs:
         on:
           tags: true
           repo: cole/aiosmtplib
-          python: '3.6'
-          env: EVENT_LOOP=asyncio
