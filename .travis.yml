@@ -41,22 +41,42 @@ notifications:
 jobs:
   include:
     - stage: lint
-      name: 'Setup.py syntax check'
+      name: 'setup.py check'
       install: 'pip install tox'
       after_success: skip
       python: '3.6'
       env: EVENT_LOOP=asyncio
       script: 'tox -e check'
     - script: 'tox -e mypy'
-      name: 'Mypy type check'
+      name: 'mypy'
+      install: 'pip install tox'
+      after_success: skip
+      python: '3.6'
+      env: EVENT_LOOP=asyncio
     - script: 'tox -e flake8'
-      name: 'Flake8 linter'
+      name: 'flake8'
+      install: 'pip install tox'
+      after_success: skip
+      python: '3.6'
+      env: EVENT_LOOP=asyncio
     - script: 'tox -e black'
-      name: 'Black code style check'
+      name: 'black'
+      install: 'pip install tox'
+      after_success: skip
+      python: '3.6'
+      env: EVENT_LOOP=asyncio
     - script: 'tox -e bandit'
-      name: 'Bandit security analyzer'
+      name: 'bandit'
+      install: 'pip install tox'
+      after_success: skip
+      python: '3.6'
+      env: EVENT_LOOP=asyncio
     - script: 'tox -e docs'
-      name: 'Sphinx docs validation'
+      name: 'sphinx build & doctests'
+      install: 'pip install tox'
+      after_success: skip
+      python: '3.6'
+      env: EVENT_LOOP=asyncio
     - stage: release
       name: 'Release to PyPi'
       script: skip
