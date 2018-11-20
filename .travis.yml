@@ -1,118 +1,108 @@
 language: python
+dist: xenial
 cache: pip
+python:
+  - 3.5.2
+  - '3.5'
+  - '3.6'
+  - '3.7'
+  - pypy3
+  - 3.5-dev
+  - 3.6-dev
+  - 3.7-dev
+  - 3.8-dev
+env:
+  - EVENT_LOOP=asyncio
+  - EVENT_LOOP=uvloop
 matrix:
   include:
-  - python: 3.5.2
-    env: EVENT_LOOP=asyncio
-  - python: '3.5'
-    env: EVENT_LOOP=asyncio
-  - python: 3.5-dev
-    env: EVENT_LOOP=asyncio
-  - python: '3.6'
-    env: EVENT_LOOP=asyncio
-  - python: 3.6-dev
-    env: EVENT_LOOP=asyncio
-  - python: 3.7
-    env: EVENT_LOOP=asyncio
-    dist: xenial
-  - python: 3.7-dev
-    env: EVENT_LOOP=asyncio
-    dist: xenial
-  - python: 3.8-dev
-    env: EVENT_LOOP=asyncio
-    dist: xenial
-  - python: pypy3
-    env: EVENT_LOOP=asyncio
-  - python: 3.5.2
-    env: EVENT_LOOP=uvloop
-    addons:
-      apt:
-        packages:
-        - libuv-dev
-  - python: '3.5'
-    env: EVENT_LOOP=uvloop
-    addons:
-      apt:
-        packages:
-        - libuv-dev
-  - python: 3.5-dev
-    env: EVENT_LOOP=uvloop
-    addons:
-      apt:
-        packages:
-        - libuv-dev
-  - python: '3.6'
-    env: EVENT_LOOP=uvloop
-    addons:
-      apt:
-        packages:
-        - libuv-dev
-  - python: 3.6-dev
-    env: EVENT_LOOP=uvloop
-    addons:
-      apt:
-        packages:
-        - libuv-dev
-  - python: 3.7
-    env: EVENT_LOOP=uvloop
-    dist: xenial
-    addons:
-      apt:
-        packages:
-        - libuv-dev
-  - python: 3.7-dev
-    env: EVENT_LOOP=uvloop
-    dist: xenial
-    addons:
-      apt:
-        packages:
-        - libuv-dev
-  - python: 3.8-dev
-    env: EVENT_LOOP=uvloop
-    dist: xenial
-    addons:
-      apt:
-        packages:
-        - libuv-dev
+    -
+      python: 3.5.2
+      env: EVENT_LOOP=uvloop
+      addons:
+        apt:
+          packages:
+            - libuv-dev
+    -
+      python: '3.5'
+      env: EVENT_LOOP=uvloop
+      addons:
+        apt:
+          packages:
+            - libuv-dev
+    -
+      python: 3.5-dev
+      env: EVENT_LOOP=uvloop
+      addons:
+        apt:
+          packages:
+            - libuv-dev
+    -
+      python: '3.6'
+      env: EVENT_LOOP=uvloop
+      addons:
+        apt:
+          packages:
+            - libuv-dev
+    -
+      python: 3.6-dev
+      env: EVENT_LOOP=uvloop
+      addons:
+        apt:
+          packages:
+            - libuv-dev
+    -
+      python: '3.7'
+      env: EVENT_LOOP=uvloop
+      addons:
+        apt:
+          packages:
+            - libuv-dev
+    -
+      python: 3.7-dev
+      env: EVENT_LOOP=uvloop
+      addons:
+        apt:
+          packages:
+            - libuv-dev
+    -
+      python: 3.8-dev
+      env: EVENT_LOOP=uvloop
+      addons:
+        apt:
+          packages:
+            - libuv-dev
+  exclude:
+    -
+      python: pypy3
+      env: EVENT_LOOP=uvloop
   fast_finish: true
   allow_failures:
-  - python: pypy3
-    env: EVENT_LOOP=asyncio
-  - python: 3.5-dev
-    env: EVENT_LOOP=asyncio
-  - python: 3.5-dev
-    env: EVENT_LOOP=uvloop
-  - python: 3.6-dev
-    env: EVENT_LOOP=asyncio
-  - python: 3.6-dev
-    env: EVENT_LOOP=uvloop
-  - python: 3.7-dev
-    env: EVENT_LOOP=asyncio
-  - python: 3.7-dev
-    env: EVENT_LOOP=uvloop
-  - python: 3.8-dev
-    env: EVENT_LOOP=asyncio
-  - python: 3.8-dev
-    env: EVENT_LOOP=uvloop
-  - python: nightly
-    env: EVENT_LOOP=asyncio
-  - python: nightly
-    env: EVENT_LOOP=uvloop
+    -
+      python: pypy3
+    -
+      python: 3.5-dev
+    -
+      python: 3.6-dev
+    -
+      python: 3.7-dev
+    -
+      python: 3.8-dev
 install:
-- pip install tox-travis pytest-travis-fold coveralls codecov
+  - 'pip install tox-travis pytest-travis-fold coveralls codecov'
 script: tox
 deploy:
   provider: pypi
   user: colemaclean
   password:
     secure: bJ8T2v/YZlQU7iLmoJmrWZ0H51GtbhOw6AWtVErMQ2HF4HDRIcGhQXmxKmxG7Hs3mUbe7l7NWtJCtZzHKC1I5N0UZYlioFpC6yFYkqQDNoau9D203C7zdlXA47OezvzDmB/Kt1LQ3D/xd7Ji9hQHKwwVMC76IAhwZxl8Y5UBX6M=
-  distributions: sdist bdist_wheel
+  distributions: 'sdist bdist_wheel'
   on:
     tags: true
     repo: cole/aiosmtplib
     python: '3.6'
 after_success:
-- COVERALLS_PARALLEL=true coveralls
-- codecov
+  - 'COVERALLS_PARALLEL=true coveralls'
+  - codecov
 notifications:
-  webhooks: https://coveralls.io/webhook
+  webhooks: 'https://coveralls.io/webhook'
