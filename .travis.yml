@@ -21,9 +21,6 @@ matrix:
   - python: 3.8-dev
     env: EVENT_LOOP=asyncio
     dist: xenial
-  - python: nightly
-    env: EVENT_LOOP=asyncio
-    dist: xenial
   - python: pypy3
     env: EVENT_LOOP=asyncio
   - python: 3.5.2
@@ -71,13 +68,6 @@ matrix:
         packages:
         - libuv-dev
   - python: 3.8-dev
-    env: EVENT_LOOP=uvloop
-    dist: xenial
-    addons:
-      apt:
-        packages:
-        - libuv-dev
-  - python: nightly
     env: EVENT_LOOP=uvloop
     dist: xenial
     addons:
