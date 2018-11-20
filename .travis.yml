@@ -3,9 +3,9 @@ dist: xenial
 cache: pip
 stages:
   - lint
-  - docs
   - test
-  - release
+  - name: release
+    if: tag IS present
 python:
   - 3.5.2
   - '3.5'
@@ -41,18 +41,24 @@ notifications:
 jobs:
   include:
     - stage: lint
+      name: 'Setup.py syntax check'
+      install: 'pip install tox'
+      after_success: skip
+      python: '3.6'
+      env: EVENT_LOOP=asyncio
       script: 'tox -e check'
-      install: 'pip install tox'
-      after_success: skip
-      python: '3.6'
-      env: EVENT_LOOP=asyncio
-    - stage: docs
-      script: 'tox -e docs'
-      install: 'pip install tox'
-      after_success: skip
-      python: '3.6'
-      env: EVENT_LOOP=asyncio
+    - script: 'tox -e mypy'
+      name: 'Mypy type check'
+    - script: 'tox -e flake8'
+      name: 'Flake8 linter'
+    - script: 'tox -e black'
+      name: 'Black code style check'
+    - script: 'tox -e bandit'
+      name: 'Bandit security analyzer'
+    - script: 'tox -e docs'
+      name: 'Sphinx docs validation'
     - stage: release
+      name: 'Release to PyPi'
       script: skip
       install: skip
       python: '3.6'
