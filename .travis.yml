@@ -11,7 +11,7 @@ python:
   - '3.5'
   - '3.6'
   - '3.7'
-  - pypy3
+  - pypy3.5
   - 3.5-dev
   - 3.6-dev
   - 3.7-dev
@@ -21,11 +21,11 @@ env:
   - EVENT_LOOP=uvloop
 matrix:
   exclude:
-    - python: pypy3
+    - python: pypy3.5
       env: EVENT_LOOP=uvloop
   fast_finish: true
   allow_failures:
-    - python: pypy3
+    - python: pypy3.5
     - python: 3.5-dev
     - python: 3.6-dev
     - python: 3.7-dev
