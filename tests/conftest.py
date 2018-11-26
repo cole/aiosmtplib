@@ -2,6 +2,8 @@
 Pytest fixtures and config.
 """
 import asyncio
+import email.mime.multipart
+import email.mime.text
 import sys
 
 import pytest
@@ -26,7 +28,7 @@ def pytest_addoption(parser):
     )
 
 
-@pytest.fixture()
+@pytest.fixture(scope="function")
 def event_loop(request):
     loop_type = request.config.getoption("--event-loop")
     if loop_type == "uvloop" and not HAS_UVLOOP:
@@ -67,20 +69,31 @@ def event_loop(request):
     loop.close()
 
 
-@pytest.fixture(scope="function")
-def messages_recieved(request):
-    return []
-
-
-@pytest.fixture()
+@pytest.fixture(scope="module")
 def hostname(request):
     return "localhost"
 
 
-@pytest.fixture()
+@pytest.fixture(scope="function")
 def port(request, unused_tcp_port):
     """Alias for ununsed_tcp_port."""
     return unused_tcp_port
+
+
+@pytest.fixture(scope="module")
+def message(request):
+    message = email.mime.multipart.MIMEMultipart()
+    message["To"] = "recipient@example.com"
+    message["From"] = "sender@example.com"
+    message["Subject"] = "A message"
+    message.attach(email.mime.text.MIMEText("Hello World"))
+
+    return message
+
+
+@pytest.fixture(scope="function")
+def messages_recieved(request):
+    return []
 
 
 @pytest.fixture(scope="function")
@@ -88,7 +101,7 @@ def smtpd_handler(request, messages_recieved):
     return TestHandler(messages_recieved)
 
 
-@pytest.fixture()
+@pytest.fixture(scope="function")
 def smtpd_server(request, event_loop, hostname, port, smtpd_handler):
     def factory():
         return TestSMTPD(smtpd_handler, enable_SMTPUTF8=False)
@@ -106,7 +119,7 @@ def smtpd_server(request, event_loop, hostname, port, smtpd_handler):
     return server
 
 
-@pytest.fixture()
+@pytest.fixture(scope="function")
 def preset_server(request, event_loop, unused_tcp_port):
     server = SMTPPresetServer("localhost", unused_tcp_port, loop=event_loop)
 
@@ -120,14 +133,14 @@ def preset_server(request, event_loop, unused_tcp_port):
     return server
 
 
-@pytest.fixture()
+@pytest.fixture(scope="function")
 def smtpd_client(request, smtpd_server, event_loop, hostname, port):
     client = SMTP(hostname=hostname, port=port, loop=event_loop, timeout=1)
 
     return client
 
 
-@pytest.fixture()
+@pytest.fixture(scope="function")
 def preset_client(request, preset_server, event_loop, hostname, port):
     client = SMTP(hostname=hostname, port=port, loop=event_loop, timeout=1)
     client.server = preset_server

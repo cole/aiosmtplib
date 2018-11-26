@@ -9,48 +9,32 @@ import pytest
 from aiosmtplib import SMTP
 
 
+RECIPIENTS = [
+    "recipient1@example.com",
+    "recipient2@example.com",
+    "recipient3@example.com",
+]
+
 pytestmark = pytest.mark.asyncio(forbid_global_loop=True)
 
 
-async def test_sendmail_multiple_times_in_sequence(smtpd_client):
+async def test_sendmail_multiple_times_in_sequence(smtpd_client, message):
     async with smtpd_client:
-        sender = "test@example.com"
-        recipients = [
-            "recipient1@example.com",
-            "recipient2@example.com",
-            "recipient3@example.com",
-        ]
-        mail_text = """
-        Hello world!
-
-        -a tester
-        """
-        for recipient in recipients:
-            errors, message = await smtpd_client.sendmail(
-                sender, [recipient], mail_text
+        for recipient in RECIPIENTS:
+            errors, response = await smtpd_client.sendmail(
+                message["From"], [recipient], str(message)
             )
 
             assert not errors
             assert isinstance(errors, dict)
-            assert message != ""
+            assert response != ""
 
 
-async def test_sendmail_multiple_times_with_gather(smtpd_client, event_loop):
+async def test_sendmail_multiple_times_with_gather(smtpd_client, event_loop, message):
     async with smtpd_client:
-        sender = "test@example.com"
-        recipients = [
-            "recipient1@example.com",
-            "recipient2@example.com",
-            "recipient3@example.com",
-        ]
-        mail_text = """
-        Hello world!
-
-        -a tester
-        """
         tasks = [
-            smtpd_client.sendmail(sender, [recipient], mail_text)
-            for recipient in recipients
+            smtpd_client.sendmail(message["From"], [recipient], str(message))
+            for recipient in RECIPIENTS
         ]
         results = await asyncio.gather(*tasks, loop=event_loop)
         for errors, message in results:
@@ -60,20 +44,8 @@ async def test_sendmail_multiple_times_with_gather(smtpd_client, event_loop):
 
 
 async def test_connect_and_sendmail_multiple_times_with_gather(
-    smtpd_server, event_loop, hostname, port
+    smtpd_server, event_loop, hostname, port, message
 ):
-    sender = "test@example.com"
-    recipients = [
-        "recipient1@example.com",
-        "recipient2@example.com",
-        "recipient3@example.com",
-    ]
-    mail_text = """
-    Hello world!
-
-    -a tester
-    """
-
     client = SMTP(hostname=hostname, port=port, loop=event_loop)
 
     async def connect_and_send(*args, **kwargs):
@@ -83,7 +55,8 @@ async def test_connect_and_sendmail_multiple_times_with_gather(
         return response
 
     tasks = [
-        connect_and_send(sender, [recipient], mail_text) for recipient in recipients
+        connect_and_send(message["From"], [recipient], str(message))
+        for recipient in RECIPIENTS
     ]
     results = await asyncio.gather(*tasks, loop=event_loop)
     for errors, message in results:
@@ -92,19 +65,7 @@ async def test_connect_and_sendmail_multiple_times_with_gather(
         assert message != ""
 
 
-async def test_multiple_clients_with_gather(smtpd_server, event_loop, hostname, port):
-    sender = "test@example.com"
-    recipients = [
-        "recipient1@example.com",
-        "recipient2@example.com",
-        "recipient3@example.com",
-    ]
-    mail_text = """
-    Hello world!
-
-    -a tester
-    """
-
+async def test_multiple_clients_with_gather(smtpd_server, event_loop, hostname, port, message):
     async def connect_and_send(*args, **kwargs):
         client = SMTP(hostname=hostname, port=port, loop=event_loop)
         async with client:
@@ -113,7 +74,7 @@ async def test_multiple_clients_with_gather(smtpd_server, event_loop, hostname, 
         return response
 
     tasks = [
-        connect_and_send(sender, [recipient], mail_text) for recipient in recipients
+        connect_and_send(message["From"], [recipient], str(message)) for recipient in RECIPIENTS
     ]
     results = await asyncio.gather(*tasks, loop=event_loop)
     for errors, message in results:
@@ -123,20 +84,8 @@ async def test_multiple_clients_with_gather(smtpd_server, event_loop, hostname, 
 
 
 async def test_multiple_actions_in_context_manager_with_gather(
-    smtpd_server, event_loop, hostname, port
+    smtpd_server, event_loop, hostname, port, message
 ):
-    sender = "test@example.com"
-    recipients = [
-        "recipient1@example.com",
-        "recipient2@example.com",
-        "recipient3@example.com",
-    ]
-    mail_text = """
-    Hello world!
-
-    -a tester
-    """
-
     client = SMTP(hostname=hostname, port=port, loop=event_loop)
 
     async def connect_and_run_commands(*args, **kwargs):
@@ -149,8 +98,8 @@ async def test_multiple_actions_in_context_manager_with_gather(
         return response
 
     tasks = [
-        connect_and_run_commands(sender, [recipient], mail_text)
-        for recipient in recipients
+        connect_and_run_commands(message["From"], [recipient], str(message))
+        for recipient in RECIPIENTS
     ]
     results = await asyncio.gather(*tasks, loop=event_loop)
     for errors, message in results:
