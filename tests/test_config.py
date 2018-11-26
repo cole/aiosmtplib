@@ -22,37 +22,30 @@ async def test_tls_context_and_cert_to_connect_raises():
 
 
 @pytest.mark.asyncio(forbid_global_loop=True)
-async def test_tls_context_and_cert_to_starttls_raises(preset_server, event_loop):
-    client = SMTP(
-        hostname=preset_server.hostname, port=preset_server.port, loop=event_loop
-    )
-
-    async with client:
+async def test_tls_context_and_cert_to_starttls_raises(smtpd_client, event_loop):
+    async with smtpd_client:
         with pytest.raises(ValueError):
-            await client.starttls(client_cert="test.cert", tls_context=True)
+            await smtpd_client.starttls(client_cert="test.cert", tls_context=True)
 
 
 @pytest.mark.asyncio(forbid_global_loop=False)
-async def test_config_via_connect_kwargs(preset_server, event_loop):
+async def test_config_via_connect_kwargs(smtpd_server, event_loop, hostname, port):
     client = SMTP(
-        hostname="",
-        use_tls=True,
-        port=preset_server.port + 1,
-        source_address="example.com",
+        hostname="", use_tls=True, port=port + 1, source_address="example.com"
     )
 
     source_address = socket.getfqdn()
     await client.connect(
-        hostname=preset_server.hostname,
-        port=preset_server.port,
+        hostname=hostname,
+        port=port,
         loop=event_loop,
         use_tls=False,
         source_address=source_address,
     )
     assert client.is_connected
 
-    assert client.hostname == preset_server.hostname
-    assert client.port == preset_server.port
+    assert client.hostname == hostname
+    assert client.port == port
     assert client.loop == event_loop
     assert client.use_tls is False
     assert client.source_address == source_address
@@ -65,7 +58,7 @@ async def test_default_port_on_connect(event_loop):
     client = SMTP(loop=event_loop)
 
     try:
-        await client.connect(use_tls=False, timeout=0.01)
+        await client.connect(use_tls=False, timeout=0.00001)
     except Exception:
         pass  # Ignore connection failure
 
@@ -79,7 +72,7 @@ async def test_default_tls_port_on_connect(event_loop):
     client = SMTP(loop=event_loop)
 
     try:
-        await client.connect(use_tls=True, timeout=0.01)
+        await client.connect(use_tls=True, timeout=0.000001)
     except Exception:
         pass  # Ignore connection failure
 
