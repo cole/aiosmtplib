@@ -125,16 +125,14 @@ async def test_many_commands_with_gather(smtpd_client, event_loop):
             assert 200 <= result.code < 300
 
 
-async def test_close_works_on_stopped_loop(preset_server, event_loop):
-    preset_client = SMTP(
-        hostname=preset_server.hostname, port=preset_server.port, loop=event_loop
-    )
+async def test_close_works_on_stopped_loop(smtpd_server, event_loop, hostname, port):
+    client = SMTP(hostname=hostname, port=port, loop=event_loop)
 
-    await preset_client.connect()
-    assert preset_client.is_connected
-    assert preset_client.transport is not None
+    await client.connect()
+    assert client.is_connected
+    assert client.transport is not None
 
     event_loop.stop()
 
-    preset_client.close()
-    assert not preset_client.is_connected
+    client.close()
+    assert not client.is_connected
