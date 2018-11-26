@@ -17,30 +17,20 @@ async def test_command_line_send(event_loop, smtpd_server, hostname, port):
         stdout=asyncio.subprocess.PIPE,
     )
 
-    output = await proc.stdout.readuntil(separator=b":")
-    assert b"hostname" in output
-    proc.stdin.write(bytes(hostname, "ascii") + b"\n")
-    await proc.stdin.drain()
+    expected = (
+        (b"hostname", bytes(hostname, "ascii")),
+        (b"port", bytes(str(port), "ascii")),
+        (b"From", b"sender@example.com"),
+        (b"To", b"recipient@example.com"),
+        (b"message", b"Subject: Hello World\n\nHi there."),
+    )
 
-    output = await proc.stdout.readuntil(separator=b":")
-    assert b"port" in output
-    port = bytes(str(port), "ascii") + b"\n"
-    proc.stdin.write(port)
-    await proc.stdin.drain()
+    for expected_output, write_bytes in expected:
+        output = await proc.stdout.readuntil(separator=b":")
+        assert expected_output in output
+        proc.stdin.write(write_bytes + b"\n")
+        await proc.stdin.drain()
 
-    output = await proc.stdout.readuntil(separator=b":")
-    assert b"From" in output
-    proc.stdin.write(b"sender@example.com\n")
-    await proc.stdin.drain()
-
-    output = await proc.stdout.readuntil(separator=b":")
-    assert b"To" in output
-    proc.stdin.write(b"recipient@example.com\n")
-    await proc.stdin.drain()
-
-    output = await proc.stdout.readuntil(separator=b":")
-    assert b"message" in output
-    proc.stdin.write(b"Subject: Hello World\n\nHi there.\n")
     proc.stdin.write_eof()
     await proc.stdin.drain()
 
