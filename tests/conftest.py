@@ -92,13 +92,13 @@ def message(request):
 
 
 @pytest.fixture(scope="function")
-def messages_recieved(request):
+def recieved_messages(request):
     return []
 
 
 @pytest.fixture(scope="function")
-def smtpd_handler(request, messages_recieved):
-    return TestHandler(messages_recieved)
+def smtpd_handler(request, recieved_messages):
+    return TestHandler(recieved_messages)
 
 
 @pytest.fixture(scope="function")
