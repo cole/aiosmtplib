@@ -93,9 +93,7 @@ async def test_sendmail_error_silent_rset_handles_disconnect(preset_client, mess
 
         preset_client.server.goodbye = b"501 oh noes"
         with pytest.raises(SMTPResponseException):
-            await preset_client.sendmail(
-                message["From"], [message["To"]], str(message)
-            )
+            await preset_client.sendmail(message["From"], [message["To"]], str(message))
 
 
 async def test_rset_after_sendmail_error_response_to_mail(preset_client):
@@ -159,9 +157,7 @@ async def test_rset_after_sendmail_error_response_to_data(preset_client, message
         preset_client.server.responses.append(b"250 ok")
 
         try:
-            await preset_client.sendmail(
-                message["From"], [message["To"]], str(message)
-            )
+            await preset_client.sendmail(message["From"], [message["To"]], str(message))
         except SMTPResponseException as err:
             assert err.code == 501
             assert preset_client.server.requests[-1][:4] == b"RSET"
@@ -176,14 +172,14 @@ async def test_send_message(smtpd_client, message):
     assert response != ""
 
 
-async def test_send_message_with_sender_and_recipient_args(smtpd_client, message, recieved_messages):
+async def test_send_message_with_sender_and_recipient_args(
+    smtpd_client, message, recieved_messages
+):
     sender = "sender2@example.com"
     recipients = ["recipient1@example.com", "recipient2@example.com"]
     async with smtpd_client:
         errors, response = await smtpd_client.send_message(
-            message,
-            sender=sender,
-            recipients=recipients,
+            message, sender=sender, recipients=recipients
         )
 
     assert not errors
