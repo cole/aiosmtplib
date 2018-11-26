@@ -16,18 +16,18 @@ from aiosmtplib import (
 pytestmark = pytest.mark.asyncio(forbid_global_loop=True)
 
 
-async def test_plain_smtp_connect(preset_client):
+async def test_plain_smtp_connect(smtpd_client):
     """
     Use an explicit connect/quit here, as other tests use the context manager.
     """
-    await preset_client.connect()
-    assert preset_client.is_connected
+    await smtpd_client.connect()
+    assert smtpd_client.is_connected
 
-    await preset_client.quit()
-    assert not preset_client.is_connected
+    await smtpd_client.quit()
+    assert not smtpd_client.is_connected
 
 
-async def test_quit_then_connect_ok_with_smtpd(smtpd_client):
+async def test_quit_then_connect_ok(smtpd_client):
     async with smtpd_client:
         response = await smtpd_client.quit()
         assert response.code == SMTPStatus.closing
@@ -41,35 +41,6 @@ async def test_quit_then_connect_ok_with_smtpd(smtpd_client):
         # after reconnect, it should work again
         response = await smtpd_client.noop()
         assert response.code == SMTPStatus.completed
-
-
-async def test_quit_then_connect_ok_with_preset_server(preset_server, event_loop):
-    preset_client = SMTP(
-        hostname=preset_server.hostname,
-        port=preset_server.port,
-        loop=event_loop,
-        timeout=1.0,
-    )
-
-    response = await preset_client.connect()
-    assert response.code == 220
-
-    response = await preset_client.quit()
-    assert response.code == 221
-
-    # Next command should fail
-    with pytest.raises(SMTPServerDisconnected):
-        await preset_client.noop()
-
-    response = await preset_client.connect()
-    assert response.code == 220
-
-    # after reconnect, it should work again
-    preset_server.responses.append(b"250 noop")
-    response = await preset_client.noop()
-    assert response.code == 250
-
-    await preset_client.quit()
 
 
 async def test_bad_connect_response_raises_error(preset_server, event_loop):
