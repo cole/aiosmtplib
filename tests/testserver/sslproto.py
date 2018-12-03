@@ -4,7 +4,7 @@ SSLProtocol from Python 3.6. Makes testing on 3.5.2 a bit simpler.
 import collections
 import ssl
 import warnings
-from asyncio import base_events, protocols, transports
+from asyncio import base_events, protocols, transports  # type: ignore
 from asyncio.log import logger
 
 
@@ -276,7 +276,9 @@ class _SSLPipe(object):
         return (ssldata, offset)
 
 
-class _SSLProtocolTransport(transports._FlowControlMixin, transports.Transport):
+class _SSLProtocolTransport(
+    transports._FlowControlMixin, transports.Transport  # type: ignore
+):
     def __init__(self, loop, ssl_protocol):
         self._loop = loop
         # SSLProtocol instance

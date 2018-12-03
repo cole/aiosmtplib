@@ -2,8 +2,6 @@
 sendmail and send_message method testing.
 """
 import copy
-import email.mime.multipart
-import email.mime.text
 
 import pytest
 
@@ -15,61 +13,65 @@ pytestmark = pytest.mark.asyncio(forbid_global_loop=True)
 
 async def test_sendmail_simple_success(smtpd_client, message):
     async with smtpd_client:
-        errors, message = await smtpd_client.sendmail(
+        errors, response = await smtpd_client.sendmail(
             message["From"], [message["To"]], str(message)
         )
 
         assert not errors
         assert isinstance(errors, dict)
-        assert message != ""
+        assert response != ""
 
 
 async def test_sendmail_binary_content(smtpd_client, message):
     async with smtpd_client:
-        errors, message = await smtpd_client.sendmail(
+        errors, response = await smtpd_client.sendmail(
             message["From"], [message["To"]], bytes(str(message), "ascii")
         )
 
         assert not errors
         assert isinstance(errors, dict)
-        assert message != ""
+        assert response != ""
 
 
 async def test_sendmail_with_recipients_string(smtpd_client, message):
     async with smtpd_client:
-        errors, message = await smtpd_client.sendmail(
+        errors, response = await smtpd_client.sendmail(
             message["From"], message["To"], str(message)
         )
 
         assert not errors
-        assert message != ""
+        assert response != ""
 
 
-async def test_sendmail_with_mail_option(preset_client, message):
-    async with preset_client:
-        preset_client.server.responses.append(b"250 Hello there")
-        preset_client.server.responses.append(b"250 ok")
-        preset_client.server.responses.append(b"250 ok")
-        preset_client.server.responses.append(b"354 go ahead")
-        preset_client.server.responses.append(b"250 ok")
-
-        errors, message = await preset_client.sendmail(
-            message["From"], [message["To"]], str(message), mail_options=["SMTPUTF8"]
+async def test_sendmail_with_mail_option(smtpd_client, message):
+    async with smtpd_client:
+        errors, response = await smtpd_client.sendmail(
+            message["From"],
+            [message["To"]],
+            str(message),
+            mail_options=["BODY=8BITMIME"],
         )
 
         assert not errors
-        assert message != ""
+        assert response != ""
 
 
-async def test_sendmail_with_rcpt_option(preset_client, message):
-    async with preset_client:
-        preset_client.server.responses.append(b"250 Hello there")
-        preset_client.server.responses.append(b"250 ok")
-        preset_client.server.responses.append(b"250 ok")
-        preset_client.server.responses.append(b"354 go ahead")
-        preset_client.server.responses.append(b"250 ok")
+async def test_sendmail_with_invalid_mail_option(smtpd_client, message):
+    async with smtpd_client:
+        with pytest.raises(SMTPResponseException) as err:
+            await smtpd_client.sendmail(
+                message["From"],
+                [message["To"]],
+                str(message),
+                mail_options=["BADDATA=0x00000000"],
+            )
 
-        errors, message = await preset_client.sendmail(
+            assert err.code == SMTPStatus.syntax_error
+
+
+async def test_sendmail_with_rcpt_option(smtpd_client, message):
+    async with smtpd_client:
+        errors, response = await smtpd_client.sendmail(
             message["From"],
             [message["To"]],
             str(message),
@@ -77,7 +79,7 @@ async def test_sendmail_with_rcpt_option(preset_client, message):
         )
 
         assert not errors
-        assert message != ""
+        assert response != ""
 
 
 async def test_sendmail_simple_failure(smtpd_client):
@@ -87,80 +89,78 @@ async def test_sendmail_simple_failure(smtpd_client):
             await smtpd_client.sendmail("test@example.com", ["@@"], "blah")
 
 
-async def test_sendmail_error_silent_rset_handles_disconnect(preset_client, message):
-    async with preset_client:
-        preset_client.server.responses.append(b"250 Hello there")
+async def test_sendmail_error_silent_rset_handles_disconnect(
+    smtpd_client, message, smtpd_handler, smtpd_server, monkeypatch
+):
+    async def data_response(*args):
+        smtpd_server.close()
+        await smtpd_server.wait_closed()
 
-        preset_client.server.goodbye = b"501 oh noes"
+        return "501 oh noes"
+
+    monkeypatch.setattr(smtpd_handler, "handle_DATA", data_response, raising=False)
+
+    async with smtpd_client:
         with pytest.raises(SMTPResponseException):
-            await preset_client.sendmail(message["From"], [message["To"]], str(message))
+            await smtpd_client.sendmail(message["From"], [message["To"]], str(message))
 
 
-async def test_rset_after_sendmail_error_response_to_mail(preset_client):
+async def test_rset_after_sendmail_error_response_to_mail(smtpd_client, smtpd_commands):
     """
     If an error response is given to the MAIL command in the sendmail method,
     test that we reset the server session.
     """
-    async with preset_client:
-        preset_client.server.responses.append(b"250 Hello there")
-        response = await preset_client.ehlo()
+    async with smtpd_client:
+        response = await smtpd_client.ehlo()
         assert response.code == SMTPStatus.completed
 
-        preset_client.server.responses.append(b"501 bad address")
-        preset_client.server.responses.append(b"250 ok")
-
         try:
-            await preset_client.sendmail(
-                ">foobar<", ["test@example.com"], "Hello World"
-            )
+            await smtpd_client.sendmail(">foobar<", ["test@example.com"], "Hello World")
         except SMTPResponseException as err:
-            assert err.code == 501
-            assert preset_client.server.requests[-1][:4] == b"RSET"
+            assert err.code == SMTPStatus.unrecognized_parameters
+            assert smtpd_commands[-1][0] == "RSET"
 
 
-async def test_rset_after_sendmail_error_response_to_rcpt(preset_client):
+async def test_rset_after_sendmail_error_response_to_rcpt(smtpd_client, smtpd_commands):
     """
     If an error response is given to the RCPT command in the sendmail method,
     test that we reset the server session.
     """
-    async with preset_client:
-        preset_client.server.responses.append(b"250 Hello there")
-        response = await preset_client.ehlo()
+    async with smtpd_client:
+        response = await smtpd_client.ehlo()
         assert response.code == SMTPStatus.completed
 
-        preset_client.server.responses.append(b"250 ok")
-        preset_client.server.responses.append(b"501 bad address")
-        preset_client.server.responses.append(b"250 ok")
-
         try:
-            await preset_client.sendmail(
+            await smtpd_client.sendmail(
                 "test@example.com", [">not an addr<"], "Hello World"
             )
         except SMTPRecipientsRefused as err:
-            assert err.recipients[0].code == 501
-            assert preset_client.server.requests[-1][:4] == b"RSET"
+            assert err.recipients[0].code == SMTPStatus.unrecognized_parameters
+            assert smtpd_commands[-1][0] == "RSET"
 
 
-async def test_rset_after_sendmail_error_response_to_data(preset_client, message):
+async def test_rset_after_sendmail_error_response_to_data(
+    smtpd_client, message, smtpd_commands, smtpd_handler, monkeypatch
+):
     """
     If an error response is given to the DATA command in the sendmail method,
     test that we reset the server session.
     """
-    async with preset_client:
-        preset_client.server.responses.append(b"250 Hello there")
-        response = await preset_client.ehlo()
+
+    async def data_response(*args):
+        return "501 oh noes"
+
+    monkeypatch.setattr(smtpd_handler, "handle_DATA", data_response, raising=False)
+
+    async with smtpd_client:
+        response = await smtpd_client.ehlo()
         assert response.code == SMTPStatus.completed
 
-        preset_client.server.responses.append(b"250 ok")
-        preset_client.server.responses.append(b"250 ok")
-        preset_client.server.responses.append(b"501 bad data")
-        preset_client.server.responses.append(b"250 ok")
-
         try:
-            await preset_client.sendmail(message["From"], [message["To"]], str(message))
+            await smtpd_client.sendmail(message["From"], [message["To"]], str(message))
         except SMTPResponseException as err:
-            assert err.code == 501
-            assert preset_client.server.requests[-1][:4] == b"RSET"
+            assert err.code == SMTPStatus.unrecognized_parameters
+            assert smtpd_commands[-1][0] == "RSET"
 
 
 async def test_send_message(smtpd_client, message):
@@ -199,14 +199,14 @@ async def test_send_multiple_messages_in_sequence(smtpd_client, message):
     message2["To"] = "recipient2@example.com"
 
     async with smtpd_client:
-        errors1, message1 = await smtpd_client.send_message(message1)
+        errors1, response1 = await smtpd_client.send_message(message1)
 
         assert not errors1
         assert isinstance(errors1, dict)
-        assert message1 != ""
+        assert response1 != ""
 
-        errors2, message2 = await smtpd_client.send_message(message2)
+        errors2, response2 = await smtpd_client.send_message(message2)
 
         assert not errors2
         assert isinstance(errors2, dict)
-        assert message2 != ""
+        assert response2 != ""

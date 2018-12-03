@@ -9,7 +9,7 @@ import sys
 import pytest
 
 from aiosmtplib import SMTP
-from testserver import SMTPPresetServer, TestHandler, TestSMTPD
+from testserver import SMTPPresetServer, RecordingHandler, TestSMTPD
 
 
 PY36_OR_LATER = sys.version_info[:2] >= (3, 6)
@@ -97,8 +97,18 @@ def recieved_messages(request):
 
 
 @pytest.fixture(scope="function")
-def smtpd_handler(request, recieved_messages):
-    return TestHandler(recieved_messages)
+def smtpd_commands(request):
+    return []
+
+
+@pytest.fixture(scope="function")
+def smtpd_responses(request):
+    return []
+
+
+@pytest.fixture(scope="function")
+def smtpd_handler(request, recieved_messages, smtpd_commands, smtpd_responses):
+    return RecordingHandler(recieved_messages, smtpd_commands, smtpd_responses)
 
 
 @pytest.fixture(scope="function")
