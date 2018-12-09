@@ -111,13 +111,18 @@ def smtpd_handler(request, recieved_messages, smtpd_commands, smtpd_responses):
     return RecordingHandler(recieved_messages, smtpd_commands, smtpd_responses)
 
 
+@pytest.fixture(scope="module")
+def aiosmtpd_class(request):
+    return TestSMTPD
+
+
 @pytest.fixture(scope="function")
-def smtpd_server(request, event_loop, hostname, port, smtpd_handler):
-    def factory():
-        return TestSMTPD(smtpd_handler, enable_SMTPUTF8=False)
+def smtpd_server(request, event_loop, hostname, port, aiosmtpd_class, smtpd_handler):
+    def aiosmtpd_factory():
+        return aiosmtpd_class(smtpd_handler, enable_SMTPUTF8=False)
 
     server = event_loop.run_until_complete(
-        event_loop.create_server(factory, host=hostname, port=port)
+        event_loop.create_server(aiosmtpd_factory, host=hostname, port=port)
     )
 
     def close_server():
