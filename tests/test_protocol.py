@@ -19,9 +19,9 @@ def tls_context(request):
     return ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
 
 
-@pytest.fixture()
-def raw_preset_server(request, event_loop, unused_tcp_port):
-    server = PresetServer("localhost", unused_tcp_port, loop=event_loop)
+@pytest.fixture(scope="function")
+def raw_preset_server(request, event_loop, hostname, port):
+    server = PresetServer(hostname, port, loop=event_loop)
 
     event_loop.run_until_complete(server.start())
 
@@ -33,12 +33,12 @@ def raw_preset_server(request, event_loop, unused_tcp_port):
     return server
 
 
-@pytest.fixture()
-async def smtp_protocol(request, raw_preset_server, event_loop):
+@pytest.fixture(scope="function")
+async def smtp_protocol(request, raw_preset_server, event_loop, hostname, port):
     reader = asyncio.StreamReader(limit=128, loop=event_loop)
     protocol = SMTPProtocol(reader, loop=event_loop)
     connect_future = event_loop.create_connection(
-        lambda: protocol, host=raw_preset_server.hostname, port=raw_preset_server.port
+        lambda: protocol, host=hostname, port=port
     )
 
     _, protocol = await asyncio.wait_for(connect_future, timeout=1, loop=event_loop)

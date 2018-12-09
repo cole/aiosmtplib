@@ -43,13 +43,10 @@ async def test_quit_then_connect_ok(smtpd_client):
         assert response.code == SMTPStatus.completed
 
 
-async def test_bad_connect_response_raises_error(preset_server, event_loop):
-    preset_client = SMTP(
-        hostname=preset_server.hostname,
-        port=preset_server.port,
-        loop=event_loop,
-        timeout=1.0,
-    )
+async def test_bad_connect_response_raises_error(
+    preset_server, event_loop, hostname, port
+):
+    preset_client = SMTP(hostname=hostname, port=port, loop=event_loop, timeout=1.0)
 
     preset_server.greeting = b"421 Please come back in 204232430 seconds.\n"
     with pytest.raises(SMTPConnectError):
@@ -58,13 +55,8 @@ async def test_bad_connect_response_raises_error(preset_server, event_loop):
     preset_client.close()
 
 
-async def test_421_closes_connection(preset_server, event_loop):
-    preset_client = SMTP(
-        hostname=preset_server.hostname,
-        port=preset_server.port,
-        loop=event_loop,
-        timeout=1.0,
-    )
+async def test_421_closes_connection(preset_server, event_loop, hostname, port):
+    preset_client = SMTP(hostname=hostname, port=port, loop=event_loop, timeout=1.0)
 
     await preset_client.connect()
     preset_server.responses.append(b"421 Please come back in 204232430 seconds.\n")
@@ -95,10 +87,8 @@ async def test_timeout_error_with_no_server(event_loop):
         await client.connect(timeout=0.000000001)
 
 
-async def test_timeout_on_initial_read(preset_server, event_loop):
-    client = SMTP(
-        hostname=preset_server.hostname, port=preset_server.port, loop=event_loop
-    )
+async def test_timeout_on_initial_read(preset_server, event_loop, hostname, port):
+    client = SMTP(hostname=hostname, port=port, loop=event_loop)
 
     preset_server.delay_greeting = 1
 
@@ -120,13 +110,10 @@ async def test_timeout_on_starttls(preset_client):
         await preset_client.starttls(validate_certs=False, timeout=0.1)
 
 
-async def test_disconnected_server_raises_on_client_read(preset_server, event_loop):
-    preset_client = SMTP(
-        hostname=preset_server.hostname,
-        port=preset_server.port,
-        loop=event_loop,
-        timeout=1.0,
-    )
+async def test_disconnected_server_raises_on_client_read(
+    preset_server, event_loop, hostname, port
+):
+    preset_client = SMTP(hostname=hostname, port=port, loop=event_loop, timeout=1.0)
 
     await preset_client.connect()
 
@@ -142,10 +129,10 @@ async def test_disconnected_server_raises_on_client_read(preset_server, event_lo
     assert preset_client.transport is None
 
 
-async def test_disconnected_server_raises_on_client_write(preset_server, event_loop):
-    preset_client = SMTP(
-        hostname=preset_server.hostname, port=preset_server.port, loop=event_loop
-    )
+async def test_disconnected_server_raises_on_client_write(
+    preset_server, event_loop, hostname, port
+):
+    preset_client = SMTP(hostname=hostname, port=port, loop=event_loop)
 
     await preset_client.connect()
 
@@ -250,14 +237,14 @@ async def test_context_manager(smtpd_client):
     assert not smtpd_client.is_connected
 
 
-async def test_context_manager_disconnect_handling(preset_server, event_loop):
+async def test_context_manager_disconnect_handling(
+    preset_server, event_loop, hostname, port
+):
     """
     Exceptions can be raised, but the context manager should handle
     disconnection.
     """
-    preset_client = SMTP(
-        hostname=preset_server.hostname, port=preset_server.port, loop=event_loop
-    )
+    preset_client = SMTP(hostname=hostname, port=port, loop=event_loop)
 
     async with preset_client:
         assert preset_client.is_connected
@@ -273,10 +260,10 @@ async def test_context_manager_disconnect_handling(preset_server, event_loop):
     assert not preset_client.is_connected
 
 
-async def test_context_manager_exception_quits(preset_server, event_loop):
-    preset_client = SMTP(
-        hostname=preset_server.hostname, port=preset_server.port, loop=event_loop
-    )
+async def test_context_manager_exception_quits(
+    preset_server, event_loop, hostname, port
+):
+    preset_client = SMTP(hostname=hostname, port=port, loop=event_loop)
 
     with pytest.raises(ZeroDivisionError):
         async with preset_client:
@@ -285,10 +272,10 @@ async def test_context_manager_exception_quits(preset_server, event_loop):
     assert b"QUIT" in preset_server.requests[-1]
 
 
-async def test_context_manager_connect_exception_closes(preset_server, event_loop):
-    preset_client = SMTP(
-        hostname=preset_server.hostname, port=preset_server.port, loop=event_loop
-    )
+async def test_context_manager_connect_exception_closes(
+    preset_server, event_loop, hostname, port
+):
+    preset_client = SMTP(hostname=hostname, port=port, loop=event_loop)
 
     with pytest.raises(SMTPTimeoutError):
         async with preset_client:
@@ -312,11 +299,11 @@ async def test_context_manager_with_manual_connection(smtpd_client):
     assert not smtpd_client.is_connected
 
 
-async def test_connect_error_second_attempt(event_loop):
-    client = SMTP(hostname="127.0.0.1", port=65534, loop=event_loop)
+async def test_connect_error_second_attempt(event_loop, hostname, port):
+    client = SMTP(hostname=hostname, port=65534, loop=event_loop)
 
     with pytest.raises(SMTPConnectError):
-        await client.connect(timeout=0.1)
+        await client.connect(timeout=0.01)
 
     with pytest.raises(SMTPConnectError):
-        await client.connect(timeout=0.1)
+        await client.connect(timeout=0.01)

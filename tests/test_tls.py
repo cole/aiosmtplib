@@ -26,10 +26,8 @@ invalid_key_path = str(Path("tests/certs/invalid.key"))
 
 
 @pytest.fixture(scope="function")
-def tls_preset_server(request, event_loop, unused_tcp_port):
-    server = SMTPPresetServer(
-        "localhost", unused_tcp_port, loop=event_loop, use_tls=True
-    )
+def tls_preset_server(request, event_loop, hostname, port):
+    server = SMTPPresetServer(hostname, port, loop=event_loop, use_tls=True)
 
     event_loop.run_until_complete(server.start())
 
@@ -42,10 +40,10 @@ def tls_preset_server(request, event_loop, unused_tcp_port):
 
 
 @pytest.fixture(scope="function")
-def tls_preset_client(request, tls_preset_server, event_loop):
+def tls_preset_client(request, tls_preset_server, event_loop, hostname, port):
     client = SMTP(
-        hostname=tls_preset_server.hostname,
-        port=tls_preset_server.port,
+        hostname=hostname,
+        port=port,
         loop=event_loop,
         use_tls=True,
         validate_certs=False,
@@ -206,14 +204,14 @@ async def test_starttls_cert_error(preset_client):
             await preset_client.starttls(validate_certs=True)
 
 
-async def test_tls_get_transport_info(tls_preset_client):
+async def test_tls_get_transport_info(tls_preset_client, port):
     async with tls_preset_client:
         compression = tls_preset_client.get_transport_info("compression")
         assert compression is None  # Compression is not used here
 
         peername = tls_preset_client.get_transport_info("peername")
         assert peername[0] == "127.0.0.1"
-        assert peername[1] == tls_preset_client.port
+        assert peername[1] == port
 
         sock = tls_preset_client.get_transport_info("socket")
         assert sock is not None
@@ -234,10 +232,12 @@ async def test_tls_get_transport_info(tls_preset_client):
         assert sslobj is not None
 
 
-async def test_tls_smtp_connect_to_non_tls_server(preset_server, event_loop):
+async def test_tls_smtp_connect_to_non_tls_server(
+    preset_server, event_loop, hostname, port
+):
     tls_client = SMTP(
-        hostname="127.0.0.1",
-        port=preset_server.port,
+        hostname=hostname,
+        port=port,
         loop=event_loop,
         use_tls=True,
         validate_certs=False,
