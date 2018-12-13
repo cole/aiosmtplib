@@ -101,7 +101,7 @@ async def test_ehlo_with_no_extensions(smtpd_client, aiosmtpd_class, monkeypatch
     async def ehlo_response(self, hostname):
         await self.push("250 all good")
 
-    monkeypatch.setattr(aiosmtpd_class, "smtp_EHLO", ehlo_response, raising=False)
+    monkeypatch.setattr(aiosmtpd_class, "smtp_EHLO", ehlo_response)
 
     async with smtpd_client:
         await smtpd_client.ehlo()
@@ -240,7 +240,7 @@ async def test_expn_ok(smtpd_client, aiosmtpd_class, monkeypatch):
 250 Alice Smith <asmith@example.com>"""
         )
 
-    monkeypatch.setattr(aiosmtpd_class, "smtp_EXPN", expn_response, raising=False)
+    monkeypatch.setattr(aiosmtpd_class, "smtp_EXPN", expn_response)
 
     async with smtpd_client:
         response = await smtpd_client.expn("listserv-members")
@@ -267,7 +267,7 @@ async def test_help_error(smtpd_client, aiosmtpd_class, monkeypatch):
     async def help_response(self, arg):
         await self.push("501 error")
 
-    monkeypatch.setattr(aiosmtpd_class, "smtp_HELP", help_response, raising=False)
+    monkeypatch.setattr(aiosmtpd_class, "smtp_HELP", help_response)
 
     async with smtpd_client:
         with pytest.raises(SMTPResponseException):
@@ -328,20 +328,33 @@ async def test_rcpt_ok(smtpd_client):
         assert response.message == "OK"
 
 
-async def test_rcpt_options(preset_client):
-    async with preset_client:
-        preset_client.server.responses.append(b"250 ehlo OK")
-        preset_client.server.responses.append(b"250 mail OK")
-        preset_client.server.responses.append(b"250 rcpt OK")
+async def test_rcpt_options_ok(smtpd_client, aiosmtpd_class, monkeypatch):
+    # RCPT options are not implemented in aiosmtpd, so force success response
+    async def rcpt_response(self, arg):
+        await self.push("250 rcpt ok")
 
-        await preset_client.ehlo()
-        await preset_client.mail("j@example.com")
+    monkeypatch.setattr(aiosmtpd_class, "smtp_RCPT", rcpt_response)
 
-        response = await preset_client.rcpt(
+    async with smtpd_client:
+        await smtpd_client.ehlo()
+        await smtpd_client.mail("j@example.com")
+
+        response = await smtpd_client.rcpt(
             "test@example.com", options=["NOTIFY=FAILURE,DELAY"]
         )
 
         assert response.code == SMTPStatus.completed
+
+
+async def test_rcpt_options_not_implemented(smtpd_client):
+    # RCPT options are not implemented in aiosmtpd, so any option will return 555
+    async with smtpd_client:
+        await smtpd_client.ehlo()
+        await smtpd_client.mail("j@example.com")
+
+        with pytest.raises(SMTPResponseException) as err:
+            await smtpd_client.rcpt("test@example.com", options=["OPT=1"])
+            assert err.code == SMTPStatus.syntax_error
 
 
 async def test_rcpt_error(smtpd_client, smtpd_handler, monkeypatch):
@@ -384,7 +397,7 @@ async def test_data_error(smtpd_client, aiosmtpd_class, monkeypatch):
     async def data_response(self, arg):
         await self.push("501 error")
 
-    monkeypatch.setattr(aiosmtpd_class, "smtp_DATA", data_response, raising=False)
+    monkeypatch.setattr(aiosmtpd_class, "smtp_DATA", data_response)
 
     async with smtpd_client:
         await smtpd_client.ehlo()
@@ -412,14 +425,14 @@ async def test_command_timeout_error(
     smtpd_client, smtpd_handler, monkeypatch, event_loop
 ):
     async def ehlo_response(self, session, envelope, hostname):
-        await asyncio.sleep(1, loop=event_loop)
+        await asyncio.sleep(0.01, loop=event_loop)
         return "250 OK :)"
 
     monkeypatch.setattr(smtpd_handler, "handle_EHLO", ehlo_response, raising=False)
 
     async with smtpd_client:
         with pytest.raises(SMTPTimeoutError):
-            await smtpd_client.ehlo(timeout=0.01)
+            await smtpd_client.ehlo(timeout=0.001)
 
 
 async def test_gibberish_raises_exception(smtpd_client, smtpd_handler, monkeypatch):
