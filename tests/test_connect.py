@@ -63,10 +63,9 @@ async def test_bad_connect_response_raises_error(
 async def test_421_closes_connection(
     smtp_client, smtpd_server, smtpd_handler, monkeypatch
 ):
-    async def noop_response(self, session, envelope, arg):
-        return "421 Please come back in 204232430 seconds."
-
-    monkeypatch.setattr(smtpd_handler, "handle_NOOP", noop_response, raising=False)
+    monkeypatch.setattr(
+        smtpd_handler, "NOOP_response_message", "421 Please come back in 15 seconds."
+    )
 
     await smtp_client.connect()
 
@@ -120,13 +119,12 @@ async def test_timeout_on_starttls(
 
 
 async def test_disconnected_server_raises_on_client_read(
-    smtp_client, smtpd_server, smtpd_handler, monkeypatch
+    smtp_client, smtpd_server, aiosmtpd_class, monkeypatch
 ):
-    async def noop_response(self, session, envelope, arg):
+    async def noop_response(self, arg):
         self.transport.close()
-        return "250 noop"
 
-    monkeypatch.setattr(smtpd_handler, "handle_NOOP", noop_response, raising=False)
+    monkeypatch.setattr(aiosmtpd_class, "smtp_NOOP", noop_response)
 
     await smtp_client.connect()
 
@@ -140,14 +138,14 @@ async def test_disconnected_server_raises_on_client_read(
 
 
 async def test_disconnected_server_raises_on_client_write(
-    smtp_client, smtpd_server, smtpd_handler, monkeypatch
+    smtp_client, smtpd_server, aiosmtpd_class, monkeypatch
 ):
-    async def noop_response(self, session, envelope, arg):
+    async def noop_response(self, arg):
         self.transport.write_eof()
         self.transport.close()
-        return "250 ok"
+        await self.push("250 ok")
 
-    monkeypatch.setattr(smtpd_handler, "handle_NOOP", noop_response, raising=False)
+    monkeypatch.setattr(aiosmtpd_class, "smtp_NOOP", noop_response)
 
     await smtp_client.connect()
 
@@ -161,18 +159,18 @@ async def test_disconnected_server_raises_on_client_write(
 
 
 async def test_disconnected_server_raises_on_data_read(
-    smtp_client, smtpd_server, smtpd_handler, monkeypatch
+    smtp_client, smtpd_server, aiosmtpd_class, monkeypatch
 ):
     """
     The `data` command is a special case - it accesses protocol directly,
     rather than using `execute_command`.
     """
 
-    async def data_response(self, session, envelope):
+    async def data_response(self, arg):
         self.transport.close()
-        return "250 ok"
+        await self.push("250 ok")
 
-    monkeypatch.setattr(smtpd_handler, "handle_DATA", data_response, raising=False)
+    monkeypatch.setattr(aiosmtpd_class, "smtp_DATA", data_response)
 
     await smtp_client.connect()
     await smtp_client.ehlo()
@@ -250,18 +248,18 @@ async def test_context_manager(smtp_client, smtpd_server):
 
 
 async def test_context_manager_disconnect_handling(
-    smtp_client, smtpd_server, smtpd_handler, monkeypatch
+    smtp_client, smtpd_server, aiosmtpd_class, monkeypatch
 ):
     """
     Exceptions can be raised, but the context manager should handle
     disconnection.
     """
 
-    async def noop_response(self, session, envelope, arg):
+    async def noop_response(self, arg):
         self.transport.close()
-        return "250 OK"
+        await self.push("250 OK")
 
-    monkeypatch.setattr(smtpd_handler, "handle_NOOP", noop_response, raising=False)
+    monkeypatch.setattr(aiosmtpd_class, "smtp_NOOP", noop_response)
 
     async with smtp_client:
         assert smtp_client.is_connected

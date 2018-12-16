@@ -90,15 +90,13 @@ async def test_sendmail_simple_failure(smtp_client, smtpd_server):
 
 
 async def test_sendmail_error_silent_rset_handles_disconnect(
-    smtp_client, smtpd_server, message, smtpd_handler, monkeypatch
+    smtp_client, smtpd_server, message, aiosmtpd_class, monkeypatch
 ):
-    async def data_response(*args):
-        smtpd_server.close()
-        await smtpd_server.wait_closed()
+    async def data_response(self, *args):
+        await self.push("501 oh noes")
+        self.transport.close()
 
-        return "501 oh noes"
-
-    monkeypatch.setattr(smtpd_handler, "handle_DATA", data_response, raising=False)
+    monkeypatch.setattr(aiosmtpd_class, "smtp_DATA", data_response)
 
     async with smtp_client:
         with pytest.raises(SMTPResponseException):
@@ -150,11 +148,7 @@ async def test_rset_after_sendmail_error_response_to_data(
     If an error response is given to the DATA command in the sendmail method,
     test that we reset the server session.
     """
-
-    async def data_response(*args):
-        return "501 oh noes"
-
-    monkeypatch.setattr(smtpd_handler, "handle_DATA", data_response, raising=False)
+    monkeypatch.setattr(smtpd_handler, "DATA_response_message", "501 oh noes")
 
     async with smtp_client:
         response = await smtp_client.ehlo()

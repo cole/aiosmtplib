@@ -6,6 +6,18 @@ from aiosmtpd.smtp import SMTP as SMTPD, MISSING
 
 
 class RecordingHandler(MessageHandler):
+    HELO_response_message = None
+    EHLO_response_message = None
+    NOOP_response_message = None
+    QUIT_response_message = None
+    VRFY_response_message = None
+    MAIL_response_message = None
+    RCPT_response_message = None
+    DATA_response_message = None
+    RSET_response_message = None
+    EXPN_response_message = None
+    HELP_response_message = None
+
     def __init__(self, messages_list, commands_list, responses_list):
         self.messages = messages_list
         self.commands = commands_list
@@ -21,57 +33,6 @@ class RecordingHandler(MessageHandler):
     def handle_message(self, message):
         self.messages.append(message)
 
-    async def handle_DATA(self, *args):
-        self.record_command("DATA", *args)
-
-        response = await super().handle_DATA(*args)
-        return response
-
-    async def handle_HELO(self, *args):
-        self.record_command("HELO", *args)
-
-        return MISSING
-
-    async def handle_EHLO(self, *args):
-        self.record_command("EHLO", *args)
-
-        return MISSING
-
-    async def handle_NOOP(self, *args):
-        self.record_command("NOOP", *args)
-
-        return MISSING
-
-    async def handle_QUIT(self, *args):
-        self.record_command("QUIT", *args)
-
-        return MISSING
-
-    async def handle_VRFY(self, *args):
-        self.record_command("VRFY", *args)
-
-        return MISSING
-
-    async def handle_MAIL(self, *args):
-        self.record_command("MAIL", *args)
-
-        return MISSING
-
-    async def handle_RCPT(self, *args):
-        self.record_command("RCPT", *args)
-
-        return MISSING
-
-    async def handle_RSET(self, *args):
-        self.record_command("RSET", *args)
-
-        return MISSING
-
-    async def handle_EXPN(self, *args):
-        self.record_command("EXPN", *args)
-
-        return MISSING
-
 
 class TestSMTPD(SMTPD):
     def _getaddr(self, arg):
@@ -83,8 +44,35 @@ class TestSMTPD(SMTPD):
         except HeaderParseError:
             return None, ""
 
+    async def _call_handler_hook(self, command, *args):
+        self.event_handler.record_command(command, *args)
+
+        hook_response = await super()._call_handler_hook(command, *args)
+        response_message = getattr(
+            self.event_handler, command + "_response_message", None
+        )
+
+        return response_message or hook_response
+
     async def push(self, status):
         result = await super().push(status)
         self.event_handler.record_server_response(status)
 
         return result
+
+    async def smtp_EXPN(self, arg):
+        """
+        Pass EXPN to handler hook.
+        """
+        status = await self._call_handler_hook("EXPN")
+        await self.push("502 EXPN not implemented" if status is MISSING else status)
+
+    async def smtp_HELP(self, arg):
+        """
+        Override help to pass to handler hook.
+        """
+        status = await self._call_handler_hook("HELP")
+        if status is MISSING:
+            await super().smtp_HELP(arg)
+        else:
+            await self.push(status)

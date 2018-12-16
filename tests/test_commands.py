@@ -9,6 +9,7 @@ from aiosmtplib import (
     SMTPDataError,
     SMTPHeloError,
     SMTPResponseException,
+    SMTPServerDisconnected,
     SMTPStatus,
     SMTPTimeoutError,
 )
@@ -32,10 +33,7 @@ async def test_helo_with_hostname(smtp_client, smtpd_server):
 
 
 async def test_helo_error(smtp_client, smtpd_server, smtpd_handler, monkeypatch):
-    async def helo_response(self, session, envelope, hostname):
-        return "501 oh noes"
-
-    monkeypatch.setattr(smtpd_handler, "handle_HELO", helo_response, raising=False)
+    monkeypatch.setattr(smtpd_handler, "HELO_response_message", "501 oh noes")
 
     async with smtp_client:
         with pytest.raises(SMTPHeloError):
@@ -57,10 +55,7 @@ async def test_ehlo_with_hostname(smtp_client, smtpd_server):
 
 
 async def test_ehlo_error(smtp_client, smtpd_server, smtpd_handler, monkeypatch):
-    async def ehlo_response(self, session, envelope, hostname):
-        return "501 oh noes"
-
-    monkeypatch.setattr(smtpd_handler, "handle_EHLO", ehlo_response, raising=False)
+    monkeypatch.setattr(smtpd_handler, "EHLO_response_message", "501 oh noes")
 
     async with smtp_client:
         with pytest.raises(SMTPHeloError):
@@ -70,8 +65,7 @@ async def test_ehlo_error(smtp_client, smtpd_server, smtpd_handler, monkeypatch)
 async def test_ehlo_parses_esmtp_extensions(
     smtp_client, smtpd_server, smtpd_handler, monkeypatch
 ):
-    async def ehlo_response(self, session, envelope, hostname):
-        return """250-PIPELINING
+    ehlo_response = """250-PIPELINING
 250-DSN
 250-ENHANCEDSTATUSCODES
 250-EXPN
@@ -84,8 +78,7 @@ async def test_ehlo_parses_esmtp_extensions(
 250-XSTA
 250-ETRN
 250 XGEN"""
-
-    monkeypatch.setattr(smtpd_handler, "handle_EHLO", ehlo_response, raising=False)
+    monkeypatch.setattr(smtpd_handler, "EHLO_response_message", ehlo_response)
 
     async with smtp_client:
         await smtp_client.ehlo()
@@ -125,10 +118,7 @@ async def test_ehlo_or_helo_if_needed_ehlo_success(smtp_client, smtpd_server):
 async def test_ehlo_or_helo_if_needed_helo_success(
     smtp_client, smtpd_server, smtpd_handler, monkeypatch
 ):
-    async def ehlo_response(self, session, envelope, hostname):
-        return "500 no bueno"
-
-    monkeypatch.setattr(smtpd_handler, "handle_EHLO", ehlo_response, raising=False)
+    monkeypatch.setattr(smtpd_handler, "EHLO_response_message", "500 no bueno")
 
     async with smtp_client:
         assert smtp_client.is_ehlo_or_helo_needed is True
@@ -141,15 +131,8 @@ async def test_ehlo_or_helo_if_needed_helo_success(
 async def test_ehlo_or_helo_if_needed_neither_succeeds(
     smtp_client, smtpd_server, smtpd_handler, monkeypatch
 ):
-    async def ehlo_or_helo_response(self, session, envelope, hostname):
-        return "500 no bueno"
-
-    monkeypatch.setattr(
-        smtpd_handler, "handle_EHLO", ehlo_or_helo_response, raising=False
-    )
-    monkeypatch.setattr(
-        smtpd_handler, "handle_HELO", ehlo_or_helo_response, raising=False
-    )
+    monkeypatch.setattr(smtpd_handler, "EHLO_response_message", "500 no bueno")
+    monkeypatch.setattr(smtpd_handler, "HELO_response_message", "500 no bueno")
 
     async with smtp_client:
         assert smtp_client.is_ehlo_or_helo_needed is True
@@ -158,29 +141,22 @@ async def test_ehlo_or_helo_if_needed_neither_succeeds(
             await smtp_client._ehlo_or_helo_if_needed()
 
 
-async def test_ehlo_or_helo_if_needed_disconnect_on_ehlo(
+async def test_ehlo_or_helo_if_needed_disconnect_after_ehlo(
     smtp_client,
     smtpd_server,
-    smtpd_handler,
+    aiosmtpd_class,
     monkeypatch,
     smtpd_commands,
     smtpd_responses,
 ):
-    async def ehlo_or_helo_response(*args):
-        smtpd_server.close()
-        await smtpd_server.wait_closed()
+    async def ehlo_response(self, *args):
+        await self.push("501 oh noes")
+        self.transport.close()
 
-        return "501 oh noes"
-
-    monkeypatch.setattr(
-        smtpd_handler, "handle_EHLO", ehlo_or_helo_response, raising=False
-    )
-    monkeypatch.setattr(
-        smtpd_handler, "handle_HELO", ehlo_or_helo_response, raising=False
-    )
+    monkeypatch.setattr(aiosmtpd_class, "smtp_EHLO", ehlo_response)
 
     async with smtp_client:
-        with pytest.raises(SMTPHeloError):
+        with pytest.raises(SMTPServerDisconnected):
             await smtp_client._ehlo_or_helo_if_needed()
 
 
@@ -193,10 +169,7 @@ async def test_rset_ok(smtp_client, smtpd_server):
 
 
 async def test_rset_error(smtp_client, smtpd_server, smtpd_handler, monkeypatch):
-    async def rset_response(self, session, envelope):
-        return "501 oh noes"
-
-    monkeypatch.setattr(smtpd_handler, "handle_RSET", rset_response, raising=False)
+    monkeypatch.setattr(smtpd_handler, "RSET_response_message", "501 oh noes")
 
     async with smtp_client:
         with pytest.raises(SMTPResponseException):
@@ -212,10 +185,7 @@ async def test_noop_ok(smtp_client, smtpd_server):
 
 
 async def test_noop_error(smtp_client, smtpd_server, smtpd_handler, monkeypatch):
-    async def noop_response(self, session, envelope, arg):
-        return "501 oh noes"
-
-    monkeypatch.setattr(smtpd_handler, "handle_NOOP", noop_response, raising=False)
+    monkeypatch.setattr(smtpd_handler, "NOOP_response_message", "501 oh noes")
 
     async with smtp_client:
         with pytest.raises(SMTPResponseException):
@@ -237,14 +207,10 @@ async def test_vrfy_with_blank_address(smtp_client, smtpd_server):
             await smtp_client.vrfy(bad_address)
 
 
-async def test_expn_ok(smtp_client, smtpd_server, aiosmtpd_class, monkeypatch):
-    async def expn_response(self, arg):
-        await self.push(
-            """250-Joseph Blow <jblow@example.com>
+async def test_expn_ok(smtp_client, smtpd_server, smtpd_handler, monkeypatch):
+    expn_response = """250-Joseph Blow <jblow@example.com>
 250 Alice Smith <asmith@example.com>"""
-        )
-
-    monkeypatch.setattr(aiosmtpd_class, "smtp_EXPN", expn_response)
+    monkeypatch.setattr(smtpd_handler, "EXPN_response_message", expn_response)
 
     async with smtp_client:
         response = await smtp_client.expn("listserv-members")
@@ -267,11 +233,8 @@ async def test_help_ok(smtp_client, smtpd_server):
         assert "Supported commands" in help_message
 
 
-async def test_help_error(smtp_client, smtpd_server, aiosmtpd_class, monkeypatch):
-    async def help_response(self, arg):
-        await self.push("501 error")
-
-    monkeypatch.setattr(aiosmtpd_class, "smtp_HELP", help_response)
+async def test_help_error(smtp_client, smtpd_server, smtpd_handler, monkeypatch):
+    monkeypatch.setattr(smtpd_handler, "HELP_response_message", "501 error")
 
     async with smtp_client:
         with pytest.raises(SMTPResponseException):
@@ -279,10 +242,7 @@ async def test_help_error(smtp_client, smtpd_server, aiosmtpd_class, monkeypatch
 
 
 async def test_quit_error(smtp_client, smtpd_server, smtpd_handler, monkeypatch):
-    async def quit_response(self, arg):
-        return "501 error"
-
-    monkeypatch.setattr(smtpd_handler, "handle_QUIT", quit_response, raising=False)
+    monkeypatch.setattr(smtpd_handler, "QUIT_response_message", "501 error")
 
     async with smtp_client:
         with pytest.raises(SMTPResponseException):
@@ -309,10 +269,7 @@ async def test_mail_ok(smtp_client, smtpd_server):
 
 
 async def test_mail_error(smtp_client, smtpd_server, smtpd_handler, monkeypatch):
-    async def mail_response(self, arg):
-        return "501 error"
-
-    monkeypatch.setattr(smtpd_handler, "handle_MAIL", mail_response, raising=False)
+    monkeypatch.setattr(smtpd_handler, "MAIL_response_message", "501 error")
 
     async with smtp_client:
         await smtp_client.ehlo()
@@ -362,10 +319,7 @@ async def test_rcpt_options_not_implemented(smtp_client, smtpd_server):
 
 
 async def test_rcpt_error(smtp_client, smtpd_server, smtpd_handler, monkeypatch):
-    async def rcpt_response(self, arg):
-        return "501 error"
-
-    monkeypatch.setattr(smtpd_handler, "handle_RCPT", rcpt_response, raising=False)
+    monkeypatch.setattr(smtpd_handler, "RCPT_response_message", "501 error")
 
     async with smtp_client:
         await smtp_client.ehlo()
@@ -397,7 +351,9 @@ async def test_data_with_timeout_arg(smtp_client, smtpd_server):
         assert response.message == "OK"
 
 
-async def test_data_error(smtp_client, smtpd_server, aiosmtpd_class, monkeypatch):
+async def test_data_error_on_start_input(
+    smtp_client, smtpd_server, aiosmtpd_class, monkeypatch
+):
     async def data_response(self, arg):
         await self.push("501 error")
 
@@ -414,10 +370,7 @@ async def test_data_error(smtp_client, smtpd_server, aiosmtpd_class, monkeypatch
 async def test_data_complete_error(
     smtp_client, smtpd_server, smtpd_handler, monkeypatch
 ):
-    async def data_response(self, arg):
-        return "501 error"
-
-    monkeypatch.setattr(smtpd_handler, "handle_DATA", data_response, raising=False)
+    monkeypatch.setattr(smtpd_handler, "DATA_response_message", "501 error")
 
     async with smtp_client:
         await smtp_client.ehlo()
@@ -444,10 +397,7 @@ async def test_command_timeout_error(
 async def test_gibberish_raises_exception(
     smtp_client, smtpd_server, smtpd_handler, monkeypatch
 ):
-    async def noop_response(self, session, envelope, arg):
-        return "sdfjlfwqejflqw"
-
-    monkeypatch.setattr(smtpd_handler, "handle_NOOP", noop_response, raising=False)
+    monkeypatch.setattr(smtpd_handler, "NOOP_response_message", "sdfjlfwqejflqw")
 
     async with smtp_client:
         with pytest.raises(SMTPResponseException):
