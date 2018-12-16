@@ -22,10 +22,12 @@ async def test_tls_context_and_cert_to_connect_raises():
 
 
 @pytest.mark.asyncio(forbid_global_loop=True)
-async def test_tls_context_and_cert_to_starttls_raises(smtpd_client, event_loop):
-    async with smtpd_client:
+async def test_tls_context_and_cert_to_starttls_raises(
+    smtp_client, smtpd_server, event_loop
+):
+    async with smtp_client:
         with pytest.raises(ValueError):
-            await smtpd_client.starttls(client_cert="test.cert", tls_context=True)
+            await smtp_client.starttls(client_cert="test.cert", tls_context=True)
 
 
 @pytest.mark.asyncio(forbid_global_loop=False)

@@ -16,14 +16,14 @@ def threaded_smtpd_server(request, hostname, port):
 
 
 @pytest.fixture(scope="function")
-def threaded_smtpd_client(request, threaded_smtpd_server, event_loop, hostname, port):
+def threaded_smtp_client(request, threaded_smtpd_server, event_loop, hostname, port):
     client = SMTP(hostname=hostname, port=port, loop=event_loop, timeout=1)
 
     return client
 
 
-def test_sendmail_sync(threaded_smtpd_client, message):
-    errors, response = threaded_smtpd_client.sendmail_sync(
+def test_sendmail_sync(threaded_smtp_client, message):
+    errors, response = threaded_smtp_client.sendmail_sync(
         message["From"], [message["To"]], str(message)
     )
 
@@ -32,10 +32,10 @@ def test_sendmail_sync(threaded_smtpd_client, message):
     assert response != ""
 
 
-def test_sendmail_sync_when_connected(threaded_smtpd_client, event_loop, message):
-    event_loop.run_until_complete(threaded_smtpd_client.connect())
+def test_sendmail_sync_when_connected(threaded_smtp_client, event_loop, message):
+    event_loop.run_until_complete(threaded_smtp_client.connect())
 
-    errors, response = threaded_smtpd_client.sendmail_sync(
+    errors, response = threaded_smtp_client.sendmail_sync(
         message["From"], [message["To"]], str(message)
     )
 
@@ -44,8 +44,8 @@ def test_sendmail_sync_when_connected(threaded_smtpd_client, event_loop, message
     assert response != ""
 
 
-def test_send_message_sync(threaded_smtpd_client, message):
-    errors, response = threaded_smtpd_client.send_message_sync(message)
+def test_send_message_sync(threaded_smtp_client, message):
+    errors, response = threaded_smtp_client.send_message_sync(message)
 
     assert not errors
     assert isinstance(errors, dict)

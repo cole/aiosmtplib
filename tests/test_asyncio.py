@@ -18,10 +18,10 @@ RECIPIENTS = [
 pytestmark = pytest.mark.asyncio(forbid_global_loop=True)
 
 
-async def test_sendmail_multiple_times_in_sequence(smtpd_client, message):
-    async with smtpd_client:
+async def test_sendmail_multiple_times_in_sequence(smtp_client, smtpd_server, message):
+    async with smtp_client:
         for recipient in RECIPIENTS:
-            errors, response = await smtpd_client.sendmail(
+            errors, response = await smtp_client.sendmail(
                 message["From"], [recipient], str(message)
             )
 
@@ -30,10 +30,12 @@ async def test_sendmail_multiple_times_in_sequence(smtpd_client, message):
             assert response != ""
 
 
-async def test_sendmail_multiple_times_with_gather(smtpd_client, event_loop, message):
-    async with smtpd_client:
+async def test_sendmail_multiple_times_with_gather(
+    smtp_client, smtpd_server, event_loop, message
+):
+    async with smtp_client:
         tasks = [
-            smtpd_client.sendmail(message["From"], [recipient], str(message))
+            smtp_client.sendmail(message["From"], [recipient], str(message))
             for recipient in RECIPIENTS
         ]
         results = await asyncio.gather(*tasks, loop=event_loop)
@@ -111,17 +113,17 @@ async def test_multiple_actions_in_context_manager_with_gather(
         assert message != ""
 
 
-async def test_many_commands_with_gather(smtpd_client, event_loop):
+async def test_many_commands_with_gather(smtp_client, smtpd_server, event_loop):
     """
     Without a lock on the reader, this raises RuntimeError.
     """
-    async with smtpd_client:
+    async with smtp_client:
         tasks = [
-            smtpd_client.noop(),
-            smtpd_client.noop(),
-            smtpd_client.helo(),
-            smtpd_client.vrfy("foo@bar.com"),
-            smtpd_client.noop(),
+            smtp_client.noop(),
+            smtp_client.noop(),
+            smtp_client.helo(),
+            smtp_client.vrfy("foo@bar.com"),
+            smtp_client.noop(),
         ]
         results = await asyncio.gather(*tasks, loop=event_loop)
         for result in results:
