@@ -253,7 +253,9 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
         except ConnectionError as exc:
             raise SMTPServerDisconnected(str(exc))
         except asyncio.LimitOverrunError:
-            raise SMTPResponseException(500, "Line too long.")
+            raise SMTPResponseException(
+                SMTPStatus.unrecognized_command, "Line too long."
+            )
         except asyncio.TimeoutError as exc:
             raise SMTPTimeoutError(str(exc))
         except asyncio.IncompleteReadError as exc:
