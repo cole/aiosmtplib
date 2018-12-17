@@ -151,55 +151,59 @@ async def test_disconnected_server_raises_on_data_read(
     assert smtp_client.transport is None
 
 
-async def test_disconnected_server_raises_on_data_write(preset_client):
+async def test_disconnected_server_raises_on_data_write(
+    smtp_client, smtpd_server, smtpd_class, monkeypatch
+):
     """
     The `data` command is a special case - it accesses protocol directly,
     rather than using `execute_command`.
     """
-    await preset_client.connect()
 
-    preset_client.server.responses.append(b"250 Hello there")
-    await preset_client.ehlo()
+    async def data_handler(self, arg):
+        # Read one line of data, then cut the connection.
+        await self.push("354 End data with <CR><LF>.<CR><LF>")
 
-    preset_client.server.responses.append(b"250 ok")
-    await preset_client.mail("sender@example.com")
+        await self._reader.readline()
+        self.transport.close()
 
-    preset_client.server.responses.append(b"250 ok")
-    await preset_client.rcpt("recipient@example.com")
+    monkeypatch.setattr(smtpd_class, "smtp_DATA", data_handler)
 
-    preset_client.server.responses.append(b"354 lets go")
-    preset_client.server.drop_connection_after_request = b"A MESS"
-
+    await smtp_client.connect()
+    await smtp_client.ehlo()
+    await smtp_client.mail("sender@example.com")
+    await smtp_client.rcpt("recipient@example.com")
     with pytest.raises(SMTPServerDisconnected):
-        await preset_client.data("A MESSAGE")
+        await smtp_client.data("A MESSAGE\nLINE2")
 
     # Verify that the connection was closed
-    assert not preset_client._connect_lock.locked()
-    assert preset_client.protocol is None
-    assert preset_client.transport is None
+    assert not smtp_client._connect_lock.locked()
+    assert smtp_client.protocol is None
+    assert smtp_client.transport is None
 
 
-async def test_disconnected_server_raises_on_starttls(preset_client):
+async def test_disconnected_server_raises_on_starttls(
+    smtp_client, smtpd_server, smtpd_class, monkeypatch
+):
     """
     The `starttls` command is a special case - it accesses protocol directly,
     rather than using `execute_command`.
     """
-    await preset_client.connect()
-    preset_client.server.responses.append(
-        b"\n".join([b"250-localhost, hello", b"250-SIZE 100000", b"250 STARTTLS"])
-    )
-    await preset_client.ehlo()
 
-    preset_client.server.responses.append(b"220 begin TLS pls")
-    preset_client.server.drop_connection_event.set()
+    async def starttls_handler(self, arg):
+        self.transport.close()
+
+    monkeypatch.setattr(smtpd_class, "smtp_STARTTLS", starttls_handler)
+
+    await smtp_client.connect()
+    await smtp_client.ehlo()
 
     with pytest.raises(SMTPServerDisconnected):
-        await preset_client.starttls(validate_certs=False)
+        await smtp_client.starttls(validate_certs=False, timeout=1)
 
     # Verify that the connection was closed
-    assert not preset_client._connect_lock.locked()
-    assert preset_client.protocol is None
-    assert preset_client.transport is None
+    assert not smtp_client._connect_lock.locked()
+    assert smtp_client.protocol is None
+    assert smtp_client.transport is None
 
 
 async def test_context_manager(smtp_client, smtpd_server):
@@ -238,23 +242,23 @@ async def test_context_manager_disconnect_handling(
 
 
 async def test_context_manager_exception_quits(
-    smtp_client, smtpd_server, smtpd_commands
+    smtp_client, smtpd_server, recieved_commands
 ):
     with pytest.raises(ZeroDivisionError):
         async with smtp_client:
             1 / 0
 
-    assert smtpd_commands[-1][0] == "QUIT"
+    assert recieved_commands[-1][0] == "QUIT"
 
 
 async def test_context_manager_connect_exception_closes(
-    smtp_client, smtpd_server, smtpd_commands
+    smtp_client, smtpd_server, recieved_commands
 ):
     with pytest.raises(SMTPTimeoutError):
         async with smtp_client:
             raise SMTPTimeoutError("Timed out!")
 
-    assert len(smtpd_commands) == 0
+    assert len(recieved_commands) == 0
 
 
 async def test_context_manager_with_manual_connection(smtp_client, smtpd_server):

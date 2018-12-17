@@ -69,7 +69,7 @@ async def test_timeout_on_initial_read(
 
 
 async def test_timeout_on_starttls(
-    smtp_client, starttls_smtpd_server, smtpd_class, monkeypatch, slow_response
+    smtp_client, smtpd_server, smtpd_class, monkeypatch, slow_response
 ):
     monkeypatch.setattr(smtpd_class, "smtp_STARTTLS", slow_response)
 

@@ -104,7 +104,7 @@ async def test_sendmail_error_silent_rset_handles_disconnect(
 
 
 async def test_rset_after_sendmail_error_response_to_mail(
-    smtp_client, smtpd_server, smtpd_commands
+    smtp_client, smtpd_server, recieved_commands
 ):
     """
     If an error response is given to the MAIL command in the sendmail method,
@@ -118,11 +118,11 @@ async def test_rset_after_sendmail_error_response_to_mail(
             await smtp_client.sendmail(">foobar<", ["test@example.com"], "Hello World")
         except SMTPResponseException as err:
             assert err.code == SMTPStatus.unrecognized_parameters
-            assert smtpd_commands[-1][0] == "RSET"
+            assert recieved_commands[-1][0] == "RSET"
 
 
 async def test_rset_after_sendmail_error_response_to_rcpt(
-    smtp_client, smtpd_server, smtpd_commands
+    smtp_client, smtpd_server, recieved_commands
 ):
     """
     If an error response is given to the RCPT command in the sendmail method,
@@ -138,11 +138,11 @@ async def test_rset_after_sendmail_error_response_to_rcpt(
             )
         except SMTPRecipientsRefused as err:
             assert err.recipients[0].code == SMTPStatus.unrecognized_parameters
-            assert smtpd_commands[-1][0] == "RSET"
+            assert recieved_commands[-1][0] == "RSET"
 
 
 async def test_rset_after_sendmail_error_response_to_data(
-    smtp_client, smtpd_server, message, smtpd_commands, smtpd_handler, monkeypatch
+    smtp_client, smtpd_server, message, recieved_commands, smtpd_handler, monkeypatch
 ):
     """
     If an error response is given to the DATA command in the sendmail method,
@@ -158,7 +158,7 @@ async def test_rset_after_sendmail_error_response_to_data(
             await smtp_client.sendmail(message["From"], [message["To"]], str(message))
         except SMTPResponseException as err:
             assert err.code == SMTPStatus.unrecognized_parameters
-            assert smtpd_commands[-1][0] == "RSET"
+            assert recieved_commands[-1][0] == "RSET"
 
 
 async def test_send_message(smtp_client, smtpd_server, message):

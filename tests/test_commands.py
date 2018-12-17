@@ -142,7 +142,12 @@ async def test_ehlo_or_helo_if_needed_neither_succeeds(
 
 
 async def test_ehlo_or_helo_if_needed_disconnect_after_ehlo(
-    smtp_client, smtpd_server, smtpd_class, monkeypatch, smtpd_commands, smtpd_responses
+    smtp_client,
+    smtpd_server,
+    smtpd_class,
+    monkeypatch,
+    recieved_commands,
+    smtpd_responses,
 ):
     async def ehlo_response(self, *args):
         await self.push("501 oh noes")

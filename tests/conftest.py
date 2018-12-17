@@ -6,12 +6,15 @@ import email.mime.multipart
 import email.mime.text
 import ssl
 import sys
+from email.errors import HeaderParseError
+from email.message import Message
 from pathlib import Path
 
 import pytest
+from aiosmtpd.handlers import Message as MessageHandler
+from aiosmtpd.smtp import SMTP as SMTPD, MISSING
 
 from aiosmtplib import SMTP
-from testserver import SMTPPresetServer, RecordingHandler, TestSMTPD
 
 
 PY36_OR_LATER = sys.version_info[:2] >= (3, 6)
@@ -29,6 +32,79 @@ def pytest_addoption(parser):
     parser.addoption(
         "--event-loop", action="store", default="asyncio", choices=["asyncio", "uvloop"]
     )
+
+
+class RecordingHandler(MessageHandler):
+    HELO_response_message = None
+    EHLO_response_message = None
+    NOOP_response_message = None
+    QUIT_response_message = None
+    VRFY_response_message = None
+    MAIL_response_message = None
+    RCPT_response_message = None
+    DATA_response_message = None
+    RSET_response_message = None
+    EXPN_response_message = None
+    HELP_response_message = None
+
+    def __init__(self, messages_list, commands_list, responses_list):
+        self.messages = messages_list
+        self.commands = commands_list
+        self.responses = responses_list
+        super().__init__(message_class=Message)
+
+    def record_command(self, command, *args):
+        self.commands.append((command, *args))
+
+    def record_server_response(self, status):
+        self.responses.append(status)
+
+    def handle_message(self, message):
+        self.messages.append(message)
+
+
+class TestSMTPD(SMTPD):
+    def _getaddr(self, arg):
+        """
+        Don't raise an exception on unparsable email address
+        """
+        try:
+            return super()._getaddr(arg)
+        except HeaderParseError:
+            return None, ""
+
+    async def _call_handler_hook(self, command, *args):
+        self.event_handler.record_command(command, *args)
+
+        hook_response = await super()._call_handler_hook(command, *args)
+        response_message = getattr(
+            self.event_handler, command + "_response_message", None
+        )
+
+        return response_message or hook_response
+
+    async def push(self, status):
+        result = await super().push(status)
+        self.event_handler.record_server_response(status)
+
+        return result
+
+    async def smtp_EXPN(self, arg):
+        """
+        Pass EXPN to handler hook.
+        """
+        status = await self._call_handler_hook("EXPN")
+        await self.push("502 EXPN not implemented" if status is MISSING else status)
+
+    async def smtp_HELP(self, arg):
+        """
+        Override help to pass to handler hook.
+        """
+        status = await self._call_handler_hook("HELP")
+        if status is MISSING:
+            await super().smtp_HELP(arg)
+        else:
+            await self.push(status)
 
 
 @pytest.fixture(scope="function")
@@ -100,7 +176,7 @@ def recieved_messages(request):
 
 
 @pytest.fixture(scope="function")
-def smtpd_commands(request):
+def recieved_commands(request):
     return []
 
 
@@ -110,8 +186,8 @@ def smtpd_responses(request):
 
 
 @pytest.fixture(scope="function")
-def smtpd_handler(request, recieved_messages, smtpd_commands, smtpd_responses):
-    return RecordingHandler(recieved_messages, smtpd_commands, smtpd_responses)
+def smtpd_handler(request, recieved_messages, recieved_commands, smtpd_responses):
+    return RecordingHandler(recieved_messages, recieved_commands, smtpd_responses)
 
 
 @pytest.fixture(scope="session")
@@ -140,6 +216,15 @@ def invalid_key_path(request):
 
 
 @pytest.fixture(scope="session")
+def client_tls_context(request, valid_cert_path, valid_key_path):
+    tls_context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+    tls_context.check_hostname = False
+    tls_context.verify_mode = ssl.CERT_NONE
+
+    return tls_context
+
+
+@pytest.fixture(scope="session")
 def server_tls_context(request, valid_cert_path, valid_key_path):
     tls_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
     tls_context.load_cert_chain(valid_cert_path, keyfile=valid_key_path)
@@ -148,16 +233,8 @@ def server_tls_context(request, valid_cert_path, valid_key_path):
 
 
 @pytest.fixture(scope="function")
-def aiosmtpd_factory(request, hostname, port, smtpd_class, smtpd_handler):
-    def factory():
-        return smtpd_class(smtpd_handler, hostname=hostname, enable_SMTPUTF8=False)
-
-    return factory
-
-
-@pytest.fixture(scope="function")
-def starttls_aiosmtpd_factory(
-    request, hostname, port, smtpd_class, smtpd_handler, server_tls_context
+def smtpd_server(
+    request, event_loop, hostname, port, smtpd_class, smtpd_handler, server_tls_context
 ):
     def factory():
         return smtpd_class(
@@ -167,68 +244,13 @@ def starttls_aiosmtpd_factory(
             tls_context=server_tls_context,
         )
 
-    return factory
-
-
-@pytest.fixture(scope="function")
-def smtpd_server(request, event_loop, hostname, port, aiosmtpd_factory):
     server = event_loop.run_until_complete(
-        event_loop.create_server(aiosmtpd_factory, host=hostname, port=port)
+        event_loop.create_server(factory, host=hostname, port=port)
     )
 
     def close_server():
         server.close()
         event_loop.run_until_complete(server.wait_closed())
-
-    request.addfinalizer(close_server)
-
-    return server
-
-
-@pytest.fixture(scope="function")
-def starttls_smtpd_server(
-    request, event_loop, hostname, port, starttls_aiosmtpd_factory
-):
-    server = event_loop.run_until_complete(
-        event_loop.create_server(starttls_aiosmtpd_factory, host=hostname, port=port)
-    )
-
-    def close_server():
-        server.close()
-        event_loop.run_until_complete(server.wait_closed())
-
-    request.addfinalizer(close_server)
-
-    return server
-
-
-@pytest.fixture(scope="function")
-def tls_smtpd_server(
-    request, event_loop, hostname, port, aiosmtpd_factory, server_tls_context
-):
-    server = event_loop.run_until_complete(
-        event_loop.create_server(
-            aiosmtpd_factory, host=hostname, port=port, ssl=server_tls_context
-        )
-    )
-
-    def close_server():
-        server.close()
-        event_loop.run_until_complete(server.wait_closed())
-
-    request.addfinalizer(close_server)
-
-    return server
-
-
-@pytest.fixture(scope="function")
-def preset_server(request, event_loop, unused_tcp_port):
-    server = SMTPPresetServer("localhost", unused_tcp_port, loop=event_loop)
-
-    event_loop.run_until_complete(server.start())
-
-    def close_server():
-        event_loop.run_until_complete(server.stop())
 
     request.addfinalizer(close_server)
 
@@ -238,26 +260,5 @@ def preset_server(request, event_loop, unused_tcp_port):
 @pytest.fixture(scope="function")
 def smtp_client(request, event_loop, hostname, port):
     client = SMTP(hostname=hostname, port=port, loop=event_loop, timeout=0.1)
-
-    return client
-
-
-@pytest.fixture(scope="function")
-def tls_smtp_client(request, event_loop, hostname, port):
-    tls_client = SMTP(
-        hostname=hostname,
-        port=port,
-        loop=event_loop,
-        use_tls=True,
-        validate_certs=False,
-    )
-
-    return tls_client
-
-
-@pytest.fixture(scope="function")
-def preset_client(request, preset_server, event_loop, hostname, port):
-    client = SMTP(hostname=hostname, port=port, loop=event_loop, timeout=1)
-    client.server = preset_server
 
     return client

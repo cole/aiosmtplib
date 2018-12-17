@@ -9,6 +9,7 @@ import ssl
 import pytest
 
 from aiosmtplib import (
+    SMTP,
     SMTPConnectError,
     SMTPException,
     SMTPResponseException,
@@ -16,7 +17,48 @@ from aiosmtplib import (
     SMTPTimeoutError,
 )
 
+
 pytestmark = pytest.mark.asyncio(forbid_global_loop=True)
+
+
+@pytest.fixture(scope="function")
+def tls_smtp_client(request, event_loop, hostname, port):
+    tls_client = SMTP(
+        hostname=hostname,
+        port=port,
+        loop=event_loop,
+        use_tls=True,
+        validate_certs=False,
+    )
+
+    return tls_client
+
+
+@pytest.fixture(scope="function")
+def tls_smtpd_server(
+    request, event_loop, hostname, port, smtpd_class, smtpd_handler, server_tls_context
+):
+    def factory():
+        return smtpd_class(
+            smtpd_handler,
+            hostname=hostname,
+            enable_SMTPUTF8=False,
+            tls_context=server_tls_context,
+        )
+
+    server = event_loop.run_until_complete(
+        event_loop.create_server(
+            factory, host=hostname, port=port, ssl=server_tls_context
+        )
+    )
+
+    def close_server():
+        server.close()
+        event_loop.run_until_complete(server.wait_closed())
+
+    request.addfinalizer(close_server)
+
+    return server
 
 
 async def test_tls_connection(tls_smtp_client, tls_smtpd_server):
@@ -30,7 +72,7 @@ async def test_tls_connection(tls_smtp_client, tls_smtpd_server):
     assert not tls_smtp_client.is_connected
 
 
-async def test_starttls(smtp_client, starttls_smtpd_server):
+async def test_starttls(smtp_client, smtpd_server):
     async with smtp_client:
         response = await smtp_client.starttls(validate_certs=False)
 
@@ -49,7 +91,7 @@ async def test_starttls(smtp_client, starttls_smtpd_server):
 
 
 async def test_starttls_timeout(
-    smtp_client, starttls_smtpd_server, event_loop, smtpd_class, monkeypatch
+    smtp_client, smtpd_server, event_loop, smtpd_class, monkeypatch
 ):
     async def handle_starttls(self, arg):
         await asyncio.sleep(0.1, loop=event_loop)
@@ -64,7 +106,7 @@ async def test_starttls_timeout(
 
 
 async def test_starttls_with_explicit_server_hostname(
-    smtp_client, hostname, starttls_smtpd_server
+    smtp_client, hostname, smtpd_server
 ):
     async with smtp_client:
         await smtp_client.ehlo()
@@ -72,7 +114,14 @@ async def test_starttls_with_explicit_server_hostname(
         await smtp_client.starttls(validate_certs=False, server_hostname=hostname)
 
 
-async def test_starttls_not_supported(smtp_client, smtpd_server):
+async def test_starttls_not_supported(
+    smtp_client, smtpd_server, smtpd_class, monkeypatch
+):
+    async def handle_starttls(self, arg):
+        await self.push("454 TLS not available")
+
+    monkeypatch.setattr(smtpd_class, "smtp_STARTTLS", handle_starttls)
+
     async with smtp_client:
         await smtp_client.ehlo()
 
@@ -82,12 +131,7 @@ async def test_starttls_not_supported(smtp_client, smtpd_server):
 
 @pytest.mark.parametrize("response_message", ["451 oh no", "555 uh oh"])
 async def test_starttls_bad_responses(
-    smtp_client,
-    starttls_smtpd_server,
-    event_loop,
-    smtpd_class,
-    monkeypatch,
-    response_message,
+    smtp_client, smtpd_server, event_loop, smtpd_class, monkeypatch, response_message
 ):
     async def handle_starttls(self, arg):
         await self.push("451 oh no")
@@ -113,7 +157,7 @@ async def test_starttls_bad_responses(
 
 
 async def test_starttls_with_client_cert(
-    smtp_client, starttls_smtpd_server, valid_cert_path, valid_key_path
+    smtp_client, smtpd_server, valid_cert_path, valid_key_path
 ):
     async with smtp_client:
         response = await smtp_client.starttls(
@@ -130,7 +174,7 @@ async def test_starttls_with_client_cert(
 
 
 async def test_starttls_with_invalid_client_cert(
-    smtp_client, starttls_smtpd_server, invalid_cert_path, invalid_key_path
+    smtp_client, smtpd_server, invalid_cert_path, invalid_key_path
 ):
     async with smtp_client:
         with pytest.raises(ssl.SSLError):
@@ -142,7 +186,7 @@ async def test_starttls_with_invalid_client_cert(
             )
 
 
-async def test_starttls_cert_error(smtp_client, starttls_smtpd_server):
+async def test_starttls_cert_error(smtp_client, smtpd_server):
     async with smtp_client:
         with pytest.raises(ssl.SSLError):
             await smtp_client.starttls(validate_certs=True)
@@ -187,16 +231,12 @@ async def test_tls_smtp_connect_to_non_tls_server(
 
 
 async def test_tls_connection_with_existing_sslcontext(
-    tls_smtp_client, tls_smtpd_server
+    tls_smtp_client, tls_smtpd_server, client_tls_context
 ):
-    context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
-    context.check_hostname = False
-    context.verify_mode = ssl.CERT_NONE
-
-    await tls_smtp_client.connect(tls_context=context)
+    await tls_smtp_client.connect(tls_context=client_tls_context)
     assert tls_smtp_client.is_connected
 
-    assert tls_smtp_client.tls_context is context
+    assert tls_smtp_client.tls_context is client_tls_context
 
     await tls_smtp_client.quit()
     assert not tls_smtp_client.is_connected
