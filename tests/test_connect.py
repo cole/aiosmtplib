@@ -46,13 +46,13 @@ async def test_quit_then_connect_ok(smtp_client, smtpd_server):
 
 
 async def test_bad_connect_response_raises_error(
-    smtp_client, smtpd_server, aiosmtpd_class, monkeypatch
+    smtp_client, smtpd_server, smtpd_class, monkeypatch
 ):
     async def handle_client(self):
         await self.push("421 Please come back in 204232430 seconds.")
         self.transport.close()
 
-    monkeypatch.setattr(aiosmtpd_class, "_handle_client", handle_client)
+    monkeypatch.setattr(smtpd_class, "_handle_client", handle_client)
 
     with pytest.raises(SMTPConnectError):
         await smtp_client.connect()
@@ -83,48 +83,13 @@ async def test_connect_error_with_no_server(event_loop, hostname, port):
         await client.connect(timeout=1)
 
 
-async def test_timeout_error_with_no_server(event_loop, hostname, port):
-    client = SMTP(hostname=hostname, port=port, loop=event_loop)
-
-    with pytest.raises(SMTPTimeoutError):
-        # SMTPTimeoutError vs SMTPConnectError here depends on processing time.
-        await client.connect(timeout=0.000000001)
-
-
-async def test_timeout_on_initial_read(
-    smtp_client, smtpd_server, aiosmtpd_class, monkeypatch, event_loop
-):
-    async def handle_client(self):
-        await asyncio.sleep(0.1, loop=event_loop)
-
-    monkeypatch.setattr(aiosmtpd_class, "_handle_client", handle_client)
-
-    with pytest.raises(SMTPTimeoutError):
-        await smtp_client.connect(timeout=0.01)
-
-
-async def test_timeout_on_starttls(
-    smtp_client, starttls_smtpd_server, aiosmtpd_class, monkeypatch, event_loop
-):
-    async def handle_starttls(self, arg):
-        await asyncio.sleep(0.1, loop=event_loop)
-
-    monkeypatch.setattr(aiosmtpd_class, "smtp_STARTTLS", handle_starttls)
-
-    await smtp_client.connect()
-    await smtp_client.ehlo()
-
-    with pytest.raises(SMTPTimeoutError):
-        await smtp_client.starttls(validate_certs=False, timeout=0.01)
-
-
 async def test_disconnected_server_raises_on_client_read(
-    smtp_client, smtpd_server, aiosmtpd_class, monkeypatch
+    smtp_client, smtpd_server, smtpd_class, monkeypatch
 ):
     async def noop_response(self, arg):
         self.transport.close()
 
-    monkeypatch.setattr(aiosmtpd_class, "smtp_NOOP", noop_response)
+    monkeypatch.setattr(smtpd_class, "smtp_NOOP", noop_response)
 
     await smtp_client.connect()
 
@@ -138,14 +103,14 @@ async def test_disconnected_server_raises_on_client_read(
 
 
 async def test_disconnected_server_raises_on_client_write(
-    smtp_client, smtpd_server, aiosmtpd_class, monkeypatch
+    smtp_client, smtpd_server, smtpd_class, monkeypatch
 ):
     async def noop_response(self, arg):
         self.transport.write_eof()
         self.transport.close()
         await self.push("250 ok")
 
-    monkeypatch.setattr(aiosmtpd_class, "smtp_NOOP", noop_response)
+    monkeypatch.setattr(smtpd_class, "smtp_NOOP", noop_response)
 
     await smtp_client.connect()
 
@@ -159,7 +124,7 @@ async def test_disconnected_server_raises_on_client_write(
 
 
 async def test_disconnected_server_raises_on_data_read(
-    smtp_client, smtpd_server, aiosmtpd_class, monkeypatch
+    smtp_client, smtpd_server, smtpd_class, monkeypatch
 ):
     """
     The `data` command is a special case - it accesses protocol directly,
@@ -170,7 +135,7 @@ async def test_disconnected_server_raises_on_data_read(
         self.transport.close()
         await self.push("250 ok")
 
-    monkeypatch.setattr(aiosmtpd_class, "smtp_DATA", data_response)
+    monkeypatch.setattr(smtpd_class, "smtp_DATA", data_response)
 
     await smtp_client.connect()
     await smtp_client.ehlo()
@@ -248,7 +213,7 @@ async def test_context_manager(smtp_client, smtpd_server):
 
 
 async def test_context_manager_disconnect_handling(
-    smtp_client, smtpd_server, aiosmtpd_class, monkeypatch
+    smtp_client, smtpd_server, smtpd_class, monkeypatch
 ):
     """
     Exceptions can be raised, but the context manager should handle
@@ -259,7 +224,7 @@ async def test_context_manager_disconnect_handling(
         self.transport.close()
         await self.push("250 OK")
 
-    monkeypatch.setattr(aiosmtpd_class, "smtp_NOOP", noop_response)
+    monkeypatch.setattr(smtpd_class, "smtp_NOOP", noop_response)
 
     async with smtp_client:
         assert smtp_client.is_connected

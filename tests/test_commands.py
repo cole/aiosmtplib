@@ -93,12 +93,12 @@ async def test_ehlo_parses_esmtp_extensions(
 
 
 async def test_ehlo_with_no_extensions(
-    smtp_client, smtpd_server, aiosmtpd_class, monkeypatch
+    smtp_client, smtpd_server, smtpd_class, monkeypatch
 ):
     async def ehlo_response(self, hostname):
         await self.push("250 all good")
 
-    monkeypatch.setattr(aiosmtpd_class, "smtp_EHLO", ehlo_response)
+    monkeypatch.setattr(smtpd_class, "smtp_EHLO", ehlo_response)
 
     async with smtp_client:
         await smtp_client.ehlo()
@@ -142,18 +142,13 @@ async def test_ehlo_or_helo_if_needed_neither_succeeds(
 
 
 async def test_ehlo_or_helo_if_needed_disconnect_after_ehlo(
-    smtp_client,
-    smtpd_server,
-    aiosmtpd_class,
-    monkeypatch,
-    smtpd_commands,
-    smtpd_responses,
+    smtp_client, smtpd_server, smtpd_class, monkeypatch, smtpd_commands, smtpd_responses
 ):
     async def ehlo_response(self, *args):
         await self.push("501 oh noes")
         self.transport.close()
 
-    monkeypatch.setattr(aiosmtpd_class, "smtp_EHLO", ehlo_response)
+    monkeypatch.setattr(smtpd_class, "smtp_EHLO", ehlo_response)
 
     async with smtp_client:
         with pytest.raises(SMTPServerDisconnected):
@@ -289,12 +284,12 @@ async def test_rcpt_ok(smtp_client, smtpd_server):
         assert response.message == "OK"
 
 
-async def test_rcpt_options_ok(smtp_client, smtpd_server, aiosmtpd_class, monkeypatch):
+async def test_rcpt_options_ok(smtp_client, smtpd_server, smtpd_class, monkeypatch):
     # RCPT options are not implemented in aiosmtpd, so force success response
     async def rcpt_response(self, arg):
         await self.push("250 rcpt ok")
 
-    monkeypatch.setattr(aiosmtpd_class, "smtp_RCPT", rcpt_response)
+    monkeypatch.setattr(smtpd_class, "smtp_RCPT", rcpt_response)
 
     async with smtp_client:
         await smtp_client.ehlo()
@@ -340,24 +335,13 @@ async def test_data_ok(smtp_client, smtpd_server):
         assert response.message == "OK"
 
 
-async def test_data_with_timeout_arg(smtp_client, smtpd_server):
-    async with smtp_client:
-        await smtp_client.ehlo()
-        await smtp_client.mail("j@example.com")
-        await smtp_client.rcpt("test@example.com")
-        response = await smtp_client.data("HELLO WORLD", timeout=10)
-
-        assert response.code == SMTPStatus.completed
-        assert response.message == "OK"
-
-
 async def test_data_error_on_start_input(
-    smtp_client, smtpd_server, aiosmtpd_class, monkeypatch
+    smtp_client, smtpd_server, smtpd_class, monkeypatch
 ):
     async def data_response(self, arg):
         await self.push("501 error")
 
-    monkeypatch.setattr(aiosmtpd_class, "smtp_DATA", data_response)
+    monkeypatch.setattr(smtpd_class, "smtp_DATA", data_response)
 
     async with smtp_client:
         await smtp_client.ehlo()
@@ -378,20 +362,6 @@ async def test_data_complete_error(
         await smtp_client.rcpt("test@example.com")
         with pytest.raises(SMTPDataError):
             await smtp_client.data("TEST MESSAGE")
-
-
-async def test_command_timeout_error(
-    smtp_client, smtpd_server, smtpd_handler, monkeypatch, event_loop
-):
-    async def ehlo_response(self, session, envelope, hostname):
-        await asyncio.sleep(0.01, loop=event_loop)
-        return "250 OK :)"
-
-    monkeypatch.setattr(smtpd_handler, "handle_EHLO", ehlo_response, raising=False)
-
-    async with smtp_client:
-        with pytest.raises(SMTPTimeoutError):
-            await smtp_client.ehlo(timeout=0.001)
 
 
 async def test_gibberish_raises_exception(

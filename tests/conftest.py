@@ -115,7 +115,7 @@ def smtpd_handler(request, recieved_messages, smtpd_commands, smtpd_responses):
 
 
 @pytest.fixture(scope="session")
-def aiosmtpd_class(request):
+def smtpd_class(request):
     return TestSMTPD
 
 
@@ -148,19 +148,19 @@ def server_tls_context(request, valid_cert_path, valid_key_path):
 
 
 @pytest.fixture(scope="function")
-def aiosmtpd_factory(request, hostname, port, aiosmtpd_class, smtpd_handler):
+def aiosmtpd_factory(request, hostname, port, smtpd_class, smtpd_handler):
     def factory():
-        return aiosmtpd_class(smtpd_handler, hostname=hostname, enable_SMTPUTF8=False)
+        return smtpd_class(smtpd_handler, hostname=hostname, enable_SMTPUTF8=False)
 
     return factory
 
 
 @pytest.fixture(scope="function")
 def starttls_aiosmtpd_factory(
-    request, hostname, port, aiosmtpd_class, smtpd_handler, server_tls_context
+    request, hostname, port, smtpd_class, smtpd_handler, server_tls_context
 ):
     def factory():
-        return aiosmtpd_class(
+        return smtpd_class(
             smtpd_handler,
             hostname=hostname,
             enable_SMTPUTF8=False,

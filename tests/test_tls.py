@@ -49,12 +49,12 @@ async def test_starttls(smtp_client, starttls_smtpd_server):
 
 
 async def test_starttls_timeout(
-    smtp_client, starttls_smtpd_server, event_loop, aiosmtpd_class, monkeypatch
+    smtp_client, starttls_smtpd_server, event_loop, smtpd_class, monkeypatch
 ):
     async def handle_starttls(self, arg):
         await asyncio.sleep(0.1, loop=event_loop)
 
-    monkeypatch.setattr(aiosmtpd_class, "smtp_STARTTLS", handle_starttls)
+    monkeypatch.setattr(smtpd_class, "smtp_STARTTLS", handle_starttls)
 
     async with smtp_client:
         await smtp_client.ehlo()
@@ -85,14 +85,14 @@ async def test_starttls_bad_responses(
     smtp_client,
     starttls_smtpd_server,
     event_loop,
-    aiosmtpd_class,
+    smtpd_class,
     monkeypatch,
     response_message,
 ):
     async def handle_starttls(self, arg):
         await self.push("451 oh no")
 
-    monkeypatch.setattr(aiosmtpd_class, "smtp_STARTTLS", handle_starttls)
+    monkeypatch.setattr(smtpd_class, "smtp_STARTTLS", handle_starttls)
 
     async with smtp_client:
         await smtp_client.ehlo()

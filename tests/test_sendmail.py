@@ -90,13 +90,13 @@ async def test_sendmail_simple_failure(smtp_client, smtpd_server):
 
 
 async def test_sendmail_error_silent_rset_handles_disconnect(
-    smtp_client, smtpd_server, message, aiosmtpd_class, monkeypatch
+    smtp_client, smtpd_server, message, smtpd_class, monkeypatch
 ):
     async def data_response(self, *args):
         await self.push("501 oh noes")
         self.transport.close()
 
-    monkeypatch.setattr(aiosmtpd_class, "smtp_DATA", data_response)
+    monkeypatch.setattr(smtpd_class, "smtp_DATA", data_response)
 
     async with smtp_client:
         with pytest.raises(SMTPResponseException):
