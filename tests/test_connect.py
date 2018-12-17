@@ -1,8 +1,6 @@
 """
 Connectivity tests.
 """
-import asyncio
-
 import pytest
 
 from aiosmtplib import (

@@ -1,8 +1,6 @@
 """
 Lower level SMTP command tests.
 """
-import asyncio
-
 import pytest
 
 from aiosmtplib import (
@@ -11,7 +9,6 @@ from aiosmtplib import (
     SMTPResponseException,
     SMTPServerDisconnected,
     SMTPStatus,
-    SMTPTimeoutError,
 )
 
 

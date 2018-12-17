@@ -12,7 +12,8 @@ from pathlib import Path
 
 import pytest
 from aiosmtpd.handlers import Message as MessageHandler
-from aiosmtpd.smtp import SMTP as SMTPD, MISSING
+from aiosmtpd.smtp import MISSING
+from aiosmtpd.smtp import SMTP as SMTPD
 
 from aiosmtplib import SMTP
 

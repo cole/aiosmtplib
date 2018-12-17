@@ -5,7 +5,7 @@ import asyncio
 
 import pytest
 
-from aiosmtplib import SMTP, SMTPTimeoutError
+from aiosmtplib import SMTPTimeoutError
 
 
 SLEEP_LENGTH = 0.05
