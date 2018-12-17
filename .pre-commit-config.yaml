@@ -16,3 +16,8 @@ repos:
     rev: v0.641
     hooks:
     -   id: mypy
+-   repo: https://github.com/Lucas-C/pre-commit-hooks-bandit
+    rev: v1.0.3
+    hooks:
+    -   id: python-bandit-vulnerability-check
+        args: [-n, '10', -s, B101]
