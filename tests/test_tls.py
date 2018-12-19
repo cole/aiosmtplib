@@ -117,6 +117,21 @@ async def test_starttls_with_explicit_server_hostname(
 async def test_starttls_not_supported(
     smtp_client, smtpd_server, smtpd_class, monkeypatch
 ):
+    async def handle_ehlo(self, arg):
+        await self.push("250 HELP")
+
+    monkeypatch.setattr(smtpd_class, "smtp_EHLO", handle_ehlo)
+
+    async with smtp_client:
+        await smtp_client.ehlo()
+
+        with pytest.raises(SMTPException):
+            await smtp_client.starttls(validate_certs=False)
+
+
+async def test_starttls_advertised_but_not_supported(
+    smtp_client, smtpd_server, smtpd_class, monkeypatch
+):
     async def handle_starttls(self, arg):
         await self.push("454 TLS not available")
 

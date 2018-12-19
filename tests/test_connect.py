@@ -282,3 +282,17 @@ async def test_connect_error_second_attempt(event_loop, hostname, port):
 
     with pytest.raises(SMTPConnectError):
         await client.connect(timeout=0.01)
+
+
+async def test_ehlo_or_helo_if_needed_disconnect_after_ehlo(
+    smtp_client, smtpd_server, smtpd_class, monkeypatch, event_loop
+):
+    async def ehlo_response(self, hostname):
+        await self.push("521 oh noes")
+        self.transport.close()
+
+    monkeypatch.setattr(smtpd_class, "smtp_EHLO", ehlo_response)
+
+    async with smtp_client:
+        with pytest.raises(SMTPServerDisconnected):
+            await smtp_client._ehlo_or_helo_if_needed()

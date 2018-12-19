@@ -3,13 +3,7 @@ Lower level SMTP command tests.
 """
 import pytest
 
-from aiosmtplib import (
-    SMTPDataError,
-    SMTPHeloError,
-    SMTPResponseException,
-    SMTPServerDisconnected,
-    SMTPStatus,
-)
+from aiosmtplib import SMTPDataError, SMTPHeloError, SMTPResponseException, SMTPStatus
 
 
 pytestmark = pytest.mark.asyncio(forbid_global_loop=True)
@@ -113,9 +107,12 @@ async def test_ehlo_or_helo_if_needed_ehlo_success(smtp_client, smtpd_server):
 
 
 async def test_ehlo_or_helo_if_needed_helo_success(
-    smtp_client, smtpd_server, smtpd_handler, monkeypatch
+    smtp_client, smtpd_server, smtpd_class, monkeypatch
 ):
-    monkeypatch.setattr(smtpd_handler, "EHLO_response_message", "500 no bueno")
+    async def ehlo_response(self, hostname):
+        await self.push("500 no ehlo")
+
+    monkeypatch.setattr(smtpd_class, "smtp_EHLO", ehlo_response)
 
     async with smtp_client:
         assert smtp_client.is_ehlo_or_helo_needed is True
@@ -126,34 +123,19 @@ async def test_ehlo_or_helo_if_needed_helo_success(
 
 
 async def test_ehlo_or_helo_if_needed_neither_succeeds(
-    smtp_client, smtpd_server, smtpd_handler, monkeypatch
+    smtp_client, smtpd_server, smtpd_class, smtpd_handler, monkeypatch
 ):
-    monkeypatch.setattr(smtpd_handler, "EHLO_response_message", "500 no bueno")
-    monkeypatch.setattr(smtpd_handler, "HELO_response_message", "500 no bueno")
+    monkeypatch.setattr(smtpd_handler, "HELO_response_message", "500 no helo")
+
+    async def ehlo_response(self, hostname):
+        await self.push("500 no ehlo")
+
+    monkeypatch.setattr(smtpd_class, "smtp_EHLO", ehlo_response)
 
     async with smtp_client:
         assert smtp_client.is_ehlo_or_helo_needed is True
 
         with pytest.raises(SMTPHeloError):
-            await smtp_client._ehlo_or_helo_if_needed()
-
-
-async def test_ehlo_or_helo_if_needed_disconnect_after_ehlo(
-    smtp_client,
-    smtpd_server,
-    smtpd_class,
-    monkeypatch,
-    recieved_commands,
-    smtpd_responses,
-):
-    async def ehlo_response(self, *args):
-        await self.push("501 oh noes")
-        self.transport.close()
-
-    monkeypatch.setattr(smtpd_class, "smtp_EHLO", ehlo_response)
-
-    async with smtp_client:
-        with pytest.raises(SMTPServerDisconnected):
             await smtp_client._ehlo_or_helo_if_needed()
 
 

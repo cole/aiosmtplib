@@ -56,6 +56,24 @@ async def test_sendmail_with_mail_option(smtp_client, smtpd_server, message):
         assert response != ""
 
 
+async def test_sendmail_without_size_option(
+    smtp_client, smtpd_server, message, smtpd_class, monkeypatch, recieved_commands
+):
+    async def ehlo_response(self, hostname):
+        self.session.host_name = hostname
+        await self.push("250 all good")
+
+    monkeypatch.setattr(smtpd_class, "smtp_EHLO", ehlo_response)
+
+    async with smtp_client:
+        errors, response = await smtp_client.sendmail(
+            message["From"], [message["To"]], str(message)
+        )
+
+        assert not errors
+        assert response != ""
+
+
 async def test_sendmail_with_invalid_mail_option(smtp_client, smtpd_server, message):
     async with smtp_client:
         with pytest.raises(SMTPResponseException) as err:
