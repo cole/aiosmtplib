@@ -1,7 +1,7 @@
 aiosmtplib
 ==========
 
-|travis| |coveralls| |pypi-version| |pypi-python-versions| |pypi-status|
+|travis| |codecov| |pypi-version| |pypi-python-versions| |pypi-status|
 |pypi-license| |black|
 
 ------------
@@ -136,8 +136,8 @@ via Github issues.
 .. |pypi-python-versions| image:: https://img.shields.io/pypi/pyversions/aiosmtplib.svg
 .. |pypi-status| image:: https://img.shields.io/pypi/status/aiosmtplib.svg
 .. |pypi-license| image:: https://img.shields.io/pypi/l/aiosmtplib.svg
-.. |coveralls| image:: https://coveralls.io/repos/github/cole/aiosmtplib/badge.svg?branch=master
-              :target: https://coveralls.io/github/cole/aiosmtplib?branch=master
+.. |codecov| image:: https://codecov.io/gh/cole/aiosmtplib/branch/master/graph/badge.svg
+             :target: https://codecov.io/gh/cole/aiosmtplib
 .. |black| image:: https://img.shields.io/badge/code%20style-black-000000.svg
            :target: https://github.com/ambv/black
            :alt: "Code style: black"
