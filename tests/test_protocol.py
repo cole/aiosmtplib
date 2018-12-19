@@ -2,7 +2,6 @@
 Protocol level tests.
 """
 import asyncio
-import time
 
 import pytest
 
@@ -13,16 +12,9 @@ from aiosmtplib.protocol import SMTPProtocol
 pytestmark = pytest.mark.asyncio(forbid_global_loop=True)
 
 
-class DummyProtocol(asyncio.Protocol):
-    """
-    Server protocol for monkeypatching in client protocol tests.
-    """
-
-    def connection_made(self, transport):
-        self.transport = transport
-
-    def data_received(self, data):
-        self.transport.close()
+async def handle_dummy_client(reader, writer):
+    while True:
+        await reader.read(1000)
 
 
 @pytest.fixture(scope="function")
@@ -38,7 +30,7 @@ def smtp_protocol(request, event_loop, stream_reader):
 @pytest.fixture(scope="function")
 def dummy_server(request, hostname, port, event_loop):
     server = event_loop.run_until_complete(
-        event_loop.create_server(lambda: DummyProtocol(), host=hostname, port=port)
+        event_loop.create_server(handle_dummy_client, host=hostname, port=port)
     )
 
     def close_server():
@@ -49,7 +41,7 @@ def dummy_server(request, hostname, port, event_loop):
 
 
 @pytest.fixture(scope="function")
-async def connected_smtp_protocol(
+async def dummy_smtp_protocol(
     request, smtp_protocol, dummy_server, event_loop, hostname, port
 ):
     connect_future = event_loop.create_connection(
@@ -63,29 +55,40 @@ async def connected_smtp_protocol(
     return protocol
 
 
-async def test_protocol_connect(connected_smtp_protocol):
-    assert isinstance(connected_smtp_protocol._stream_reader, asyncio.StreamReader)
-    assert isinstance(connected_smtp_protocol._stream_writer, asyncio.StreamWriter)
+async def test_protocol_connect(dummy_smtp_protocol):
+    assert isinstance(dummy_smtp_protocol._stream_reader, asyncio.StreamReader)
+    assert isinstance(dummy_smtp_protocol._stream_writer, asyncio.StreamWriter)
 
 
-async def test_protocol_read_limit_overrun(
-    connected_smtp_protocol, dummy_server, monkeypatch
-):
-    def write_response(self, data):
+async def test_protocol_read_limit_overrun(smtp_protocol, event_loop, hostname, port):
+    async def client_connected(reader, writer):
+        await reader.read(1000)
         long_response = (
             b"220 At vero eos et accusamus et iusto odio dignissimos ducimus qui "
             b"blanditiis praesentium voluptatum deleniti atque corruptis qui "
             b"blanditiis praesentium voluptatum\n"
         )
-        self.transport.write(long_response)
+        writer.write(long_response)
+        await writer.drain()
 
-    monkeypatch.setattr(DummyProtocol, "data_received", write_response)
+    server = await asyncio.start_server(
+        client_connected, loop=event_loop, host=hostname, port=port
+    )
+
+    connect_future = event_loop.create_connection(
+        lambda: smtp_protocol, host=hostname, port=port
+    )
+
+    _, protocol = await asyncio.wait_for(connect_future, timeout=0.01, loop=event_loop)
 
     with pytest.raises(SMTPResponseException) as exc_info:
-        await connected_smtp_protocol.execute_command(b"TEST\n", timeout=1)
+        await protocol.execute_command(b"TEST\n", timeout=1)
 
     assert exc_info.value.code == 500
     assert "Line too long" in exc_info.value.message
+
+    server.close()
+    await server.wait_closed()
 
 
 async def test_protocol_connected_check_on_read_response(smtp_protocol):
@@ -161,39 +164,49 @@ async def test_protocol_writer_connected_check_on_readline(smtp_protocol):
 
 
 async def test_protocol_timeout_on_starttls(
-    connected_smtp_protocol, dummy_server, event_loop, client_tls_context, monkeypatch
+    smtp_protocol, event_loop, hostname, port, client_tls_context
 ):
-    def write_response(self, data):
-        if not hasattr(self, "_responded"):
-            self.transport.write(b"220 go ahead\n")
-            self._responded = True
-        else:
-            time.sleep(0.02)  # TODO - use async sleep here
+    async def client_connected(reader, writer):
+        await reader.read(1000)
+        writer.write(b"220 go ahead\n")
+        await writer.drain()
+        await asyncio.sleep(0.2, loop=event_loop)
 
-    monkeypatch.setattr(DummyProtocol, "data_received", write_response)
+    server = await asyncio.start_server(
+        client_connected, loop=event_loop, host=hostname, port=port
+    )
+
+    connect_future = event_loop.create_connection(
+        lambda: smtp_protocol, host=hostname, port=port
+    )
+
+    _, protocol = await asyncio.wait_for(connect_future, timeout=0.01, loop=event_loop)
 
     with pytest.raises(SMTPTimeoutError):
-        await connected_smtp_protocol.starttls(client_tls_context, timeout=0.01)
+        await protocol.starttls(client_tls_context, timeout=0.01)
+
+    server.close()
+    await server.wait_closed()
 
 
-async def test_protocol_timeout_on_drain_writer(connected_smtp_protocol):
-    connected_smtp_protocol.pause_writing()
-    connected_smtp_protocol._stream_writer.write(b"1234")
+async def test_protocol_timeout_on_drain_writer(dummy_smtp_protocol):
+    dummy_smtp_protocol.pause_writing()
+    dummy_smtp_protocol._stream_writer.write(b"1234")
 
     with pytest.raises(SMTPTimeoutError):
-        await connected_smtp_protocol._drain_writer(timeout=0.01)
+        await dummy_smtp_protocol._drain_writer(timeout=0.01)
 
 
-async def test_connectionerror_on_drain_writer(connected_smtp_protocol):
-    connected_smtp_protocol.pause_writing()
-    connected_smtp_protocol._stream_reader._transport.close()
-
-    with pytest.raises(ConnectionError):
-        await connected_smtp_protocol._drain_writer(timeout=0.01)
-
-
-async def test_connectionerror_on_readline(connected_smtp_protocol):
-    connected_smtp_protocol._stream_reader._transport.close()
+async def test_connectionerror_on_drain_writer(dummy_smtp_protocol):
+    dummy_smtp_protocol.pause_writing()
+    dummy_smtp_protocol._stream_reader._transport.close()
 
     with pytest.raises(ConnectionError):
-        await connected_smtp_protocol._readline(timeout=0.01)
+        await dummy_smtp_protocol._drain_writer(timeout=0.01)
+
+
+async def test_connectionerror_on_readline(dummy_smtp_protocol):
+    dummy_smtp_protocol._stream_reader._transport.close()
+
+    with pytest.raises(ConnectionError):
+        await dummy_smtp_protocol._readline(timeout=0.01)

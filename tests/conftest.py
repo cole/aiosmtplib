@@ -107,6 +107,30 @@ class TestSMTPD(SMTPD):
         else:
             await self.push(status)
 
+    async def smtp_STARTTLS(self, arg):
+        """
+        Override for uvloop compatibility.
+        """
+        if arg:
+            await self.push("501 Syntax: STARTTLS")
+            return
+        if not self.tls_context:
+            await self.push("454 TLS not available")
+            return
+        await self.push("220 Ready to start TLS")
+        # Create SSL layer.
+        self._tls_protocol = asyncio.sslproto.SSLProtocol(
+            self.loop, self, self.tls_context, None, server_side=True
+        )
+        self._original_transport = self.transport
+        if hasattr(self._original_transport, "set_protocol"):
+            self._original_transport.set_protocol(self._tls_protocol)
+        else:
+            self._original_transport._protocol = self._tls_protocol
+
+        self.transport = self._tls_protocol._app_transport
+        self._tls_protocol.connection_made(self._original_transport)
+
 
 @pytest.fixture(scope="function")
 def event_loop(request):
