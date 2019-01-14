@@ -19,5 +19,5 @@ __title__ = "aiosmtplib"
 __version__ = "1.0.4dev0"
 __author__ = "Cole Maclean"
 __license__ = "MIT"
-__copyright__ = "Copyright 2018 Cole Maclean"
+__copyright__ = "Copyright 2019 Cole Maclean"
 __all__ = errors.__all__ + response.__all__ + smtp.__all__ + status.__all__  # NOQA
