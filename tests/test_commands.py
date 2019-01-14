@@ -139,6 +139,20 @@ async def test_ehlo_or_helo_if_needed_neither_succeeds(
             await smtp_client._ehlo_or_helo_if_needed()
 
 
+async def test_ehlo_or_helo_if_needed_disconnect_after_ehlo(
+    smtp_client, smtpd_server, smtpd_class, monkeypatch, event_loop
+):
+    async def ehlo_response(self, hostname):
+        await self.push("421 bye for now")
+        self.transport.close()
+
+    monkeypatch.setattr(smtpd_class, "smtp_EHLO", ehlo_response)
+
+    async with smtp_client:
+        with pytest.raises(SMTPHeloError):
+            await smtp_client._ehlo_or_helo_if_needed()
+
+
 async def test_rset_ok(smtp_client, smtpd_server):
     async with smtp_client:
         response = await smtp_client.rset()
