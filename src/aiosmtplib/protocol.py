@@ -130,7 +130,7 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
             except ValueError:
                 pass
 
-            message = line[4:].strip(b" \t\r\n").decode("ascii")
+            message = line[4:].strip(b" \t\r\n").decode("utf-8", "surrogateescape")
             response_lines.append(message)
 
             if line[3:4] != b"-":

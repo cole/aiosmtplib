@@ -5,6 +5,9 @@ aiosmtplib changes
 1.0.4dev0
 ---------
 
+- Bugfix: Badly encoded server response messages are now decoded to utf-8,
+  with error chars escaped.
+
 
 1.0.3
 -----
