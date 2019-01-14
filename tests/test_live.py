@@ -21,7 +21,7 @@ pytestmark = [
 
 async def test_starttls_gmail(event_loop):
     client = SMTP(hostname="smtp.gmail.com", port=587, loop=event_loop, use_tls=False)
-    await client.connect()
+    await client.connect(timeout=0.1)
     await client.ehlo()
     await client.starttls(validate_certs=False)
     response = await client.ehlo()
@@ -36,7 +36,7 @@ async def test_starttls_gmail(event_loop):
 @pytest.mark.asyncio(forbid_global_loop=True)
 async def test_qq_login(event_loop):
     client = SMTP(hostname="smtp.qq.com", port=587, loop=event_loop, use_tls=False)
-    await client.connect()
+    await client.connect(timeout=0.1)
     await client.ehlo()
     await client.starttls(validate_certs=False)
 
