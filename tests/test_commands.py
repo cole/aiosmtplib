@@ -370,3 +370,18 @@ async def test_gibberish_raises_exception(
     async with smtp_client:
         with pytest.raises(SMTPResponseException):
             await smtp_client.noop()
+
+
+async def test_badly_encoded_text_response(
+    smtp_client, smtpd_server, smtpd_class, monkeypatch
+):
+    async def noop_response(self, arg):
+        self._writer.write(b"250 \xFF\xFF\xFF\xFF\r\n")
+        await self._writer.drain()
+
+    monkeypatch.setattr(smtpd_class, "smtp_NOOP", noop_response)
+
+    async with smtp_client:
+        response = await smtp_client.noop()
+
+    assert response.code == SMTPStatus.completed
