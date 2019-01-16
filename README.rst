@@ -8,7 +8,7 @@ aiosmtplib
 
 aiosmtplib is an asynchronous SMTP client for use with asyncio.
 
-For complete documentation, see `Read The Docs`_.
+For documentation, see `Read The Docs`_.
 
 
 Quickstart
@@ -22,13 +22,13 @@ Quickstart
     import aiosmtplib
 
     loop = asyncio.get_event_loop()
-    smtp = aiosmtplib.SMTP(hostname='127.0.0.1', port=1025, loop=loop)
+    smtp = aiosmtplib.SMTP(hostname="127.0.0.1", port=1025, loop=loop)
     loop.run_until_complete(smtp.connect())
 
-    message = MIMEText('Sent via aiosmtplib')
-    message['From'] = 'root@localhost'
-    message['To'] = 'somebody@example.com'
-    message['Subject'] = 'Hello World!'
+    message = MIMEText("Sent via aiosmtplib")
+    message["From"] = "root@localhost"
+    message["To"] = "somebody@example.com"
+    message["Subject"] = "Hello World!"
 
     loop.run_until_complete(smtp.send_message(message))
 
@@ -38,21 +38,50 @@ Requirements
 Python 3.5.2+, compiled with SSL support, is required.
 
 
-Connecting to an SMTP server
+Connecting to an SMTP Server
 ----------------------------
 
-Initialize a new ``SMTP`` instance, then await its
-``connect`` coroutine. Initializing an instance does not
-automatically connect to the server, as that is a blocking operation.
+Initialize a new ``SMTP`` instance, then await its ``connect``
+coroutine. Initializing an instance does not automatically connect to the
+server, as that is a blocking operation.
 
 .. code-block:: python
 
-    gmail_client = SMTP()
+    client = SMTP()
 
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(
-        gmail_client.connect(hostname='smtp.gmail.com', port=587))
+    loop.run_until_complete(client.connect(hostname="localhost", port=25))
 
+
+
+Connecting over TLS/SSL
+~~~~~~~~~~~~~~~~~~~~~~~
+
+If an SMTP server supports direct connection via TLS/SSL, pass ``use_tls=True``
+when initializing the SMTP instance (or when calling ``connect``).
+
+.. code-block:: python
+
+
+    loop = asyncio.get_event_loop()
+    smtp = aiosmtplib.SMTP(hostname="smtp.gmail.com", port=465, loop=loop, use_tls=True)
+    loop.run_until_complete(smtp.connect())
+
+
+STARTTLS connections
+~~~~~~~~~~~~~~~~~~~~
+Many SMTP servers support the STARTTLS extension over port 587. When using
+STARTTLS, the initial connection is made over plaintext, and after connecting
+a STARTTLS command is sent which initiates the upgrade to a secure connection.
+To connect to a server that uses STARTTLS, set ``use_tls`` to ``False`` when
+connecting, and call ``starttls`` on the client.
+
+.. code-block:: python
+
+    loop = asyncio.get_event_loop()
+    smtp = aiosmtplib.SMTP(hostname="smtp.gmail.com", port=587, loop=loop, use_tls=False)
+    loop.run_until_complete(smtp.connect())
+    loop.run_until_complete(smtp.starttls())
 
 Sending messages
 ----------------
@@ -64,10 +93,12 @@ Use ``send_message`` to send ``email.message.Message`` objects.
 
 .. code-block:: python
 
-    message = MIMEText('Sent via aiosmtplib')
-    message['From'] = 'root@localhost'
-    message['To'] = 'somebody@example.com'
-    message['Subject'] = 'Hello World!'
+    from email.mime.text import MIMEText
+
+    message = MIMEText("Sent via aiosmtplib")
+    message["From"] = "root@localhost"
+    message["To"] = "somebody@example.com"
+    message["Subject"] = "Hello World!"
 
     loop = asyncio.get_event_loop()
     loop.run_until_complete(smtp.send_message(message))
@@ -87,14 +118,14 @@ Use ``sendmail`` to send raw messages.
 
 .. code-block:: python
 
-    sender = 'root@localhost'
-    recipients = ['somebody@example.com']
-    message = '''To: somebody@example.com
+    sender = "root@localhost"
+    recipients = ["somebody@example.com"]
+    message = """To: somebody@example.com
     From: root@localhost
     Subject: Hello World!
 
     Sent via aiosmtplib
-    '''
+    """
 
     loop = asyncio.get_event_loop()
     loop.run_until_complete(smtp.sendmail(sender, recipients, message))
@@ -103,27 +134,9 @@ Use ``sendmail`` to send raw messages.
 Note that when using this method, you must format the message headers yourself.
 
 
-STARTTLS Connections
---------------------
-Many SMTP servers support the STARTTLS extension over port 587. To connect to
-one of these, set ``use_tls`` to ``False`` when connecting, and call
-``starttls`` on the client.
-
-
-.. code-block:: python
-
-    loop = asyncio.get_event_loop()
-    smtp = aiosmtplib.SMTP(
-        hostname='smtp.gmail.com', port=587, loop=loop, use_tls=False)
-    loop.run_until_complete(smtp.connect())
-    loop.run_until_complete(smtp.starttls())
-
-
-Roadmap
--------
-aiosmtplib is now feature complete, however test coverage and documentation
-need a lot of work. Feature requests and bug reports are welcome
-via Github issues.
+Bug reporting
+-------------
+Bug reports (and feature requests) are welcome via Github issues.
 
 
 
@@ -141,4 +154,4 @@ via Github issues.
 .. |black| image:: https://img.shields.io/badge/code%20style-black-000000.svg
            :target: https://github.com/ambv/black
            :alt: "Code style: black"
-.. _Read The Docs: https://aiosmtplib.readthedocs.io/en/latest/
+.. _Read The Docs: https://aiosmtplib.readthedocs.io/en/latest/overview.html

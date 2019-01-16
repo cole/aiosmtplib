@@ -68,13 +68,13 @@ when initializing the SMTP instance (or when calling :meth:`SMTP.connect`).
     loop.run_until_complete(smtp.connect())
 
 
-STARTTLS
-~~~~~~~~
-Many SMTP servers support the STARTTLS extension over port 587. In this case,
-the initial connection is made over plaintext, and after connecting a STARTTLS
-command is sent, which initiates upgrading the existing connection. To connect
-to one of these, set ``use_tls`` to ``False`` when connecting, and call
-:meth:`SMTP.starttls` on the client.
+STARTTLS connections
+~~~~~~~~~~~~~~~~~~~~
+Many SMTP servers support the STARTTLS extension over port 587. When using
+STARTTLS, the initial connection is made over plaintext, and after connecting
+a STARTTLS command is sent which initiates the upgrade to a secure connection.
+To connect to a server that uses STARTTLS, set ``use_tls`` to ``False`` when
+connecting, and call :meth:`SMTP.starttls` on the client.
 
 .. Since this code requires Gmail, don't test it, at least for now.
 
@@ -201,8 +201,6 @@ If you have a lot of emails to send, consider creating multiple connections
 (:class:`SMTP` instances) and splitting the work between them.
 
 
-Roadmap
--------
-:mod:`aiosmtplib` is now feature complete, however test coverage and
-documentation need a lot of work. Feature requests and bug reports are welcome
-via Github issues.
+Bug reporting
+-------------
+Bug reports (and feature requests) are welcome via Github issues.
