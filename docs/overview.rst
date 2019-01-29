@@ -101,7 +101,7 @@ manager, which will automatically connect/disconnect on entry/exit.
         message["Subject"] = "Hello World!"
 
         async with aiosmtplib.SMTP(hostname="127.0.0.1", port=1025, loop=loop):
-            smtp.send_message(message)
+            await smtp.send_message(message)
 
     loop.run_until_complete(send_message())
 
