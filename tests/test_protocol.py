@@ -226,3 +226,31 @@ async def test_connectionerror_on_drain_writer(
 
     with pytest.raises(ConnectionError):
         await protocol._drain_writer(timeout=0.01)
+
+
+async def test_incompletereaderror_on_readline_with_partial_line(
+    stream_reader, event_loop, hostname, port
+):
+    partial_response = b"499 incomplete response\\"
+
+    async def client_connected(reader, writer):
+        writer.write(partial_response)
+        writer.write_eof()
+        await writer.drain()
+
+    server = await asyncio.start_server(
+        client_connected, loop=event_loop, host=hostname, port=port
+    )
+    connect_future = event_loop.create_connection(
+        lambda: SMTPProtocol(stream_reader, loop=event_loop), host=hostname, port=port
+    )
+
+    _, protocol = await asyncio.wait_for(connect_future, timeout=0.01, loop=event_loop)
+
+    response_bytes = await protocol._readline(timeout=0.01)
+
+    assert response_bytes == partial_response
+    assert protocol._stream_writer._transport.is_closing()
+
+    server.close()
+    await server.wait_closed()
