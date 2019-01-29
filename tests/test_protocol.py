@@ -46,7 +46,7 @@ async def test_protocol_connect(echo_server, stream_reader, event_loop, hostname
 
     assert isinstance(protocol._stream_reader, asyncio.StreamReader)
     assert isinstance(protocol._stream_writer, asyncio.StreamWriter)
-    assert isinstance(protocol._stream_reader._transport, asyncio.BaseTransport)
+    assert protocol._stream_reader._transport is not None
     assert not protocol._stream_reader._transport.is_closing()
 
     protocol._stream_writer.close()
