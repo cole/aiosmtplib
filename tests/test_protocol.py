@@ -176,7 +176,7 @@ async def test_protocol_timeout_on_starttls(
         await reader.read(1000)
         writer.write(b"220 go ahead\n")
         await writer.drain()
-        await asyncio.sleep(0.2, loop=event_loop)
+        await asyncio.sleep(0.02, loop=event_loop)
 
     server = await asyncio.start_server(
         client_connected, loop=event_loop, host=hostname, port=port
@@ -226,18 +226,3 @@ async def test_connectionerror_on_drain_writer(
 
     with pytest.raises(ConnectionError):
         await protocol._drain_writer(timeout=0.01)
-
-
-async def test_connectionerror_on_readline(
-    stream_reader, echo_server, event_loop, hostname, port
-):
-    connect_future = event_loop.create_connection(
-        lambda: SMTPProtocol(stream_reader, loop=event_loop), host=hostname, port=port
-    )
-
-    _, protocol = await asyncio.wait_for(connect_future, timeout=0.01, loop=event_loop)
-
-    protocol._stream_reader._transport.close()
-
-    with pytest.raises(ConnectionError):
-        await protocol._readline(timeout=0.01)

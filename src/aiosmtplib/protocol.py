@@ -250,8 +250,6 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
             line = await asyncio.wait_for(
                 read_task, timeout, loop=self._loop
             )  # type: bytes
-        except ConnectionError as exc:
-            raise SMTPServerDisconnected(str(exc))
         except asyncio.LimitOverrunError:
             raise SMTPResponseException(
                 SMTPStatus.unrecognized_command, "Line too long."
