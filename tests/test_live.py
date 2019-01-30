@@ -21,7 +21,7 @@ pytestmark = [
 
 async def test_starttls_gmail(event_loop):
     client = SMTP(hostname="smtp.gmail.com", port=587, loop=event_loop, use_tls=False)
-    await client.connect(timeout=0.1)
+    await client.connect(timeout=1.0)
     await client.ehlo()
     await client.starttls(validate_certs=False)
     response = await client.ehlo()

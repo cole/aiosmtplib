@@ -14,7 +14,6 @@ from aiosmtplib import (
     SMTPException,
     SMTPResponseException,
     SMTPStatus,
-    SMTPTimeoutError,
 )
 
 
@@ -88,21 +87,6 @@ async def test_starttls(smtp_client, smtpd_server):
 
         response = await smtp_client.ehlo()
         assert response.code == SMTPStatus.completed
-
-
-async def test_starttls_timeout(
-    smtp_client, smtpd_server, event_loop, smtpd_class, monkeypatch
-):
-    async def handle_starttls(self, arg):
-        await asyncio.sleep(0.1, loop=event_loop)
-
-    monkeypatch.setattr(smtpd_class, "smtp_STARTTLS", handle_starttls)
-
-    async with smtp_client:
-        await smtp_client.ehlo()
-
-        with pytest.raises(SMTPTimeoutError):
-            await smtp_client.starttls(validate_certs=False, timeout=0.001)
 
 
 async def test_starttls_with_explicit_server_hostname(

@@ -6,7 +6,7 @@ import socket
 
 import pytest
 
-from aiosmtplib import SMTP, SMTPTimeoutError
+from aiosmtplib import SMTP
 
 
 pytestmark = pytest.mark.asyncio(forbid_global_loop=True)
@@ -60,8 +60,8 @@ async def test_default_port_on_connect(event_loop):
     client = SMTP(loop=event_loop)
 
     try:
-        await client.connect(use_tls=False, timeout=0.000000001)
-    except SMTPTimeoutError:
+        await client.connect(use_tls=False, timeout=0.001)
+    except (ValueError, OSError):
         pass  # Ignore connection failure
 
     assert client.port == 25
@@ -73,8 +73,8 @@ async def test_default_tls_port_on_connect(event_loop):
     client = SMTP(loop=event_loop)
 
     try:
-        await client.connect(use_tls=True, timeout=0.0000000001)
-    except ValueError:
+        await client.connect(use_tls=True, timeout=0.001)
+    except (ValueError, OSError):
         pass  # Ignore connection failure
 
     assert client.port == 465

@@ -157,9 +157,7 @@ def event_loop(request):
         for task in cleanup_tasks:
             task.cancel()
         try:
-            loop.run_until_complete(
-                asyncio.wait(cleanup_tasks, loop=loop, timeout=0.01)
-            )
+            loop.run_until_complete(asyncio.wait(cleanup_tasks, loop=loop, timeout=1.0))
         except RuntimeError:
             # Event loop was probably already stopping.
             pass
@@ -284,6 +282,6 @@ def smtpd_server(
 
 @pytest.fixture(scope="function")
 def smtp_client(request, event_loop, hostname, port):
-    client = SMTP(hostname=hostname, port=port, loop=event_loop, timeout=0.1)
+    client = SMTP(hostname=hostname, port=port, loop=event_loop, timeout=1.0)
 
     return client

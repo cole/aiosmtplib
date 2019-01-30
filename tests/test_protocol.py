@@ -42,7 +42,7 @@ async def test_protocol_connect(echo_server, stream_reader, event_loop, hostname
     connect_future = event_loop.create_connection(
         lambda: SMTPProtocol(stream_reader, loop=event_loop), host=hostname, port=port
     )
-    _, protocol = await asyncio.wait_for(connect_future, timeout=0.01, loop=event_loop)
+    _, protocol = await asyncio.wait_for(connect_future, timeout=1.0, loop=event_loop)
 
     assert isinstance(protocol._stream_reader, asyncio.StreamReader)
     assert isinstance(protocol._stream_writer, asyncio.StreamWriter)
@@ -70,10 +70,10 @@ async def test_protocol_read_limit_overrun(stream_reader, event_loop, hostname, 
         lambda: SMTPProtocol(stream_reader, loop=event_loop), host=hostname, port=port
     )
 
-    _, protocol = await asyncio.wait_for(connect_future, timeout=0.01, loop=event_loop)
+    _, protocol = await asyncio.wait_for(connect_future, timeout=1.0, loop=event_loop)
 
     with pytest.raises(SMTPResponseException) as exc_info:
-        await protocol.execute_command(b"TEST\n", timeout=1)
+        await protocol.execute_command(b"TEST\n", timeout=1.0)
 
     assert exc_info.value.code == 500
     assert "Line too long" in exc_info.value.message
@@ -87,7 +87,7 @@ async def test_protocol_connected_check_on_read_response(stream_reader, event_lo
     smtp_protocol._stream_reader = None
 
     with pytest.raises(SMTPServerDisconnected):
-        await smtp_protocol.read_response(timeout=0.1)
+        await smtp_protocol.read_response(timeout=1.0)
 
 
 async def test_protocol_connected_check_on_write_and_drain(stream_reader, event_loop):
@@ -95,7 +95,7 @@ async def test_protocol_connected_check_on_write_and_drain(stream_reader, event_
     smtp_protocol._stream_reader = None
 
     with pytest.raises(SMTPServerDisconnected):
-        await smtp_protocol.write_and_drain(b"foo", timeout=0.1)
+        await smtp_protocol.write_and_drain(b"foo", timeout=1.0)
 
 
 async def test_protocol_reader_connected_check_on_upgrade_transport(
@@ -124,7 +124,7 @@ async def test_protocol_reader_connected_check_on_starttls(
     smtp_protocol._stream_reader = None
 
     with pytest.raises(SMTPServerDisconnected):
-        await smtp_protocol.starttls(client_tls_context)
+        await smtp_protocol.starttls(client_tls_context, timeout=1.0)
 
 
 async def test_protocol_writer_connected_check_on_starttls(
@@ -140,7 +140,7 @@ async def test_protocol_connected_check_on_drain_writer(stream_reader, event_loo
     smtp_protocol = SMTPProtocol(stream_reader, loop=event_loop)
 
     with pytest.raises(SMTPServerDisconnected):
-        await smtp_protocol._drain_writer(timeout=0.1)
+        await smtp_protocol._drain_writer(timeout=1.0)
 
 
 async def test_protocol_reader_connected_check_on_connection_made(
@@ -158,7 +158,7 @@ async def test_protocol_reader_connected_check_on_readline(stream_reader, event_
     smtp_protocol._stream_reader = None
 
     with pytest.raises(SMTPServerDisconnected):
-        await smtp_protocol._readline(timeout=0.1)
+        await smtp_protocol._readline(timeout=1.0)
 
 
 async def test_protocol_writer_connected_check_on_readline(stream_reader, event_loop):
@@ -166,7 +166,7 @@ async def test_protocol_writer_connected_check_on_readline(stream_reader, event_
     smtp_protocol._stream_writer = None
 
     with pytest.raises(SMTPServerDisconnected):
-        await smtp_protocol._readline(timeout=0.1)
+        await smtp_protocol._readline(timeout=1.0)
 
 
 async def test_protocol_timeout_on_starttls(
@@ -176,7 +176,7 @@ async def test_protocol_timeout_on_starttls(
         await reader.read(1000)
         writer.write(b"220 go ahead\n")
         await writer.drain()
-        await asyncio.sleep(0.02, loop=event_loop)
+        await asyncio.sleep(1.0, loop=event_loop)
 
     server = await asyncio.start_server(
         client_connected, loop=event_loop, host=hostname, port=port
@@ -185,7 +185,7 @@ async def test_protocol_timeout_on_starttls(
         lambda: SMTPProtocol(stream_reader, loop=event_loop), host=hostname, port=port
     )
 
-    _, protocol = await asyncio.wait_for(connect_future, timeout=0.01, loop=event_loop)
+    _, protocol = await asyncio.wait_for(connect_future, timeout=1.0, loop=event_loop)
 
     with pytest.raises(SMTPTimeoutError):
         await protocol.starttls(client_tls_context, timeout=0.01)
@@ -201,7 +201,7 @@ async def test_protocol_timeout_on_drain_writer(
         lambda: SMTPProtocol(stream_reader, loop=event_loop), host=hostname, port=port
     )
 
-    _, protocol = await asyncio.wait_for(connect_future, timeout=0.01, loop=event_loop)
+    _, protocol = await asyncio.wait_for(connect_future, timeout=1.0, loop=event_loop)
 
     protocol.pause_writing()
     protocol._stream_writer.write(b"1234")
@@ -219,13 +219,13 @@ async def test_connectionerror_on_drain_writer(
         lambda: SMTPProtocol(stream_reader, loop=event_loop), host=hostname, port=port
     )
 
-    _, protocol = await asyncio.wait_for(connect_future, timeout=0.01, loop=event_loop)
+    _, protocol = await asyncio.wait_for(connect_future, timeout=1.0, loop=event_loop)
 
     protocol.pause_writing()
     protocol._stream_reader._transport.close()
 
     with pytest.raises(ConnectionError):
-        await protocol._drain_writer(timeout=0.01)
+        await protocol._drain_writer(timeout=1.0)
 
 
 async def test_incompletereaderror_on_readline_with_partial_line(
@@ -245,9 +245,9 @@ async def test_incompletereaderror_on_readline_with_partial_line(
         lambda: SMTPProtocol(stream_reader, loop=event_loop), host=hostname, port=port
     )
 
-    _, protocol = await asyncio.wait_for(connect_future, timeout=0.01, loop=event_loop)
+    _, protocol = await asyncio.wait_for(connect_future, timeout=1.0, loop=event_loop)
 
-    response_bytes = await protocol._readline(timeout=0.01)
+    response_bytes = await protocol._readline(timeout=1.0)
 
     assert response_bytes == partial_response
     assert protocol._stream_writer._transport.is_closing()

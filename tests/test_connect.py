@@ -9,7 +9,6 @@ from aiosmtplib import (
     SMTPResponseException,
     SMTPServerDisconnected,
     SMTPStatus,
-    SMTPTimeoutError,
 )
 
 
@@ -78,7 +77,7 @@ async def test_connect_error_with_no_server(event_loop, hostname, port):
 
     with pytest.raises(SMTPConnectError):
         # SMTPTimeoutError vs SMTPConnectError here depends on processing time.
-        await client.connect(timeout=1)
+        await client.connect(timeout=1.0)
 
 
 async def test_disconnected_server_raises_on_client_read(
@@ -196,7 +195,7 @@ async def test_disconnected_server_raises_on_starttls(
     await smtp_client.ehlo()
 
     with pytest.raises(SMTPServerDisconnected):
-        await smtp_client.starttls(validate_certs=False, timeout=1)
+        await smtp_client.starttls(validate_certs=False, timeout=1.0)
 
     # Verify that the connection was closed
     assert not smtp_client._connect_lock.locked()
@@ -252,9 +251,9 @@ async def test_context_manager_exception_quits(
 async def test_context_manager_connect_exception_closes(
     smtp_client, smtpd_server, recieved_commands
 ):
-    with pytest.raises(SMTPTimeoutError):
+    with pytest.raises(ConnectionError):
         async with smtp_client:
-            raise SMTPTimeoutError("Timed out!")
+            raise ConnectionError("Failed!")
 
     assert len(recieved_commands) == 0
 
@@ -275,10 +274,10 @@ async def test_context_manager_with_manual_connection(smtp_client, smtpd_server)
 
 
 async def test_connect_error_second_attempt(event_loop, hostname, port):
-    client = SMTP(hostname=hostname, port=port, loop=event_loop)
+    client = SMTP(hostname=hostname, port=port, loop=event_loop, timeout=1.0)
 
     with pytest.raises(SMTPConnectError):
-        await client.connect(timeout=0.01)
+        await client.connect()
 
     with pytest.raises(SMTPConnectError):
-        await client.connect(timeout=0.01)
+        await client.connect()
