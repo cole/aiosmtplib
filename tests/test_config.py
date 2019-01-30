@@ -60,7 +60,7 @@ async def test_default_port_on_connect(event_loop):
     client = SMTP(loop=event_loop)
 
     try:
-        await client.connect(use_tls=False, timeout=0.001)
+        await client.connect(use_tls=False, timeout=1.0)
     except (ValueError, OSError):
         pass  # Ignore connection failure
 
@@ -73,7 +73,7 @@ async def test_default_tls_port_on_connect(event_loop):
     client = SMTP(loop=event_loop)
 
     try:
-        await client.connect(use_tls=True, timeout=0.001)
+        await client.connect(use_tls=True, timeout=1.0)
     except (ValueError, OSError):
         pass  # Ignore connection failure
 
