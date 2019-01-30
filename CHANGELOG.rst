@@ -2,11 +2,12 @@ aiosmtplib changes
 ==================
 
 
-1.0.4dev0
----------
+1.0.4
+-----
 
 - Bugfix: Badly encoded server response messages are now decoded to utf-8,
   with error chars escaped.
+
 - Cleanup: Removed handling for exceptions not raised by asyncio (in
   SMTPProtocol._readline)
 
