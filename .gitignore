@@ -13,6 +13,7 @@ aiosmtplib.egg-info/
 aiosmtplib.sublime-project
 aiosmtplib.sublime-workspace
 aiosmtplib.code-workspace
+.vscode/
 build/
 coverage/
 dist/
