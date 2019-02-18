@@ -4,7 +4,12 @@ aiosmtplib changes
 1.1.0
 -----
 
-- Cleanup: Replaced asserts in functions with more useful errors (e.g. RuntimeError)
+- Bugfix: EHLO/HELO if required before any command, not just when using
+  higher level commands.
+
+- Cleanup: Replaced asserts in functions with more useful errors (e.g.
+  RuntimeError).
+
 
 1.0.4
 -----

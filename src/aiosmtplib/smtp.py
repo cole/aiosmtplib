@@ -143,8 +143,6 @@ class SMTP(SMTPAuth):
             rcpt_options = list(rcpt_options)
 
         async with self._command_lock:
-            await self._ehlo_or_helo_if_needed()
-
             if self.supports_extension("size"):
                 size_option = "size={}".format(len(message))
                 mail_options.append(size_option)

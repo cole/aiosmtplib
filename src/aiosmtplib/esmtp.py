@@ -109,6 +109,8 @@ class ESMTP(SMTPConnection):
 
         :raises SMTPResponseException: on unexpected server response code
         """
+        await self._ehlo_or_helo_if_needed()
+
         response = await self.execute_command(b"HELP", timeout=timeout)
         success_codes = (
             SMTPStatus.system_status_ok,
@@ -127,6 +129,8 @@ class ESMTP(SMTPConnection):
 
         :raises SMTPResponseException: on unexpected server response code
         """
+        await self._ehlo_or_helo_if_needed()
+
         response = await self.execute_command(b"RSET", timeout=timeout)
         if response.code != SMTPStatus.completed:
             raise SMTPResponseException(response.code, response.message)
@@ -139,6 +143,8 @@ class ESMTP(SMTPConnection):
 
         :raises SMTPResponseException: on unexpected server response code
         """
+        await self._ehlo_or_helo_if_needed()
+
         response = await self.execute_command(b"NOOP", timeout=timeout)
         if response.code != SMTPStatus.completed:
             raise SMTPResponseException(response.code, response.message)
@@ -154,6 +160,8 @@ class ESMTP(SMTPConnection):
 
         :raises SMTPResponseException: on unexpected server response code
         """
+        await self._ehlo_or_helo_if_needed()
+
         parsed_address = parse_address(address)
 
         response = await self.execute_command(
@@ -180,6 +188,8 @@ class ESMTP(SMTPConnection):
 
         :raises SMTPResponseException: on unexpected server response code
         """
+        await self._ehlo_or_helo_if_needed()
+
         parsed_address = parse_address(address)
 
         response = await self.execute_command(
@@ -198,6 +208,9 @@ class ESMTP(SMTPConnection):
 
         :raises SMTPResponseException: on unexpected server response code
         """
+        # Can't quit without HELO/EHLO
+        await self._ehlo_or_helo_if_needed()
+
         response = await self.execute_command(b"QUIT", timeout=timeout)
         if response.code != SMTPStatus.closing:
             raise SMTPResponseException(response.code, response.message)
@@ -218,6 +231,8 @@ class ESMTP(SMTPConnection):
 
         :raises SMTPSenderRefused: on unexpected server response code
         """
+        await self._ehlo_or_helo_if_needed()
+
         if options is None:
             options = []
 
@@ -246,6 +261,8 @@ class ESMTP(SMTPConnection):
 
         :raises SMTPRecipientRefused: on unexpected server response code
         """
+        await self._ehlo_or_helo_if_needed()
+
         if options is None:
             options = []
 
@@ -272,6 +289,7 @@ class ESMTP(SMTPConnection):
         :raises SMTPDataError: on unexpected server response code
         :raises SMTPServerDisconnected: connection lost
         """
+        await self._ehlo_or_helo_if_needed()
         # As data accesses protocol directly, some handling is required
         self._raise_error_if_disconnected()
 
@@ -388,6 +406,7 @@ class ESMTP(SMTPConnection):
         :raises ValueError: invalid options provided
         """
         self._raise_error_if_disconnected()
+        await self._ehlo_or_helo_if_needed()
 
         if validate_certs is not None:
             self.validate_certs = validate_certs
@@ -411,8 +430,6 @@ class ESMTP(SMTPConnection):
             server_hostname = self.hostname
 
         tls_context = self._get_tls_context()
-
-        await self._ehlo_or_helo_if_needed()
 
         if not self.supports_extension("starttls"):
             raise SMTPException("SMTP STARTTLS extension not supported by server.")
