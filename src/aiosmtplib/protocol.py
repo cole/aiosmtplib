@@ -76,7 +76,8 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
         """
         Upgrade our transport to TLS in place.
         """
-        assert not self._over_ssl, "Already using TLS"
+        if self._over_ssl:
+            raise RuntimeError("Already using TLS.")
 
         if self._stream_reader is None or self._stream_writer is None:
             raise SMTPServerDisconnected("Client not connected")

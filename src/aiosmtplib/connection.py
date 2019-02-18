@@ -222,8 +222,10 @@ class SMTPConnection:
         return response
 
     async def _create_connection(self) -> SMTPResponse:
-        assert self.hostname is not None, "Hostname must be set"
-        assert self.port is not None, "Port must be set"
+        if self.hostname is None:
+            raise ValueError("Hostname must be set.")
+        if self.port is None:
+            raise ValueError("Port must be set.")
 
         reader = asyncio.StreamReader(limit=MAX_LINE_LENGTH, loop=self.loop)
         protocol = SMTPProtocol(reader, loop=self.loop)

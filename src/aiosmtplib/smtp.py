@@ -240,7 +240,8 @@ class SMTP(SMTPAuth):
         """
         Utility method to run commands synchronously for testing.
         """
-        assert not self.loop.is_running(), "Event loop is already running"
+        if self.loop.is_running():
+            raise RuntimeError("Event loop is already running.")
 
         if not self.is_connected:
             self.loop.run_until_complete(self.connect())
