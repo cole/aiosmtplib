@@ -17,18 +17,12 @@ from aiosmtplib import (
 )
 
 
-pytestmark = pytest.mark.asyncio(forbid_global_loop=True)
+pytestmark = pytest.mark.asyncio()
 
 
 @pytest.fixture(scope="function")
 def tls_smtp_client(request, event_loop, hostname, port):
-    tls_client = SMTP(
-        hostname=hostname,
-        port=port,
-        loop=event_loop,
-        use_tls=True,
-        validate_certs=False,
-    )
+    tls_client = SMTP(hostname=hostname, port=port, use_tls=True, validate_certs=False)
 
     return tls_client
 

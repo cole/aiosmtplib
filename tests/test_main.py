@@ -4,15 +4,14 @@ import sys
 import pytest
 
 
-pytestmark = pytest.mark.asyncio(forbid_global_loop=True)
+pytestmark = pytest.mark.asyncio()
 
 
-async def test_command_line_send(event_loop, smtpd_server, hostname, port):
+async def test_command_line_send(smtpd_server, hostname, port):
     proc = await asyncio.create_subprocess_exec(
         sys.executable,
         b"-m",
         b"aiosmtplib",
-        loop=event_loop,
         stdin=asyncio.subprocess.PIPE,
         stdout=asyncio.subprocess.PIPE,
     )

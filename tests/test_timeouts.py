@@ -8,7 +8,7 @@ import pytest
 from aiosmtplib import SMTPTimeoutError
 
 
-pytestmark = pytest.mark.asyncio(forbid_global_loop=True)
+pytestmark = pytest.mark.asyncio()
 
 
 async def slow_response(self, *args):
@@ -50,11 +50,11 @@ async def test_timeout_error_on_connect(
 
 
 async def test_timeout_on_initial_read(
-    smtp_client, smtpd_server, smtpd_class, event_loop, monkeypatch
+    smtp_client, smtpd_server, smtpd_class, monkeypatch
 ):
     async def read_slow_response(self, *args):
         await self.push("220-hi")
-        await asyncio.sleep(1.0, loop=event_loop)
+        await asyncio.sleep(1.0)
 
     monkeypatch.setattr(smtpd_class, "_handle_client", read_slow_response)
 

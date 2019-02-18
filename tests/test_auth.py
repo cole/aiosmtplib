@@ -9,7 +9,7 @@ from aiosmtplib.response import SMTPResponse
 from aiosmtplib.status import SMTPStatus
 
 
-pytestmark = pytest.mark.asyncio(forbid_global_loop=True)
+pytestmark = pytest.mark.asyncio()
 
 
 USERNAMES_AND_PASSWORDS = [("test", "test"), ("admin124", "$3cr3t$")]

@@ -9,7 +9,7 @@ import pytest
 from aiosmtplib import SMTP
 
 
-pytestmark = pytest.mark.asyncio(forbid_global_loop=True)
+pytestmark = pytest.mark.asyncio()
 
 
 async def test_tls_context_and_cert_raises():
@@ -57,7 +57,7 @@ async def test_config_via_connect_kwargs(smtpd_server, event_loop, hostname, por
 
 
 async def test_default_port_on_connect(event_loop):
-    client = SMTP(loop=event_loop)
+    client = SMTP()
 
     try:
         await client.connect(use_tls=False, timeout=1.0)
@@ -70,7 +70,7 @@ async def test_default_port_on_connect(event_loop):
 
 
 async def test_default_tls_port_on_connect(event_loop):
-    client = SMTP(loop=event_loop)
+    client = SMTP()
 
     try:
         await client.connect(use_tls=True, timeout=1.0)
@@ -82,10 +82,8 @@ async def test_default_tls_port_on_connect(event_loop):
     client.close()
 
 
-async def test_connect_hostname_takes_precedence(
-    event_loop, hostname, port, smtpd_server
-):
-    client = SMTP(hostname="example.com", port=port, loop=event_loop)
+async def test_connect_hostname_takes_precedence(hostname, port, smtpd_server):
+    client = SMTP(hostname="example.com", port=port)
     await client.connect(hostname=hostname)
 
     assert client.hostname == hostname
@@ -93,8 +91,8 @@ async def test_connect_hostname_takes_precedence(
     await client.quit()
 
 
-async def test_connect_port_takes_precedence(event_loop, hostname, port, smtpd_server):
-    client = SMTP(hostname=hostname, port=17, loop=event_loop)
+async def test_connect_port_takes_precedence(hostname, port, smtpd_server):
+    client = SMTP(hostname=hostname, port=17)
     await client.connect(port=port)
 
     assert client.port == port
@@ -102,10 +100,8 @@ async def test_connect_port_takes_precedence(event_loop, hostname, port, smtpd_s
     await client.quit()
 
 
-async def test_connect_timeout_takes_precedence(
-    event_loop, hostname, port, smtpd_server
-):
-    client = SMTP(hostname=hostname, port=port, loop=event_loop, timeout=0.66)
+async def test_connect_timeout_takes_precedence(hostname, port, smtpd_server):
+    client = SMTP(hostname=hostname, port=port, timeout=0.66)
     await client.connect(timeout=0.99)
 
     assert client.timeout == 0.99
@@ -113,12 +109,8 @@ async def test_connect_timeout_takes_precedence(
     await client.quit()
 
 
-async def test_connect_source_address_takes_precedence(
-    event_loop, hostname, port, smtpd_server
-):
-    client = SMTP(
-        hostname=hostname, port=port, loop=event_loop, source_address="example.com"
-    )
+async def test_connect_source_address_takes_precedence(hostname, port, smtpd_server):
+    client = SMTP(hostname=hostname, port=port, source_address="example.com")
     await client.connect(source_address=socket.getfqdn())
 
     assert client.source_address != "example.com"
@@ -140,10 +132,8 @@ async def test_connect_event_loop_takes_precedence(
     await client.quit()
 
 
-async def test_connect_use_tls_takes_precedence(
-    event_loop, hostname, port, smtpd_server
-):
-    client = SMTP(hostname=hostname, port=port, loop=event_loop, use_tls=True)
+async def test_connect_use_tls_takes_precedence(hostname, port, smtpd_server):
+    client = SMTP(hostname=hostname, port=port, use_tls=True)
 
     await client.connect(use_tls=False)
 
@@ -152,10 +142,8 @@ async def test_connect_use_tls_takes_precedence(
     await client.quit()
 
 
-async def test_connect_validate_certs_takes_precedence(
-    event_loop, hostname, port, smtpd_server
-):
-    client = SMTP(hostname=hostname, port=port, loop=event_loop, validate_certs=False)
+async def test_connect_validate_certs_takes_precedence(hostname, port, smtpd_server):
+    client = SMTP(hostname=hostname, port=port, validate_certs=False)
 
     await client.connect(validate_certs=True)
 
@@ -165,12 +153,11 @@ async def test_connect_validate_certs_takes_precedence(
 
 
 async def test_connect_certificate_options_take_precedence(
-    event_loop, hostname, port, smtpd_server
+    hostname, port, smtpd_server
 ):
     client = SMTP(
         hostname=hostname,
         port=port,
-        loop=event_loop,
         client_cert="test",
         client_key="test",
         cert_bundle="test",
@@ -186,11 +173,9 @@ async def test_connect_certificate_options_take_precedence(
 
 
 async def test_connect_tls_context_option_takes_precedence(
-    event_loop, hostname, port, smtpd_server, client_tls_context, server_tls_context
+    hostname, port, smtpd_server, client_tls_context, server_tls_context
 ):
-    client = SMTP(
-        hostname=hostname, port=port, loop=event_loop, tls_context=server_tls_context
-    )
+    client = SMTP(hostname=hostname, port=port, tls_context=server_tls_context)
 
     await client.connect(tls_context=client_tls_context)
 
@@ -200,12 +185,11 @@ async def test_connect_tls_context_option_takes_precedence(
 
 
 async def test_starttls_certificate_options_take_precedence(
-    event_loop, hostname, port, smtpd_server, valid_cert_path, valid_key_path
+    hostname, port, smtpd_server, valid_cert_path, valid_key_path
 ):
     client = SMTP(
         hostname=hostname,
         port=port,
-        loop=event_loop,
         validate_certs=False,
         client_cert="test1",
         client_key="test1",

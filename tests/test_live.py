@@ -15,12 +15,12 @@ pytestmark = [
         os.environ.get("TRAVIS") == "true",
         reason="No tests against real servers on TravisCI",
     ),
-    pytest.mark.asyncio(forbid_global_loop=True),
+    pytest.mark.asyncio(),
 ]
 
 
-async def test_starttls_gmail(event_loop):
-    client = SMTP(hostname="smtp.gmail.com", port=587, loop=event_loop, use_tls=False)
+async def test_starttls_gmail():
+    client = SMTP(hostname="smtp.gmail.com", port=587, use_tls=False)
     await client.connect(timeout=1.0)
     await client.ehlo()
     await client.starttls(validate_certs=False)
@@ -32,9 +32,9 @@ async def test_starttls_gmail(event_loop):
         await client.login("test", "test")
 
 
-@pytest.mark.asyncio(forbid_global_loop=True)
-async def test_qq_login(event_loop):
-    client = SMTP(hostname="smtp.qq.com", port=587, loop=event_loop, use_tls=False)
+@pytest.mark.asyncio()
+async def test_qq_login():
+    client = SMTP(hostname="smtp.qq.com", port=587, use_tls=False)
     await client.connect(timeout=2.0)
     await client.ehlo()
     await client.starttls(validate_certs=False)

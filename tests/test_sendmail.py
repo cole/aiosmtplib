@@ -8,7 +8,7 @@ import pytest
 from aiosmtplib import SMTPRecipientsRefused, SMTPResponseException, SMTPStatus
 
 
-pytestmark = pytest.mark.asyncio(forbid_global_loop=True)
+pytestmark = pytest.mark.asyncio()
 
 
 async def test_sendmail_simple_success(smtp_client, smtpd_server, message):

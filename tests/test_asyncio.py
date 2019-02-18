@@ -15,7 +15,7 @@ RECIPIENTS = [
     "recipient3@example.com",
 ]
 
-pytestmark = pytest.mark.asyncio(forbid_global_loop=True)
+pytestmark = pytest.mark.asyncio()
 
 
 async def test_sendmail_multiple_times_in_sequence(smtp_client, smtpd_server, message):
@@ -30,15 +30,13 @@ async def test_sendmail_multiple_times_in_sequence(smtp_client, smtpd_server, me
             assert response != ""
 
 
-async def test_sendmail_multiple_times_with_gather(
-    smtp_client, smtpd_server, event_loop, message
-):
+async def test_sendmail_multiple_times_with_gather(smtp_client, smtpd_server, message):
     async with smtp_client:
         tasks = [
             smtp_client.sendmail(message["From"], [recipient], str(message))
             for recipient in RECIPIENTS
         ]
-        results = await asyncio.gather(*tasks, loop=event_loop)
+        results = await asyncio.gather(*tasks)
         for errors, message in results:
             assert not errors
             assert isinstance(errors, dict)
@@ -46,9 +44,9 @@ async def test_sendmail_multiple_times_with_gather(
 
 
 async def test_connect_and_sendmail_multiple_times_with_gather(
-    smtpd_server, event_loop, hostname, port, message
+    smtpd_server, hostname, port, message
 ):
-    client = SMTP(hostname=hostname, port=port, loop=event_loop)
+    client = SMTP(hostname=hostname, port=port)
 
     async def connect_and_send(*args, **kwargs):
         async with client:
@@ -60,18 +58,16 @@ async def test_connect_and_sendmail_multiple_times_with_gather(
         connect_and_send(message["From"], [recipient], str(message))
         for recipient in RECIPIENTS
     ]
-    results = await asyncio.gather(*tasks, loop=event_loop)
+    results = await asyncio.gather(*tasks)
     for errors, message in results:
         assert not errors
         assert isinstance(errors, dict)
         assert message != ""
 
 
-async def test_multiple_clients_with_gather(
-    smtpd_server, event_loop, hostname, port, message
-):
+async def test_multiple_clients_with_gather(smtpd_server, hostname, port, message):
     async def connect_and_send(*args, **kwargs):
-        client = SMTP(hostname=hostname, port=port, loop=event_loop)
+        client = SMTP(hostname=hostname, port=port)
         async with client:
             response = await client.sendmail(*args, **kwargs)
 
@@ -81,7 +77,7 @@ async def test_multiple_clients_with_gather(
         connect_and_send(message["From"], [recipient], str(message))
         for recipient in RECIPIENTS
     ]
-    results = await asyncio.gather(*tasks, loop=event_loop)
+    results = await asyncio.gather(*tasks)
     for errors, message in results:
         assert not errors
         assert isinstance(errors, dict)
@@ -89,9 +85,9 @@ async def test_multiple_clients_with_gather(
 
 
 async def test_multiple_actions_in_context_manager_with_gather(
-    smtpd_server, event_loop, hostname, port, message
+    smtpd_server, hostname, port, message
 ):
-    client = SMTP(hostname=hostname, port=port, loop=event_loop)
+    client = SMTP(hostname=hostname, port=port)
 
     async def connect_and_run_commands(*args, **kwargs):
         async with client:
@@ -106,14 +102,14 @@ async def test_multiple_actions_in_context_manager_with_gather(
         connect_and_run_commands(message["From"], [recipient], str(message))
         for recipient in RECIPIENTS
     ]
-    results = await asyncio.gather(*tasks, loop=event_loop)
+    results = await asyncio.gather(*tasks)
     for errors, message in results:
         assert not errors
         assert isinstance(errors, dict)
         assert message != ""
 
 
-async def test_many_commands_with_gather(smtp_client, smtpd_server, event_loop):
+async def test_many_commands_with_gather(smtp_client, smtpd_server):
     """
     Without a lock on the reader, this raises RuntimeError.
     """
@@ -125,13 +121,13 @@ async def test_many_commands_with_gather(smtp_client, smtpd_server, event_loop):
             smtp_client.vrfy("foo@bar.com"),
             smtp_client.noop(),
         ]
-        results = await asyncio.gather(*tasks, loop=event_loop)
+        results = await asyncio.gather(*tasks)
         for result in results:
             assert 200 <= result.code < 300
 
 
 async def test_close_works_on_stopped_loop(smtpd_server, event_loop, hostname, port):
-    client = SMTP(hostname=hostname, port=port, loop=event_loop)
+    client = SMTP(hostname=hostname, port=port)
 
     await client.connect()
     assert client.is_connected

@@ -6,7 +6,7 @@ import pytest
 from aiosmtplib import SMTPDataError, SMTPHeloError, SMTPResponseException, SMTPStatus
 
 
-pytestmark = pytest.mark.asyncio(forbid_global_loop=True)
+pytestmark = pytest.mark.asyncio()
 
 
 async def test_helo_ok(smtp_client, smtpd_server):

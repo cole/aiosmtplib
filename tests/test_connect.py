@@ -12,7 +12,7 @@ from aiosmtplib import (
 )
 
 
-pytestmark = pytest.mark.asyncio(forbid_global_loop=True)
+pytestmark = pytest.mark.asyncio()
 
 
 async def test_plain_smtp_connect(smtp_client, smtpd_server):
@@ -72,8 +72,8 @@ async def test_421_closes_connection(
     assert not smtp_client.is_connected
 
 
-async def test_connect_error_with_no_server(event_loop, hostname, port):
-    client = SMTP(hostname=hostname, port=port, loop=event_loop)
+async def test_connect_error_with_no_server(hostname, port):
+    client = SMTP(hostname=hostname, port=port)
 
     with pytest.raises(SMTPConnectError):
         # SMTPTimeoutError vs SMTPConnectError here depends on processing time.
@@ -273,8 +273,8 @@ async def test_context_manager_with_manual_connection(smtp_client, smtpd_server)
     assert not smtp_client.is_connected
 
 
-async def test_connect_error_second_attempt(event_loop, hostname, port):
-    client = SMTP(hostname=hostname, port=port, loop=event_loop, timeout=1.0)
+async def test_connect_error_second_attempt(hostname, port):
+    client = SMTP(hostname=hostname, port=port, timeout=1.0)
 
     with pytest.raises(SMTPConnectError):
         await client.connect()
