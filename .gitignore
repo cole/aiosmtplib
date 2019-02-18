@@ -12,9 +12,11 @@
 aiosmtplib.egg-info/
 aiosmtplib.sublime-project
 aiosmtplib.sublime-workspace
+aiosmtplib.code-workspace
 build/
 coverage/
 dist/
 docs/_build/
 TODO
 venv/
+Pipfile
