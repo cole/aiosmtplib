@@ -1,6 +1,7 @@
 """
 Low level ESMTP command API.
 """
+import asyncio
 import re
 import ssl
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union  # NOQA
@@ -47,6 +48,7 @@ class ESMTP(SMTPConnection):
         self.esmtp_extensions = {}  # type: Dict[str, str]
         self.supports_esmtp = False
         self.server_auth_methods = []  # type: List[str]
+        self._ehlo_or_helo_lock = asyncio.Lock(loop=self.loop)
 
     @property
     def last_ehlo_response(self) -> Union[SMTPResponse, None]:
@@ -358,14 +360,15 @@ class ESMTP(SMTPConnection):
         If there has been no previous EHLO or HELO command this session, this
         method tries ESMTP EHLO first.
         """
-        if self.is_ehlo_or_helo_needed:
-            try:
-                await self.ehlo()
-            except SMTPHeloError as exc:
-                if self.is_connected:
-                    await self.helo()
-                else:
-                    raise exc
+        async with self._ehlo_or_helo_lock:
+            if self.is_ehlo_or_helo_needed:
+                try:
+                    await self.ehlo()
+                except SMTPHeloError as exc:
+                    if self.is_connected:
+                        await self.helo()
+                    else:
+                        raise exc
 
     def _reset_server_state(self) -> None:
         """
