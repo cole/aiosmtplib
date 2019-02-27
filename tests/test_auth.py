@@ -22,6 +22,8 @@ class DummySMTPAuth(SMTPAuth):
     transport = None
 
     def __init__(self):
+        super().__init__()
+
         self.recieved_commands = []
         self.responses = deque()
         self.esmtp_extensions = {"auth": ""}

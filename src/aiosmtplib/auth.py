@@ -96,24 +96,25 @@ class SMTPAuth(ESMTP):
             dGltIGI5MTNhNjAyYzdlZGE3YTQ5NWI0ZTZlNzMzNGQzODkw
 
         """
-        initial_response = await self.execute_command(
-            b"AUTH", b"CRAM-MD5", timeout=timeout
-        )
-
-        if initial_response.code != SMTPStatus.auth_continue:
-            raise SMTPAuthenticationError(
-                initial_response.code, initial_response.message
+        async with self._command_lock:
+            initial_response = await self.execute_command(
+                b"AUTH", b"CRAM-MD5", timeout=timeout
             )
 
-        password_bytes = password.encode("ascii")
-        username_bytes = username.encode("ascii")
-        response_bytes = initial_response.message.encode("ascii")
+            if initial_response.code != SMTPStatus.auth_continue:
+                raise SMTPAuthenticationError(
+                    initial_response.code, initial_response.message
+                )
 
-        verification_bytes = crammd5_verify(
-            username_bytes, password_bytes, response_bytes
-        )
+            password_bytes = password.encode("ascii")
+            username_bytes = username.encode("ascii")
+            response_bytes = initial_response.message.encode("ascii")
 
-        response = await self.execute_command(verification_bytes)
+            verification_bytes = crammd5_verify(
+                username_bytes, password_bytes, response_bytes
+            )
+
+            response = await self.execute_command(verification_bytes)
 
         if response.code != SMTPStatus.auth_successful:
             raise SMTPAuthenticationError(response.code, response.message)
@@ -139,9 +140,10 @@ class SMTPAuth(ESMTP):
         username_and_password = b"\0" + username_bytes + b"\0" + password_bytes
         encoded = base64.b64encode(username_and_password)
 
-        response = await self.execute_command(
-            b"AUTH", b"PLAIN", encoded, timeout=timeout
-        )
+        async with self._command_lock:
+            response = await self.execute_command(
+                b"AUTH", b"PLAIN", encoded, timeout=timeout
+            )
 
         if response.code != SMTPStatus.auth_successful:
             raise SMTPAuthenticationError(response.code, response.message)
@@ -177,16 +179,17 @@ class SMTPAuth(ESMTP):
         encoded_username = base64.b64encode(username.encode("ascii"))
         encoded_password = base64.b64encode(password.encode("ascii"))
 
-        initial_response = await self.execute_command(
-            b"AUTH", b"LOGIN", encoded_username, timeout=timeout
-        )
-
-        if initial_response.code != SMTPStatus.auth_continue:
-            raise SMTPAuthenticationError(
-                initial_response.code, initial_response.message
+        async with self._command_lock:
+            initial_response = await self.execute_command(
+                b"AUTH", b"LOGIN", encoded_username, timeout=timeout
             )
 
-        response = await self.execute_command(encoded_password, timeout=timeout)
+            if initial_response.code != SMTPStatus.auth_continue:
+                raise SMTPAuthenticationError(
+                    initial_response.code, initial_response.message
+                )
+
+            response = await self.execute_command(encoded_password, timeout=timeout)
 
         if response.code != SMTPStatus.auth_successful:
             raise SMTPAuthenticationError(response.code, response.message)

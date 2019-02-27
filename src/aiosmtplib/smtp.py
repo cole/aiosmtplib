@@ -49,7 +49,7 @@ class SMTP(SMTPAuth):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
-        self._command_lock = asyncio.Lock(loop=self.loop)
+        self._sendmail_lock = asyncio.Lock(loop=self.loop)
 
     # Hack to make Sphinx find the SMTPConnection docstring
     __init__.__doc__ = SMTPConnection.__init__.__doc__
@@ -142,7 +142,7 @@ class SMTP(SMTPAuth):
         else:
             rcpt_options = list(rcpt_options)
 
-        async with self._command_lock:
+        async with self._sendmail_lock:
             if self.supports_extension("size"):
                 size_option = "size={}".format(len(message))
                 mail_options.append(size_option)

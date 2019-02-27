@@ -111,19 +111,23 @@ async def test_multiple_actions_in_context_manager_with_gather(
 
 async def test_many_commands_with_gather(smtp_client, smtpd_server):
     """
-    Without a lock on the reader, this raises RuntimeError.
+    Tests that appropriate locks are in place to prevent commands confusing each other.
     """
     async with smtp_client:
         tasks = [
-            smtp_client.noop(),
-            smtp_client.noop(),
+            smtp_client.ehlo(),
             smtp_client.helo(),
-            smtp_client.vrfy("foo@bar.com"),
+            smtp_client.rset(),
             smtp_client.noop(),
+            smtp_client.vrfy("foo@bar.com"),
+            smtp_client.mail("alice@example.com"),
+            smtp_client.help(),
         ]
         results = await asyncio.gather(*tasks)
-        for result in results:
+        for result in results[:-1]:
             assert 200 <= result.code < 300
+        # Help text is returned, not a result tuple
+        assert "Supported commands" in results[-1]
 
 
 async def test_close_works_on_stopped_loop(smtpd_server, event_loop, hostname, port):
