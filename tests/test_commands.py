@@ -254,7 +254,6 @@ async def test_supported_methods(smtp_client, smtpd_server):
 
 async def test_mail_ok(smtp_client, smtpd_server):
     async with smtp_client:
-        await smtp_client.ehlo()
         response = await smtp_client.mail("j@example.com")
 
         assert response.code == SMTPStatus.completed
@@ -265,15 +264,12 @@ async def test_mail_error(smtp_client, smtpd_server, smtpd_handler, monkeypatch)
     monkeypatch.setattr(smtpd_handler, "MAIL_response_message", "501 error")
 
     async with smtp_client:
-        await smtp_client.ehlo()
-
         with pytest.raises(SMTPResponseException):
             await smtp_client.mail("test@example.com")
 
 
 async def test_rcpt_ok(smtp_client, smtpd_server):
     async with smtp_client:
-        await smtp_client.ehlo()
         await smtp_client.mail("j@example.com")
 
         response = await smtp_client.rcpt("test@example.com")
@@ -290,7 +286,6 @@ async def test_rcpt_options_ok(smtp_client, smtpd_server, smtpd_class, monkeypat
     monkeypatch.setattr(smtpd_class, "smtp_RCPT", rcpt_response)
 
     async with smtp_client:
-        await smtp_client.ehlo()
         await smtp_client.mail("j@example.com")
 
         response = await smtp_client.rcpt(
@@ -303,7 +298,6 @@ async def test_rcpt_options_ok(smtp_client, smtpd_server, smtpd_class, monkeypat
 async def test_rcpt_options_not_implemented(smtp_client, smtpd_server):
     # RCPT options are not implemented in aiosmtpd, so any option will return 555
     async with smtp_client:
-        await smtp_client.ehlo()
         await smtp_client.mail("j@example.com")
 
         with pytest.raises(SMTPResponseException) as err:
@@ -315,7 +309,6 @@ async def test_rcpt_error(smtp_client, smtpd_server, smtpd_handler, monkeypatch)
     monkeypatch.setattr(smtpd_handler, "RCPT_response_message", "501 error")
 
     async with smtp_client:
-        await smtp_client.ehlo()
         await smtp_client.mail("j@example.com")
 
         with pytest.raises(SMTPResponseException):
@@ -324,7 +317,6 @@ async def test_rcpt_error(smtp_client, smtpd_server, smtpd_handler, monkeypatch)
 
 async def test_data_ok(smtp_client, smtpd_server):
     async with smtp_client:
-        await smtp_client.ehlo()
         await smtp_client.mail("j@example.com")
         await smtp_client.rcpt("test@example.com")
         response = await smtp_client.data("HELLO WORLD")
@@ -342,7 +334,6 @@ async def test_data_error_on_start_input(
     monkeypatch.setattr(smtpd_class, "smtp_DATA", data_response)
 
     async with smtp_client:
-        await smtp_client.ehlo()
         await smtp_client.mail("admin@example.com")
         await smtp_client.rcpt("test@example.com")
         with pytest.raises(SMTPDataError):
@@ -355,7 +346,6 @@ async def test_data_complete_error(
     monkeypatch.setattr(smtpd_handler, "DATA_response_message", "501 error")
 
     async with smtp_client:
-        await smtp_client.ehlo()
         await smtp_client.mail("admin@example.com")
         await smtp_client.rcpt("test@example.com")
         with pytest.raises(SMTPDataError):
