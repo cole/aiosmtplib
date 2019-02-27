@@ -109,10 +109,16 @@ async def test_multiple_actions_in_context_manager_with_gather(
         assert message != ""
 
 
-async def test_many_commands_with_gather(smtp_client, smtpd_server):
+async def test_many_commands_with_gather(
+    monkeypatch, smtp_client, smtpd_server, smtpd_handler
+):
     """
     Tests that appropriate locks are in place to prevent commands confusing each other.
     """
+    monkeypatch.setattr(
+        smtpd_handler, "EXPN_response_message", "250 Alice Smith <asmith@example.com>"
+    )
+
     async with smtp_client:
         tasks = [
             smtp_client.ehlo(),
@@ -120,13 +126,14 @@ async def test_many_commands_with_gather(smtp_client, smtpd_server):
             smtp_client.rset(),
             smtp_client.noop(),
             smtp_client.vrfy("foo@bar.com"),
+            smtp_client.expn("users@example.com"),
             smtp_client.mail("alice@example.com"),
             smtp_client.help(),
         ]
         results = await asyncio.gather(*tasks)
         for result in results[:-1]:
             assert 200 <= result.code < 300
-        # Help text is returned, not a result tuple
+        # Help text is returned as a string, not a result tuple
         assert "Supported commands" in results[-1]
 
 
