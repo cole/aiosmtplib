@@ -252,6 +252,9 @@ class SMTPConnection:
             self.close()
             raise SMTPTimeoutError(str(exc))
 
+        self.protocol = protocol
+        self.transport = transport
+
         waiter = asyncio.Task(protocol.read_response(), loop=self.loop)
 
         try:
@@ -265,9 +268,6 @@ class SMTPConnection:
         if response.code != SMTPStatus.ready:
             self.close()
             raise SMTPConnectError(str(response))
-
-        self.protocol = protocol
-        self.transport = transport
 
         return response
 
