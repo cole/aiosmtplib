@@ -54,7 +54,8 @@ async def test_bad_connect_response_raises_error(
     with pytest.raises(SMTPConnectError):
         await smtp_client.connect()
 
-    smtp_client.close()
+    assert smtp_client.transport is None
+    assert smtp_client.protocol is None
 
 
 async def test_421_closes_connection(
