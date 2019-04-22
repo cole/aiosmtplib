@@ -11,9 +11,9 @@ jobs:
     vmImage: 'Ubuntu-16.04'
   strategy:
     matrix:
-      Python352:
-        python.version: '3.5.2'
-        toxenv: 'py35-asyncio'
+      # Python352:
+      #   python.version: '3.5.2'
+      #   toxenv: 'py35-asyncio'
       Python35:
         python.version: '3.5'
         toxenv: 'py35-asyncio'
@@ -23,9 +23,9 @@ jobs:
       Python37:
         python.version: '3.7'
         toxenv: 'py37-asyncio'
-      Python352-UVLoop:
-        python.version: '3.5.2'
-        toxenv: 'py35-uvloop'
+      # Python352-UVLoop:
+      #   python.version: '3.5.2'
+      #   toxenv: 'py35-uvloop'
       Python35-UVLoop:
         python.version: '3.5'
         toxenv: 'py35-uvloop'
