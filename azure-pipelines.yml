@@ -1,8 +1,3 @@
-# Python package
-# Create and test a Python package on multiple Python versions.
-# Add steps that analyze code, save the dist with the build record, publish to a PyPI-compatible index, and more:
-# https://docs.microsoft.com/azure/devops/pipelines/languages/python
-
 trigger:
 - master
 
@@ -15,13 +10,28 @@ jobs:
     matrix:
       Python352:
         python.version: '3.5.2'
+        toxenv: 'py35-asyncio'
       Python35:
         python.version: '3.5'
+        toxenv: 'py35-asyncio'
       Python36:
         python.version: '3.6'
+        toxenv: 'py36-asyncio'
       Python37:
         python.version: '3.7'
-    maxParallel: 4
+        toxenv: 'py37-asyncio'
+      Python352-UVLoop:
+        python.version: '3.5.2'
+        toxenv: 'py35-uvloop'
+      Python35-UVLoop:
+        python.version: '3.5'
+        toxenv: 'py35-uvloop'
+      Python36-UVLoop:
+        python.version: '3.6'
+        toxenv: 'py36-uvloop'
+      Python37-UVLoop:
+        python.version: '3.7'
+        toxenv: 'py37-uvloop'
 
   steps:
   - task: UsePythonVersion@0
@@ -29,9 +39,9 @@ jobs:
     inputs:
       versionSpec: '$(python.version)'
       architecture: 'x64'
-  
-  - script: pip install tox
+
+  - script: pip install tox tox-venv
     displayName: 'Install Tox'
 
-  - script: tox -e py
+  - script: tox -e $(toxenv)
     displayName: 'Run Tox'
