@@ -48,6 +48,9 @@ async def test_timeout_error_on_connect(
     with pytest.raises(SMTPTimeoutError):
         await smtp_client.connect(timeout=0.01)
 
+    assert smtp_client.transport is None
+    assert smtp_client.protocol is None
+
 
 async def test_timeout_on_initial_read(
     smtp_client, smtpd_server, smtpd_class, event_loop, monkeypatch
