@@ -1,6 +1,12 @@
 aiosmtplib changes
 ==================
 
+1.0.5
+-----
+
+- Bugfix: Connection is now closed if an error response is recieved
+  immediately after connecting.
+
 
 1.0.4
 -----
