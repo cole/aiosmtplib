@@ -21,3 +21,4 @@ docs/_build/
 TODO
 venv/
 Pipfile
+Pipfile.lock
