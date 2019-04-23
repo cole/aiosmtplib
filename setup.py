@@ -43,7 +43,11 @@ setup(
         "Programming Language :: Python :: 3 :: Only",
         "Programming Language :: Python :: Implementation :: CPython",
         "Programming Language :: Python :: Implementation :: PyPy",
+        "Topic :: Communications",
         "Topic :: Communications :: Email",
+        "Topic :: Software Development :: Libraries",
+        "Topic :: Software Development :: Libraries :: Python Modules",
+        "Typing :: Typed",
     ],
     python_requires=">=3.5.2",
     extras_require={
