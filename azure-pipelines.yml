@@ -50,7 +50,7 @@ jobs:
         containerName: py37
         toxEnv: 'py37-uvloop'
 
-  container: '$(containerName)'
+  container: $[ variables.containerName ]
 
   steps:
 
