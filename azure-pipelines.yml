@@ -49,9 +49,27 @@ jobs:
       architecture: 'x64'
     # Ubuntu 16.04 default Python is 3.5.2
     condition: ne(variables['python.version'], '3.5.2')
-  - script: pip install --upgrade pip
+  - script: python --version
+    displayName: 'Check Python version'
+    condition: eq(variables['python.version'], '3.5.2')
+  - script: |
+      pip install --upgrade pip
+      pip --version
     displayName: 'Upgrade pip'
-  - script: pip install tox tox-venv
+  - script: |
+      pip install tox tox-venv
+      tox --version
     displayName: 'Install Tox'
-  - script: tox
+  - script: tox -- --junitxml=junit/test-results.xml
     displayName: 'Run Tox'
+  - task: PublishTestResults@2
+    condition: succeededOrFailed()
+    inputs:
+      testResultsFiles: '**/test-results.xml'
+      testRunTitle: 'Publish test results for Python $(python.version) ($(EVENT_LOOP))'
+  - task: PublishCodeCoverageResults@1
+    inputs:
+      codeCoverageTool: Cobertura
+      summaryFileLocation: '$(System.DefaultWorkingDirectory)/**/coverage.xml'
+      reportDirectory: '$(System.DefaultWorkingDirectory)/**/htmlcov'
+      failIfCoverageEmpty: true
