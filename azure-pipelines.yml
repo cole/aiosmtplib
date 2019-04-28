@@ -12,9 +12,9 @@ jobs:
     vmImage: 'Ubuntu-16.04'
   strategy:
     matrix:
-      # Python352:
-      #   python.version: '3.5.2'
-      #   TOXENV: 'clean,py35-asyncio,coverage'
+      Python352:
+        python.version: '3.5.2'
+        TOXENV: 'clean,py35-asyncio,coverage'
       Python35:
         python.version: '3.5'
         TOXENV: 'clean,py35-asyncio,coverage'
@@ -24,10 +24,10 @@ jobs:
       Python37:
         python.version: '3.7'
         TOXENV: 'clean,py37-asyncio,coverage'
-      # Python352-UVLoop:
-      #   python.version: '3.5.2'
-      #   TOXENV: 'clean,py35-uvloop,coverage'
-      #   EVENT_LOOP: 'uvloop'
+      Python352-UVLoop:
+        python.version: '3.5.2'
+        TOXENV: 'clean,py35-uvloop,coverage'
+        EVENT_LOOP: 'uvloop'
       Python35-UVLoop:
         python.version: '3.5'
         TOXENV: 'clean,py35-uvloop,coverage'
@@ -49,6 +49,9 @@ jobs:
       architecture: 'x64'
     # Ubuntu 16.04 default Python is 3.5.2
     condition: ne(variables['python.version'], '3.5.2')
+  - script: sudo pip install --upgrade setuptools pip
+    displayName: 'Upgrade pip & setuptools'
+    condition: eq(variables['python.version'], '3.5.2')
   - script: |
       pip install tox tox-venv
       python --version
