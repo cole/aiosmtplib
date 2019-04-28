@@ -50,6 +50,8 @@ jobs:
     # Ubuntu 16.04 default Python is 3.5.2
     condition: ne(variables['python.version'], '3.5.2')
   - script: |
+      python3 --version
+      pip3 --version
       pip3 install tox tox-venv
       tox --version
     displayName: 'Install Tox'
