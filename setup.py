@@ -52,6 +52,6 @@ setup(
     python_requires=">=3.5.2",
     extras_require={
         "docs": ["sphinx", "sphinx_autodoc_typehints"],
-        "testing": ["aiosmtpd", "hypothesis", "pytest", "pytest-asyncio", "pytest-cov"],
+        "testing": ["aiosmtpd", "hypothesis", "pytest", "pytest-asyncio"],
     },
 )
