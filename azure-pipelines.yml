@@ -1,61 +1,57 @@
 variables:
   CI: 'true'
+  EVENT_LOOP: 'asyncio'
 
 trigger:
 - master
-
-resources:
-  containers:
-  - container: py352
-    image: python:3.5.2
-  - container: py35
-    image: python:3.5
-  - container: py36
-    image: python:3.6
-  - container: py37
-    image: python:3.7
-  - container: py38
-    image: python:3.8-rc
 
 jobs:
 
 - job: 'Test'
   pool:
     vmImage: 'Ubuntu-16.04'
-
   strategy:
     matrix:
       Python352:
-        containerName: py352
-        toxEnv: 'py35-asyncio'
+        python.version: '3.5.2'
+        TOXENV: 'clean,py35-asyncio,coverage'
       Python35:
-        containerName: py35
-        toxEnv: 'py35-asyncio'
+        python.version: '3.5'
+        TOXENV: 'clean,py35-asyncio,coverage'
       Python36:
-        containerName: py36
-        toxEnv: 'py36-asyncio'
+        python.version: '3.6'
+        TOXENV: 'clean,py36-asyncio,coverage'
       Python37:
-        containerName: py37
-        toxEnv: 'py37-asyncio'
+        python.version: '3.7'
+        TOXENV: 'clean,py37-asyncio,coverage'
       Python352-UVLoop:
-        containerName: py352
-        toxenv: 'py35-uvloop'
+        python.version: '3.5.2'
+        TOXENV: 'clean,py35-uvloop,coverage'
+        EVENT_LOOP: 'uvloop'
       Python35-UVLoop:
-        containerName: py35
-        toxEnv: 'py35-uvloop'
+        python.version: '3.5'
+        TOXENV: 'clean,py35-uvloop,coverage'
+        EVENT_LOOP: 'uvloop'
       Python36-UVLoop:
-        containerName: py36
-        toxEnv: 'py36-uvloop'
+        python.version: '3.6'
+        TOXENV: 'clean,py36-uvloop,coverage'
+        EVENT_LOOP: 'uvloop'
       Python37-UVLoop:
-        containerName: py37
-        toxEnv: 'py37-uvloop'
-
-  container: $[ variables.containerName ]
+        python.version: '3.7'
+        TOXENV: 'clean,py37-uvloop,coverage'
+        EVENT_LOOP: 'uvloop'
 
   steps:
+  - task: UsePythonVersion@0
+    displayName: 'Use Python $(python.version)'
+    inputs:
+      versionSpec: '$(python.version)'
+      architecture: 'x64'
+    # Ubuntu 16.04 default Python is 3.5.2
+    condition: ne(variables['python.version'], '3.5.2')
 
   - script: pip install tox tox-venv
     displayName: 'Install Tox'
 
-  - script: tox -e $(toxEnv)
+  - script: tox
     displayName: 'Run Tox'
