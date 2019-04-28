@@ -49,9 +49,9 @@ jobs:
       architecture: 'x64'
     # Ubuntu 16.04 default Python is 3.5.2
     condition: ne(variables['python.version'], '3.5.2')
-
+  - script: pip install --upgrade pip
+    displayName: 'Upgrade pip'
   - script: pip install tox tox-venv
     displayName: 'Install Tox'
-
   - script: tox
     displayName: 'Run Tox'
