@@ -51,11 +51,11 @@ jobs:
     condition: ne(variables['python.version'], '3.5.2')
   - script: |
       python3 --version
-      pip3 --version
+      sudo python3 -m pip --version
       sudo python3 -m pip install --upgrade setuptools pip
     displayName: 'Upgrade pip'
   - script: |
-      pip3 install tox tox-venv
+      sudo python3 -m pip install tox tox-venv
       tox --version
     displayName: 'Install Tox'
   - script: tox -- --junitxml=junit/test-results.xml
