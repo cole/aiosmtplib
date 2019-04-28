@@ -53,7 +53,7 @@ jobs:
     displayName: 'Check Python version'
     condition: eq(variables['python.version'], '3.5.2')
   - script: |
-      pip3 install --upgrade pip
+      pip3 install --upgrade setuptools pip
       pip3 --version
     displayName: 'Upgrade pip'
   - script: |
