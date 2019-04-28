@@ -52,11 +52,7 @@ jobs:
   - script: sudo pip install --upgrade setuptools pip
     displayName: 'Upgrade pip & setuptools'
     condition: eq(variables['python.version'], '3.5.2')
-  - script: |
-      pip install tox tox-venv
-      python --version
-      pip --version
-      tox --version
+  - script: sudo pip install tox tox-venv
     displayName: 'Install Tox'
   - script: tox -- --junitxml=junit/test-results.xml
     displayName: 'Run Tox'
