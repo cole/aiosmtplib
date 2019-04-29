@@ -44,22 +44,22 @@ jobs:
         TOXENV: 'clean,py37-uvloop,coverage'
         EVENT_LOOP: 'uvloop'
       Python35-Dev:
-        python.version: '3.5-dev'
+        python.version: '>=3.5.6-a0 <3.6'
         TOXENV: 'clean,py35-asyncio,coverage'
       Python36-Dev:
-        python.version: '3.6-dev'
+        python.version: '>=3.6.7-a0 <3.7'
         TOXENV: 'clean,py36-asyncio,coverage'
       Python37-Dev:
-        python.version: '3.7-dev'
+        python.version: '>=3.7.2-a0 <3.8'
         TOXENV: 'clean,py37-asyncio,coverage'
       Python35-UVLoop-Dev:
-        python.version: '3.5-dev'
+        python.version: '>=3.5.6-a0 <3.6'
         TOXENV: 'clean,py35-uvloop,coverage'
       Python36-UVLoop-Dev:
-        python.version: '3.6-dev'
+        python.version: '>=3.6.7-a0 <3.7'
         TOXENV: 'clean,py36-uvloop,coverage'
       Python37-UVLoop-Dev:
-        python.version: '3.7-dev'
+        python.version: '>=3.7.2-a0 <3.8'
         TOXENV: 'clean,py37-uvloop,coverage'
 
   steps:
