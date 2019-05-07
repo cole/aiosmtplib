@@ -9,7 +9,7 @@ from aiosmtplib import (
     SMTPResponseException,
     SMTPServerDisconnected,
     SMTPStatus,
-    SMTPTimeoutError
+    SMTPTimeoutError,
 )
 
 
