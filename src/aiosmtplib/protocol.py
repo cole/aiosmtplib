@@ -216,7 +216,7 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
 
         try:
             await asyncio.wait_for(waiter, timeout=timeout, loop=self._loop)
-        except asyncio.TimeoutError as exc:
+        except asyncio.TimeoutError:
             raise SMTPTimeoutError("Timeout on upgrade transport")
 
         return response, tls_protocol
