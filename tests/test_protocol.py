@@ -200,10 +200,31 @@ async def test_protocol_timeout_on_drain_writer(
     protocol.pause_writing()
     protocol._stream_writer.write(b"1234")
 
-    with pytest.raises(SMTPTimeoutError):
+    with pytest.raises(SMTPTimeoutError) as exc:
         await protocol._drain_writer(timeout=0.01)
 
     protocol._stream_writer.close()
+    assert str(exc.value) == "Timeout on send request"
+
+
+async def test_protocol_timeout_readline(
+    event_loop, stream_reader, echo_server, hostname, port
+):
+    connect_future = event_loop.create_connection(
+        lambda: SMTPProtocol(stream_reader), host=hostname, port=port
+    )
+
+    _, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
+
+    protocol.pause_writing()
+    protocol._stream_writer.write(b"1234")
+
+    with pytest.raises(SMTPTimeoutError) as exc:
+        await protocol._readline(timeout=0.0)
+
+    protocol._stream_writer.close()
+
+    assert str(exc.value) == "Timeout on read response"
 
 
 async def test_connectionerror_on_drain_writer(

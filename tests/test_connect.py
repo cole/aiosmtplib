@@ -9,6 +9,7 @@ from aiosmtplib import (
     SMTPResponseException,
     SMTPServerDisconnected,
     SMTPStatus,
+    SMTPTimeoutError
 )
 
 
@@ -282,3 +283,12 @@ async def test_connect_error_second_attempt(hostname, port):
 
     with pytest.raises(SMTPConnectError):
         await client.connect()
+
+
+async def test_connect_timeout_error(hostname, port):
+    client = SMTP(hostname=hostname, port=port, timeout=0.0)
+
+    with pytest.raises(SMTPTimeoutError) as exc:
+        await client.connect()
+
+    assert str(exc.value) == "Connect timeout error"
