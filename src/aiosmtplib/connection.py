@@ -248,9 +248,9 @@ class SMTPConnection:
                     host=self.hostname, port=self.port, err=err
                 )
             )
-        except asyncio.TimeoutError as exc:
+        except asyncio.TimeoutError:
             self.close()
-            raise SMTPTimeoutError(str(exc))
+            raise SMTPTimeoutError("Connect timeout error")
 
         self.protocol = protocol
         self.transport = transport
@@ -261,9 +261,9 @@ class SMTPConnection:
             response = await asyncio.wait_for(
                 waiter, timeout=self.timeout, loop=self.loop
             )
-        except asyncio.TimeoutError as exc:
+        except asyncio.TimeoutError:
             self.close()
-            raise SMTPTimeoutError(str(exc))
+            raise SMTPTimeoutError("Timeout on wait server readiness")
 
         if response.code != SMTPStatus.ready:
             self.close()
