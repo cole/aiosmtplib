@@ -16,6 +16,7 @@ __all__ = (
     "SMTPServerDisconnected",
     "SMTPTimeoutError",
     "SMTPConnectTimeoutError",
+    "SMTPReadTimeoutError",
 )
 
 
@@ -56,7 +57,7 @@ class SMTPTimeoutError(SMTPException, TimeoutError):
 
 class SMTPConnectTimeoutError(SMTPTimeoutError, SMTPConnectError):
     """
-    A timeout occurred while connection to the SMTP server
+    A timeout occurred while connecting to the SMTP server.
     """
 
     pass
@@ -64,7 +65,7 @@ class SMTPConnectTimeoutError(SMTPTimeoutError, SMTPConnectError):
 
 class SMTPReadTimeoutError(SMTPTimeoutError):
     """
-    A timeout occurred while wait SMTP server ready message
+    A timeout occurred while waiting for a response from the SMTP server.
     """
 
     pass

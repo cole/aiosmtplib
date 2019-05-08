@@ -7,7 +7,12 @@ import ssl
 from asyncio.sslproto import SSLProtocol  # type: ignore
 from typing import Awaitable, Optional, Tuple, Union  # NOQA
 
-from .errors import SMTPResponseException, SMTPServerDisconnected, SMTPTimeoutError
+from .errors import (
+    SMTPReadTimeoutError,
+    SMTPResponseException,
+    SMTPServerDisconnected,
+    SMTPTimeoutError,
+)
 from .response import SMTPResponse
 from .status import SMTPStatus
 
@@ -256,7 +261,7 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
                 SMTPStatus.unrecognized_command, "Line too long."
             )
         except asyncio.TimeoutError:
-            raise SMTPTimeoutError("Timed out waiting for server response")
+            raise SMTPReadTimeoutError("Timed out waiting for server response")
         except asyncio.IncompleteReadError as exc:
             if exc.partial == b"":
                 # if we got only an EOF, raise SMTPServerDisconnected

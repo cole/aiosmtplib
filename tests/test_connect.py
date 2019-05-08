@@ -77,7 +77,8 @@ async def test_connect_error_with_no_server(hostname, port):
     client = SMTP(hostname=hostname, port=port)
 
     with pytest.raises(SMTPConnectError):
-        # SMTPTimeoutError vs SMTPConnectError here depends on processing time.
+        # SMTPConnectTimeoutError vs SMTPConnectError here depends on
+        # processing time.
         await client.connect(timeout=1.0)
 
 

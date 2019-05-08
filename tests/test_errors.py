@@ -1,6 +1,8 @@
 """
 Test error class imports, arguments, and inheritance.
 """
+import asyncio
+
 import pytest
 from hypothesis import given
 from hypothesis.strategies import integers, lists, text
@@ -8,19 +10,27 @@ from hypothesis.strategies import integers, lists, text
 from aiosmtplib import (
     SMTPAuthenticationError,
     SMTPConnectError,
+    SMTPConnectTimeoutError,
     SMTPDataError,
     SMTPException,
     SMTPHeloError,
     SMTPNotSupported,
+    SMTPReadTimeoutError,
     SMTPRecipientRefused,
     SMTPRecipientsRefused,
     SMTPResponseException,
     SMTPSenderRefused,
     SMTPServerDisconnected,
+    SMTPTimeoutError,
 )
 
 
-CONNECTION_EXCEPTIONS = (SMTPServerDisconnected, SMTPConnectError)
+CONNECTION_EXCEPTIONS = (
+    SMTPServerDisconnected,
+    SMTPConnectError,
+    SMTPConnectTimeoutError,
+)
+TIMEOUT_EXCEPTIONS = (SMTPTimeoutError, SMTPConnectTimeoutError, SMTPReadTimeoutError)
 SIMPLE_RESPONSE_EXCEPTIONS = (
     SMTPNotSupported,
     SMTPHeloError,
@@ -48,13 +58,24 @@ def test_raise_smtp_response_exception(code, message):
 
 
 @pytest.mark.parametrize("error_class", CONNECTION_EXCEPTIONS)
-@given(code=integers(), message=text())
-def test_connection_exceptions(code, message, error_class):
+@given(message=text())
+def test_connection_exceptions(message, error_class):
     with pytest.raises(error_class) as excinfo:
         raise error_class(message)
 
     assert issubclass(excinfo.type, SMTPException)
     assert issubclass(excinfo.type, ConnectionError)
+    assert excinfo.value.message == message
+
+
+@pytest.mark.parametrize("error_class", TIMEOUT_EXCEPTIONS)
+@given(message=text())
+def test_timeout_exceptions(message, error_class):
+    with pytest.raises(error_class) as excinfo:
+        raise error_class(message)
+
+    assert issubclass(excinfo.type, SMTPException)
+    assert issubclass(excinfo.type, asyncio.TimeoutError)
     assert excinfo.value.message == message
 
 

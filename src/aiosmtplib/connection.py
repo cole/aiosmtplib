@@ -251,7 +251,11 @@ class SMTPConnection:
             )
         except asyncio.TimeoutError:
             self.close()
-            raise SMTPConnectTimeoutError("Connect timeout error")
+            raise SMTPConnectTimeoutError(
+                "Timed out connecting to {host} on port {port}".format(
+                    host=self.hostname, port=self.port
+                )
+            )
 
         self.protocol = protocol
         self.transport = transport
@@ -264,7 +268,7 @@ class SMTPConnection:
             )
         except asyncio.TimeoutError:
             self.close()
-            raise SMTPTimeoutError("Timed out waiting for server ready message")
+            raise SMTPConnectTimeoutError("Timed out waiting for server ready message")
 
         if response.code != SMTPStatus.ready:
             self.close()

@@ -121,4 +121,7 @@ async def test_connect_timeout_error(hostname, port):
     with pytest.raises(SMTPConnectTimeoutError) as exc:
         await client.connect()
 
-    assert str(exc.value) == "Connect timeout error"
+    expected_message = "Timed out connecting to {host} on port {port}".format(
+        host=hostname, port=port
+    )
+    assert str(exc.value) == expected_message

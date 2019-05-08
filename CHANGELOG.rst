@@ -10,6 +10,9 @@ aiosmtplib changes
 - Cleanup: Replaced asserts in functions with more useful errors (e.g.
   RuntimeError).
 
+- Cleanup: More useful error messages for timeouts (thanks ikrivosheev!),
+  including two new exception classes, ``SMTPConnectTimeoutError`` and
+  ``SMTPReadTimeoutError``
 
 1.0.5
 -----
