@@ -217,7 +217,7 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
         try:
             await asyncio.wait_for(waiter, timeout=timeout, loop=self._loop)
         except asyncio.TimeoutError:
-            raise SMTPTimeoutError("Timeout on upgrade transport")
+            raise SMTPTimeoutError("Timed out while upgrading transport")
 
         return response, tls_protocol
 
@@ -235,7 +235,7 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
         except ConnectionError as exc:
             raise SMTPServerDisconnected(str(exc))
         except asyncio.TimeoutError:
-            raise SMTPTimeoutError("Timeout on send request")
+            raise SMTPTimeoutError("Timed out on write")
 
     async def _readline(self, timeout: NumType = None):
         """
@@ -256,7 +256,7 @@ class SMTPProtocol(asyncio.StreamReaderProtocol):
                 SMTPStatus.unrecognized_command, "Line too long."
             )
         except asyncio.TimeoutError:
-            raise SMTPTimeoutError("Timeout on read response")
+            raise SMTPTimeoutError("Timed out waiting for server response")
         except asyncio.IncompleteReadError as exc:
             if exc.partial == b"":
                 # if we got only an EOF, raise SMTPServerDisconnected

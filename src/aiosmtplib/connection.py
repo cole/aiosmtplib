@@ -9,6 +9,7 @@ from typing import Any, Optional, Type, Union  # NOQA
 from .default import Default, _default
 from .errors import (
     SMTPConnectError,
+    SMTPConnectTimeoutError,
     SMTPResponseException,
     SMTPServerDisconnected,
     SMTPTimeoutError,
@@ -250,7 +251,7 @@ class SMTPConnection:
             )
         except asyncio.TimeoutError:
             self.close()
-            raise SMTPTimeoutError("Connect timeout error")
+            raise SMTPConnectTimeoutError("Connect timeout error")
 
         self.protocol = protocol
         self.transport = transport
@@ -263,7 +264,7 @@ class SMTPConnection:
             )
         except asyncio.TimeoutError:
             self.close()
-            raise SMTPTimeoutError("Timeout on wait server readiness")
+            raise SMTPTimeoutError("Timed out waiting for server ready message")
 
         if response.code != SMTPStatus.ready:
             self.close()
