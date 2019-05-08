@@ -58,6 +58,7 @@ class SMTPConnectTimeoutError(SMTPTimeoutError, SMTPConnectError):
     """
     A timeout occurred while connection to the SMTP server
     """
+
     pass
 
 
@@ -65,6 +66,7 @@ class SMTPReadTimeoutError(SMTPTimeoutError):
     """
     A timeout occurred while wait SMTP server ready message
     """
+
     pass
 
 
