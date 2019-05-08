@@ -185,3 +185,29 @@ def smtp_client(request, event_loop, hostname, port):
     client = SMTP(hostname=hostname, port=port, loop=event_loop, timeout=1.0)
 
     return client
+
+
+@pytest.fixture(scope="function")
+def stream_reader(request):
+    return asyncio.StreamReader(limit=128)
+
+
+class EchoServerProtocol(asyncio.Protocol):
+    def connection_made(self, transport):
+        self.transport = transport
+
+    def data_received(self, data):
+        self.transport.write(data)
+
+
+@pytest.fixture(scope="function")
+def echo_server(request, hostname, port, event_loop):
+    server = event_loop.run_until_complete(
+        event_loop.create_server(EchoServerProtocol, host=hostname, port=port)
+    )
+
+    def close_server():
+        server.close()
+        event_loop.run_until_complete(server.wait_closed())
+
+    request.addfinalizer(close_server)

@@ -14,6 +14,7 @@ aiosmtplib.sublime-project
 aiosmtplib.sublime-workspace
 aiosmtplib.code-workspace
 .vscode/
+.idea/
 build/
 coverage/
 dist/

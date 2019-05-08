@@ -12,32 +12,6 @@ from aiosmtplib.protocol import SMTPProtocol
 pytestmark = pytest.mark.asyncio()
 
 
-class EchoServerProtocol(asyncio.Protocol):
-    def connection_made(self, transport):
-        self.transport = transport
-
-    def data_received(self, data):
-        self.transport.write(data)
-
-
-@pytest.fixture(scope="function")
-def echo_server(request, hostname, port, event_loop):
-    server = event_loop.run_until_complete(
-        event_loop.create_server(EchoServerProtocol, host=hostname, port=port)
-    )
-
-    def close_server():
-        server.close()
-        event_loop.run_until_complete(server.wait_closed())
-
-    request.addfinalizer(close_server)
-
-
-@pytest.fixture(scope="function")
-def stream_reader(request):
-    return asyncio.StreamReader(limit=128)
-
-
 async def test_protocol_connect(echo_server, stream_reader, event_loop, hostname, port):
     connect_future = event_loop.create_connection(
         lambda: SMTPProtocol(stream_reader), host=hostname, port=port
@@ -186,24 +160,6 @@ async def test_protocol_timeout_on_starttls(
 
     server.close()
     await server.wait_closed()
-
-
-async def test_protocol_timeout_on_drain_writer(
-    event_loop, stream_reader, echo_server, hostname, port
-):
-    connect_future = event_loop.create_connection(
-        lambda: SMTPProtocol(stream_reader), host=hostname, port=port
-    )
-
-    _, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
-
-    protocol.pause_writing()
-    protocol._stream_writer.write(b"1234")
-
-    with pytest.raises(SMTPTimeoutError):
-        await protocol._drain_writer(timeout=0.01)
-
-    protocol._stream_writer.close()
 
 
 async def test_connectionerror_on_drain_writer(
