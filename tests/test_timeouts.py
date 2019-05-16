@@ -5,7 +5,12 @@ import asyncio
 
 import pytest
 
-from aiosmtplib import SMTP, SMTPConnectTimeoutError, SMTPTimeoutError
+from aiosmtplib import (
+    SMTP,
+    SMTPConnectTimeoutError,
+    SMTPServerDisconnected,
+    SMTPTimeoutError,
+)
 from aiosmtplib.protocol import SMTPProtocol
 
 
@@ -125,3 +130,13 @@ async def test_connect_timeout_error(hostname, port):
         host=hostname, port=port
     )
     assert str(exc.value) == expected_message
+
+
+async def test_server_disconnected_error_after_connect_timeout(hostname, port, message):
+    client = SMTP(hostname=hostname, port=port)
+
+    with pytest.raises(SMTPConnectTimeoutError):
+        await client.connect(timeout=0.0)
+
+    with pytest.raises(SMTPServerDisconnected):
+        await client.sendmail(message["From"], [message["To"]], str(message))
