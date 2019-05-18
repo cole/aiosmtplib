@@ -89,9 +89,7 @@ class SMTPStreamReader(asyncio.StreamReader):
     async def readline_with_timeout(self, timeout: NumType = None):
         read_task = asyncio.Task(self.readuntil(separator=b"\n"), loop=self._loop)
         try:
-            line = await asyncio.wait_for(
-                read_task, timeout, loop=self._loop
-            )  # type: bytes
+            line = await asyncio.wait_for(read_task, timeout)  # type: bytes
         except asyncio.LimitOverrunError:
             raise SMTPResponseException(
                 SMTPStatus.unrecognized_command, "Line too long."
@@ -155,7 +153,7 @@ class SMTPStreamWriter(asyncio.StreamWriter):
         # Wrapping drain in a task makes mypy happy
         drain_task = asyncio.Task(super().drain(), loop=self._loop)
         try:
-            await asyncio.wait_for(drain_task, timeout, loop=self._loop)
+            await asyncio.wait_for(drain_task, timeout)
         except ConnectionError as exc:
             raise SMTPServerDisconnected(str(exc))
         except asyncio.TimeoutError:
