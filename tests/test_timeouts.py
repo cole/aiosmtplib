@@ -140,3 +140,26 @@ async def test_server_disconnected_error_after_connect_timeout(hostname, port, m
 
     with pytest.raises(SMTPServerDisconnected):
         await client.sendmail(message["From"], [message["To"]], str(message))
+
+
+async def test_protocol_timeout_on_starttls(
+    event_loop, hostname, port, client_tls_context
+):
+    async def client_connected(reader, writer):
+        await reader.read(1000)
+        writer.write(b"220 go ahead\n")
+        await writer.drain()
+        await asyncio.sleep(1.0)
+
+    server = await asyncio.start_server(client_connected, host=hostname, port=port)
+    connect_future = event_loop.create_connection(
+        SMTPProtocol, host=hostname, port=port
+    )
+
+    _, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
+
+    with pytest.raises(SMTPTimeoutError):
+        await protocol.starttls(client_tls_context, timeout=0.01)
+
+    server.close()
+    await server.wait_closed()

@@ -5,7 +5,7 @@ import asyncio
 
 import pytest
 
-from aiosmtplib import SMTPResponseException, SMTPServerDisconnected, SMTPTimeoutError
+from aiosmtplib import SMTPResponseException, SMTPServerDisconnected
 from aiosmtplib.protocol import SMTPProtocol
 
 
@@ -97,29 +97,6 @@ async def test_protocol_writer_connected_check_on_starttls(client_tls_context):
 
     with pytest.raises(SMTPServerDisconnected):
         await smtp_protocol.starttls(client_tls_context)
-
-
-async def test_protocol_timeout_on_starttls(
-    event_loop, hostname, port, client_tls_context
-):
-    async def client_connected(reader, writer):
-        await reader.read(1000)
-        writer.write(b"220 go ahead\n")
-        await writer.drain()
-        await asyncio.sleep(1.0)
-
-    server = await asyncio.start_server(client_connected, host=hostname, port=port)
-    connect_future = event_loop.create_connection(
-        SMTPProtocol, host=hostname, port=port
-    )
-
-    _, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
-
-    with pytest.raises(SMTPTimeoutError):
-        await protocol.starttls(client_tls_context, timeout=0.01)
-
-    server.close()
-    await server.wait_closed()
 
 
 async def test_connectionerror_on_drain_writer(event_loop, echo_server, hostname, port):
