@@ -54,27 +54,22 @@ async def test_protocol_read_limit_overrun(event_loop, stream_reader, hostname, 
     await server.wait_closed()
 
 
-async def test_protocol_connected_check_on_read_response(stream_reader):
-    smtp_protocol = SMTPProtocol(stream_reader)
-    smtp_protocol._stream_reader = None
+async def test_protocol_connected_check_on_read_response():
+    smtp_protocol = SMTPProtocol(None)
 
     with pytest.raises(SMTPServerDisconnected):
         await smtp_protocol.read_response(timeout=1.0)
 
 
-async def test_protocol_connected_check_on_write_and_drain(stream_reader):
-    smtp_protocol = SMTPProtocol(stream_reader)
-    smtp_protocol._stream_reader = None
+async def test_protocol_connected_check_on_write_and_drain():
+    smtp_protocol = SMTPProtocol(None)
 
     with pytest.raises(SMTPServerDisconnected):
         await smtp_protocol.write_and_drain(b"foo", timeout=1.0)
 
 
-async def test_protocol_reader_connected_check_on_upgrade_transport(
-    stream_reader, client_tls_context
-):
-    smtp_protocol = SMTPProtocol(stream_reader)
-    smtp_protocol._stream_reader = None
+async def test_protocol_reader_connected_check_on_upgrade_transport(client_tls_context):
+    smtp_protocol = SMTPProtocol(None)
 
     with pytest.raises(SMTPServerDisconnected):
         await smtp_protocol.upgrade_transport(client_tls_context)
@@ -89,11 +84,8 @@ async def test_protocol_writer_connected_check_on_upgrade_transport(
         await smtp_protocol.upgrade_transport(client_tls_context)
 
 
-async def test_protocol_reader_connected_check_on_starttls(
-    stream_reader, client_tls_context
-):
-    smtp_protocol = SMTPProtocol(stream_reader)
-    smtp_protocol._stream_reader = None
+async def test_protocol_reader_connected_check_on_starttls(client_tls_context):
+    smtp_protocol = SMTPProtocol(None)
 
     with pytest.raises(SMTPServerDisconnected):
         await smtp_protocol.starttls(client_tls_context, timeout=1.0)
@@ -115,25 +107,22 @@ async def test_protocol_connected_check_on_drain_writer(stream_reader):
         await smtp_protocol._drain_writer(timeout=1.0)
 
 
-async def test_protocol_reader_connected_check_on_connection_made(stream_reader):
-    smtp_protocol = SMTPProtocol(stream_reader)
-    smtp_protocol._stream_reader = None
+async def test_protocol_reader_connected_check_on_connection_made():
+    smtp_protocol = SMTPProtocol(None)
 
     with pytest.raises(SMTPServerDisconnected):
         await smtp_protocol.connection_made(None)
 
 
-async def test_protocol_reader_connected_check_on_readline(stream_reader):
-    smtp_protocol = SMTPProtocol(stream_reader)
-    smtp_protocol._stream_reader = None
+async def test_protocol_reader_connected_check_on_readline():
+    smtp_protocol = SMTPProtocol(None)
 
     with pytest.raises(SMTPServerDisconnected):
         await smtp_protocol._readline(timeout=1.0)
 
 
-async def test_protocol_writer_connected_check_on_readline(stream_reader):
-    smtp_protocol = SMTPProtocol(stream_reader)
-    smtp_protocol._stream_writer = None
+async def test_protocol_writer_connected_check_on_readline():
+    smtp_protocol = SMTPProtocol(None)
 
     with pytest.raises(SMTPServerDisconnected):
         await smtp_protocol._readline(timeout=1.0)
