@@ -237,7 +237,9 @@ class SMTPConnection:
             lambda: protocol, host=self.hostname, port=self.port, ssl=tls_context
         )
         try:
-            transport, _ = await asyncio.wait_for(connect_future, timeout=self.timeout)
+            transport, _ = await asyncio.wait_for(
+                connect_future, timeout=self.timeout, loop=self.loop
+            )
         except (ConnectionRefusedError, OSError) as err:
             self.close()
             raise SMTPConnectError(
@@ -259,7 +261,9 @@ class SMTPConnection:
         waiter = asyncio.Task(protocol.read_response(), loop=self.loop)
 
         try:
-            response = await asyncio.wait_for(waiter, timeout=self.timeout)
+            response = await asyncio.wait_for(
+                waiter, timeout=self.timeout, loop=self.loop
+            )
         except asyncio.TimeoutError:
             self.close()
             raise SMTPConnectTimeoutError("Timed out waiting for server ready message")
