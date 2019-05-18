@@ -95,7 +95,8 @@ def _extract_recipients(
         recipient_headers = ("To", "Cc", "Bcc")
 
     for header in recipient_headers:
-        recipients.extend(message.get_all(header, []))  # type: ignore
+        for recipient in message.get_all(header, failobj=[]):
+            recipients.append(str(recipient))
 
     parsed_recipients = [
         str(email.utils.formataddr(address))

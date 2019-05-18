@@ -203,7 +203,7 @@ class SMTPStreamReaderProtocol(FlowControlMixin, asyncio.Protocol):
         # set_transport (which will raise an AssertionError on upgrade).
         # This is because on 3.5.2, we can't avoid calling connection_made on
         # upgrade.
-        self._stream_reader._transport = transport  # type: ignore
+        self._stream_reader._transport = transport
         self._over_ssl = transport.get_extra_info("sslcontext") is not None
         self._stream_writer = SMTPStreamWriter(
             transport, self, self._stream_reader, self._loop
@@ -294,7 +294,7 @@ class SMTPProtocol(SMTPStreamReaderProtocol):
         if self._stream_reader is None or self._stream_writer is None:
             raise SMTPServerDisconnected("Client not connected")
 
-        transport = self._stream_reader._transport  # type: ignore
+        transport = self._stream_reader._transport
 
         tls_protocol = SSLProtocol(
             self._loop,
@@ -312,8 +312,8 @@ class SMTPProtocol(SMTPStreamReaderProtocol):
         else:
             transport._protocol = tls_protocol  # type: ignore
 
-        self._stream_reader._transport = app_transport  # type: ignore
-        self._stream_writer._transport = app_transport  # type: ignore
+        self._stream_reader._transport = app_transport
+        self._stream_writer._transport = app_transport
 
         tls_protocol.connection_made(transport)
         self._over_ssl = True  # type: bool

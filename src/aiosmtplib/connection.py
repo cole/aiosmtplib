@@ -372,5 +372,5 @@ class SMTPConnection:
         :raises SMTPServerDisconnected: connection lost
         """
         self._raise_error_if_disconnected()
-
-        return self.transport.get_extra_info(key)  # type: ignore
+        assert self.transport is not None  # nosec
+        return self.transport.get_extra_info(key)
