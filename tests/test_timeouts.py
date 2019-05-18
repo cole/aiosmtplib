@@ -110,8 +110,8 @@ async def test_protocol_timeout_on_drain_writer(
 
     _, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
 
-    protocol.pause_writing()
     protocol._stream_writer.write(b"1234")
+    protocol.pause_writing()
 
     with pytest.raises(SMTPTimeoutError) as exc:
         await protocol._drain_writer(timeout=0.01)
