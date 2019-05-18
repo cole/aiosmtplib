@@ -187,11 +187,6 @@ def smtp_client(request, event_loop, hostname, port):
     return client
 
 
-@pytest.fixture(scope="function")
-def stream_reader(request):
-    return asyncio.StreamReader(limit=128)
-
-
 class EchoServerProtocol(asyncio.Protocol):
     def connection_made(self, transport):
         self.transport = transport

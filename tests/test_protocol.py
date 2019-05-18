@@ -12,7 +12,7 @@ from aiosmtplib.protocol import SMTPProtocol
 pytestmark = pytest.mark.asyncio()
 
 
-async def test_protocol_connect(echo_server, stream_reader, event_loop, hostname, port):
+async def test_protocol_connect(echo_server, event_loop, hostname, port):
     connect_future = event_loop.create_connection(
         SMTPProtocol, host=hostname, port=port
     )
@@ -78,9 +78,7 @@ async def test_protocol_reader_connected_check_on_upgrade_transport(client_tls_c
         await smtp_protocol.upgrade_transport(client_tls_context)
 
 
-async def test_protocol_writer_connected_check_on_upgrade_transport(
-    stream_reader, client_tls_context
-):
+async def test_protocol_writer_connected_check_on_upgrade_transport(client_tls_context):
     smtp_protocol = SMTPProtocol()
 
     with pytest.raises(SMTPServerDisconnected):
@@ -102,7 +100,7 @@ async def test_protocol_writer_connected_check_on_starttls(client_tls_context):
 
 
 async def test_protocol_timeout_on_starttls(
-    event_loop, stream_reader, hostname, port, client_tls_context
+    event_loop, hostname, port, client_tls_context
 ):
     async def client_connected(reader, writer):
         await reader.read(1000)
@@ -124,9 +122,7 @@ async def test_protocol_timeout_on_starttls(
     await server.wait_closed()
 
 
-async def test_connectionerror_on_drain_writer(
-    event_loop, stream_reader, echo_server, hostname, port
-):
+async def test_connectionerror_on_drain_writer(event_loop, echo_server, hostname, port):
     connect_future = event_loop.create_connection(
         SMTPProtocol, host=hostname, port=port
     )
@@ -141,7 +137,7 @@ async def test_connectionerror_on_drain_writer(
 
 
 async def test_incompletereaderror_on_readline_with_partial_line(
-    event_loop, stream_reader, hostname, port
+    event_loop, hostname, port
 ):
     partial_response = b"499 incomplete response\\"
 

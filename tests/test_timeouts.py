@@ -82,7 +82,7 @@ async def test_timeout_on_starttls(smtp_client, smtpd_server, smtpd_class, monke
 
 
 async def test_protocol_readline_with_timeout_times_out(
-    event_loop, stream_reader, echo_server, hostname, port
+    event_loop, echo_server, hostname, port
 ):
     connect_future = event_loop.create_connection(
         SMTPProtocol, host=hostname, port=port
@@ -102,7 +102,7 @@ async def test_protocol_readline_with_timeout_times_out(
 
 
 async def test_protocol_timeout_on_drain_writer(
-    event_loop, stream_reader, echo_server, hostname, port
+    event_loop, echo_server, hostname, port
 ):
     connect_future = event_loop.create_connection(
         SMTPProtocol, host=hostname, port=port
