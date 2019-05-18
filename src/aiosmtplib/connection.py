@@ -22,7 +22,6 @@ from .status import SMTPStatus
 __all__ = ("SMTPConnection",)
 
 
-MAX_LINE_LENGTH = 8192
 SMTP_PORT = 25
 SMTP_TLS_PORT = 465
 DEFAULT_TIMEOUT = 60
@@ -228,8 +227,7 @@ class SMTPConnection:
         if self.port is None:
             raise ValueError("Port must be set.")
 
-        reader = asyncio.StreamReader(limit=MAX_LINE_LENGTH, loop=self.loop)
-        protocol = SMTPProtocol(reader, loop=self.loop)
+        protocol = SMTPProtocol(loop=self.loop)
 
         tls_context = None  # type: Optional[ssl.SSLContext]
         if self.use_tls:

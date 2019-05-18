@@ -81,11 +81,11 @@ async def test_timeout_on_starttls(smtp_client, smtpd_server, smtpd_class, monke
         await smtp_client.starttls(validate_certs=False, timeout=0.01)
 
 
-async def test_protocol_timeout_readline(
+async def test_protocol_readline_with_timeout_times_out(
     event_loop, stream_reader, echo_server, hostname, port
 ):
     connect_future = event_loop.create_connection(
-        lambda: SMTPProtocol(stream_reader), host=hostname, port=port
+        SMTPProtocol, host=hostname, port=port
     )
 
     _, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
@@ -94,7 +94,7 @@ async def test_protocol_timeout_readline(
     protocol._stream_writer.write(b"1234")
 
     with pytest.raises(SMTPTimeoutError) as exc:
-        await protocol._readline(timeout=0.0)
+        await protocol._stream_reader.readline_with_timeout(timeout=0.0)
 
     protocol._stream_writer.close()
 
@@ -105,7 +105,7 @@ async def test_protocol_timeout_on_drain_writer(
     event_loop, stream_reader, echo_server, hostname, port
 ):
     connect_future = event_loop.create_connection(
-        lambda: SMTPProtocol(stream_reader), host=hostname, port=port
+        SMTPProtocol, host=hostname, port=port
     )
 
     _, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
@@ -114,7 +114,7 @@ async def test_protocol_timeout_on_drain_writer(
     protocol.pause_writing()
 
     with pytest.raises(SMTPTimeoutError) as exc:
-        await protocol._drain_writer(timeout=0.01)
+        await protocol._stream_writer.drain_with_timeout(timeout=0.01)
 
     protocol._stream_writer.close()
     assert str(exc.value) == "Timed out on write"
