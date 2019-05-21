@@ -1,11 +1,16 @@
 """
-sendmail and send_message method testing.
+SMTP.sendmail and SMTP.send_message method testing.
 """
 import copy
 
 import pytest
 
-from aiosmtplib import SMTPRecipientsRefused, SMTPResponseException, SMTPStatus
+from aiosmtplib import (
+    SMTPRecipientsRefused,
+    SMTPResponseException,
+    SMTPStatus,
+    send_message,
+)
 
 
 pytestmark = pytest.mark.asyncio()
@@ -226,3 +231,13 @@ async def test_send_multiple_messages_in_sequence(smtp_client, smtpd_server, mes
         assert not errors2
         assert isinstance(errors2, dict)
         assert response2 != ""
+
+
+async def test_send_message_function(
+    hostname, port, smtpd_server, message, recieved_messages
+):
+    errors, response = await send_message(hostname, message, port=port)
+
+    assert not errors
+    assert response != ""
+    assert len(recieved_messages) == 1
