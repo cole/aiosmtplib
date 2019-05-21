@@ -9,7 +9,7 @@ Implementation is split into the following classes:
 """
 import asyncio
 from email.message import Message
-from typing import Any, Callable, Dict, Iterable, List, Tuple, Union
+from typing import Dict, Iterable, List, Tuple, Union
 
 from .auth import SMTPAuth
 from .connection import SMTPConnection
@@ -17,6 +17,7 @@ from .default import Default, _default
 from .email import flatten_message
 from .errors import SMTPRecipientRefused, SMTPRecipientsRefused, SMTPResponseException
 from .response import SMTPResponse
+from .sync import async_to_sync
 
 
 __all__ = ("SMTP",)
@@ -234,23 +235,6 @@ class SMTP(SMTPAuth):
 
         return result
 
-    def _run_sync(self, method: Callable, *args, **kwargs) -> Any:
-        """
-        Utility method to run commands synchronously for testing.
-        """
-        if self.loop.is_running():
-            raise RuntimeError("Event loop is already running.")
-
-        if not self.is_connected:
-            self.loop.run_until_complete(self.connect())
-
-        task = asyncio.Task(method(*args, **kwargs), loop=self.loop)
-        result = self.loop.run_until_complete(task)
-
-        self.loop.run_until_complete(self.quit())
-
-        return result
-
     def sendmail_sync(
         self,
         sender: str,
@@ -264,15 +248,25 @@ class SMTP(SMTPAuth):
         Synchronous version of :meth:`.sendmail`. This method starts
         the event loop to connect, send the message, and disconnect.
         """
-        return self._run_sync(
-            self.sendmail,
-            sender,
-            recipients,
-            message,
-            mail_options=mail_options,
-            rcpt_options=rcpt_options,
-            timeout=timeout,
-        )
+
+        async def sendmail_coroutine():
+            if not self.is_connected:
+                await self.connect()
+            try:
+                result = await self.sendmail(
+                    sender,
+                    recipients,
+                    message,
+                    mail_options=mail_options,
+                    rcpt_options=rcpt_options,
+                    timeout=timeout,
+                )
+            finally:
+                await self.quit()
+
+            return result
+
+        return async_to_sync(sendmail_coroutine(), loop=self.loop)
 
     def send_message_sync(
         self,
@@ -287,12 +281,22 @@ class SMTP(SMTPAuth):
         Synchronous version of :meth:`.send_message`. This method
         starts the event loop to connect, send the message, and disconnect.
         """
-        return self._run_sync(
-            self.send_message,
-            message,
-            sender=sender,
-            recipients=recipients,
-            mail_options=mail_options,
-            rcpt_options=rcpt_options,
-            timeout=timeout,
-        )
+
+        async def send_message_coroutine():
+            if not self.is_connected:
+                await self.connect()
+            try:
+                result = await self.send_message(
+                    message,
+                    sender=sender,
+                    recipients=recipients,
+                    mail_options=mail_options,
+                    rcpt_options=rcpt_options,
+                    timeout=timeout,
+                )
+            finally:
+                await self.quit()
+
+            return result
+
+        return async_to_sync(send_message_coroutine(), loop=self.loop)

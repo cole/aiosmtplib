@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 
 from aiosmtplib import SMTP
+from aiosmtplib.sync import shutdown_loop
 
 from .smtpd import RecordingHandler, TestSMTPD
 
@@ -47,28 +48,7 @@ def event_loop(request):
 
     yield loop
 
-    # Cancel any pending tasks
-    if PY37_OR_LATER:
-        cleanup_tasks = asyncio.all_tasks(loop=loop)
-    else:
-        cleanup_tasks = asyncio.Task.all_tasks(loop=loop)
-
-    if cleanup_tasks:
-        for task in cleanup_tasks:
-            task.cancel()
-        try:
-            loop.run_until_complete(asyncio.wait(cleanup_tasks, loop=loop, timeout=1.0))
-        except RuntimeError:
-            # Event loop was probably already stopping.
-            pass
-
-    if PY36_OR_LATER:
-        loop.run_until_complete(loop.shutdown_asyncgens())
-
-    loop.call_soon(loop.stop)
-    loop.run_forever()
-
-    loop.close()
+    shutdown_loop(loop)
 
 
 @pytest.fixture(scope="session")
