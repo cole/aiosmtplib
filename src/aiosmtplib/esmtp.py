@@ -457,15 +457,19 @@ class ESMTP(SMTPConnection):
             raise SMTPException("SMTP STARTTLS extension not supported by server.")
 
         async with self._command_lock:
+            response = await self.execute_command(b"STARTTLS", timeout=timeout)
+            if response.code != SMTPStatus.ready:
+                raise SMTPResponseException(response.code, response.message)
+
             try:
-                response, protocol = await self.protocol.starttls(  # type: ignore
+                transport = await self.protocol.start_tls(  # type: ignore
                     tls_context, server_hostname=server_hostname, timeout=timeout
                 )
             except SMTPServerDisconnected:
                 self.close()
                 raise
 
-        self.transport = protocol._app_transport
+        self.transport = transport
 
         # RFC 3207 part 4.2:
         # The client MUST discard any knowledge obtained from the server, such

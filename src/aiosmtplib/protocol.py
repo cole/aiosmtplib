@@ -4,9 +4,9 @@ An ``asyncio.Protocol`` subclass for lower level IO handling.
 import asyncio
 import re
 import ssl
-from asyncio.sslproto import SSLProtocol  # type: ignore
-from typing import Awaitable, Optional, Tuple, Union  # NOQA
+from typing import Optional, Union
 
+from .compat import start_tls
 from .errors import (
     SMTPReadTimeoutError,
     SMTPResponseException,
@@ -25,7 +25,6 @@ LINE_ENDINGS_REGEX = re.compile(rb"(?:\r\n|\n|\r(?!\n))")
 PERIOD_REGEX = re.compile(rb"(?m)^\.")
 
 
-StartTLSResponse = Tuple[SMTPResponse, SSLProtocol]
 NumType = Union[float, int]
 
 
@@ -279,47 +278,6 @@ class SMTPProtocol(SMTPStreamReaderProtocol):
         async with self._io_lock:
             await self._stream_writer.drain_with_timeout(timeout=timeout)
 
-    def upgrade_transport(
-        self,
-        context: ssl.SSLContext,
-        server_hostname: str = None,
-        waiter: Awaitable = None,
-    ) -> SSLProtocol:
-        """
-        Upgrade our transport to TLS in place.
-        """
-        if self._over_ssl:
-            raise RuntimeError("Already using TLS.")
-
-        if self._stream_reader is None or self._stream_writer is None:
-            raise SMTPServerDisconnected("Client not connected")
-
-        transport = self._stream_reader._transport
-
-        tls_protocol = SSLProtocol(
-            self._loop,
-            self,
-            context,
-            waiter,
-            server_side=False,
-            server_hostname=server_hostname,
-        )
-
-        app_transport = tls_protocol._app_transport
-        # Use set_protocol if we can
-        if hasattr(transport, "set_protocol"):
-            transport.set_protocol(tls_protocol)  # type: ignore
-        else:
-            transport._protocol = tls_protocol  # type: ignore
-
-        self._stream_reader._transport = app_transport
-        self._stream_writer._transport = app_transport
-
-        tls_protocol.connection_made(transport)
-        self._over_ssl = True  # type: bool
-
-        return tls_protocol
-
     async def execute_command(
         self, *args: bytes, timeout: NumType = None
     ) -> SMTPResponse:
@@ -336,33 +294,41 @@ class SMTPProtocol(SMTPStreamReaderProtocol):
 
         return response
 
-    async def starttls(
+    async def start_tls(
         self,
         tls_context: ssl.SSLContext,
         server_hostname: str = None,
         timeout: NumType = None,
-    ) -> StartTLSResponse:
+    ) -> asyncio.Transport:
         """
         Puts the connection to the SMTP server into TLS mode.
         """
-        response = await self.execute_command(b"STARTTLS", timeout=timeout)
-
-        if response.code != SMTPStatus.ready:
-            raise SMTPResponseException(response.code, response.message)
+        if self._over_ssl:
+            raise RuntimeError("Already using TLS.")
 
         if self._stream_writer is None:
             raise SMTPServerDisconnected("Client not connected")
 
-        await self._stream_writer.drain_with_timeout(timeout=timeout)
-
-        waiter = asyncio.Future(loop=self._loop)  # type: asyncio.Future
-        tls_protocol = self.upgrade_transport(
-            tls_context, server_hostname=server_hostname, waiter=waiter
-        )
+        transport = self._stream_reader._transport
+        if not isinstance(transport, asyncio.Transport):
+            raise TypeError(
+                "transport {} is not supported by start_tls()".format(transport)
+            )
 
         try:
-            await asyncio.wait_for(waiter, timeout=timeout, loop=self._loop)
+            tls_transport = await start_tls(
+                self._loop,
+                transport,
+                self,
+                tls_context,
+                server_side=False,
+                server_hostname=server_hostname,
+                ssl_handshake_timeout=timeout,
+            )
         except asyncio.TimeoutError:
             raise SMTPTimeoutError("Timed out while upgrading transport")
 
-        return response, tls_protocol
+        self._stream_reader._transport = tls_transport
+        self._stream_writer._transport = tls_transport
+
+        return tls_transport
