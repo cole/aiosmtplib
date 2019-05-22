@@ -3,32 +3,67 @@ Main public API.
 """
 import ssl
 from email.message import Message
-from typing import Iterable, Union
+from typing import Dict, Iterable, Optional, Tuple, Union, overload
 
 from .compat import get_running_loop
-from .default import Default, _default
+from .connection import DEFAULT_TIMEOUT
+from .response import SMTPResponse
 from .smtp import SMTP
 
 
 __all__ = ("send_message",)
 
 
+@overload
 async def send_message(
-    hostname: str,
-    message: Union[Message, str, bytes],
-    sender: str = None,
-    recipients: Union[str, Iterable[str]] = None,
-    mail_options: Iterable[str] = None,
-    rcpt_options: Iterable[str] = None,
-    timeout: Union[float, int, Default] = _default,
-    port: int = None,
-    source_address: str = None,
+    message: Message,
+    sender: Optional[str] = None,
+    recipients: Optional[Union[str, Iterable[str]]] = None,
+    hostname: Optional[str] = None,
+    port: Optional[int] = None,
+    mail_options: Optional[Iterable[str]] = None,
+    rcpt_options: Optional[Iterable[str]] = None,
+    timeout: Union[float, int, None] = DEFAULT_TIMEOUT,
+    source_address: Optional[str] = None,
     use_tls: bool = False,
     validate_certs: bool = True,
-    client_cert: str = None,
-    client_key: str = None,
-    tls_context: ssl.SSLContext = None,
-    cert_bundle: str = None,
+    client_cert: Optional[str] = None,
+    client_key: Optional[str] = None,
+    tls_context: Optional[ssl.SSLContext] = None,
+    cert_bundle: Optional[str] = None,
+) -> Tuple[Dict[str, SMTPResponse], str]:
+    pass
+
+
+@overload  # NOQA: F811
+async def send_message(
+    message: Union[str, bytes],
+    sender: str = None,
+    recipients: Union[str, Iterable[str]] = None,
+    hostname: Optional[str] = None,
+    port: Optional[int] = None,
+    mail_options: Optional[Iterable[str]] = None,
+    rcpt_options: Optional[Iterable[str]] = None,
+    timeout: Union[float, int, None] = DEFAULT_TIMEOUT,
+    source_address: Optional[str] = None,
+    use_tls: bool = False,
+    validate_certs: bool = True,
+    client_cert: Optional[str] = None,
+    client_key: Optional[str] = None,
+    tls_context: Optional[ssl.SSLContext] = None,
+    cert_bundle: Optional[str] = None,
+) -> Tuple[Dict[str, SMTPResponse], str]:
+    pass
+
+
+async def send_message(  # NOQA: F811
+    message,
+    sender=None,
+    recipients=None,
+    mail_options=None,
+    rcpt_options=None,
+    timeout=DEFAULT_TIMEOUT,
+    **kwargs
 ):
     """
     Send an email message. On await, connects to the SMTP server using the details
@@ -63,26 +98,18 @@ async def send_message(
         Mutually exclusive with ``client_cert``/``client_key``.
     :keyword cert_bundle: Path to certificate bundle, for TLS verification.
 
-    :raises ValueError: mutually exclusive options provided
+    :raises ValueError: required arguments missing or mutually exclusive options
+        provided
     """
+    if not isinstance(message, Message):
+        if recipients is None:
+            raise ValueError("Recipients must be provided with raw messages.")
+        if sender is None:
+            raise ValueError("Sender must be provided with raw messages.")
+
     loop = get_running_loop()
-    client = SMTP(
-        loop=loop,
-        hostname=hostname,
-        port=port,
-        source_address=source_address,
-        use_tls=use_tls,
-        validate_certs=validate_certs,
-        client_cert=client_cert,
-        client_key=client_key,
-        tls_context=tls_context,
-        cert_bundle=cert_bundle,
-    )
 
-    await client.connect(timeout=timeout)
-    await client._ehlo_or_helo_if_needed()
-
-    try:
+    async with SMTP(loop=loop, timeout=timeout, **kwargs) as client:
         if isinstance(message, Message):
             result = await client.send_message(
                 message,
@@ -93,11 +120,6 @@ async def send_message(
                 timeout=timeout,
             )
         else:
-            if recipients is None:
-                raise ValueError("Recipients must be provided with raw messages.")
-            if sender is None:
-                raise ValueError("Sender must be provided with raw messages.")
-
             result = await client.sendmail(
                 sender,
                 recipients,
@@ -106,7 +128,5 @@ async def send_message(
                 rcpt_options=rcpt_options,
                 timeout=timeout,
             )
-    finally:
-        await client.quit()
 
     return result
