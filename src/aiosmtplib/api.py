@@ -56,33 +56,22 @@ async def send_message(
     pass
 
 
-async def send_message(  # NOQA: F811
-    message,
-    sender=None,
-    recipients=None,
-    mail_options=None,
-    rcpt_options=None,
-    timeout=DEFAULT_TIMEOUT,
-    **kwargs
-):
+async def send_message(message, sender=None, recipients=None, **kwargs):  # NOQA: F811
     """
     Send an email message. On await, connects to the SMTP server using the details
     provided, sends the message, then disconnects.
 
-    :param hostname: Server name (or IP) to connect to
     :param message:  Message text. Either an :class:``email.message.Message`` object,
         ``str`` or ``bytes``. If a ``Message`` object is provided, sender and
         recipients set in the message headers will be used, unless overridden by
         the respective keyword arguments.
-
-    :keyword sender:  From email address. If none, taken from the ``Message``.
-    :keyword recipients: Recipient email addresses. If none, taken from the
-        ``Message``.
-    :keyword mail_options: Options (such as ESMTP 8bitmime) for the MAIL command.
-    :keyword rcpt_options: Options (such as DSN commands) for all RCPT commands.
-
-    :keyword port: Server port. Defaults to 25 if ``use_tls`` is
-        False, 465 if ``use_tls`` is True.
+    :keyword sender:  From email address. If a ``Message`` object is provided, this
+        argument is not required.
+    :keyword recipients: Recipient email addresses. If a ``Message`` object is provided,
+        this argument is not required.
+    :keyword hostname:  Server name (or IP) to connect to. Defaults to "localhost".
+    :keyword port: Server port. Defaults ``465`` if ``use_tls`` is ``True``,
+        ``587`` if ``start_tls`` is ``True``, or ``25`` otherwise.
     :keyword source_address: The hostname of the client. Defaults to the
         result of :func:`socket.getfqdn`. Note that this call blocks.
     :keyword timeout: Default timeout value for the connection, in seconds.
@@ -90,6 +79,9 @@ async def send_message(  # NOQA: F811
     :keyword use_tls: If True, make the initial connection to the server
         over TLS/SSL. Note that if the server supports STARTTLS only, this
         should be False.
+    :keyword start_tls: If True, make the initial connection to the server
+        over plaintext, and then upgrade the connection to TLS/SSL. Not
+        compatible with use_tls.
     :keyword validate_certs: Determines if server certificates are
         validated. Defaults to True.
     :keyword client_cert: Path to client side certificate, for TLS.
@@ -109,24 +101,12 @@ async def send_message(  # NOQA: F811
 
     loop = get_running_loop()
 
-    async with SMTP(loop=loop, timeout=timeout, **kwargs) as client:
+    async with SMTP(loop=loop, **kwargs) as client:
         if isinstance(message, Message):
             result = await client.send_message(
-                message,
-                sender=sender,
-                recipients=recipients,
-                mail_options=mail_options,
-                rcpt_options=rcpt_options,
-                timeout=timeout,
+                message, sender=sender, recipients=recipients
             )
         else:
-            result = await client.sendmail(
-                sender,
-                recipients,
-                message,
-                mail_options=mail_options,
-                rcpt_options=rcpt_options,
-                timeout=timeout,
-            )
+            result = await client.sendmail(sender, recipients, message)
 
     return result

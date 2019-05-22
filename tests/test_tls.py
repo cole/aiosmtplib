@@ -83,6 +83,19 @@ async def test_starttls(smtp_client, smtpd_server):
         assert response.code == SMTPStatus.completed
 
 
+async def test_starttls_on_connect_option(smtp_client, smtpd_server):
+    response = await smtp_client.connect(start_tls=True, validate_certs=False)
+    assert response.code == SMTPStatus.ready
+
+    # make sure our connection was actually upgraded
+    assert isinstance(smtp_client.transport, asyncio.sslproto._SSLProtocolTransport)
+
+    response = await smtp_client.ehlo()
+    assert response.code == SMTPStatus.completed
+
+    await smtp_client.quit()
+
+
 async def test_starttls_with_explicit_server_hostname(
     smtp_client, hostname, smtpd_server
 ):

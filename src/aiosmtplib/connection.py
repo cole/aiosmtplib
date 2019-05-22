@@ -24,6 +24,7 @@ __all__ = ("SMTPConnection",)
 
 SMTP_PORT = 25
 SMTP_TLS_PORT = 465
+SMTP_STARTTLS_PORT = 587
 DEFAULT_TIMEOUT = 60
 
 
@@ -45,12 +46,13 @@ class SMTPConnection:
 
     def __init__(
         self,
-        hostname: str = "",
+        hostname: str = "localhost",
         port: int = None,
         source_address: str = None,
         timeout: NumType = DEFAULT_TIMEOUT,
         loop: asyncio.AbstractEventLoop = None,
         use_tls: bool = False,
+        start_tls: bool = False,
         validate_certs: bool = True,
         client_cert: str = None,
         client_key: str = None,
@@ -58,18 +60,21 @@ class SMTPConnection:
         cert_bundle: str = None,
     ) -> None:
         """
-        :keyword hostname:  Server name (or IP) to connect to
-        :keyword port: Server port. Defaults to ``25`` if ``use_tls`` is
-            ``False``, ``465`` if ``use_tls`` is ``True``.
+        :keyword hostname:  Server name (or IP) to connect to. Defaults to "localhost".
+        :keyword port: Server port. Defaults ``465`` if ``use_tls`` is ``True``,
+            ``587`` if ``start_tls`` is ``True``, or ``25`` otherwise.
         :keyword source_address: The hostname of the client. Defaults to the
             result of :func:`socket.getfqdn`. Note that this call blocks.
         :keyword timeout: Default timeout value for the connection, in seconds.
             Defaults to 60.
         :keyword loop: event loop  to run on. If not set, uses
             :func:`asyncio.get_event_loop()`.
-        :keyword use_tls: If True, make the initial connection to the server
+        :keyword use_tls: If True, make the _initial_ connection to the server
             over TLS/SSL. Note that if the server supports STARTTLS only, this
             should be False.
+        :keyword start_tls: If True, make the initial connection to the server
+            over plaintext, and then upgrade the connection to TLS/SSL. Not
+            compatible with use_tls.
         :keyword validate_certs: Determines if server certificates are
             validated. Defaults to True.
         :keyword client_cert: Path to client side certificate, for TLS
@@ -85,6 +90,8 @@ class SMTPConnection:
         self.protocol = None  # type: Optional[SMTPProtocol]
         self.transport = None  # type: Optional[asyncio.BaseTransport]
 
+        if use_tls and start_tls:
+            raise ValueError("The start_tls and use_tls options are not compatible")
         if tls_context is not None and client_cert is not None:
             raise ValueError(
                 "Either a TLS context or a certificate/key must be provided"
@@ -95,6 +102,7 @@ class SMTPConnection:
         self.port = port
         self.timeout = timeout
         self.use_tls = use_tls
+        self.start_tls_on_connect = start_tls
         self._source_address = source_address
         self.validate_certs = validate_certs
         self.client_cert = client_cert
@@ -149,6 +157,7 @@ class SMTPConnection:
         timeout: DefaultNumType = _default,
         loop: asyncio.AbstractEventLoop = None,
         use_tls: bool = None,
+        start_tls: bool = None,
         validate_certs: bool = None,
         client_cert: DefaultStrType = _default,
         client_key: DefaultStrType = _default,
@@ -160,9 +169,9 @@ class SMTPConnection:
         :meth:`.connect` take precedence over those used to initialize the
         class.
 
-        :keyword hostname:  Server name (or IP) to connect to
-        :keyword port: Server port. Defaults to 25 if ``use_tls`` is
-            False, 465 if ``use_tls`` is True.
+        :keyword hostname:  Server name (or IP) to connect to. Defaults to "localhost".
+        :keyword port: Server port. Defaults ``465`` if ``use_tls`` is ``True``,
+            ``587`` if ``start_tls`` is ``True``, or ``25`` otherwise.
         :keyword source_address: The hostname of the client. Defaults to the
             result of :func:`socket.getfqdn`. Note that this call blocks.
         :keyword timeout: Default timeout value for the connection, in seconds.
@@ -172,6 +181,9 @@ class SMTPConnection:
         :keyword use_tls: If True, make the initial connection to the server
             over TLS/SSL. Note that if the server supports STARTTLS only, this
             should be False.
+        :keyword start_tls: If True, make the initial connection to the server
+            over plaintext, and then upgrade the connection to TLS/SSL. Not
+            compatible with use_tls.
         :keyword validate_certs: Determines if server certificates are
             validated. Defaults to True.
         :keyword client_cert: Path to client side certificate, for TLS.
@@ -190,6 +202,8 @@ class SMTPConnection:
             self.loop = loop
         if use_tls is not None:
             self.use_tls = use_tls
+        if start_tls is not None:
+            self.start_tls_on_connect = start_tls
         if validate_certs is not None:
             self.validate_certs = validate_certs
 
@@ -197,7 +211,12 @@ class SMTPConnection:
             self.port = port
 
         if self.port is None:
-            self.port = SMTP_TLS_PORT if self.use_tls else SMTP_PORT
+            if self.use_tls:
+                self.port = SMTP_TLS_PORT
+            elif self.start_tls_on_connect:
+                self.port = SMTP_STARTTLS_PORT
+            else:
+                self.port = SMTP_PORT
 
         if timeout is not _default:
             self.timeout = timeout  # type: ignore
@@ -216,6 +235,8 @@ class SMTPConnection:
             raise ValueError(
                 "Either a TLS context or a certificate/key must be provided"
             )
+        if self.start_tls_on_connect and self.use_tls:
+            raise ValueError("The start_tls and use_tls options are not compatible")
 
         response = await self._create_connection()
 

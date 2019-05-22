@@ -74,6 +74,14 @@ class ESMTP(SMTPConnection):
         """
         return self.last_ehlo_response is None and self.last_helo_response is None
 
+    async def connect(self, *args, **kwargs) -> SMTPResponse:
+        response = await super().connect(*args, **kwargs)
+
+        if self.start_tls_on_connect:
+            response = await self.starttls()
+
+        return response
+
     def close(self) -> None:
         """
         Makes sure we reset ESMTP state on close.
