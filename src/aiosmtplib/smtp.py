@@ -250,9 +250,7 @@ class SMTP(SMTPAuth):
         """
 
         async def sendmail_coroutine():
-            if not self.is_connected:
-                await self.connect()
-            try:
+            async with self:
                 result = await self.sendmail(
                     sender,
                     recipients,
@@ -261,8 +259,6 @@ class SMTP(SMTPAuth):
                     rcpt_options=rcpt_options,
                     timeout=timeout,
                 )
-            finally:
-                await self.quit()
 
             return result
 
@@ -283,9 +279,7 @@ class SMTP(SMTPAuth):
         """
 
         async def send_message_coroutine():
-            if not self.is_connected:
-                await self.connect()
-            try:
+            async with self:
                 result = await self.send_message(
                     message,
                     sender=sender,
@@ -294,8 +288,6 @@ class SMTP(SMTPAuth):
                     rcpt_options=rcpt_options,
                     timeout=timeout,
                 )
-            finally:
-                await self.quit()
 
             return result
 
