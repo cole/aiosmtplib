@@ -1,7 +1,7 @@
 """
-Public API.
+Main SMTP client class.
 
-Implementation is split into the following classes:
+Implementation is split into the following parent classes:
 
     * :class:`.auth.SMTPAuth` - login and authentication methods
     * :class:`.esmtp.ESMTP` - ESMTP command support
@@ -21,12 +21,6 @@ from .sync import async_to_sync
 
 
 __all__ = ("SMTP",)
-
-
-DefaultNumType = Union[float, int, Default]
-RecipientsType = Union[str, Iterable[str]]
-RecipientErrorsType = Dict[str, SMTPResponse]
-SendmailResponseType = Tuple[RecipientErrorsType, str]
 
 
 class SMTP(SMTPAuth):
@@ -58,12 +52,12 @@ class SMTP(SMTPAuth):
     async def sendmail(
         self,
         sender: str,
-        recipients: RecipientsType,
+        recipients: Union[str, Iterable[str]],
         message: Union[str, bytes],
         mail_options: Iterable[str] = None,
         rcpt_options: Iterable[str] = None,
-        timeout: DefaultNumType = _default,
-    ) -> SendmailResponseType:
+        timeout: Union[float, int, None, Default] = _default,
+    ) -> Tuple[Dict[str, SMTPResponse], str]:
         """
         This command performs an entire mail transaction.
 
@@ -170,8 +164,8 @@ class SMTP(SMTPAuth):
         self,
         recipients: List[str],
         options: List[str] = None,
-        timeout: DefaultNumType = _default,
-    ) -> RecipientErrorsType:
+        timeout: Union[float, int, None, Default] = _default,
+    ) -> Dict[str, SMTPResponse]:
         """
         Send the recipients given to the server. Used as part of
         :meth:`.sendmail`.
@@ -197,11 +191,11 @@ class SMTP(SMTPAuth):
         self,
         message: Message,
         sender: str = None,
-        recipients: RecipientsType = None,
+        recipients: Union[str, Iterable[str], None] = None,
         mail_options: Iterable[str] = None,
         rcpt_options: Iterable[str] = None,
-        timeout: DefaultNumType = _default,
-    ) -> SendmailResponseType:
+        timeout: Union[float, int, None, Default] = _default,
+    ) -> Tuple[Dict[str, SMTPResponse], str]:
         r"""
         Sends an :class:`email.message.Message` object.
 
@@ -235,15 +229,7 @@ class SMTP(SMTPAuth):
 
         return result
 
-    def sendmail_sync(
-        self,
-        sender: str,
-        recipients: RecipientsType,
-        message: Union[str, bytes],
-        mail_options: Iterable[str] = None,
-        rcpt_options: Iterable[str] = None,
-        timeout: DefaultNumType = _default,
-    ) -> SendmailResponseType:
+    def sendmail_sync(self, *args, **kwargs) -> Tuple[Dict[str, SMTPResponse], str]:
         """
         Synchronous version of :meth:`.sendmail`. This method starts
         the event loop to connect, send the message, and disconnect.
@@ -251,28 +237,13 @@ class SMTP(SMTPAuth):
 
         async def sendmail_coroutine():
             async with self:
-                result = await self.sendmail(
-                    sender,
-                    recipients,
-                    message,
-                    mail_options=mail_options,
-                    rcpt_options=rcpt_options,
-                    timeout=timeout,
-                )
+                result = await self.sendmail(*args, **kwargs)
 
             return result
 
         return async_to_sync(sendmail_coroutine(), loop=self.loop)
 
-    def send_message_sync(
-        self,
-        message: Message,
-        sender: str = None,
-        recipients: RecipientsType = None,
-        mail_options: Iterable[str] = None,
-        rcpt_options: Iterable[str] = None,
-        timeout: DefaultNumType = _default,
-    ) -> SendmailResponseType:
+    def send_message_sync(self, *args, **kwargs) -> Tuple[Dict[str, SMTPResponse], str]:
         """
         Synchronous version of :meth:`.send_message`. This method
         starts the event loop to connect, send the message, and disconnect.
@@ -280,14 +251,7 @@ class SMTP(SMTPAuth):
 
         async def send_message_coroutine():
             async with self:
-                result = await self.send_message(
-                    message,
-                    sender=sender,
-                    recipients=recipients,
-                    mail_options=mail_options,
-                    rcpt_options=rcpt_options,
-                    timeout=timeout,
-                )
+                result = await self.send_message(*args, **kwargs)
 
             return result
 

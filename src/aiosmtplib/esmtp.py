@@ -29,12 +29,6 @@ OLDSTYLE_AUTH_REGEX = re.compile(r"auth=(?P<auth>.*)", flags=re.I)
 EXTENSIONS_REGEX = re.compile(r"(?P<ext>[A-Za-z0-9][A-Za-z0-9\-]*) ?")
 
 
-DefaultNumType = Union[float, int, Default]
-DefaultStrType = Union[str, Default]
-DefaultSSLContextType = Union[ssl.SSLContext, Default]
-NumType = Union[float, int]
-
-
 class ESMTP(SMTPConnection):
     """
     Handles individual SMTP and ESMTP commands.
@@ -92,7 +86,7 @@ class ESMTP(SMTPConnection):
     # Base SMTP commands #
 
     async def helo(
-        self, hostname: str = None, timeout: DefaultNumType = _default
+        self, hostname: str = None, timeout: Union[float, int, None, Default] = _default
     ) -> SMTPResponse:
         """
         Send the SMTP HELO command.
@@ -114,7 +108,7 @@ class ESMTP(SMTPConnection):
 
         return response
 
-    async def help(self, timeout: DefaultNumType = _default) -> str:
+    async def help(self, timeout: Union[float, int, None, Default] = _default) -> str:
         """
         Send the SMTP HELP command, which responds with help text.
 
@@ -134,7 +128,9 @@ class ESMTP(SMTPConnection):
 
         return response.message
 
-    async def rset(self, timeout: DefaultNumType = _default) -> SMTPResponse:
+    async def rset(
+        self, timeout: Union[float, int, None, Default] = _default
+    ) -> SMTPResponse:
         """
         Send an SMTP RSET command, which resets the server's envelope
         (the envelope contains the sender, recipient, and mail data).
@@ -150,7 +146,9 @@ class ESMTP(SMTPConnection):
 
         return response
 
-    async def noop(self, timeout: DefaultNumType = _default) -> SMTPResponse:
+    async def noop(
+        self, timeout: Union[float, int, None, Default] = _default
+    ) -> SMTPResponse:
         """
         Send an SMTP NOOP command, which does nothing.
 
@@ -166,7 +164,7 @@ class ESMTP(SMTPConnection):
         return response
 
     async def vrfy(
-        self, address: str, timeout: DefaultNumType = _default
+        self, address: str, timeout: Union[float, int, None, Default] = _default
     ) -> SMTPResponse:
         """
         Send an SMTP VRFY command, which tests an address for validity.
@@ -195,7 +193,7 @@ class ESMTP(SMTPConnection):
         return response
 
     async def expn(
-        self, address: str, timeout: DefaultNumType = _default
+        self, address: str, timeout: Union[float, int, None, Default] = _default
     ) -> SMTPResponse:
         """
         Send an SMTP EXPN command, which expands a mailing list.
@@ -217,7 +215,9 @@ class ESMTP(SMTPConnection):
 
         return response
 
-    async def quit(self, timeout: DefaultNumType = _default) -> SMTPResponse:
+    async def quit(
+        self, timeout: Union[float, int, None, Default] = _default
+    ) -> SMTPResponse:
         """
         Send the SMTP QUIT command, which closes the connection.
         Also closes the connection from our side after a response is received.
@@ -239,8 +239,8 @@ class ESMTP(SMTPConnection):
     async def mail(
         self,
         sender: str,
-        options: Iterable[str] = None,
-        timeout: DefaultNumType = _default,
+        options: Optional[Iterable[str]] = None,
+        timeout: Union[float, int, None, Default] = _default,
     ) -> SMTPResponse:
         """
         Send an SMTP MAIL command, which specifies the message sender and
@@ -269,8 +269,8 @@ class ESMTP(SMTPConnection):
     async def rcpt(
         self,
         recipient: str,
-        options: Iterable[str] = None,
-        timeout: DefaultNumType = _default,
+        options: Optional[Iterable[str]] = None,
+        timeout: Union[float, int, None, Default] = _default,
     ) -> SMTPResponse:
         """
         Send an SMTP RCPT command, which specifies a single recipient for
@@ -299,7 +299,9 @@ class ESMTP(SMTPConnection):
         return response
 
     async def data(
-        self, message: Union[str, bytes], timeout: DefaultNumType = _default
+        self,
+        message: Union[str, bytes],
+        timeout: Union[float, int, None, Default] = _default,
     ) -> SMTPResponse:
         """
         Send an SMTP DATA command, followed by the message given.
@@ -343,7 +345,9 @@ class ESMTP(SMTPConnection):
     # ESMTP commands #
 
     async def ehlo(
-        self, hostname: str = None, timeout: DefaultNumType = _default
+        self,
+        hostname: Optional[str] = None,
+        timeout: Union[float, int, None, Default] = _default,
     ) -> SMTPResponse:
         """
         Send the SMTP EHLO command.
@@ -401,13 +405,13 @@ class ESMTP(SMTPConnection):
 
     async def starttls(
         self,
-        server_hostname: str = None,
-        validate_certs: bool = None,
-        client_cert: DefaultStrType = _default,
-        client_key: DefaultStrType = _default,
-        cert_bundle: DefaultStrType = _default,
-        tls_context: DefaultSSLContextType = _default,
-        timeout: DefaultNumType = _default,
+        server_hostname: Optional[str] = None,
+        validate_certs: Optional[bool] = None,
+        client_cert: Union[str, None, Default] = _default,
+        client_key: Union[str, None, Default] = _default,
+        cert_bundle: Union[str, None, Default] = _default,
+        tls_context: Union[ssl.SSLContext, None, Default] = _default,
+        timeout: Union[float, int, None, Default] = _default,
     ) -> SMTPResponse:
         """
         Puts the connection to the SMTP server into TLS mode.

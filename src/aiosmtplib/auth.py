@@ -15,9 +15,6 @@ from .status import SMTPStatus
 __all__ = ("SMTPAuth", "crammd5_verify")
 
 
-DefaultNumType = Union[float, int, Default]
-
-
 def crammd5_verify(username: bytes, password: bytes, challenge: bytes) -> bytes:
     decoded_challenge = base64.b64decode(challenge)
     md5_digest = hmac.new(password, msg=decoded_challenge, digestmod="md5")
@@ -44,7 +41,10 @@ class SMTPAuth(ESMTP):
         return [auth for auth in self.AUTH_METHODS if auth in self.server_auth_methods]
 
     async def login(
-        self, username: str, password: str, timeout: DefaultNumType = _default
+        self,
+        username: str,
+        password: str,
+        timeout: Union[float, int, None, Default] = _default,
     ) -> SMTPResponse:
         """
         Tries to login with supported auth methods.
@@ -82,7 +82,10 @@ class SMTPAuth(ESMTP):
         return response
 
     async def auth_crammd5(
-        self, username: str, password: str, timeout: DefaultNumType = _default
+        self,
+        username: str,
+        password: str,
+        timeout: Union[float, int, None, Default] = _default,
     ) -> SMTPResponse:
         """
         CRAM-MD5 auth uses the password as a shared secret to MD5 the server's
@@ -122,7 +125,10 @@ class SMTPAuth(ESMTP):
         return response
 
     async def auth_plain(
-        self, username: str, password: str, timeout: DefaultNumType = _default
+        self,
+        username: str,
+        password: str,
+        timeout: Union[float, int, None, Default] = _default,
     ) -> SMTPResponse:
         """
         PLAIN auth encodes the username and password in one Base64 encoded
@@ -151,7 +157,10 @@ class SMTPAuth(ESMTP):
         return response
 
     async def auth_login(
-        self, username: str, password: str, timeout: DefaultNumType = _default
+        self,
+        username: str,
+        password: str,
+        timeout: Union[float, int, None, Default] = _default,
     ) -> SMTPResponse:
         """
         LOGIN auth sends the Base64 encoded username and password in sequence.

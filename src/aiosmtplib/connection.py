@@ -28,12 +28,6 @@ SMTP_STARTTLS_PORT = 587
 DEFAULT_TIMEOUT = 60
 
 
-DefaultNumType = Union[float, int, Default]
-DefaultStrType = Union[str, Default]
-DefaultSSLContextType = Union[ssl.SSLContext, Default]
-NumType = Union[float, int]
-
-
 class SMTPConnection:
     """
     Handles connection/disconnection from the SMTP server provided.
@@ -47,17 +41,17 @@ class SMTPConnection:
     def __init__(
         self,
         hostname: str = "localhost",
-        port: int = None,
-        source_address: str = None,
-        timeout: NumType = DEFAULT_TIMEOUT,
-        loop: asyncio.AbstractEventLoop = None,
+        port: Optional[int] = None,
+        source_address: Optional[str] = None,
+        timeout: Union[float, int, None] = DEFAULT_TIMEOUT,
+        loop: Optional[asyncio.AbstractEventLoop] = None,
         use_tls: bool = False,
         start_tls: bool = False,
         validate_certs: bool = True,
-        client_cert: str = None,
-        client_key: str = None,
-        tls_context: ssl.SSLContext = None,
-        cert_bundle: str = None,
+        client_cert: Optional[str] = None,
+        client_key: Optional[str] = None,
+        tls_context: Optional[ssl.SSLContext] = None,
+        cert_bundle: Optional[str] = None,
     ) -> None:
         """
         :keyword hostname:  Server name (or IP) to connect to. Defaults to "localhost".
@@ -151,18 +145,18 @@ class SMTPConnection:
 
     async def connect(
         self,
-        hostname: str = None,
-        port: int = None,
-        source_address: DefaultStrType = _default,
-        timeout: DefaultNumType = _default,
-        loop: asyncio.AbstractEventLoop = None,
+        hostname: Optional[str] = None,
+        port: Optional[int] = None,
+        source_address: Union[str, Default] = _default,
+        timeout: Union[float, int, None, Default] = _default,
+        loop: Optional[asyncio.AbstractEventLoop] = None,
         use_tls: bool = None,
         start_tls: bool = None,
         validate_certs: bool = None,
-        client_cert: DefaultStrType = _default,
-        client_key: DefaultStrType = _default,
-        tls_context: DefaultSSLContextType = _default,
-        cert_bundle: DefaultStrType = _default,
+        client_cert: Union[str, Default] = _default,
+        client_key: Union[str, Default] = _default,
+        tls_context: Union[ssl.SSLContext, Default] = _default,
+        cert_bundle: Union[str, Default] = _default,
     ) -> SMTPResponse:
         """
         Initialize a connection to the server. Options provided to
@@ -296,7 +290,7 @@ class SMTPConnection:
         return response
 
     async def execute_command(
-        self, *args: bytes, timeout: DefaultNumType = _default
+        self, *args: bytes, timeout: Union[float, int, None, Default] = _default
     ) -> SMTPResponse:
         """
         Check that we're connected, if we got a timeout value, and then
@@ -324,7 +318,9 @@ class SMTPConnection:
 
         return response
 
-    async def quit(self, timeout: DefaultNumType = _default) -> SMTPResponse:
+    async def quit(
+        self, timeout: Union[float, int, None, Default] = _default
+    ) -> SMTPResponse:
         raise NotImplementedError
 
     def _get_tls_context(self) -> ssl.SSLContext:

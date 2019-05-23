@@ -7,7 +7,7 @@ import email.utils
 import io
 from email.header import Header
 from email.message import Message
-from typing import List, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 
 __all__ = ("flatten_message", "parse_address", "quote_address")
@@ -60,7 +60,7 @@ def flatten_message(message: Message) -> Tuple[str, List[str], str]:
 
 
 def _extract_sender(
-    message: Message, resent_dates: List[Union[str, Header]] = None
+    message: Message, resent_dates: Optional[List[Union[str, Header]]] = None
 ) -> str:
     """
     Extract the sender from the message object given.
@@ -82,7 +82,7 @@ def _extract_sender(
 
 
 def _extract_recipients(
-    message: Message, resent_dates: List[Union[str, Header]] = None
+    message: Message, resent_dates: Optional[List[Union[str, Header]]] = None
 ) -> List[str]:
     """
     Extract the recipients from the message object given.

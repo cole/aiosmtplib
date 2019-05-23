@@ -4,7 +4,7 @@ An ``asyncio.Protocol`` subclass for lower level IO handling.
 import asyncio
 import re
 import ssl
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 from .compat import start_tls
 from .errors import (
@@ -25,17 +25,14 @@ LINE_ENDINGS_REGEX = re.compile(rb"(?:\r\n|\n|\r(?!\n))")
 PERIOD_REGEX = re.compile(rb"(?m)^\.")
 
 
-NumType = Union[float, int]
-
-
 class FlowControlMixin(object):
-    def __init__(self, loop: asyncio.AbstractEventLoop = None):
+    def __init__(self, loop: Optional[asyncio.AbstractEventLoop] = None):
         if loop is None:
             self._loop = asyncio.get_event_loop()
         else:
             self._loop = loop
         self._paused = False
-        self._drain_waiter = None
+        self._drain_waiter = None  # type: Optional[asyncio.Future]
         self._connection_lost = False
 
     def pause_writing(self):
@@ -50,7 +47,7 @@ class FlowControlMixin(object):
             if not waiter.done():
                 waiter.set_result(None)
 
-    def connection_lost(self, exc):
+    def connection_lost(self, exc: Optional[Exception]):
         self._connection_lost = True
         # Wake up the writer if currently paused.
         if not self._paused:
@@ -81,7 +78,7 @@ class SMTPStreamReader(asyncio.StreamReader):
     _loop = None  # type: asyncio.AbstractEventLoop
     _transport = None  # type: asyncio.BaseTransport
 
-    async def readline_with_timeout(self, timeout: NumType = None):
+    async def readline_with_timeout(self, timeout: Union[float, int, None] = None):
         read_task = asyncio.Task(self.readuntil(separator=b"\n"), loop=self._loop)
         try:
             line = await asyncio.wait_for(
@@ -105,7 +102,9 @@ class SMTPStreamReader(asyncio.StreamReader):
 
         return line
 
-    async def read_response(self, timeout: NumType = None) -> SMTPResponse:
+    async def read_response(
+        self, timeout: Union[float, int, None] = None
+    ) -> SMTPResponse:
         """
         Get a status reponse from the server.
 
@@ -146,7 +145,7 @@ class SMTPStreamWriter(asyncio.StreamWriter):
     _loop = None  # type: asyncio.AbstractEventLoop
     _transport = None  # type: asyncio.BaseTransport
 
-    async def drain_with_timeout(self, timeout: NumType = None) -> None:
+    async def drain_with_timeout(self, timeout: Union[float, int, None] = None) -> None:
         # Wrapping drain in a task makes mypy happy
         drain_task = asyncio.Task(super().drain(), loop=self._loop)
         try:
@@ -156,7 +155,9 @@ class SMTPStreamWriter(asyncio.StreamWriter):
         except asyncio.TimeoutError:
             raise SMTPTimeoutError("Timed out on write")
 
-    async def write_command(self, *args: bytes, timeout: NumType = None) -> None:
+    async def write_command(
+        self, *args: bytes, timeout: Union[float, int, None] = None
+    ) -> None:
         """Send a formatted SMTP command along with any args to the server
         """
         command = b" ".join(args) + b"\r\n"
@@ -164,7 +165,9 @@ class SMTPStreamWriter(asyncio.StreamWriter):
         self.write(command)
         await self.drain_with_timeout(timeout=timeout)
 
-    async def write_message_data(self, data: bytes, timeout: NumType = None) -> None:
+    async def write_message_data(
+        self, data: bytes, timeout: Union[float, int, None] = None
+    ) -> None:
         """Encode and write email message data
 
         Automatically quotes lines beginning with a period per RFC821.
@@ -188,7 +191,9 @@ class SMTPStreamReaderProtocol(FlowControlMixin, asyncio.Protocol):
     """
 
     def __init__(
-        self, reader: SMTPStreamReader, loop: asyncio.AbstractEventLoop = None
+        self,
+        reader: Optional[SMTPStreamReader],
+        loop: Optional[asyncio.AbstractEventLoop] = None,
     ) -> None:
         super().__init__(loop=loop)
 
@@ -198,6 +203,8 @@ class SMTPStreamReaderProtocol(FlowControlMixin, asyncio.Protocol):
         self._closed = self._loop.create_future()
 
     def connection_made(self, transport: asyncio.BaseTransport) -> None:
+        if self._stream_reader is None:
+            raise RuntimeError("Connection made on protocol with no stream reader")
         # We set the _transport directly on the StreamReader, rather than calling
         # set_transport (which will raise an AssertionError on upgrade).
         # This is because on 3.5.2, we can't avoid calling connection_made on
@@ -208,7 +215,7 @@ class SMTPStreamReaderProtocol(FlowControlMixin, asyncio.Protocol):
             transport, self, self._stream_reader, self._loop
         )
 
-    def connection_lost(self, exc):
+    def connection_lost(self, exc: Optional[Exception]):
         if self._stream_reader is not None:
             if exc is None:
                 self._stream_reader.feed_eof()
@@ -224,10 +231,16 @@ class SMTPStreamReaderProtocol(FlowControlMixin, asyncio.Protocol):
         self._stream_reader = None
         self._stream_writer = None
 
-    def data_received(self, data):
+    def data_received(self, data: bytes):
+        if self._stream_reader is None:
+            raise RuntimeError("Data received on protocol with no stream reader")
+
         self._stream_reader.feed_data(data)
 
     def eof_received(self):
+        if self._stream_reader is None:
+            raise RuntimeError("EOF received on protocol with no stream reader")
+
         self._stream_reader.feed_eof()
         if self._over_ssl:
             # Prevent a warning in SSLProtocol.eof_received:
@@ -236,7 +249,7 @@ class SMTPStreamReaderProtocol(FlowControlMixin, asyncio.Protocol):
             return False
         return True
 
-    def _get_close_waiter(self, stream):
+    def _get_close_waiter(self, stream: Any):
         return self._closed
 
     def __del__(self):
@@ -248,13 +261,15 @@ class SMTPStreamReaderProtocol(FlowControlMixin, asyncio.Protocol):
 
 
 class SMTPProtocol(SMTPStreamReaderProtocol):
-    def __init__(self, loop: asyncio.AbstractEventLoop = None):
+    def __init__(self, loop: Optional[asyncio.AbstractEventLoop] = None):
         reader = SMTPStreamReader(limit=MAX_LINE_LENGTH, loop=loop)
         super().__init__(reader, loop=loop)
 
         self._io_lock = asyncio.Lock(loop=self._loop)
 
-    async def read_response(self, timeout: NumType = None) -> SMTPResponse:
+    async def read_response(
+        self, timeout: Union[float, int, None] = None
+    ) -> SMTPResponse:
         if self._stream_reader is None:
             raise SMTPServerDisconnected("Client not connected")
 
@@ -263,14 +278,18 @@ class SMTPProtocol(SMTPStreamReaderProtocol):
 
         return response
 
-    async def write_message_data(self, data, timeout: NumType = None) -> None:
+    async def write_message_data(
+        self, data, timeout: Union[float, int, None] = None
+    ) -> None:
         if self._stream_writer is None:
             raise SMTPServerDisconnected("Client not connected")
 
         async with self._io_lock:
             await self._stream_writer.write_message_data(data, timeout=timeout)
 
-    async def write_and_drain(self, data, timeout: NumType = None) -> None:
+    async def write_and_drain(
+        self, data, timeout: Union[float, int, None] = None
+    ) -> None:
         if self._stream_writer is None:
             raise SMTPServerDisconnected("Client not connected")
 
@@ -279,7 +298,7 @@ class SMTPProtocol(SMTPStreamReaderProtocol):
             await self._stream_writer.drain_with_timeout(timeout=timeout)
 
     async def execute_command(
-        self, *args: bytes, timeout: NumType = None
+        self, *args: bytes, timeout: Union[float, int, None] = None
     ) -> SMTPResponse:
         """
         Sends an SMTP command along with any args to the server, and returns
@@ -297,8 +316,8 @@ class SMTPProtocol(SMTPStreamReaderProtocol):
     async def start_tls(
         self,
         tls_context: ssl.SSLContext,
-        server_hostname: str = None,
-        timeout: NumType = None,
+        server_hostname: Optional[str] = None,
+        timeout: Union[float, int, None] = None,
     ) -> asyncio.Transport:
         """
         Puts the connection to the SMTP server into TLS mode.
@@ -306,7 +325,7 @@ class SMTPProtocol(SMTPStreamReaderProtocol):
         if self._over_ssl:
             raise RuntimeError("Already using TLS.")
 
-        if self._stream_writer is None:
+        if self._stream_reader is None or self._stream_writer is None:
             raise SMTPServerDisconnected("Client not connected")
 
         transport = self._stream_reader._transport
@@ -332,3 +351,6 @@ class SMTPProtocol(SMTPStreamReaderProtocol):
         self._stream_writer._transport = tls_transport
 
         return tls_transport
+
+    # Backwards compatibility shim
+    starttls = start_tls

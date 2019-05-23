@@ -2,7 +2,7 @@
 Synchronous execution helpers.
 """
 import asyncio
-from typing import Any, Awaitable
+from typing import Any, Awaitable, Optional
 
 from .compat import PY36_OR_LATER, all_tasks
 
@@ -10,7 +10,9 @@ from .compat import PY36_OR_LATER, all_tasks
 __all__ = ("async_to_sync", "shutdown_loop")
 
 
-def async_to_sync(coro: Awaitable, loop: asyncio.AbstractEventLoop = None) -> Any:
+def async_to_sync(
+    coro: Awaitable, loop: Optional[asyncio.AbstractEventLoop] = None
+) -> Any:
     if loop is None:
         loop = asyncio.get_event_loop()
 
