@@ -71,28 +71,21 @@ async def test_protocol_connected_check_on_write_and_drain():
         await smtp_protocol.write_and_drain(b"foo", timeout=1.0)
 
 
-async def test_protocol_reader_connected_check_on_upgrade_transport(client_tls_context):
+async def test_protocol_reader_connected_check_on_start_tls(client_tls_context):
     smtp_protocol = SMTPProtocol()
 
     with pytest.raises(SMTPServerDisconnected):
-        await smtp_protocol.upgrade_transport(client_tls_context)
+        await smtp_protocol.start_tls(client_tls_context, timeout=1.0)
 
 
-async def test_protocol_writer_connected_check_on_upgrade_transport(client_tls_context):
+async def test_protocol_writer_connected_check_on_start_tls(client_tls_context):
     smtp_protocol = SMTPProtocol()
 
     with pytest.raises(SMTPServerDisconnected):
-        await smtp_protocol.upgrade_transport(client_tls_context)
+        await smtp_protocol.start_tls(client_tls_context)
 
 
-async def test_protocol_reader_connected_check_on_starttls(client_tls_context):
-    smtp_protocol = SMTPProtocol()
-
-    with pytest.raises(SMTPServerDisconnected):
-        await smtp_protocol.starttls(client_tls_context, timeout=1.0)
-
-
-async def test_protocol_writer_connected_check_on_starttls(client_tls_context):
+async def test_protocol_starttls_compatibility(client_tls_context):
     smtp_protocol = SMTPProtocol()
 
     with pytest.raises(SMTPServerDisconnected):
