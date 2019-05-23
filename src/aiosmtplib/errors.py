@@ -36,15 +36,11 @@ class SMTPServerDisconnected(SMTPException, ConnectionError):
     a connection.
     """
 
-    pass
-
 
 class SMTPConnectError(SMTPException, ConnectionError):
     """
     An error occurred while connecting to the SMTP server.
     """
-
-    pass
 
 
 class SMTPTimeoutError(SMTPException, TimeoutError):
@@ -52,23 +48,17 @@ class SMTPTimeoutError(SMTPException, TimeoutError):
     A timeout occurred while performing a network operation.
     """
 
-    pass
-
 
 class SMTPConnectTimeoutError(SMTPTimeoutError, SMTPConnectError):
     """
     A timeout occurred while connecting to the SMTP server.
     """
 
-    pass
-
 
 class SMTPReadTimeoutError(SMTPTimeoutError):
     """
     A timeout occurred while waiting for a response from the SMTP server.
     """
-
-    pass
 
 
 class SMTPResponseException(SMTPException):
@@ -87,15 +77,11 @@ class SMTPNotSupported(SMTPResponseException):
     A command or argument sent to the SMTP server is not supported.
     """
 
-    pass
-
 
 class SMTPHeloError(SMTPResponseException):
     """
     Server refused HELO or EHLO.
     """
-
-    pass
 
 
 class SMTPDataError(SMTPResponseException):
@@ -103,15 +89,11 @@ class SMTPDataError(SMTPResponseException):
     Server refused DATA content.
     """
 
-    pass
-
 
 class SMTPAuthenticationError(SMTPResponseException):
     """
     Server refused our AUTH request; may be caused by invalid credentials.
     """
-
-    pass
 
 
 class SMTPSenderRefused(SMTPResponseException):
