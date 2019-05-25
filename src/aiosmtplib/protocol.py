@@ -344,8 +344,12 @@ class SMTPProtocol(SMTPStreamReaderProtocol):
                 server_hostname=server_hostname,
                 ssl_handshake_timeout=timeout,
             )
+
         except asyncio.TimeoutError:
             raise SMTPTimeoutError("Timed out while upgrading transport")
+        # SSLProtocol only raises ConnectionAbortedError on timeout
+        except ConnectionAbortedError as exc:
+            raise SMTPTimeoutError(exc.args[0])
 
         self._stream_reader._transport = tls_transport
         self._stream_writer._transport = tls_transport
