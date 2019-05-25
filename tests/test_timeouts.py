@@ -30,7 +30,7 @@ async def test_command_timeout_error(
     await smtp_client.connect()
 
     with pytest.raises(SMTPTimeoutError):
-        await smtp_client.ehlo("example.com", timeout=0.01)
+        await smtp_client.ehlo("example.com", timeout=0.0)
 
 
 async def test_data_timeout_error(
@@ -43,7 +43,7 @@ async def test_data_timeout_error(
     await smtp_client.mail("j@example.com")
     await smtp_client.rcpt("test@example.com")
     with pytest.raises(SMTPTimeoutError):
-        await smtp_client.data("HELLO WORLD", timeout=0.01)
+        await smtp_client.data("HELLO WORLD", timeout=0.0)
 
 
 async def test_timeout_error_on_connect(
@@ -52,7 +52,7 @@ async def test_timeout_error_on_connect(
     monkeypatch.setattr(smtpd_class, "_handle_client", slow_response)
 
     with pytest.raises(SMTPTimeoutError):
-        await smtp_client.connect(timeout=0.01)
+        await smtp_client.connect(timeout=0.0)
 
     assert smtp_client.transport is None
     assert smtp_client.protocol is None
@@ -68,7 +68,7 @@ async def test_timeout_on_initial_read(
     monkeypatch.setattr(smtpd_class, "_handle_client", read_slow_response)
 
     with pytest.raises(SMTPTimeoutError):
-        await smtp_client.connect(timeout=0.01)
+        await smtp_client.connect(timeout=0.0)
 
 
 async def test_timeout_on_starttls(smtp_client, smtpd_server, smtpd_class, monkeypatch):
@@ -78,7 +78,7 @@ async def test_timeout_on_starttls(smtp_client, smtpd_server, smtpd_class, monke
     await smtp_client.ehlo()
 
     with pytest.raises(SMTPTimeoutError):
-        await smtp_client.starttls(validate_certs=False, timeout=0.01)
+        await smtp_client.starttls(validate_certs=False, timeout=0.0)
 
 
 async def test_protocol_readline_with_timeout_times_out(
@@ -114,7 +114,7 @@ async def test_protocol_timeout_on_drain_writer(
     protocol.pause_writing()
 
     with pytest.raises(SMTPTimeoutError) as exc:
-        await protocol._stream_writer.drain_with_timeout(timeout=0.01)
+        await protocol._stream_writer.drain_with_timeout(timeout=0.0)
 
     protocol._stream_writer.close()
     assert str(exc.value) == "Timed out on write"
@@ -156,6 +156,7 @@ async def test_protocol_timeout_on_starttls(
     _, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
 
     with pytest.raises(SMTPTimeoutError):
+        # STARTTLS timeout must be > 0
         await protocol.start_tls(client_tls_context, timeout=0.00001)
 
     server.close()
