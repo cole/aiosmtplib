@@ -1,8 +1,6 @@
 """
 TLS and STARTTLS handling.
 """
-import asyncio
-import asyncio.sslproto
 import copy
 import ssl
 
@@ -76,8 +74,9 @@ async def test_starttls(smtp_client, smtpd_server):
         assert not smtp_client.supported_auth_methods
         assert not smtp_client.supports_esmtp
 
-        # make sure our connection was actually upgraded
-        assert isinstance(smtp_client.transport, asyncio.sslproto._SSLProtocolTransport)
+        # Make sure our connection was actually upgraded. ssl protocol transport is
+        # private in UVloop, so just check the class name.
+        assert "SSL" in type(smtp_client.transport).__name__
 
         response = await smtp_client.ehlo()
         assert response.code == SMTPStatus.completed
@@ -87,8 +86,9 @@ async def test_starttls_on_connect_option(smtp_client, smtpd_server):
     response = await smtp_client.connect(start_tls=True, validate_certs=False)
     assert response.code == SMTPStatus.ready
 
-    # make sure our connection was actually upgraded
-    assert isinstance(smtp_client.transport, asyncio.sslproto._SSLProtocolTransport)
+    # Make sure our connection was actually upgraded. ssl protocol transport is private
+    # in UVloop, so just check the class name.
+    assert "SSL" in type(smtp_client.transport).__name__
 
     response = await smtp_client.ehlo()
     assert response.code == SMTPStatus.completed
@@ -156,10 +156,9 @@ async def test_starttls_bad_responses(
         assert smtp_client.esmtp_extensions == old_extensions
         assert smtp_client.supports_esmtp is True
 
-        # make sure our connection wasn't upgraded
-        assert not isinstance(
-            smtp_client.transport, asyncio.sslproto._SSLProtocolTransport
-        )
+        # Make sure our connection was not upgraded. ssl protocol transport is
+        # private in UVloop, so just check the class name.
+        assert "SSL" not in type(smtp_client.transport).__name__
 
 
 async def test_starttls_with_client_cert(

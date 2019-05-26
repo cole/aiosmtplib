@@ -285,13 +285,12 @@ class SMTPProtocol(StreamReaderProtocol):
         if self._over_ssl:
             raise RuntimeError("Already using TLS.")
 
-        if self._stream_reader is None or self._stream_writer is None:
+        if (
+            self._transport is None
+            or self._stream_reader is None
+            or self._stream_writer is None
+        ):
             raise SMTPServerDisconnected("Client not connected")
-
-        if not isinstance(self._transport, asyncio.Transport):
-            raise TypeError(
-                "transport {} is not supported by start_tls()".format(self._transport)
-            )
 
         try:
             tls_transport = await start_tls(
