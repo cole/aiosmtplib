@@ -100,10 +100,10 @@ async def test_connectionerror_on_drain_writer(event_loop, echo_server, hostname
     _, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
 
     protocol.pause_writing()
-    protocol._stream_reader._transport.close()
+    protocol._transport.close()
 
     with pytest.raises(ConnectionError):
-        await protocol._stream_writer.drain_with_timeout(timeout=1.0)
+        await protocol.write_and_drain(b"test\n", timeout=1.0)
 
 
 async def test_incompletereaderror_on_readline_with_partial_line(
@@ -123,7 +123,7 @@ async def test_incompletereaderror_on_readline_with_partial_line(
 
     _, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
 
-    response_bytes = await protocol._stream_reader.readline_with_timeout(timeout=1.0)
+    response_bytes = await protocol.readline_with_timeout(timeout=1.0)
 
     assert response_bytes == partial_response
     assert protocol._stream_writer._transport.is_closing()
