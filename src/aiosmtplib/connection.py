@@ -46,7 +46,6 @@ class SMTPConnection:
         timeout: Union[float, int, None] = DEFAULT_TIMEOUT,
         loop: Optional[asyncio.AbstractEventLoop] = None,
         use_tls: bool = False,
-        start_tls: bool = False,
         validate_certs: bool = True,
         client_cert: Optional[str] = None,
         client_key: Optional[str] = None,
@@ -84,8 +83,6 @@ class SMTPConnection:
         self.protocol = None  # type: Optional[SMTPProtocol]
         self.transport = None  # type: Optional[asyncio.BaseTransport]
 
-        if use_tls and start_tls:
-            raise ValueError("The start_tls and use_tls options are not compatible")
         if tls_context is not None and client_cert is not None:
             raise ValueError(
                 "Either a TLS context or a certificate/key must be provided"
@@ -96,7 +93,6 @@ class SMTPConnection:
         self.port = port
         self.timeout = timeout
         self.use_tls = use_tls
-        self.start_tls_on_connect = start_tls
         self._source_address = source_address
         self.validate_certs = validate_certs
         self.client_cert = client_cert
@@ -151,7 +147,6 @@ class SMTPConnection:
         timeout: Union[float, int, None, Default] = _default,
         loop: Optional[asyncio.AbstractEventLoop] = None,
         use_tls: bool = None,
-        start_tls: bool = None,
         validate_certs: bool = None,
         client_cert: Union[str, Default] = _default,
         client_key: Union[str, Default] = _default,
@@ -196,8 +191,6 @@ class SMTPConnection:
             self.loop = loop
         if use_tls is not None:
             self.use_tls = use_tls
-        if start_tls is not None:
-            self.start_tls_on_connect = start_tls
         if validate_certs is not None:
             self.validate_certs = validate_certs
 
@@ -205,12 +198,7 @@ class SMTPConnection:
             self.port = port
 
         if self.port is None:
-            if self.use_tls:
-                self.port = SMTP_TLS_PORT
-            elif self.start_tls_on_connect:
-                self.port = SMTP_STARTTLS_PORT
-            else:
-                self.port = SMTP_PORT
+            self.port = SMTP_TLS_PORT if self.use_tls else SMTP_PORT
 
         if timeout is not _default:
             self.timeout = timeout  # type: ignore
@@ -229,8 +217,6 @@ class SMTPConnection:
             raise ValueError(
                 "Either a TLS context or a certificate/key must be provided"
             )
-        if self.start_tls_on_connect and self.use_tls:
-            raise ValueError("The start_tls and use_tls options are not compatible")
 
         response = await self._create_connection()
 

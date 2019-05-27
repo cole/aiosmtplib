@@ -12,6 +12,7 @@ from aiosmtplib import (
     SMTPException,
     SMTPResponseException,
     SMTPStatus,
+    send_message,
 )
 
 
@@ -82,18 +83,16 @@ async def test_starttls(smtp_client, smtpd_server):
         assert response.code == SMTPStatus.completed
 
 
-async def test_starttls_on_connect_option(smtp_client, smtpd_server):
-    response = await smtp_client.connect(start_tls=True, validate_certs=False)
-    assert response.code == SMTPStatus.ready
+async def test_send_message_starttls_on_connect_option(
+    hostname, port, smtpd_server, message, recieved_messages
+):
+    errors, response = await send_message(
+        message, hostname=hostname, port=port, start_tls=True, validate_certs=False
+    )
 
-    # Make sure our connection was actually upgraded. ssl protocol transport is private
-    # in UVloop, so just check the class name.
-    assert "SSL" in type(smtp_client.transport).__name__
-
-    response = await smtp_client.ehlo()
-    assert response.code == SMTPStatus.completed
-
-    await smtp_client.quit()
+    assert not errors
+    assert response != ""
+    assert len(recieved_messages) == 1
 
 
 async def test_starttls_with_explicit_server_hostname(

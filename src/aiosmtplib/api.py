@@ -6,7 +6,7 @@ from email.message import Message
 from typing import Dict, Iterable, Optional, Tuple, Union, overload
 
 from .compat import get_running_loop
-from .connection import DEFAULT_TIMEOUT
+from .connection import DEFAULT_TIMEOUT, SMTP_STARTTLS_PORT
 from .response import SMTPResponse
 from .smtp import SMTP
 
@@ -21,11 +21,14 @@ async def send_message(
     recipients: Optional[Union[str, Iterable[str]]] = None,
     hostname: Optional[str] = None,
     port: Optional[int] = None,
+    username: Optional[str] = None,
+    password: Optional[str] = None,
     mail_options: Optional[Iterable[str]] = None,
     rcpt_options: Optional[Iterable[str]] = None,
     timeout: Union[float, int, None] = DEFAULT_TIMEOUT,
     source_address: Optional[str] = None,
     use_tls: bool = False,
+    start_tls: bool = False,
     validate_certs: bool = True,
     client_cert: Optional[str] = None,
     client_key: Optional[str] = None,
@@ -42,11 +45,14 @@ async def send_message(
     recipients: Union[str, Iterable[str]] = None,
     hostname: Optional[str] = None,
     port: Optional[int] = None,
+    username: Optional[str] = None,
+    password: Optional[str] = None,
     mail_options: Optional[Iterable[str]] = None,
     rcpt_options: Optional[Iterable[str]] = None,
     timeout: Union[float, int, None] = DEFAULT_TIMEOUT,
     source_address: Optional[str] = None,
     use_tls: bool = False,
+    start_tls: bool = False,
     validate_certs: bool = True,
     client_cert: Optional[str] = None,
     client_key: Optional[str] = None,
@@ -56,7 +62,17 @@ async def send_message(
     pass
 
 
-async def send_message(message, sender=None, recipients=None, **kwargs):  # NOQA: F811
+async def send_message(  # NOQA: F811
+    message,
+    sender=None,
+    recipients=None,
+    username=None,
+    password=None,
+    start_tls=False,
+    port=None,
+    use_tls=False,
+    **kwargs
+):
     """
     Send an email message. On await, connects to the SMTP server using the details
     provided, sends the message, then disconnects.
@@ -72,6 +88,8 @@ async def send_message(message, sender=None, recipients=None, **kwargs):  # NOQA
     :keyword hostname:  Server name (or IP) to connect to. Defaults to "localhost".
     :keyword port: Server port. Defaults ``465`` if ``use_tls`` is ``True``,
         ``587`` if ``start_tls`` is ``True``, or ``25`` otherwise.
+    :keyword username:  Username to login as after connect.
+    :keyword password:  Password for login after connect.
     :keyword source_address: The hostname of the client. Defaults to the
         result of :func:`socket.getfqdn`. Note that this call blocks.
     :keyword timeout: Default timeout value for the connection, in seconds.
@@ -99,9 +117,20 @@ async def send_message(message, sender=None, recipients=None, **kwargs):  # NOQA
         if sender is None:
             raise ValueError("Sender must be provided with raw messages.")
 
+    if start_tls and use_tls:
+        raise ValueError("The start_tls and use_tls options are not compatible.")
+
+    if start_tls and port is None:
+        port = SMTP_STARTTLS_PORT
+
     loop = get_running_loop()
 
-    async with SMTP(loop=loop, **kwargs) as client:
+    async with SMTP(loop=loop, port=port, use_tls=use_tls, **kwargs) as client:
+        if start_tls:
+            await client.starttls()
+        if username and password:
+            await client.login(username, password)
+
         if isinstance(message, Message):
             result = await client.send_message(
                 message, sender=sender, recipients=recipients
