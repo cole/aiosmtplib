@@ -12,7 +12,6 @@ from aiosmtplib import (
     SMTPException,
     SMTPResponseException,
     SMTPStatus,
-    send_message,
 )
 
 
@@ -83,18 +82,6 @@ async def test_starttls(smtp_client, smtpd_server):
         assert response.code == SMTPStatus.completed
 
 
-async def test_send_message_starttls_on_connect_option(
-    hostname, port, smtpd_server, message, recieved_messages
-):
-    errors, response = await send_message(
-        message, hostname=hostname, port=port, start_tls=True, validate_certs=False
-    )
-
-    assert not errors
-    assert response != ""
-    assert len(recieved_messages) == 1
-
-
 async def test_starttls_with_explicit_server_hostname(
     smtp_client, hostname, smtpd_server
 ):
@@ -105,12 +92,10 @@ async def test_starttls_with_explicit_server_hostname(
 
 
 async def test_starttls_not_supported(
-    smtp_client, smtpd_server, smtpd_class, monkeypatch
+    smtp_client, smtpd_server, smtpd_class, smtpd_response_handler, monkeypatch
 ):
-    async def handle_ehlo(self, arg):
-        await self.push("250 HELP")
-
-    monkeypatch.setattr(smtpd_class, "smtp_EHLO", handle_ehlo)
+    response_handler = smtpd_response_handler("{} HELP".format(SMTPStatus.completed))
+    monkeypatch.setattr(smtpd_class, "smtp_EHLO", response_handler)
 
     async with smtp_client:
         await smtp_client.ehlo()
@@ -120,12 +105,12 @@ async def test_starttls_not_supported(
 
 
 async def test_starttls_advertised_but_not_supported(
-    smtp_client, smtpd_server, smtpd_class, monkeypatch
+    smtp_client, smtpd_server, smtpd_class, smtpd_response_handler, monkeypatch
 ):
-    async def handle_starttls(self, arg):
-        await self.push("454 TLS not available")
-
-    monkeypatch.setattr(smtpd_class, "smtp_STARTTLS", handle_starttls)
+    response_handler = smtpd_response_handler(
+        "{} please login".format(SMTPStatus.tls_not_available)
+    )
+    monkeypatch.setattr(smtpd_class, "smtp_STARTTLS", response_handler)
 
     async with smtp_client:
         await smtp_client.ehlo()
@@ -134,23 +119,35 @@ async def test_starttls_advertised_but_not_supported(
             await smtp_client.starttls(validate_certs=False)
 
 
-@pytest.mark.parametrize("response_message", ["451 oh no", "555 uh oh"])
-async def test_starttls_bad_responses(
-    smtp_client, smtpd_server, event_loop, smtpd_class, monkeypatch, response_message
+@pytest.mark.parametrize(
+    "error_code",
+    [
+        code
+        for code in SMTPStatus
+        if code not in (SMTPStatus.domain_unavailable, SMTPStatus.ready)
+    ],
+)
+async def test_starttls_invalid_responses(
+    smtp_client,
+    smtpd_server,
+    event_loop,
+    smtpd_class,
+    smtpd_response_handler,
+    monkeypatch,
+    error_code,
 ):
-    async def handle_starttls(self, arg):
-        await self.push("451 oh no")
-
-    monkeypatch.setattr(smtpd_class, "smtp_STARTTLS", handle_starttls)
+    response_handler = smtpd_response_handler("{} error".format(error_code))
+    monkeypatch.setattr(smtpd_class, "smtp_STARTTLS", response_handler)
 
     async with smtp_client:
         await smtp_client.ehlo()
 
         old_extensions = copy.copy(smtp_client.esmtp_extensions)
 
-        with pytest.raises(SMTPResponseException):
+        with pytest.raises(SMTPResponseException) as exception_info:
             await smtp_client.starttls(validate_certs=False)
 
+        assert exception_info.value.code == error_code
         # Make sure our state has been _not_ been cleared
         assert smtp_client.esmtp_extensions == old_extensions
         assert smtp_client.supports_esmtp is True

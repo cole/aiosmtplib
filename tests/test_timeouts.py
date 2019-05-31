@@ -9,6 +9,7 @@ from aiosmtplib import (
     SMTP,
     SMTPConnectTimeoutError,
     SMTPServerDisconnected,
+    SMTPStatus,
     SMTPTimeoutError,
 )
 from aiosmtplib.protocol import SMTPProtocol
@@ -17,15 +18,28 @@ from aiosmtplib.protocol import SMTPProtocol
 pytestmark = pytest.mark.asyncio()
 
 
-async def slow_response(self, *args):
-    await asyncio.sleep(1.0)
-    return "250 a bit slow"
+@pytest.fixture(scope="session")
+def delayed_ok_response_handler(request):
+    async def delayed_ok_response(smtpd, *args, **kwargs):
+        await asyncio.sleep(1.0)
+        await smtpd.push("{} all done".format(SMTPStatus.completed))
+
+    return delayed_ok_response
+
+
+@pytest.fixture(scope="session")
+def delayed_read_response_handler(request):
+    async def delayed_read_response(smtpd, *args, **kwargs):
+        await smtpd.push("{}-hi".format(SMTPStatus.ready))
+        await asyncio.sleep(1.0)
+
+    return delayed_read_response
 
 
 async def test_command_timeout_error(
-    smtp_client, smtpd_server, smtpd_handler, event_loop, monkeypatch
+    smtp_client, smtpd_server, smtpd_class, delayed_ok_response_handler, monkeypatch
 ):
-    monkeypatch.setattr(smtpd_handler, "handle_EHLO", slow_response, raising=False)
+    monkeypatch.setattr(smtpd_class, "smtp_EHLO", delayed_ok_response_handler)
 
     await smtp_client.connect()
 
@@ -34,9 +48,9 @@ async def test_command_timeout_error(
 
 
 async def test_data_timeout_error(
-    smtp_client, smtpd_server, smtpd_handler, monkeypatch
+    smtp_client, smtpd_server, smtpd_class, delayed_ok_response_handler, monkeypatch
 ):
-    monkeypatch.setattr(smtpd_handler, "handle_DATA", slow_response, raising=False)
+    monkeypatch.setattr(smtpd_class, "smtp_DATA", delayed_ok_response_handler)
 
     await smtp_client.connect()
     await smtp_client.ehlo()
@@ -47,9 +61,9 @@ async def test_data_timeout_error(
 
 
 async def test_timeout_error_on_connect(
-    smtp_client, smtpd_server, smtpd_class, monkeypatch
+    smtp_client, smtpd_server, smtpd_class, delayed_ok_response_handler, monkeypatch
 ):
-    monkeypatch.setattr(smtpd_class, "_handle_client", slow_response)
+    monkeypatch.setattr(smtpd_class, "_handle_client", delayed_ok_response_handler)
 
     with pytest.raises(SMTPTimeoutError):
         await smtp_client.connect(timeout=0.0)
@@ -59,20 +73,18 @@ async def test_timeout_error_on_connect(
 
 
 async def test_timeout_on_initial_read(
-    smtp_client, smtpd_server, smtpd_class, monkeypatch
+    smtp_client, smtpd_server, smtpd_class, delayed_read_response_handler, monkeypatch
 ):
-    async def read_slow_response(self, *args):
-        await self.push("220-hi")
-        await asyncio.sleep(1.0)
-
-    monkeypatch.setattr(smtpd_class, "_handle_client", read_slow_response)
+    monkeypatch.setattr(smtpd_class, "_handle_client", delayed_read_response_handler)
 
     with pytest.raises(SMTPTimeoutError):
         await smtp_client.connect(timeout=0.0)
 
 
-async def test_timeout_on_starttls(smtp_client, smtpd_server, smtpd_class, monkeypatch):
-    monkeypatch.setattr(smtpd_class, "smtp_STARTTLS", slow_response)
+async def test_timeout_on_starttls(
+    smtp_client, smtpd_server, smtpd_class, delayed_ok_response_handler, monkeypatch
+):
+    monkeypatch.setattr(smtpd_class, "smtp_STARTTLS", delayed_ok_response_handler)
 
     await smtp_client.connect()
     await smtp_client.ehlo()

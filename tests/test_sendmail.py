@@ -57,13 +57,16 @@ async def test_sendmail_with_mail_option(smtp_client, smtpd_server, message):
 
 
 async def test_sendmail_without_size_option(
-    smtp_client, smtpd_server, message, smtpd_class, monkeypatch, recieved_commands
+    smtp_client,
+    smtpd_server,
+    smtpd_class,
+    smtpd_response_handler,
+    monkeypatch,
+    message,
+    recieved_commands,
 ):
-    async def ehlo_response(self, hostname):
-        self.session.host_name = hostname
-        await self.push("250 all good")
-
-    monkeypatch.setattr(smtpd_class, "smtp_EHLO", ehlo_response)
+    response_handler = smtpd_response_handler("{} done".format(SMTPStatus.completed))
+    monkeypatch.setattr(smtpd_class, "smtp_EHLO", response_handler)
 
     async with smtp_client:
         errors, response = await smtp_client.sendmail(
@@ -108,13 +111,12 @@ async def test_sendmail_simple_failure(smtp_client, smtpd_server):
 
 
 async def test_sendmail_error_silent_rset_handles_disconnect(
-    smtp_client, smtpd_server, message, smtpd_class, monkeypatch
+    smtp_client, smtpd_server, smtpd_class, smtpd_response_handler, monkeypatch, message
 ):
-    async def data_response(self, *args):
-        await self.push("501 oh noes")
-        self.transport.close()
-
-    monkeypatch.setattr(smtpd_class, "smtp_DATA", data_response)
+    response_handler = smtpd_response_handler(
+        "{} error".format(SMTPStatus.unrecognized_parameters), close_after=True
+    )
+    monkeypatch.setattr(smtpd_class, "smtp_DATA", response_handler)
 
     async with smtp_client:
         with pytest.raises(SMTPResponseException):
@@ -159,14 +161,30 @@ async def test_rset_after_sendmail_error_response_to_rcpt(
             assert recieved_commands[-1][0] == "RSET"
 
 
+@pytest.mark.parametrize(
+    "error_code",
+    [
+        code
+        for code in SMTPStatus
+        if code not in (SMTPStatus.domain_unavailable, SMTPStatus.start_input)
+    ],
+)
 async def test_rset_after_sendmail_error_response_to_data(
-    smtp_client, smtpd_server, message, recieved_commands, smtpd_handler, monkeypatch
+    smtp_client,
+    smtpd_server,
+    smtpd_class,
+    smtpd_response_handler,
+    monkeypatch,
+    error_code,
+    message,
+    recieved_commands,
 ):
     """
     If an error response is given to the DATA command in the sendmail method,
     test that we reset the server session.
     """
-    monkeypatch.setattr(smtpd_handler, "DATA_response_message", "501 oh noes")
+    response_handler = smtpd_response_handler("{} error".format(error_code))
+    monkeypatch.setattr(smtpd_class, "smtp_DATA", response_handler)
 
     async with smtp_client:
         response = await smtp_client.ehlo()
@@ -175,7 +193,7 @@ async def test_rset_after_sendmail_error_response_to_data(
         try:
             await smtp_client.sendmail(message["From"], [message["To"]], str(message))
         except SMTPResponseException as err:
-            assert err.code == SMTPStatus.unrecognized_parameters
+            assert err.code == error_code
             assert recieved_commands[-1][0] == "RSET"
 
 

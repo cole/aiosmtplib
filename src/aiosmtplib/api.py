@@ -112,9 +112,9 @@ async def send_message(  # NOQA: F811
         provided
     """
     if not isinstance(message, Message):
-        if recipients is None:
+        if not recipients:
             raise ValueError("Recipients must be provided with raw messages.")
-        if sender is None:
+        if not sender:
             raise ValueError("Sender must be provided with raw messages.")
 
     if start_tls and use_tls:

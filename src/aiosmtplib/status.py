@@ -29,6 +29,7 @@ class SMTPStatus(enum.IntEnum):
     mailbox_unavailable = 450
     error_processing = 451
     insufficient_storage = 452
+    tls_not_available = 454
     unrecognized_command = 500
     unrecognized_parameters = 501
     command_not_implemented = 502

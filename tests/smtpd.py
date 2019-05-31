@@ -16,18 +16,6 @@ log = logging.getLogger("mail.log")
 
 
 class RecordingHandler(MessageHandler):
-    HELO_response_message = None
-    EHLO_response_message = None
-    NOOP_response_message = None
-    QUIT_response_message = None
-    VRFY_response_message = None
-    MAIL_response_message = None
-    RCPT_response_message = None
-    DATA_response_message = None
-    RSET_response_message = None
-    EXPN_response_message = None
-    HELP_response_message = None
-
     def __init__(self, messages_list, commands_list, responses_list):
         self.messages = messages_list
         self.commands = commands_list
@@ -61,13 +49,7 @@ class TestSMTPD(SMTPD):
 
     async def _call_handler_hook(self, command, *args):
         self.event_handler.record_command(command, *args)
-
-        hook_response = await super()._call_handler_hook(command, *args)
-        response_message = getattr(
-            self.event_handler, command + "_response_message", None
-        )
-
-        return response_message or hook_response
+        return await super()._call_handler_hook(command, *args)
 
     async def push(self, status):
         result = await super().push(status)
@@ -96,6 +78,8 @@ class TestSMTPD(SMTPD):
         """
         Override for uvloop compatibility.
         """
+        self.event_handler.record_command("STARTTLS", arg)
+
         if arg:
             await self.push("501 Syntax: STARTTLS")
             return
@@ -117,6 +101,7 @@ class TestSMTPD(SMTPD):
         self._tls_protocol.connection_made(self._original_transport)
 
     async def smtp_AUTH(self, arg):
+        self.event_handler.record_command("AUTH", arg)
         if not self._tls_protocol:
             await self.push("530 Must issue a STARTTLS command first.")
             return

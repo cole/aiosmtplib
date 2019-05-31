@@ -15,6 +15,20 @@ from aiosmtplib import (
 pytestmark = pytest.mark.asyncio()
 
 
+@pytest.fixture(scope="session")
+def close_during_read_response_handler(request):
+    async def close_during_read_response(smtpd, *args, **kwargs):
+        # Read one line of data, then cut the connection.
+        await smtpd.push(
+            "{} End data with <CR><LF>.<CR><LF>".format(SMTPStatus.start_input)
+        )
+
+        await smtpd._reader.readline()
+        smtpd.transport.close()
+
+    return close_during_read_response
+
+
 async def test_plain_smtp_connect(smtp_client, smtpd_server):
     """
     Use an explicit connect/quit here, as other tests use the context manager.
@@ -43,13 +57,12 @@ async def test_quit_then_connect_ok(smtp_client, smtpd_server):
 
 
 async def test_bad_connect_response_raises_error(
-    smtp_client, smtpd_server, smtpd_class, monkeypatch
+    smtp_client, smtpd_server, smtpd_class, smtpd_response_handler, monkeypatch
 ):
-    async def handle_client(self):
-        await self.push("421 Please come back in 204232430 seconds.")
-        self.transport.close()
-
-    monkeypatch.setattr(smtpd_class, "_handle_client", handle_client)
+    response_handler = smtpd_response_handler(
+        "{} retry in 5 minutes".format(SMTPStatus.domain_unavailable), close_after=True
+    )
+    monkeypatch.setattr(smtpd_class, "_handle_client", response_handler)
 
     with pytest.raises(SMTPConnectError):
         await smtp_client.connect()
@@ -59,11 +72,13 @@ async def test_bad_connect_response_raises_error(
 
 
 async def test_421_closes_connection(
-    smtp_client, smtpd_server, smtpd_handler, monkeypatch
+    smtp_client, smtpd_server, smtpd_class, smtpd_response_handler, monkeypatch
 ):
-    monkeypatch.setattr(
-        smtpd_handler, "NOOP_response_message", "421 Please come back in 15 seconds."
+    response_handler = smtpd_response_handler(
+        "{} Please come back in 15 seconds.".format(SMTPStatus.domain_unavailable)
     )
+
+    monkeypatch.setattr(smtpd_class, "smtp_NOOP", response_handler)
 
     await smtp_client.connect()
 
@@ -83,12 +98,10 @@ async def test_connect_error_with_no_server(hostname, port):
 
 
 async def test_disconnected_server_raises_on_client_read(
-    smtp_client, smtpd_server, smtpd_class, monkeypatch
+    smtp_client, smtpd_server, smtpd_class, smtpd_response_handler, monkeypatch
 ):
-    async def noop_response(self, arg):
-        self.transport.close()
-
-    monkeypatch.setattr(smtpd_class, "smtp_NOOP", noop_response)
+    response_handler = smtpd_response_handler(None, close_after=True)
+    monkeypatch.setattr(smtpd_class, "smtp_NOOP", response_handler)
 
     await smtp_client.connect()
 
@@ -102,14 +115,10 @@ async def test_disconnected_server_raises_on_client_read(
 
 
 async def test_disconnected_server_raises_on_client_write(
-    smtp_client, smtpd_server, smtpd_class, monkeypatch
+    smtp_client, smtpd_server, smtpd_class, smtpd_response_handler, monkeypatch
 ):
-    async def noop_response(self, arg):
-        self.transport.write_eof()
-        self.transport.close()
-        await self.push("250 ok")
-
-    monkeypatch.setattr(smtpd_class, "smtp_NOOP", noop_response)
+    response_handler = smtpd_response_handler(None, write_eof=True, close_after=True)
+    monkeypatch.setattr(smtpd_class, "smtp_NOOP", response_handler)
 
     await smtp_client.connect()
 
@@ -123,18 +132,14 @@ async def test_disconnected_server_raises_on_client_write(
 
 
 async def test_disconnected_server_raises_on_data_read(
-    smtp_client, smtpd_server, smtpd_class, monkeypatch
+    smtp_client, smtpd_server, smtpd_class, smtpd_response_handler, monkeypatch
 ):
     """
     The `data` command is a special case - it accesses protocol directly,
     rather than using `execute_command`.
     """
-
-    async def data_response(self, arg):
-        self.transport.close()
-        await self.push("250 ok")
-
-    monkeypatch.setattr(smtpd_class, "smtp_DATA", data_response)
+    response_handler = smtpd_response_handler(None, close_after=True)
+    monkeypatch.setattr(smtpd_class, "smtp_DATA", response_handler)
 
     await smtp_client.connect()
     await smtp_client.ehlo()
@@ -151,21 +156,17 @@ async def test_disconnected_server_raises_on_data_read(
 
 
 async def test_disconnected_server_raises_on_data_write(
-    smtp_client, smtpd_server, smtpd_class, monkeypatch
+    smtp_client,
+    smtpd_server,
+    smtpd_class,
+    close_during_read_response_handler,
+    monkeypatch,
 ):
     """
     The `data` command is a special case - it accesses protocol directly,
     rather than using `execute_command`.
     """
-
-    async def data_handler(self, arg):
-        # Read one line of data, then cut the connection.
-        await self.push("354 End data with <CR><LF>.<CR><LF>")
-
-        await self._reader.readline()
-        self.transport.close()
-
-    monkeypatch.setattr(smtpd_class, "smtp_DATA", data_handler)
+    monkeypatch.setattr(smtpd_class, "smtp_DATA", close_during_read_response_handler)
 
     await smtp_client.connect()
     await smtp_client.ehlo()
@@ -181,17 +182,14 @@ async def test_disconnected_server_raises_on_data_write(
 
 
 async def test_disconnected_server_raises_on_starttls(
-    smtp_client, smtpd_server, smtpd_class, monkeypatch
+    smtp_client, smtpd_server, smtpd_class, smtpd_response_handler, monkeypatch
 ):
     """
     The `starttls` command is a special case - it accesses protocol directly,
     rather than using `execute_command`.
     """
-
-    async def starttls_handler(self, arg):
-        self.transport.close()
-
-    monkeypatch.setattr(smtpd_class, "smtp_STARTTLS", starttls_handler)
+    response_handler = smtpd_response_handler(None, close_after=True)
+    monkeypatch.setattr(smtpd_class, "smtp_STARTTLS", response_handler)
 
     await smtp_client.connect()
     await smtp_client.ehlo()
@@ -216,18 +214,14 @@ async def test_context_manager(smtp_client, smtpd_server):
 
 
 async def test_context_manager_disconnect_handling(
-    smtp_client, smtpd_server, smtpd_class, monkeypatch
+    smtp_client, smtpd_server, smtpd_class, smtpd_response_handler, monkeypatch
 ):
     """
     Exceptions can be raised, but the context manager should handle
     disconnection.
     """
-
-    async def noop_response(self, arg):
-        self.transport.close()
-        await self.push("250 OK")
-
-    monkeypatch.setattr(smtpd_class, "smtp_NOOP", noop_response)
+    response_handler = smtpd_response_handler(None, close_after=True)
+    monkeypatch.setattr(smtpd_class, "smtp_NOOP", response_handler)
 
     async with smtp_client:
         assert smtp_client.is_connected

@@ -5,7 +5,6 @@ import asyncio
 import email.mime.multipart
 import email.mime.text
 import ssl
-import sys
 from pathlib import Path
 
 import pytest
@@ -13,11 +12,10 @@ import pytest
 from aiosmtplib import SMTP
 from aiosmtplib.sync import shutdown_loop
 
+from .mocks import EchoServerProtocol
 from .smtpd import RecordingHandler, TestSMTPD
 
 
-PY36_OR_LATER = sys.version_info[:2] >= (3, 6)
-PY37_OR_LATER = sys.version_info[:2] >= (3, 7)
 try:
     import uvloop
 except ImportError:
@@ -163,19 +161,29 @@ def smtpd_server(
     return server
 
 
+@pytest.fixture(scope="session")
+def smtpd_response_handler(request):
+    def smtpd_response(response_text, write_eof=False, close_after=False):
+        async def response_handler(smtpd, *args, **kwargs):
+            if args and args[0]:
+                smtpd.session.host_name = args[0]
+            if response_text is not None:
+                await smtpd.push(response_text)
+            if write_eof:
+                smtpd.transport.write_eof()
+            if close_after:
+                smtpd.transport.close()
+
+        return response_handler
+
+    return smtpd_response
+
+
 @pytest.fixture(scope="function")
 def smtp_client(request, event_loop, hostname, port):
     client = SMTP(hostname=hostname, port=port, loop=event_loop, timeout=1.0)
 
     return client
-
-
-class EchoServerProtocol(asyncio.Protocol):
-    def connection_made(self, transport):
-        self.transport = transport
-
-    def data_received(self, data):
-        self.transport.write(data)
 
 
 @pytest.fixture(scope="function")

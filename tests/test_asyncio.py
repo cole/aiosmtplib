@@ -6,7 +6,7 @@ import asyncio
 
 import pytest
 
-from aiosmtplib import SMTP
+from aiosmtplib import SMTP, SMTPStatus
 
 
 RECIPIENTS = [
@@ -110,14 +110,15 @@ async def test_multiple_actions_in_context_manager_with_gather(
 
 
 async def test_many_commands_with_gather(
-    monkeypatch, smtp_client, smtpd_server, smtpd_handler
+    monkeypatch, smtp_client, smtpd_server, smtpd_class, smtpd_response_handler
 ):
     """
     Tests that appropriate locks are in place to prevent commands confusing each other.
     """
-    monkeypatch.setattr(
-        smtpd_handler, "EXPN_response_message", "250 Alice Smith <asmith@example.com>"
+    response_handler = smtpd_response_handler(
+        "{}  Alice Smith <asmith@example.com>".format(SMTPStatus.completed)
     )
+    monkeypatch.setattr(smtpd_class, "smtp_EXPN", response_handler)
 
     async with smtp_client:
         tasks = [
