@@ -9,11 +9,26 @@ The Dragon De Monsyne <dragondm@integral.org>
 
 Author: Cole Maclean <hi@cole.io>
 """
-from .api import *  # NOQA
-from .errors import *  # NOQA
-from .response import *  # NOQA
-from .smtp import *  # NOQA
-from .status import *  # NOQA
+from .api import send_message
+from .errors import (
+    SMTPAuthenticationError,
+    SMTPConnectError,
+    SMTPConnectTimeoutError,
+    SMTPDataError,
+    SMTPException,
+    SMTPHeloError,
+    SMTPNotSupported,
+    SMTPReadTimeoutError,
+    SMTPRecipientRefused,
+    SMTPRecipientsRefused,
+    SMTPResponseException,
+    SMTPSenderRefused,
+    SMTPServerDisconnected,
+    SMTPTimeoutError,
+)
+from .response import SMTPResponse
+from .smtp import SMTP
+from .status import SMTPStatus
 
 
 __title__ = "aiosmtplib"
@@ -22,9 +37,22 @@ __author__ = "Cole Maclean"
 __license__ = "MIT"
 __copyright__ = "Copyright 2019 Cole Maclean"
 __all__ = (
-    api.__all__  # NOQA
-    + errors.__all__  # NOQA
-    + response.__all__  # NOQA
-    + smtp.__all__  # NOQA
-    + status.__all__  # NOQA
+    "send_message",
+    "SMTP",
+    "SMTPResponse",
+    "SMTPStatus",
+    "SMTPAuthenticationError",
+    "SMTPConnectError",
+    "SMTPDataError",
+    "SMTPException",
+    "SMTPHeloError",
+    "SMTPNotSupported",
+    "SMTPRecipientRefused",
+    "SMTPRecipientsRefused",
+    "SMTPResponseException",
+    "SMTPSenderRefused",
+    "SMTPServerDisconnected",
+    "SMTPTimeoutError",
+    "SMTPConnectTimeoutError",
+    "SMTPReadTimeoutError",
 )
