@@ -244,3 +244,19 @@ async def test_send_multiple_messages_in_sequence(smtp_client, smtpd_server, mes
         assert not errors2
         assert isinstance(errors2, dict)
         assert response2 != ""
+
+
+async def test_send_message_without_recipients(smtp_client, smtpd_server, message):
+    del message["To"]
+
+    async with smtp_client:
+        with pytest.raises(ValueError):
+            await smtp_client.send_message(message)
+
+
+async def test_send_message_without_sender(smtp_client, smtpd_server, message):
+    del message["From"]
+
+    async with smtp_client:
+        with pytest.raises(ValueError):
+            await smtp_client.send_message(message)

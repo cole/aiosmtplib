@@ -214,7 +214,10 @@ class SMTP(SMTPAuth):
         unambiguously determine which one is the most recent in all cases,
         so rather than guess we raise a ``ValueError`` in that case.
 
-        :raises ValueError: on more than one Resent header block
+        :raises ValueError:
+            on more than one Resent header block
+            on no sender kwarg or From header in message
+            on no recipients kwarg or To, Cc or Bcc header in message
         :raises SMTPRecipientsRefused: delivery to all recipients failed
         :raises SMTPResponseException: on invalid response
         """
@@ -224,6 +227,11 @@ class SMTP(SMTPAuth):
             sender = header_sender
         if recipients is None:
             recipients = header_recipients
+
+        if not sender:
+            raise ValueError("No From header provided in message")
+        if not recipients:
+            raise ValueError("No recipient headers provided in message")
 
         result = await self.sendmail(sender, recipients, flat_message, timeout=timeout)
 
