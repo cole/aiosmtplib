@@ -234,13 +234,11 @@ class SMTPConnection:
         if self.use_tls:
             tls_context = self._get_tls_context()
 
-        connect_future = self.loop.create_connection(
+        connect_coro = self.loop.create_connection(
             lambda: protocol, host=self.hostname, port=self.port, ssl=tls_context
         )
         try:
-            transport, _ = await asyncio.wait_for(
-                connect_future, timeout=self.timeout, loop=self.loop
-            )
+            transport, _ = await asyncio.wait_for(connect_coro, timeout=self.timeout)
         except (ConnectionRefusedError, OSError) as err:
             self.close()
             raise SMTPConnectError(
@@ -259,11 +257,9 @@ class SMTPConnection:
         self.protocol = protocol
         self.transport = transport
 
-        waiter = asyncio.Task(protocol.read_response(), loop=self.loop)
-
         try:
             response = await asyncio.wait_for(
-                waiter, timeout=self.timeout, loop=self.loop
+                protocol.read_response(), timeout=self.timeout
             )
         except asyncio.TimeoutError:
             self.close()

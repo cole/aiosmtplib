@@ -19,7 +19,7 @@ def async_to_sync(
     if loop.is_running():
         raise RuntimeError("Event loop is already running.")
 
-    result = asyncio.Future(loop=loop)  # type: asyncio.Future
+    result = loop.create_future()
 
     try:
         loop.run_until_complete(_await_with_future(coro, result))
@@ -47,7 +47,7 @@ def shutdown_loop(loop: asyncio.AbstractEventLoop, timeout: float = 1.0) -> None
         for task in tasks:
             task.cancel()
         try:
-            loop.run_until_complete(asyncio.wait(tasks, loop=loop, timeout=timeout))
+            loop.run_until_complete(asyncio.wait(tasks, timeout=timeout))
         except RuntimeError:
             pass
 

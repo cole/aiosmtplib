@@ -162,14 +162,12 @@ class SMTPProtocol(StreamReaderProtocol):
         if self._stream_reader is None or self._transport is None:
             raise SMTPServerDisconnected("Client not connected")
 
-        read_task = asyncio.Task(
-            self._stream_reader.readuntil(separator=b"\n"), loop=self._loop
+        read_task = self._loop.create_task(
+            self._stream_reader.readuntil(separator=b"\n")
         )
         try:
             async with self._io_lock:
-                line = await asyncio.wait_for(
-                    read_task, timeout, loop=self._loop
-                )  # type: bytes
+                line = await asyncio.wait_for(read_task, timeout)  # type: bytes
         except asyncio.LimitOverrunError:
             raise SMTPResponseException(
                 SMTPStatus.unrecognized_command, "Line too long."
@@ -249,11 +247,9 @@ class SMTPProtocol(StreamReaderProtocol):
             raise SMTPServerDisconnected("Client not connected")
 
         self._stream_writer.write(data)
-        # Wrapping drain in a task makes mypy happy
-        drain_task = asyncio.Task(self._stream_writer.drain(), loop=self._loop)
         try:
             async with self._io_lock:
-                await asyncio.wait_for(drain_task, timeout, loop=self._loop)
+                await asyncio.wait_for(self._stream_writer.drain(), timeout)
         except ConnectionError as exc:
             raise SMTPServerDisconnected(str(exc))
         except asyncio.TimeoutError:
@@ -309,7 +305,11 @@ class SMTPProtocol(StreamReaderProtocol):
         except ConnectionAbortedError as exc:
             raise SMTPTimeoutError(exc.args[0])
         except ConnectionResetError as exc:
-            raise SMTPServerDisconnected(exc.args[0])
+            if exc.args:
+                message = exc.args[0]
+            else:
+                message = "Connection was reset while upgrading transport"
+            raise SMTPServerDisconnected(message)
 
         self._transport = tls_transport
         self._stream_reader._transport = tls_transport  # type: ignore

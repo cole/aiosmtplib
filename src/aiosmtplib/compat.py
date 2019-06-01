@@ -78,7 +78,7 @@ async def start_tls(
     resume_cb = loop.call_soon(transport.resume_reading)  # type: ignore
 
     try:
-        await asyncio.wait_for(waiter, timeout=ssl_handshake_timeout, loop=loop)
+        await asyncio.wait_for(waiter, timeout=ssl_handshake_timeout)
     except Exception:
         transport.close()
         conmade_cb.cancel()
