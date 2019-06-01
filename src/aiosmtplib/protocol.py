@@ -308,6 +308,8 @@ class SMTPProtocol(StreamReaderProtocol):
         # SSLProtocol only raises ConnectionAbortedError on timeout
         except ConnectionAbortedError as exc:
             raise SMTPTimeoutError(exc.args[0])
+        except ConnectionResetError as exc:
+            raise SMTPServerDisconnected(exc.args[0])
 
         self._transport = tls_transport
         self._stream_reader._transport = tls_transport  # type: ignore

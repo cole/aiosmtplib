@@ -11,6 +11,7 @@ from aiosmtplib import (
     SMTPConnectError,
     SMTPException,
     SMTPResponseException,
+    SMTPServerDisconnected,
     SMTPStatus,
 )
 
@@ -116,6 +117,19 @@ async def test_starttls_advertised_but_not_supported(
         await smtp_client.ehlo()
 
         with pytest.raises(SMTPException):
+            await smtp_client.starttls(validate_certs=False)
+
+
+async def test_starttls_disconnect_before_upgrade(
+    smtp_client, smtpd_server, smtpd_class, smtpd_response_handler, monkeypatch
+):
+    response_handler = smtpd_response_handler(
+        "{} Go for it".format(SMTPStatus.ready), close_after=True
+    )
+    monkeypatch.setattr(smtpd_class, "smtp_STARTTLS", response_handler)
+
+    async with smtp_client:
+        with pytest.raises(SMTPServerDisconnected):
             await smtp_client.starttls(validate_certs=False)
 
 
