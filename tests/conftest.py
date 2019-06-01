@@ -32,24 +32,26 @@ def pytest_addoption(parser):
 
 
 @pytest.fixture(scope="session")
-def event_loop_type(request):
-    return request.config.getoption("--event-loop")
+def event_loop_policy(request):
+    loop_type = request.config.getoption("--event-loop")
+    if loop_type == "uvloop":
+        if not HAS_UVLOOP:
+            raise RuntimeError("uvloop not installed.")
+        return uvloop.EventLoopPolicy()
+
+    return asyncio.get_event_loop_policy()
 
 
 @pytest.fixture(scope="function")
-def event_loop(event_loop_type):
-    if event_loop_type == "asyncio":
-        loop = asyncio.new_event_loop()
-    elif event_loop_type == "uvloop":
-        if not HAS_UVLOOP:
-            raise RuntimeError("uvloop not installed.")
-        loop = uvloop.new_event_loop()
-    else:
-        raise ValueError("Unknown event loop type: {}".format(event_loop_type))
+def event_loop(request, event_loop_policy):
+    old_loop = event_loop_policy.get_event_loop()
 
+    loop = event_loop_policy.new_event_loop()
+    event_loop_policy.set_event_loop(loop)
     yield loop
 
     shutdown_loop(loop)
+    event_loop_policy.set_event_loop(old_loop)
 
 
 @pytest.fixture(scope="session")
