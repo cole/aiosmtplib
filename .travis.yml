@@ -44,44 +44,44 @@ jobs:
       name: 'setup.py check'
       install: 'pip install tox'
       after_success: skip
-      python: '3.6'
+      python: '3.7'
       env: EVENT_LOOP=asyncio
       script: 'tox -e check'
     - script: 'tox -e mypy'
       name: 'mypy'
       install: 'pip install tox'
       after_success: skip
-      python: '3.6'
+      python: '3.7'
       env: EVENT_LOOP=asyncio
     - script: 'tox -e flake8'
       name: 'flake8'
       install: 'pip install tox'
       after_success: skip
-      python: '3.6'
+      python: '3.7'
       env: EVENT_LOOP=asyncio
     - script: 'tox -e black'
       name: 'black'
       install: 'pip install tox'
       after_success: skip
-      python: '3.6'
+      python: '3.7'
       env: EVENT_LOOP=asyncio
     - script: 'tox -e bandit'
       name: 'bandit'
       install: 'pip install tox'
       after_success: skip
-      python: '3.6'
+      python: '3.7'
       env: EVENT_LOOP=asyncio
     - script: 'tox -e docs'
       name: 'sphinx build & doctests'
       install: 'pip install tox'
       after_success: skip
-      python: '3.6'
+      python: '3.7'
       env: EVENT_LOOP=asyncio
     - stage: release
       name: 'Release to PyPi'
       script: skip
       install: skip
-      python: '3.6'
+      python: '3.7'
       env: EVENT_LOOP=asyncio
       deploy:
         provider: pypi
