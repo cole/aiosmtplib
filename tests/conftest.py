@@ -37,21 +37,20 @@ def event_loop_policy(request):
     if loop_type == "uvloop":
         if not HAS_UVLOOP:
             raise RuntimeError("uvloop not installed.")
-        return uvloop.EventLoopPolicy()
+        policy = uvloop.EventLoopPolicy()
+        asyncio.set_event_loop_policy(policy)
+        request.addfinalizer(lambda: asyncio.set_event_loop_policy(None))
 
     return asyncio.get_event_loop_policy()
 
 
 @pytest.fixture(scope="function")
 def event_loop(request, event_loop_policy):
-    old_loop = event_loop_policy.get_event_loop()
-
     loop = event_loop_policy.new_event_loop()
     event_loop_policy.set_event_loop(loop)
-    yield loop
+    request.addfinalizer(lambda: shutdown_loop(loop))
 
-    shutdown_loop(loop)
-    event_loop_policy.set_event_loop(old_loop)
+    return loop
 
 
 @pytest.fixture(scope="session")
