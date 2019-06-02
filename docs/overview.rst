@@ -1,3 +1,6 @@
+.. module:: aiosmtplib
+    :noindex:
+
 Overview
 ========
 
