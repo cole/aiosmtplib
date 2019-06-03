@@ -48,7 +48,12 @@ def event_loop_policy(request):
 def event_loop(request, event_loop_policy):
     loop = event_loop_policy.new_event_loop()
     event_loop_policy.set_event_loop(loop)
-    request.addfinalizer(lambda: shutdown_loop(loop))
+
+    def cleanup():
+        shutdown_loop(loop)
+        event_loop_policy.set_event_loop(None)
+
+    request.addfinalizer(cleanup)
 
     return loop
 
