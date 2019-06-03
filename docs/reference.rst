@@ -1,5 +1,11 @@
 API Reference
-==============
+=============
+
+.. testsetup::
+
+    import aiosmtplib
+    from aiosmtplib import SMTPResponse
+
 
 The send message API
 --------------------

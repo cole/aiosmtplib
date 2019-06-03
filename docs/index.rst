@@ -7,7 +7,9 @@ aiosmtplib
    :maxdepth: 2
 
    overview
-   api
+   usage
+   client
+   reference
    changelog
 
 
