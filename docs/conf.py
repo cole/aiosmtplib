@@ -134,7 +134,7 @@ htmlhelp_basename = "aiosmtplibdoc"
 
 # -- Options for LaTeX output ---------------------------------------------
 
-latex_elements = {
+latex_elements = {  # type: ignore
     # The paper size ('letterpaper' or 'a4paper').
     #
     # 'papersize': 'letterpaper',
@@ -181,7 +181,7 @@ texinfo_documents = [
     )
 ]
 
-intersphinx_mapping = {"python": ("https://docs.python.org/3.6", None)}
+intersphinx_mapping = {"python": ("https://docs.python.org/3.7", None)}
 
 html_sidebars = {
     "**": ["globaltoc.html", "relations.html", "sourcelink.html", "searchbox.html"]

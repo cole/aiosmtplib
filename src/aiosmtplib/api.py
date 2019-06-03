@@ -77,21 +77,21 @@ async def send_message(  # NOQA: F811
     Send an email message. On await, connects to the SMTP server using the details
     provided, sends the message, then disconnects.
 
-    :param message:  Message text. Either an :class:``email.message.Message`` object,
-        ``str`` or ``bytes``. If a ``Message`` object is provided, sender and
-        recipients set in the message headers will be used, unless overridden by
-        the respective keyword arguments.
-    :keyword sender:  From email address. If a ``Message`` object is provided, this
-        argument is not required.
-    :keyword recipients: Recipient email addresses. If a ``Message`` object is provided,
-        this argument is not required.
+    :param message:  Message text. Either an :py:class:`email.message.Message`
+        object, ``str`` or ``bytes``. If an :py:class:`email.message.Message` object is
+        provided, sender and recipients set in the message headers will be used, unless
+        overridden by the respective keyword arguments.
+    :keyword sender:  From email address. Not required if an
+        :py:class:`email.message.Message` object is provided for the `message` argument.
+    :keyword recipients: Recipient email addresses. Not required if an
+        :py:class:`email.message.Message` object is provided for the `message` argument.
     :keyword hostname:  Server name (or IP) to connect to. Defaults to "localhost".
     :keyword port: Server port. Defaults ``465`` if ``use_tls`` is ``True``,
         ``587`` if ``start_tls`` is ``True``, or ``25`` otherwise.
     :keyword username:  Username to login as after connect.
     :keyword password:  Password for login after connect.
     :keyword source_address: The hostname of the client. Defaults to the
-        result of :func:`socket.getfqdn`. Note that this call blocks.
+        result of :py:func:`socket.getfqdn`. Note that this call blocks.
     :keyword timeout: Default timeout value for the connection, in seconds.
         Defaults to 60.
     :keyword use_tls: If True, make the initial connection to the server
@@ -104,7 +104,7 @@ async def send_message(  # NOQA: F811
         validated. Defaults to True.
     :keyword client_cert: Path to client side certificate, for TLS.
     :keyword client_key: Path to client side key, for TLS.
-    :keyword tls_context: An existing :class:`ssl.SSLContext`, for TLS.
+    :keyword tls_context: An existing :py:class:`ssl.SSLContext`, for TLS.
         Mutually exclusive with ``client_cert``/``client_key``.
     :keyword cert_bundle: Path to certificate bundle, for TLS verification.
 

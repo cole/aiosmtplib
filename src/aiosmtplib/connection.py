@@ -61,7 +61,7 @@ class SMTPConnection:
         :keyword timeout: Default timeout value for the connection, in seconds.
             Defaults to 60.
         :keyword loop: event loop  to run on. If not set, uses
-            :func:`asyncio.get_event_loop()`.
+            :py:func:`asyncio.get_event_loop`.
         :keyword use_tls: If True, make the _initial_ connection to the server
             over TLS/SSL. Note that if the server supports STARTTLS only, this
             should be False.
@@ -73,7 +73,7 @@ class SMTPConnection:
         :keyword client_cert: Path to client side certificate, for TLS
             verification.
         :keyword client_key: Path to client side key, for TLS verification.
-        :keyword tls_context: An existing :class:`ssl.SSLContext`, for TLS
+        :keyword tls_context: An existing :py:class:`ssl.SSLContext`, for TLS
             verification. Mutually exclusive with ``client_cert``/
             ``client_key``.
         :keyword cert_bundle: Path to certificate bundle, for TLS verification.
@@ -166,7 +166,7 @@ class SMTPConnection:
         :keyword timeout: Default timeout value for the connection, in seconds.
             Defaults to 60.
         :keyword loop: event loop to run on. If not set, uses
-            :func:`asyncio.get_event_loop()`.
+            :py:func:`asyncio.get_event_loop`.
         :keyword use_tls: If True, make the initial connection to the server
             over TLS/SSL. Note that if the server supports STARTTLS only, this
             should be False.
@@ -177,7 +177,7 @@ class SMTPConnection:
             validated. Defaults to True.
         :keyword client_cert: Path to client side certificate, for TLS.
         :keyword client_key: Path to client side key, for TLS.
-        :keyword tls_context: An existing :class:`ssl.SSLContext`, for TLS.
+        :keyword tls_context: An existing :py:class:`ssl.SSLContext`, for TLS.
             Mutually exclusive with ``client_cert``/``client_key``.
         :keyword cert_bundle: Path to certificate bundle, for TLS verification.
 

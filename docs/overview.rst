@@ -115,13 +115,13 @@ Sending Messages
 
 This is the simplest API, and is the recommended way to send messages, as it
 makes it easy to set headers correctly and handle multi part messages. For
-details on creating :class:`email.message.Message` objects, see `the
+details on creating :py:class:`email.message.Message` objects, see `the
 stdlib documentation examples
 <https://docs.python.org/3.6/library/email.examples.html>`_.
 
-Use :meth:`SMTP.send_message` to send :class:`email.message.Message` objects,
-including :mod:`email.mime` subclasses such as
-:class:`email.mime.text.MIMEText`.
+Use :meth:`SMTP.send_message` to send :py:class:`email.message.Message` objects,
+including :py:mod:`email.mime` subclasses such as
+:py:class:`email.mime.text.MIMEText`.
 
 .. testcode::
 
@@ -136,7 +136,7 @@ including :mod:`email.mime` subclasses such as
     loop.run_until_complete(smtp.send_message(message))
 
 
-Pass :class:`email.mime.multipart.MIMEMultipart` objects to
+Pass :py:class:`email.mime.multipart.MIMEMultipart` objects to
 :meth:`SMTP.send_message` to send messages with both HTML text and plain text
 alternatives.
 
@@ -195,7 +195,7 @@ Parallel Execution
 SMTP is a sequential protocol. Multiple commands must be sent to send an
 email, and they must be sent in the correct sequence. As a consequence of
 this, executing multiple :meth:`SMTP.sendmail` tasks in parallel (i.e. with
-:func:`asyncio.gather`) is not any more efficient than executing in sequence,
+:py:func:`asyncio.gather`) is not any more efficient than executing in sequence,
 as the client must wait until one mail is sent before beginning the next.
 
 If you have a lot of emails to send, consider creating multiple connections

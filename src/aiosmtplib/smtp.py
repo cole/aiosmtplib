@@ -197,15 +197,15 @@ class SMTP(SMTPAuth):
         timeout: Union[float, int, None, Default] = _default,
     ) -> Tuple[Dict[str, SMTPResponse], str]:
         r"""
-        Sends an :class:`email.message.Message` object.
+        Sends an :py:class:`email.message.Message` object.
 
         Arguments are as for :meth:`.sendmail`, except that message is an
-        :class:`email.message.Message` object.  If sender is None or recipients
+        :py:class:`email.message.Message` object.  If sender is None or recipients
         is None, these arguments are taken from the headers of the Message as
         described in RFC 2822.  Regardless of the values of sender and
         recipients, any Bcc field (or Resent-Bcc field, when the Message is a
         resent) of the Message object will not be transmitted.  The Message
-        object is then serialized using :class:`email.generator.Generator` and
+        object is then serialized using :py:class:`email.generator.Generator` and
         :meth:`.sendmail` is called to transmit the message.
 
         'Resent-Date' is a mandatory field if the Message is resent (RFC 2822

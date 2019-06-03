@@ -1,6 +1,12 @@
 API Reference
 ==============
 
+The send message API
+--------------------
+
+.. autofunction:: aiosmtplib.send_message
+
+
 The SMTP Class
 --------------
 
@@ -32,4 +38,3 @@ Exceptions
 .. automodule:: aiosmtplib.errors
     :members:
     :show-inheritance:
-
