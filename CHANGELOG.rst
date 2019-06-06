@@ -1,8 +1,18 @@
 Changelog
 =========
 
-1.1.0
------
+1.1.0 (unreleased)
+------------------
+
+- Feature: Added send_message async function.
+
+- Bugfix: Set default timeout to 60 seconds as per documentation, instead
+  of None.
+
+- Cleanup: Use built in start_tls method on Python 3.7+.
+
+- Cleanup: Updated protocol and stream classes to remove deprecation
+  warnings in 3.8.
 
 - Bugfix: EHLO/HELO if required before any command, not just when using
   higher level commands.
