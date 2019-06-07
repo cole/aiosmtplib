@@ -239,20 +239,20 @@ class SMTPConnection:
         )
         try:
             transport, _ = await asyncio.wait_for(connect_coro, timeout=self.timeout)
-        except (ConnectionRefusedError, OSError) as err:
+        except (ConnectionRefusedError, OSError) as exc:
             self.close()
             raise SMTPConnectError(
                 "Error connecting to {host} on port {port}: {err}".format(
-                    host=self.hostname, port=self.port, err=err
+                    host=self.hostname, port=self.port, err=exc
                 )
-            )
-        except asyncio.TimeoutError:
+            ) from exc
+        except asyncio.TimeoutError as exc:
             self.close()
             raise SMTPConnectTimeoutError(
                 "Timed out connecting to {host} on port {port}".format(
                     host=self.hostname, port=self.port
                 )
-            )
+            ) from exc
 
         self.protocol = protocol
         self.transport = transport
@@ -261,9 +261,11 @@ class SMTPConnection:
             response = await asyncio.wait_for(
                 protocol.read_response(), timeout=self.timeout
             )
-        except asyncio.TimeoutError:
+        except asyncio.TimeoutError as exc:
             self.close()
-            raise SMTPConnectTimeoutError("Timed out waiting for server ready message")
+            raise SMTPConnectTimeoutError(
+                "Timed out waiting for server ready message"
+            ) from exc
 
         if response.code != SMTPStatus.ready:
             self.close()
@@ -289,10 +291,10 @@ class SMTPConnection:
             response = await self.protocol.execute_command(  # type: ignore
                 *args, timeout=timeout
             )
-        except SMTPServerDisconnected:
+        except SMTPServerDisconnected as exc:
             # On disconnect, clean up the connection.
             self.close()
-            raise
+            raise exc
 
         # If the server is unavailable, be nice and close the connection
         if response.code == SMTPStatus.domain_unavailable:

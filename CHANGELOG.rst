@@ -9,6 +9,8 @@ Changelog
 - Bugfix: Set default timeout to 60 seconds as per documentation, instead
   of None.
 
+- Cleanup: Set context for timeout and connection exceptions properly.
+
 - Cleanup: Use built in start_tls method on Python 3.7+.
 
 - Cleanup: Updated protocol and stream classes to remove deprecation

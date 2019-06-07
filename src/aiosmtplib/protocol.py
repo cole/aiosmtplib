@@ -168,16 +168,16 @@ class SMTPProtocol(StreamReaderProtocol):
         try:
             async with self._io_lock:
                 line = await asyncio.wait_for(read_task, timeout)  # type: bytes
-        except asyncio.LimitOverrunError:
+        except asyncio.LimitOverrunError as exc:
             raise SMTPResponseException(
                 SMTPStatus.unrecognized_command, "Line too long."
-            )
-        except asyncio.TimeoutError:
-            raise SMTPReadTimeoutError("Timed out waiting for server response")
+            ) from exc
+        except asyncio.TimeoutError as exc:
+            raise SMTPReadTimeoutError("Timed out waiting for server response") from exc
         except asyncio.IncompleteReadError as exc:
             if exc.partial == b"":
                 # if we got only an EOF, raise SMTPServerDisconnected
-                raise SMTPServerDisconnected("Unexpected EOF received")
+                raise SMTPServerDisconnected("Unexpected EOF received") from exc
             else:
                 # otherwise, close our connection but try to parse the
                 # response anyways
@@ -251,9 +251,9 @@ class SMTPProtocol(StreamReaderProtocol):
             async with self._io_lock:
                 await asyncio.wait_for(self._stream_writer.drain(), timeout)
         except ConnectionError as exc:
-            raise SMTPServerDisconnected(str(exc))
-        except asyncio.TimeoutError:
-            raise SMTPTimeoutError("Timed out on write")
+            raise SMTPServerDisconnected(str(exc)) from exc
+        except asyncio.TimeoutError as exc:
+            raise SMTPTimeoutError("Timed out on write") from exc
 
     async def execute_command(
         self, *args: bytes, timeout: Union[float, int, None] = None
@@ -299,17 +299,17 @@ class SMTPProtocol(StreamReaderProtocol):
                 ssl_handshake_timeout=timeout,
             )
 
-        except asyncio.TimeoutError:
-            raise SMTPTimeoutError("Timed out while upgrading transport")
+        except asyncio.TimeoutError as exc:
+            raise SMTPTimeoutError("Timed out while upgrading transport") from exc
         # SSLProtocol only raises ConnectionAbortedError on timeout
         except ConnectionAbortedError as exc:
-            raise SMTPTimeoutError(exc.args[0])
+            raise SMTPTimeoutError(exc.args[0]) from exc
         except ConnectionResetError as exc:
             if exc.args:
                 message = exc.args[0]
             else:
                 message = "Connection was reset while upgrading transport"
-            raise SMTPServerDisconnected(message)
+            raise SMTPServerDisconnected(message) from exc
 
         self._transport = tls_transport
         self._stream_reader._transport = tls_transport  # type: ignore
