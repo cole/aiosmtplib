@@ -1,0 +1,71 @@
+version: 2.1
+
+jobs:
+
+  lint:
+    docker:
+      - image: circleci/python:3.7
+    steps:
+      - checkout
+      - run: pip install tox
+      - run: tox -e check,mypy,flake8,black,bandit
+
+  py35-asyncio:
+    docker:
+      - image: circleci/python:3.5-stretch
+    steps:
+      - checkout
+      - run: pip install tox
+      - run: tox -e clean,py35-asyncio,coverage
+
+  py35-uvloop:
+    docker:
+      - image: circleci/python:3.5-stretch
+    steps:
+      - checkout
+      - run: pip install tox
+      - run: tox -e clean,py35-uvloop,coverage
+
+  py36-asyncio:
+    docker:
+      - image: circleci/python:3.6-stretch
+    steps:
+      - checkout
+      - run: pip install tox
+      - run: tox -e clean,py36-asyncio,coverage
+
+  py36-uvloop:
+    docker:
+      - image: circleci/python:3.6-stretch
+    steps:
+      - checkout
+      - run: pip install tox
+      - run: tox -e clean,py36-uvloop,coverage
+
+  py37-asyncio:
+    docker:
+      - image: circleci/python:3.7-stretch
+    steps:
+      - checkout
+      - run: pip install tox
+      - run: tox -e clean,py37-asyncio,coverage
+
+  py37-uvloop:
+    docker:
+      - image: circleci/python:3.7-stretch
+    steps:
+      - checkout
+      - run: pip install tox
+      - run: tox -e clean,py37-uvloop,coverage
+
+workflows:
+  version: 2
+  lint_and_test:
+    jobs:
+      - lint
+      - py35-asyncio
+      - py36-asyncio
+      - py37-asyncio
+      - py35-uvloop
+      - py36-uvloop
+      - py37-uvloop
