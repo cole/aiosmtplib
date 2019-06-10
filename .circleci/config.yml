@@ -58,6 +58,23 @@ jobs:
       - run: pip install tox
       - run: tox -e clean,py37-uvloop,coverage
 
+  pypy35-asyncio:
+    docker:
+      - image: pypy:3.5-stretch
+    steps:
+      - checkout
+      - run: pip install tox
+      - run: tox -e clean,pypy35-asyncio,coverage
+
+  pypy36-asyncio:
+    docker:
+      - image: pypy:3.6-stretch
+    steps:
+      - checkout
+      - run: pip install tox
+      - run: tox -e clean,pypy36-asyncio,coverage
+
+
 workflows:
   version: 2
   lint_and_test:
@@ -69,3 +86,5 @@ workflows:
       - py35-uvloop
       - py36-uvloop
       - py37-uvloop
+      - pypy35-asyncio
+      - pypy36-asyncio
