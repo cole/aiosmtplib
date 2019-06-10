@@ -78,7 +78,8 @@ async def test_timeout_on_initial_read(
     monkeypatch.setattr(smtpd_class, "_handle_client", delayed_read_response_handler)
 
     with pytest.raises(SMTPTimeoutError):
-        await smtp_client.connect(timeout=0.0)
+        # We need to use a timeout > 0 here to avoid timing out on connect
+        await smtp_client.connect(timeout=0.01)
 
 
 async def test_timeout_on_starttls(
