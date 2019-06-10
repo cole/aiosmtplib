@@ -4,7 +4,7 @@ Low level ESMTP command API.
 import asyncio
 import re
 import ssl
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Union  # NOQA
+from typing import Dict, Iterable, List, Optional, Tuple, Union
 
 from .connection import SMTPConnection
 from .default import Default, _default

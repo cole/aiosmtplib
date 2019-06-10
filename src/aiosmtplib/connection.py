@@ -4,7 +4,7 @@ Handles client connection/disconnection.
 import asyncio
 import socket
 import ssl
-from typing import Any, Optional, Type, Union  # NOQA
+from typing import Any, Optional, Type, Union
 
 from .default import Default, _default
 from .errors import (

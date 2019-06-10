@@ -3,7 +3,7 @@ Authentication methods.
 """
 import base64
 import hmac
-from typing import List, Optional, Union  # NOQA
+from typing import List, Optional, Union
 
 from .default import Default, _default
 from .errors import SMTPAuthenticationError, SMTPException

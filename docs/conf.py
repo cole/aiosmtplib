@@ -23,8 +23,9 @@ import pathlib
 import re
 import sys
 
-sys.path.insert(0, os.path.abspath("../src"))  # NOQA
-sys.path.insert(0, os.path.abspath("."))  # NOQA
+
+sys.path.insert(0, os.path.abspath("../src"))
+sys.path.insert(0, os.path.abspath("."))
 
 
 VERSION_REGEX = r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]'
