@@ -19,6 +19,8 @@ jobs:
       TOXENV: clean,py35-asyncio,coverage
     steps:
       - checkout
+      - run: |
+          echo "precedence ::ffff:0:0/96 100" > /etc/gai.conf
       - run: pip install tox
       - run: tox
 
@@ -39,7 +41,7 @@ jobs:
       TOXENV: clean,py36-asyncio,coverage
     steps:
       - checkout
-      - run: sudo pip install tox
+      - run: pip install tox
       - run: tox
 
   py36-uvloop:
@@ -49,7 +51,7 @@ jobs:
       TOXENV: clean,py36-uvloop,coverage
     steps:
       - checkout
-      - run: sudo pip install tox
+      - run: pip install tox
       - run: tox
 
   py37-asyncio:
