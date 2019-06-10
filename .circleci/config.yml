@@ -7,7 +7,7 @@ jobs:
       - image: circleci/python:3.7
     steps:
       - checkout
-      - run: pip install tox
+      - run: sudo pip install tox
       - run: tox -e check,mypy,flake8,black,bandit
 
   py35-asyncio:
@@ -15,7 +15,7 @@ jobs:
       - image: circleci/python:3.5-stretch
     steps:
       - checkout
-      - run: pip install tox
+      - run: sudo pip install tox
       - run: tox -e clean,py35-asyncio,coverage
 
   py35-uvloop:
@@ -23,7 +23,7 @@ jobs:
       - image: circleci/python:3.5-stretch
     steps:
       - checkout
-      - run: pip install tox
+      - run: sudo pip install tox
       - run: tox -e clean,py35-uvloop,coverage
 
   py36-asyncio:
@@ -31,7 +31,7 @@ jobs:
       - image: circleci/python:3.6-stretch
     steps:
       - checkout
-      - run: pip install tox
+      - run: sudo pip install tox
       - run: tox -e clean,py36-asyncio,coverage
 
   py36-uvloop:
@@ -39,7 +39,7 @@ jobs:
       - image: circleci/python:3.6-stretch
     steps:
       - checkout
-      - run: pip install tox
+      - run: sudo pip install tox
       - run: tox -e clean,py36-uvloop,coverage
 
   py37-asyncio:
@@ -47,7 +47,7 @@ jobs:
       - image: circleci/python:3.7-stretch
     steps:
       - checkout
-      - run: pip install tox
+      - run: sudo pip install tox
       - run: tox -e clean,py37-asyncio,coverage
 
   py37-uvloop:
@@ -55,7 +55,7 @@ jobs:
       - image: circleci/python:3.7-stretch
     steps:
       - checkout
-      - run: pip install tox
+      - run: sudo pip install tox
       - run: tox -e clean,py37-uvloop,coverage
 
   pypy35-asyncio:
@@ -63,7 +63,7 @@ jobs:
       - image: pypy:3.5-stretch
     steps:
       - checkout
-      - run: pip install tox
+      - run: sudo pip install tox
       - run: tox -e clean,pypy35-asyncio,coverage
 
   pypy36-asyncio:
@@ -71,7 +71,7 @@ jobs:
       - image: pypy:3.6-stretch
     steps:
       - checkout
-      - run: pip install tox
+      - run: sudo pip install tox
       - run: tox -e clean,pypy36-asyncio,coverage
 
 
