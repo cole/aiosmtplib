@@ -4,75 +4,109 @@ jobs:
 
   lint:
     docker:
-      - image: circleci/python:3.7
+      - image: python:3.7
+    environment:
+      TOXENV: check,mypy,flake8,black,bandit
     steps:
       - checkout
-      - run: sudo pip install tox
-      - run: tox -e check,mypy,flake8,black,bandit
+      - run: pip install tox
+      - run: tox
 
   py35-asyncio:
     docker:
-      - image: circleci/python:3.5-stretch
+      - image: python:3.5-stretch
+    environment:
+      TOXENV: clean,py35-asyncio,coverage
+    requires:
+      - lint
     steps:
       - checkout
-      - run: sudo pip install tox
-      - run: tox -e clean,py35-asyncio,coverage
+      - run: pip install tox
+      - run: tox
 
   py35-uvloop:
     docker:
-      - image: circleci/python:3.5-stretch
+      - image: python:3.5-stretch
+    environment:
+      TOXENV: clean,py35-uvloop,coverage
+    requires:
+      - lint
     steps:
       - checkout
-      - run: sudo pip install tox
-      - run: tox -e clean,py35-uvloop,coverage
+      - run: pip install tox
+      - run: tox
 
   py36-asyncio:
     docker:
-      - image: circleci/python:3.6-stretch
+      - image: python:3.6-stretch
+    environment:
+      TOXENV: clean,py36-asyncio,coverage
+    requires:
+      - lint
     steps:
       - checkout
       - run: sudo pip install tox
-      - run: tox -e clean,py36-asyncio,coverage
+      - run: tox
 
   py36-uvloop:
     docker:
-      - image: circleci/python:3.6-stretch
+      - image: python:3.6-stretch
+    environment:
+      TOXENV: clean,py36-uvloop,coverage
+    requires:
+      - lint
     steps:
       - checkout
       - run: sudo pip install tox
-      - run: tox -e clean,py36-uvloop,coverage
+      - run: tox
 
   py37-asyncio:
     docker:
-      - image: circleci/python:3.7-stretch
+      - image: python:3.7-stretch
+    environment:
+      TOXENV: clean,py37-asyncio,coverage
+    requires:
+      - lint
     steps:
       - checkout
-      - run: sudo pip install tox
-      - run: tox -e clean,py37-asyncio,coverage
+      - run: pip install tox
+      - run: tox
 
   py37-uvloop:
     docker:
-      - image: circleci/python:3.7-stretch
+      - image: python:3.7-stretch
+    environment:
+      TOXENV: clean,py37-uvloop,coverage
+    requires:
+      - lint
     steps:
       - checkout
-      - run: sudo pip install tox
-      - run: tox -e clean,py37-uvloop,coverage
+      - run: pip install tox
+      - run: tox
 
   pypy35-asyncio:
     docker:
       - image: pypy:3.5-stretch
+    environment:
+      TOXENV: clean,pypy35-asyncio,coverage
+    requires:
+      - lint
     steps:
       - checkout
-      - run: sudo pip install tox
-      - run: tox -e clean,pypy35-asyncio,coverage
+      - run: pip install tox
+      - run: tox
 
   pypy36-asyncio:
     docker:
       - image: pypy:3.6-stretch
+    environment:
+      TOXENV: clean,pypy36-asyncio,coverage
+    requires:
+      - lint
     steps:
       - checkout
-      - run: sudo pip install tox
-      - run: tox -e clean,pypy36-asyncio,coverage
+      - run: pip install tox
+      - run: tox
 
 
 workflows:
