@@ -2,6 +2,7 @@
 TLS and STARTTLS handling.
 """
 import copy
+import socket
 import ssl
 
 import pytest
@@ -40,7 +41,11 @@ def tls_smtpd_server(
 
     server = event_loop.run_until_complete(
         event_loop.create_server(
-            factory, host=hostname, port=port, ssl=server_tls_context
+            factory,
+            host=hostname,
+            port=port,
+            ssl=server_tls_context,
+            family=socket.AF_INET,
         )
     )
 

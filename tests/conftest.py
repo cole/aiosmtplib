@@ -4,6 +4,7 @@ Pytest fixtures and config.
 import asyncio
 import email.mime.multipart
 import email.mime.text
+import socket
 import ssl
 from pathlib import Path
 
@@ -157,7 +158,9 @@ def smtpd_server(
         )
 
     server = event_loop.run_until_complete(
-        event_loop.create_server(factory, host=hostname, port=port)
+        event_loop.create_server(
+            factory, host=hostname, port=port, family=socket.AF_INET
+        )
     )
 
     def close_server():
@@ -197,7 +200,9 @@ def smtp_client(request, event_loop, hostname, port):
 @pytest.fixture(scope="function")
 def echo_server(request, hostname, port, event_loop):
     server = event_loop.run_until_complete(
-        event_loop.create_server(EchoServerProtocol, host=hostname, port=port)
+        event_loop.create_server(
+            EchoServerProtocol, host=hostname, port=port, family=socket.AF_INET
+        )
     )
 
     def close_server():
