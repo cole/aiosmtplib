@@ -19,8 +19,6 @@ jobs:
       TOXENV: clean,py35-asyncio,coverage
     steps:
       - checkout
-      - run: |
-          echo "precedence ::ffff:0:0/96 100" > /etc/gai.conf
       - run: pip install tox
       - run: tox
 
