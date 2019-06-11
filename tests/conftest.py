@@ -62,7 +62,8 @@ def event_loop(request, event_loop_policy):
 
 @pytest.fixture(scope="session")
 def hostname(request):
-    return "localhost"
+    # Use 127.0.0.1 here to force IPv4; docker doesn't like IPv6 by default.
+    return "127.0.0.1"
 
 
 @pytest.fixture(scope="function")
