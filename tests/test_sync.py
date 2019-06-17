@@ -2,14 +2,15 @@
 Sync method tests.
 """
 import pytest
-from aiosmtpd.controller import Controller
 
 from aiosmtplib.sync import async_to_sync
+
+from .smtpd import SMTPDController
 
 
 @pytest.fixture(scope="function")
 def threaded_smtpd_server(request, hostname, port, smtpd_handler):
-    controller = Controller(smtpd_handler, hostname=hostname, port=port)
+    controller = SMTPDController(smtpd_handler, hostname=hostname, port=port)
     controller.start()
     request.addfinalizer(controller.stop)
 

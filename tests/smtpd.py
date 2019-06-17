@@ -4,12 +4,15 @@ Implements handlers required on top of aiosmtpd for testing.
 import asyncio
 import base64
 import logging
+import socket
+import threading
 from email.errors import HeaderParseError
 from email.message import Message
 
 from aiosmtpd.handlers import Message as MessageHandler
 from aiosmtpd.smtp import MISSING
 from aiosmtpd.smtp import SMTP as SMTPD
+from aiosmtplib.sync import shutdown_loop
 
 
 log = logging.getLogger("mail.log")
@@ -121,3 +124,76 @@ class TestSMTPD(SMTPD):
             await self.push("235 You're in!")
         else:
             await self.push("535 Nope.")
+
+
+class SMTPDController:
+    """
+    Based on https://github.com/aio-libs/aiosmtpd/blob/master/aiosmtpd/controller.py,
+    but we force IPv4.
+    """
+
+    def __init__(
+        self,
+        handler,
+        loop=None,
+        hostname=None,
+        port=8025,
+        *,
+        ready_timeout=1.0,
+        enable_SMTPUTF8=True,
+        ssl_context=None
+    ):
+        self.handler = handler
+        self.hostname = hostname
+        self.port = port
+        self.enable_SMTPUTF8 = enable_SMTPUTF8
+        self.ssl_context = ssl_context
+        self.loop = asyncio.new_event_loop() if loop is None else loop
+        self.server = None
+        self._thread = None
+        self._thread_exception = None
+        self.ready_timeout = ready_timeout
+
+    def factory(self):
+        """Allow subclasses to customize the handler/server creation."""
+        return TestSMTPD(self.handler, enable_SMTPUTF8=self.enable_SMTPUTF8)
+
+    def _run(self, ready_event):
+        asyncio.set_event_loop(self.loop)
+        try:
+            self.server = self.loop.run_until_complete(
+                self.loop.create_server(
+                    self.factory,
+                    host=self.hostname,
+                    port=self.port,
+                    ssl=self.ssl_context,
+                    family=socket.AF_INET,
+                )
+            )
+        except Exception as error:
+            self._thread_exception = error
+            return
+        self.loop.call_soon(ready_event.set)
+        self.loop.run_forever()
+        self.server.close()
+        self.loop.run_until_complete(self.server.wait_closed())
+        self.server = None
+
+    def start(self):
+        ready_event = threading.Event()
+        self._thread = threading.Thread(target=self._run, args=(ready_event,))
+        self._thread.daemon = True
+        self._thread.start()
+        # Wait a while until the server is responding.
+        ready_event.wait(self.ready_timeout)
+        if self._thread_exception is not None:
+            raise self._thread_exception
+
+    def _stop(self):
+        self.loop.stop()
+        shutdown_loop(self.loop)
+
+    def stop(self):
+        self.loop.call_soon_threadsafe(self._stop)
+        self._thread.join()
+        self._thread = None
