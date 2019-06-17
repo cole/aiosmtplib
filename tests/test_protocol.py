@@ -2,6 +2,7 @@
 Protocol level tests.
 """
 import asyncio
+import socket
 
 import pytest
 
@@ -37,7 +38,9 @@ async def test_protocol_read_limit_overrun(event_loop, hostname, port, monkeypat
         writer.write(long_response)
         await writer.drain()
 
-    server = await asyncio.start_server(client_connected, host=hostname, port=port)
+    server = await asyncio.start_server(
+        client_connected, host=hostname, port=port, family=socket.AF_INET
+    )
     connect_future = event_loop.create_connection(
         SMTPProtocol, host=hostname, port=port
     )
@@ -116,7 +119,9 @@ async def test_incompletereaderror_on_readline_with_partial_line(
         writer.write_eof()
         await writer.drain()
 
-    server = await asyncio.start_server(client_connected, host=hostname, port=port)
+    server = await asyncio.start_server(
+        client_connected, host=hostname, port=port, family=socket.AF_INET
+    )
     connect_future = event_loop.create_connection(
         SMTPProtocol, host=hostname, port=port
     )

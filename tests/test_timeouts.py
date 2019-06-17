@@ -2,6 +2,7 @@
 Timeout tests.
 """
 import asyncio
+import socket
 
 import pytest
 
@@ -160,7 +161,9 @@ async def test_protocol_timeout_on_starttls(
     async def client_connected(reader, writer):
         await asyncio.sleep(1.0)
 
-    server = await asyncio.start_server(client_connected, host=hostname, port=port)
+    server = await asyncio.start_server(
+        client_connected, host=hostname, port=port, family=socket.AF_INET
+    )
     connect_future = event_loop.create_connection(
         SMTPProtocol, host=hostname, port=port
     )
