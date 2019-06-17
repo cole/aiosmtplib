@@ -6,9 +6,6 @@ Changelog
 
 - Feature: Added send_message async function.
 
-- Bugfix: Set default timeout to 60 seconds as per documentation, instead
-  of None.
-
 - Cleanup: Set context for timeout and connection exceptions properly.
 
 - Cleanup: Use built in start_tls method on Python 3.7+.
@@ -25,6 +22,14 @@ Changelog
 - Cleanup: More useful error messages for timeouts (thanks ikrivosheev!),
   including two new exception classes, ``SMTPConnectTimeoutError`` and
   ``SMTPReadTimeoutError``
+
+
+1.0.6
+-----
+
+- Bugfix: Set default timeout to 60 seconds as per documentation
+  (previously it was unlimited).
+
 
 1.0.5
 -----
