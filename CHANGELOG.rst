@@ -1,6 +1,13 @@
 aiosmtplib changes
 ==================
 
+1.0.6
+-----
+
+- Bugfix: Set default timeout to 60 seconds as per documentation
+  (previously it was unlimited).
+
+
 1.0.5
 -----
 

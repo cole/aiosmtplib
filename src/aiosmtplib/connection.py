@@ -48,7 +48,7 @@ class SMTPConnection:
         hostname: str = "",
         port: int = None,
         source_address: str = None,
-        timeout: NumType = None,
+        timeout: NumType = DEFAULT_TIMEOUT,
         loop: asyncio.AbstractEventLoop = None,
         use_tls: bool = False,
         validate_certs: bool = True,
