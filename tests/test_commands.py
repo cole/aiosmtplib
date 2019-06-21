@@ -525,3 +525,40 @@ async def test_badly_encoded_text_response(
         response = await smtp_client.noop()
 
     assert response.code == SMTPStatus.completed
+
+
+async def test_read_limit_overrun(
+    smtp_client, smtpd_server, smtpd_class, smtpd_response_handler, monkeypatch
+):
+    long_response = (
+        "220 At vero eos et accusamus et iusto odio dignissimos ducimus qui "
+        "blanditiis praesentium voluptatum deleniti atque corruptis qui "
+        "blanditiis praesentium voluptatum\n"
+    )
+    response_handler = smtpd_response_handler(long_response, close_after=True)
+    monkeypatch.setattr(smtpd_class, "smtp_NOOP", response_handler)
+
+    async with smtp_client:
+        monkeypatch.setattr(smtp_client._reader, "_limit", 128)
+        with pytest.raises(SMTPResponseException) as exc_info:
+            await smtp_client.noop()
+
+    assert exc_info.value.code == 500
+    assert "Line too long" in exc_info.value.message
+
+
+async def test_partial_response_line(
+    smtp_client, smtpd_server, smtpd_class, smtpd_response_handler, monkeypatch
+):
+    partial_line = b"499 incomplete response\\"
+    response_handler = smtpd_response_handler(
+        partial_line, raw_response=True, close_after=True
+    )
+    monkeypatch.setattr(smtpd_class, "smtp_NOOP", response_handler)
+
+    async with smtp_client:
+        with pytest.raises(SMTPResponseException) as exc_info:
+            await smtp_client.noop()
+
+    assert exc_info.value.code == 499
+    assert exc_info.value.message == "incomplete response\\"

@@ -6,15 +6,16 @@ import socket
 import ssl
 from typing import Any, Optional, Type, Union
 
+from .compat import open_connection
 from .default import Default, _default
 from .errors import (
     SMTPConnectError,
     SMTPConnectTimeoutError,
+    SMTPReadTimeoutError,
     SMTPResponseException,
     SMTPServerDisconnected,
     SMTPTimeoutError,
 )
-from .protocol import SMTPProtocol
 from .response import SMTPResponse
 from .status import SMTPStatus
 
@@ -26,6 +27,7 @@ SMTP_PORT = 25
 SMTP_TLS_PORT = 465
 SMTP_STARTTLS_PORT = 587
 DEFAULT_TIMEOUT = 60
+MAX_LINE_LENGTH = 8192
 
 
 class SMTPConnection:
@@ -80,8 +82,8 @@ class SMTPConnection:
 
         :raises ValueError: mutually exclusive options provided
         """
-        self.protocol = None  # type: Optional[SMTPProtocol]
-        self.transport = None  # type: Optional[asyncio.BaseTransport]
+        self._reader = None  # type: Optional[asyncio.StreamReader]
+        self._writer = None  # type: Optional[asyncio.StreamWriter]
 
         if tls_context is not None and client_cert is not None:
             raise ValueError(
@@ -101,6 +103,8 @@ class SMTPConnection:
         self.cert_bundle = cert_bundle
 
         self.loop = loop or asyncio.get_event_loop()
+        self._read_lock = asyncio.Lock(loop=self.loop)
+        self._write_lock = asyncio.Lock(loop=self.loop)
         self._connect_lock = asyncio.Lock(loop=self.loop)
 
     async def __aenter__(self) -> "SMTPConnection":
@@ -126,7 +130,9 @@ class SMTPConnection:
         """
         Check if our transport is still connected.
         """
-        return bool(self.transport and not self.transport.is_closing())
+        return bool(
+            self._writer is not None and not self._writer.transport.is_closing()
+        )
 
     @property
     def source_address(self) -> str:
@@ -228,17 +234,21 @@ class SMTPConnection:
         if self.port is None:
             raise ValueError("Port must be set.")
 
-        protocol = SMTPProtocol(loop=self.loop)
-
         tls_context = None  # type: Optional[ssl.SSLContext]
+        tls_handshake_timeout = None
         if self.use_tls:
             tls_context = self._get_tls_context()
+            tls_handshake_timeout = self.timeout
 
-        connect_coro = self.loop.create_connection(
-            lambda: protocol, host=self.hostname, port=self.port, ssl=tls_context
+        connect_coro = open_connection(
+            host=self.hostname,
+            port=self.port,
+            limit=MAX_LINE_LENGTH,
+            ssl=tls_context,
+            ssl_handshake_timeout=tls_handshake_timeout,
         )
         try:
-            transport, _ = await asyncio.wait_for(connect_coro, timeout=self.timeout)
+            reader, writer = await asyncio.wait_for(connect_coro, timeout=self.timeout)
         except (ConnectionRefusedError, OSError) as exc:
             self.close()
             raise SMTPConnectError(
@@ -254,12 +264,12 @@ class SMTPConnection:
                 )
             ) from exc
 
-        self.protocol = protocol
-        self.transport = transport
+        self._reader = reader
+        self._writer = writer
 
         try:
             response = await asyncio.wait_for(
-                protocol.read_response(), timeout=self.timeout
+                self._read_response(), timeout=self.timeout
             )
         except asyncio.TimeoutError as exc:
             self.close()
@@ -282,17 +292,27 @@ class SMTPConnection:
 
         :raises SMTPServerDisconnected: connection lost
         """
+        self._raise_error_if_disconnected()
+        assert self._writer is not None  # nosec
+
         if timeout is _default:
             timeout = self.timeout  # type: ignore
 
-        self._raise_error_if_disconnected()
+        command = b" ".join(args) + b"\r\n"
+
+        self._writer.write(command)
+        try:
+            async with self._write_lock:
+                await asyncio.wait_for(self._writer.drain(), timeout)  # type: ignore
+        except asyncio.TimeoutError as exc:
+            raise SMTPTimeoutError("Timed out on write") from exc
+        except ConnectionError as exc:
+            self.close()
+            raise SMTPServerDisconnected(str(exc)) from exc
 
         try:
-            response = await self.protocol.execute_command(  # type: ignore
-                *args, timeout=timeout
-            )
+            response = await self._read_response(timeout=timeout)  # type: ignore
         except SMTPServerDisconnected as exc:
-            # On disconnect, clean up the connection.
             self.close()
             raise exc
 
@@ -336,9 +356,10 @@ class SMTPConnection:
         ``SMTPServerDisconnected``.
         """
         if (
-            self.transport is None
-            or self.protocol is None
-            or self.transport.is_closing()
+            self._reader is None
+            or self._writer is None
+            or self._writer.transport is None
+            or self._writer.transport.is_closing()
         ):
             self.close()
             raise SMTPServerDisconnected("Disconnected from SMTP server")
@@ -347,14 +368,18 @@ class SMTPConnection:
         """
         Closes the connection.
         """
-        if self.transport is not None and not self.transport.is_closing():
-            self.transport.close()
+        if (
+            self._writer is not None
+            and self._writer.transport is not None
+            and not self._writer.transport.is_closing()
+        ):
+            self._writer.close()
 
         if self._connect_lock.locked():
             self._connect_lock.release()
 
-        self.protocol = None
-        self.transport = None
+        self._writer = None
+        self._reader = None
 
     def get_transport_info(self, key: str) -> Any:
         """
@@ -373,5 +398,71 @@ class SMTPConnection:
         :raises SMTPServerDisconnected: connection lost
         """
         self._raise_error_if_disconnected()
-        assert self.transport is not None  # nosec
-        return self.transport.get_extra_info(key)
+        assert self._writer is not None  # nosec
+        return self._writer.get_extra_info(key)
+
+    async def _readline_with_timeout(self, timeout: Union[float, int, None] = None):
+        # The connection can be closing, but we still have data to read..so, just
+        # check for a reader here.
+        if self._reader is None:
+            self._raise_error_if_disconnected()
+
+        readuntil_coro = self._reader.readuntil(separator=b"\n")  # type: ignore
+        read_task = self.loop.create_task(readuntil_coro)
+        try:
+            async with self._read_lock:
+                line = await asyncio.wait_for(read_task, timeout)  # type: bytes
+        except asyncio.LimitOverrunError as exc:
+            raise SMTPResponseException(
+                SMTPStatus.unrecognized_command, "Line too long."
+            ) from exc
+        except asyncio.TimeoutError as exc:
+            raise SMTPReadTimeoutError("Timed out waiting for server response") from exc
+        except asyncio.IncompleteReadError as exc:
+            if exc.partial == b"":
+                # if we got only an EOF, raise SMTPServerDisconnected
+                raise SMTPServerDisconnected("Unexpected EOF received") from exc
+            else:
+                # otherwise, close our connection but try to parse the
+                # response anyways
+                self.close()
+                line = exc.partial
+
+        return line
+
+    async def _read_response(
+        self, timeout: Union[float, int, None] = None
+    ) -> SMTPResponse:
+        """
+        Get a status reponse from the server.
+
+        Returns an SMTPResponse namedtuple consisting of:
+          - server response code (e.g. 250, or such, if all goes well)
+          - server response string corresponding to response code (multiline
+            responses are converted to a single, multiline string).
+        """
+        code = None
+        response_lines = []
+
+        while True:
+            line = await self._readline_with_timeout(timeout=timeout)
+            try:
+                code = int(line[:3])
+            except ValueError:
+                pass
+
+            message = line[4:].strip(b" \t\r\n").decode("utf-8", "surrogateescape")
+            response_lines.append(message)
+
+            if line[3:4] != b"-":
+                break
+
+        full_message = "\n".join(response_lines)
+
+        if code is None:
+            raise SMTPResponseException(
+                SMTPStatus.invalid_response.value,
+                "Malformed SMTP response: {}".format(full_message),
+            )
+
+        return SMTPResponse(code, full_message)

@@ -174,12 +174,17 @@ def smtpd_server(
 
 @pytest.fixture(scope="session")
 def smtpd_response_handler(request):
-    def smtpd_response(response_text, write_eof=False, close_after=False):
+    def smtpd_response(
+        response_text, raw_response=False, write_eof=False, close_after=False
+    ):
         async def response_handler(smtpd, *args, **kwargs):
             if args and args[0]:
                 smtpd.session.host_name = args[0]
             if response_text is not None:
-                await smtpd.push(response_text)
+                if raw_response:
+                    await smtpd.push_raw(response_text)
+                else:
+                    await smtpd.push(response_text)
             if write_eof:
                 smtpd.transport.write_eof()
             if close_after:
