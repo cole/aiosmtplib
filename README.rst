@@ -54,4 +54,4 @@ Bug reports (and feature requests) are welcome via Github issues.
 .. |black| image:: https://img.shields.io/badge/code%20style-black-000000.svg
            :target: https://github.com/ambv/black
            :alt: "Code style: black"
-.. _Read The Docs: https://aiosmtplib.readthedocs.io/en/latest/overview.html
+.. _Read The Docs: https://aiosmtplib.readthedocs.io/en/stable/overview.html
