@@ -13,7 +13,7 @@ For documentation, see `Read The Docs`_.
 Quickstart
 ----------
 
-.. testcode::
+.. code-block:: python
 
     import asyncio
     from email.mime.text import MIMEText
