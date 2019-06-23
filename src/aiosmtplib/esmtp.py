@@ -6,7 +6,6 @@ import re
 import ssl
 from typing import Dict, Iterable, List, Optional, Tuple, Union
 
-from .compat import start_tls
 from .connection import SMTPConnection
 from .default import Default, _default
 from .email import parse_address, quote_address
@@ -18,7 +17,6 @@ from .errors import (
     SMTPResponseException,
     SMTPSenderRefused,
     SMTPServerDisconnected,
-    SMTPTimeoutError,
 )
 from .response import SMTPResponse
 from .status import SMTPStatus
@@ -29,8 +27,6 @@ __all__ = ("ESMTP",)
 
 OLDSTYLE_AUTH_REGEX = re.compile(r"auth=(?P<auth>.*)", flags=re.I)
 EXTENSIONS_REGEX = re.compile(r"(?P<ext>[A-Za-z0-9][A-Za-z0-9\-]*) ?")
-LINE_ENDINGS_REGEX = re.compile(rb"(?:\r\n|\n|\r(?!\n))")
-PERIOD_REGEX = re.compile(rb"(?m)^\.")
 
 
 class ESMTP(SMTPConnection):
@@ -303,10 +299,6 @@ class ESMTP(SMTPConnection):
         Send an SMTP DATA command, followed by the message given.
         This method transfers the actual email content to the server.
 
-        Automatically quotes lines beginning with a period per RFC821.
-        Lone \\\\r and \\\\n characters are converted to \\\\r\\\\n
-        characters.
-
         :raises SMTPDataError: on unexpected server response code
         :raises SMTPServerDisconnected: connection lost
         """
@@ -320,33 +312,19 @@ class ESMTP(SMTPConnection):
         if isinstance(message, str):
             message = message.encode("ascii")
 
-        message = LINE_ENDINGS_REGEX.sub(b"\r\n", message)
-        message = PERIOD_REGEX.sub(b"..", message)
-        if not message.endswith(b"\r\n"):
-            message += b"\r\n"
-        message += b".\r\n"
-
         async with self._command_lock:
             start_response = await self.execute_command(b"DATA", timeout=timeout)
 
             if start_response.code != SMTPStatus.start_input:
                 raise SMTPDataError(start_response.code, start_response.message)
 
-            assert self._writer is not None  # nosec
-            self._writer.write(message)
             try:
-                async with self._write_lock:
-                    await asyncio.wait_for(  # type: ignore
-                        self._writer.drain(), timeout
-                    )
-            except ConnectionError as exc:
-                self.close()
-                raise SMTPServerDisconnected(str(exc)) from exc
-            except asyncio.TimeoutError as exc:
-                raise SMTPTimeoutError("Timed out on write") from exc
-
-            try:
-                response = await self._read_response(timeout=timeout)  # type: ignore
+                await self.protocol.write_message_data(  # type: ignore
+                    message, timeout=timeout
+                )
+                response = await self.protocol.read_response(  # type: ignore
+                    timeout=timeout
+                )
             except SMTPServerDisconnected as exc:
                 self.close()
                 raise exc
@@ -446,9 +424,6 @@ class ESMTP(SMTPConnection):
         :raises ValueError: invalid options provided
         """
         self._raise_error_if_disconnected()
-        assert self._reader is not None  # nosec
-        assert self._writer is not None  # nosec
-
         await self._ehlo_or_helo_if_needed()
 
         if validate_certs is not None:
@@ -482,35 +457,15 @@ class ESMTP(SMTPConnection):
             if response.code != SMTPStatus.ready:
                 raise SMTPResponseException(response.code, response.message)
 
-            transport = self._writer.transport
-            protocol = self._writer._protocol  # type: ignore
             try:
-                tls_transport = await start_tls(  # type: ignore
-                    self.loop,
-                    transport,
-                    protocol,
-                    tls_context,
-                    server_side=False,
-                    server_hostname=server_hostname,
-                    ssl_handshake_timeout=timeout,
+                transport = await self.protocol.start_tls(  # type: ignore
+                    tls_context, server_hostname=server_hostname, timeout=timeout
                 )
-
-            except asyncio.TimeoutError as exc:
-                raise SMTPTimeoutError("Timed out while upgrading transport") from exc
-            # SSLProtocol only raises ConnectionAbortedError on timeout
-            except ConnectionAbortedError as exc:
-                raise SMTPTimeoutError(exc.args[0]) from exc
-            except ConnectionResetError as exc:
+            except SMTPServerDisconnected:
                 self.close()
+                raise
 
-                if exc.args:
-                    message = exc.args[0]
-                else:
-                    message = "Connection was reset while upgrading transport"
-                raise SMTPServerDisconnected(message) from exc
-
-            self._reader._transport = tls_transport  # type: ignore
-            self._writer._transport = tls_transport  # type: ignore
+        self.transport = transport
 
         # RFC 3207 part 4.2:
         # The client MUST discard any knowledge obtained from the server, such

@@ -82,7 +82,7 @@ async def test_starttls(smtp_client, smtpd_server):
 
         # Make sure our connection was actually upgraded. ssl protocol transport is
         # private in UVloop, so just check the class name.
-        assert "SSL" in type(smtp_client._writer.transport).__name__
+        assert "SSL" in type(smtp_client.transport).__name__
 
         response = await smtp_client.ehlo()
         assert response.code == SMTPStatus.completed
@@ -173,7 +173,7 @@ async def test_starttls_invalid_responses(
 
         # Make sure our connection was not upgraded. ssl protocol transport is
         # private in UVloop, so just check the class name.
-        assert "SSL" not in type(smtp_client._writer.transport).__name__
+        assert "SSL" not in type(smtp_client.transport).__name__
 
 
 async def test_starttls_with_client_cert(

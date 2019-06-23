@@ -67,8 +67,8 @@ async def test_bad_connect_response_raises_error(
     with pytest.raises(SMTPConnectError):
         await smtp_client.connect()
 
-    assert smtp_client._reader is None
-    assert smtp_client._writer is None
+    assert smtp_client.transport is None
+    assert smtp_client.protocol is None
 
 
 async def test_421_closes_connection(
@@ -110,8 +110,8 @@ async def test_disconnected_server_raises_on_client_read(
 
     # Verify that the connection was closed
     assert not smtp_client._connect_lock.locked()
-    assert smtp_client._reader is None
-    assert smtp_client._writer is None
+    assert smtp_client.protocol is None
+    assert smtp_client.transport is None
 
 
 async def test_disconnected_server_raises_on_client_write(
@@ -127,8 +127,8 @@ async def test_disconnected_server_raises_on_client_write(
 
     # Verify that the connection was closed
     assert not smtp_client._connect_lock.locked()
-    assert smtp_client._reader is None
-    assert smtp_client._writer is None
+    assert smtp_client.protocol is None
+    assert smtp_client.transport is None
 
 
 async def test_disconnected_server_raises_on_data_read(
@@ -151,8 +151,8 @@ async def test_disconnected_server_raises_on_data_read(
 
     # Verify that the connection was closed
     assert not smtp_client._connect_lock.locked()
-    assert smtp_client._reader is None
-    assert smtp_client._writer is None
+    assert smtp_client.protocol is None
+    assert smtp_client.transport is None
 
 
 async def test_disconnected_server_raises_on_data_write(
@@ -177,8 +177,8 @@ async def test_disconnected_server_raises_on_data_write(
 
     # Verify that the connection was closed
     assert not smtp_client._connect_lock.locked()
-    assert smtp_client._reader is None
-    assert smtp_client._writer is None
+    assert smtp_client.protocol is None
+    assert smtp_client.transport is None
 
 
 async def test_disconnected_server_raises_on_starttls(
@@ -199,8 +199,8 @@ async def test_disconnected_server_raises_on_starttls(
 
     # Verify that the connection was closed
     assert not smtp_client._connect_lock.locked()
-    assert smtp_client._reader is None
-    assert smtp_client._writer is None
+    assert smtp_client.protocol is None
+    assert smtp_client.transport is None
 
 
 async def test_context_manager(smtp_client, smtpd_server):

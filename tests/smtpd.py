@@ -56,13 +56,10 @@ class TestSMTPD(SMTPD):
         return await super()._call_handler_hook(command, *args)
 
     async def push(self, status):
-        await super().push(status)
+        result = await super().push(status)
         self.event_handler.record_server_response(status)
 
-    async def push_raw(self, bytes_response):
-        self._writer.write(bytes_response)
-        await self._writer.drain()
-        self.event_handler.record_server_response(bytes_response)
+        return result
 
     async def smtp_EXPN(self, arg):
         """
