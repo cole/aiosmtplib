@@ -50,8 +50,12 @@ class SMTPProtocol(asyncio.Protocol):
         """
         return bool(self._transport is not None and not self._transport.is_closing())
 
+    @property
+    def transport(self) -> Optional[asyncio.Transport]:
+        return self._transport
+
     def connection_made(self, transport: asyncio.BaseTransport) -> None:
-        self._transport = cast(asyncio.Transport, transport)
+        self.set_transport(cast(asyncio.Transport, transport))
         self._over_ssl = transport.get_extra_info("sslcontext") is not None
 
     def connection_lost(self, exc: Optional[Exception]) -> None:
@@ -61,7 +65,12 @@ class SMTPProtocol(asyncio.Protocol):
             except SMTPServerDisconnected as smtp_exc:
                 self.set_exception(smtp_exc)
 
-        self._transport = None
+            if not self._closed.done():
+                self._closed.set_exception(exc)
+        else:
+            self._closed.set_result(None)
+
+        self.set_transport(None)
 
     def data_received(self, data: bytes) -> None:
         if not data:
@@ -72,12 +81,12 @@ class SMTPProtocol(asyncio.Protocol):
 
         # If we have too much data, try to pause
         if (
-            self._transport is not None
+            self.transport is not None
             and not self._reading_paused
             and len(self._read_buffer) > 2 * MAX_LINE_LENGTH
         ):
             try:
-                self._transport.pause_reading()
+                self.transport.pause_reading()
             except NotImplementedError:
                 # The transport can't be paused.
                 # We'll just have to buffer all data.
@@ -107,6 +116,9 @@ class SMTPProtocol(asyncio.Protocol):
         ):
             self._read_waiter.exception()
 
+    def set_transport(self, transport: Optional[asyncio.Transport]) -> None:
+        self._transport = transport
+
     def set_exception(self, exc: Exception) -> None:
         self._exception = exc
 
@@ -115,15 +127,6 @@ class SMTPProtocol(asyncio.Protocol):
             self._read_waiter = None
             if not read_waiter.cancelled():
                 read_waiter.set_exception(exc)
-
-        if not (self._closed.done() or self._closed.cancelled()):
-            self._closed.set_exception(exc)
-
-    def _raise_if_disconnected(self):
-        if self._transport is None:
-            raise SMTPServerDisconnected("Client not connected")
-        if self._exception:
-            raise self._exception
 
     def _wakeup_waiter(self) -> None:
         """Wakeup read*() functions waiting for data or EOF."""
@@ -134,12 +137,12 @@ class SMTPProtocol(asyncio.Protocol):
                 waiter.set_result(None)
 
     def _maybe_resume_reading(self) -> None:
-        if self._transport is None:
+        if self.transport is None:
             return
 
         if self._reading_paused and len(self._read_buffer) <= MAX_LINE_LENGTH:
             self._reading_paused = False
-            self._transport.resume_reading()
+            self.transport.resume_reading()
 
     async def _wait_for_data(self) -> None:
         """Wait until feed_data() or feed_eof() is called.
@@ -154,16 +157,16 @@ class SMTPProtocol(asyncio.Protocol):
                 "_wait_for_data called while another coroutine is "
                 "already waiting for incoming data"
             )
-        if self._transport is None:
-            raise RuntimeError("_wait_for_data called with no transport set")
         if self._eof:
             raise RuntimeError("_wait_for_data after EOF")
+        if self.transport is None:
+            raise RuntimeError("_wait_for_data called with no transport set")
 
         # Waiting for data while paused will make deadlock, so prevent it.
         # This is essential for readexactly(n) for case when n > limit.
         if self._reading_paused:
             self._reading_paused = False
-            self._transport.resume_reading()
+            self.transport.resume_reading()
 
         self._read_waiter = self._loop.create_future()
         try:
@@ -261,7 +264,8 @@ class SMTPProtocol(asyncio.Protocol):
           - server response string corresponding to response code (multiline
             responses are converted to a single, multiline string).
         """
-        self._raise_if_disconnected()
+        if self.transport is None:
+            raise SMTPServerDisconnected("Client not connected")
 
         code = None
         response_lines = []
@@ -316,10 +320,12 @@ class SMTPProtocol(asyncio.Protocol):
         self.write(data)
 
     def write(self, data: bytes) -> None:
-        self._raise_if_disconnected()
-        assert self._transport is not None  # nosec
+        if self.transport is None:
+            raise SMTPServerDisconnected("Client not connected")
+        elif self._exception:
+            raise self._exception
 
-        self._transport.write(data)
+        self.transport.write(data)
 
     async def execute_command(
         self, *args: bytes, timeout: Optional[Union[float, int]] = None
@@ -346,7 +352,7 @@ class SMTPProtocol(asyncio.Protocol):
         """
         if self._over_ssl:
             raise RuntimeError("Already using TLS.")
-        if self._transport is None:
+        if self.transport is None:
             raise SMTPServerDisconnected("Client not connected")
         if self._exception:
             raise self._exception
@@ -354,7 +360,7 @@ class SMTPProtocol(asyncio.Protocol):
         try:
             tls_transport = await start_tls(
                 self._loop,
-                self._transport,
+                self.transport,
                 self,
                 tls_context,
                 server_side=False,
@@ -374,6 +380,6 @@ class SMTPProtocol(asyncio.Protocol):
                 message = "Connection was reset while upgrading transport"
             raise SMTPServerDisconnected(message) from exc
 
-        self._transport = tls_transport
+        self.set_transport(tls_transport)
 
         return tls_transport
