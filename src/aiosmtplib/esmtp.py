@@ -305,6 +305,7 @@ class ESMTP(SMTPConnection):
         await self._ehlo_or_helo_if_needed()
         # As data accesses protocol directly, some handling is required
         self._raise_error_if_disconnected()
+        assert self.protocol is not None  # nosec
 
         if timeout is _default:
             timeout = self.timeout  # type: ignore
@@ -319,9 +320,7 @@ class ESMTP(SMTPConnection):
                 raise SMTPDataError(start_response.code, start_response.message)
 
             try:
-                await self.protocol.write_message_data(  # type: ignore
-                    message, timeout=timeout
-                )
+                self.protocol.write_message_data(message)
                 response = await self.protocol.read_response(  # type: ignore
                     timeout=timeout
                 )

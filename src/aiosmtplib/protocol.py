@@ -1,10 +1,13 @@
 """
 An ``asyncio.Protocol`` subclass for lower level IO handling.
+
+Much of this code is copied from the asyncio source, since inheritance from
+StreamReaderProtocol is not supported.
 """
 import asyncio
 import re
 import ssl
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, cast
 
 from .compat import start_tls
 from .errors import (
@@ -25,169 +28,230 @@ LINE_ENDINGS_REGEX = re.compile(rb"(?:\r\n|\n|\r(?!\n))")
 PERIOD_REGEX = re.compile(rb"(?m)^\.")
 
 
-class FlowControlMixin(object):
-    def __init__(self, loop: Optional[asyncio.AbstractEventLoop] = None):
-        if loop is None:
-            self._loop = asyncio.get_event_loop()
-        else:
-            self._loop = loop
-        self._paused = False
-        self._drain_waiter = None  # type: Optional[asyncio.Future]
-        self._connection_lost = False
-
-    def pause_writing(self):
-        self._paused = True
-
-    def resume_writing(self):
-        self._paused = False
-
-        waiter = self._drain_waiter
-        if waiter is not None:
-            self._drain_waiter = None
-            if not waiter.done():
-                waiter.set_result(None)
-
-    def connection_lost(self, exc: Optional[Exception]):
-        self._connection_lost = True
-        # Wake up the writer if currently paused.
-        if not self._paused:
-            return
-        waiter = self._drain_waiter
-        if waiter is None:
-            return
-        self._drain_waiter = None
-        if waiter.done():
-            return
-        if exc is None:
-            waiter.set_result(None)
-        else:
-            waiter.set_exception(exc)
-
-    async def _drain_helper(self):
-        if self._connection_lost:
-            raise ConnectionResetError("Connection lost")
-        if not self._paused:
-            return
-        waiter = self._loop.create_future()
-        self._drain_waiter = waiter
-        await waiter
-
-
-class StreamReaderProtocol(FlowControlMixin, asyncio.Protocol):
-    """
-    This protocol is based on asyncio.StreamReaderProtocol, but the code has
-    been copied to avoid references to private attributes.
-    """
-
-    def __init__(
-        self,
-        reader: asyncio.StreamReader,
-        loop: Optional[asyncio.AbstractEventLoop] = None,
-    ) -> None:
-        super().__init__(loop=loop)
-
-        self._transport = None  # type: Optional[asyncio.BaseTransport]
-        self._stream_reader = reader  # type: Optional[asyncio.StreamReader]
-        self._stream_writer = None  # type: Optional[asyncio.StreamWriter]
+class SMTPProtocol(asyncio.Protocol):
+    def __init__(self, loop: Optional[asyncio.AbstractEventLoop] = None) -> None:
+        self._loop = loop or asyncio.get_event_loop()
+        self._transport = None  # type: Optional[asyncio.Transport]
         self._over_ssl = False
+        self._eof = False
+        self._reading_paused = False
+        self._writing_paused = False
+        self._read_buffer = bytearray()
+        self._write_buffer = bytearray()
+        self._exception = None  # type: Optional[Exception]
+        self._read_waiter = None  # type: Optional[asyncio.Future]
         self._closed = self._loop.create_future()
+        self._io_lock = asyncio.Lock(loop=self._loop)
+
+    @property
+    def is_connected(self) -> bool:
+        """
+        Check if our transport is still connected.
+        """
+        return bool(self._transport is not None and not self._transport.is_closing())
 
     def connection_made(self, transport: asyncio.BaseTransport) -> None:
-        if self._stream_reader is None:
-            raise RuntimeError("Connection made on protocol with no stream reader")
-        # We set the _transport directly on the StreamReader, rather than calling
-        # set_transport (which will raise an AssertionError on upgrade).
-        # This is because on 3.5.2, we can't avoid calling connection_made on
-        # upgrade.
-        self._transport = transport
-        self._stream_reader._transport = transport  # type: ignore
+        self._transport = cast(asyncio.Transport, transport)
         self._over_ssl = transport.get_extra_info("sslcontext") is not None
-        self._stream_writer = asyncio.StreamWriter(
-            transport, self, self._stream_reader, self._loop
-        )
 
-    def connection_lost(self, exc: Optional[Exception]):
-        if self._stream_reader is not None:
-            if exc is None:
-                self._stream_reader.feed_eof()
+    def connection_lost(self, exc: Optional[Exception]) -> None:
+        if exc is not None:
+            try:
+                raise SMTPServerDisconnected("Connection lost") from exc
+            except SMTPServerDisconnected as smtp_exc:
+                self.set_exception(smtp_exc)
+
+        self._transport = None
+
+    def data_received(self, data: bytes) -> None:
+        if not data:
+            return
+
+        self._read_buffer.extend(data)
+        self._wakeup_waiter()
+
+        # If we have too much data, try to pause
+        if (
+            self._transport is not None
+            and not self._reading_paused
+            and len(self._read_buffer) > 2 * MAX_LINE_LENGTH
+        ):
+            try:
+                self._transport.pause_reading()
+            except NotImplementedError:
+                # The transport can't be paused.
+                # We'll just have to buffer all data.
+                pass
             else:
-                self._stream_reader.set_exception(exc)
-        if not self._closed.done():
-            if exc is None:
-                self._closed.set_result(None)
-            else:
-                self._closed.set_exception(exc)
-        super().connection_lost(exc)
+                self._reading_paused = True
 
-        self._stream_reader = None
-        self._stream_writer = None
+    def eof_received(self) -> bool:
+        self._eof = True
+        self._wakeup_waiter()
 
-    def data_received(self, data: bytes):
-        if self._stream_reader is None:
-            raise RuntimeError("Data received on protocol with no stream reader")
+        return False
 
-        self._stream_reader.feed_data(data)
-
-    def eof_received(self):
-        if self._stream_reader is None:
-            raise RuntimeError("EOF received on protocol with no stream reader")
-
-        self._stream_reader.feed_eof()
-        if self._over_ssl:
-            # Prevent a warning in SSLProtocol.eof_received:
-            # "returning true from eof_received()
-            # has no effect when using ssl"
-            return False
-        return True
-
-    def _get_close_waiter(self, stream: Any):
+    def _get_close_waiter(self, stream: Any) -> asyncio.Future:
         return self._closed
 
     def __del__(self):
         # Prevent reports about unhandled exceptions.
         # Better than self._closed._log_traceback = False hack
-        closed = self._closed
-        if closed.done() and not closed.cancelled():
-            closed.exception()
+        if self._closed.done() and not self._closed.cancelled():
+            self._closed.exception()
 
+        if (
+            self._read_waiter is not None
+            and self._read_waiter.done()
+            and not self._read_waiter.cancelled()
+        ):
+            self._read_waiter.exception()
 
-class SMTPProtocol(StreamReaderProtocol):
-    def __init__(self, loop: Optional[asyncio.AbstractEventLoop] = None):
-        reader = asyncio.StreamReader(limit=MAX_LINE_LENGTH, loop=loop)
-        super().__init__(reader, loop=loop)
+    def set_exception(self, exc: Exception) -> None:
+        self._exception = exc
 
-        self._io_lock = asyncio.Lock(loop=self._loop)
+        read_waiter = self._read_waiter
+        if read_waiter is not None:
+            self._read_waiter = None
+            if not read_waiter.cancelled():
+                read_waiter.set_exception(exc)
 
-    async def readline_with_timeout(self, timeout: Union[float, int, None] = None):
-        if self._stream_reader is None or self._transport is None:
+        if not (self._closed.done() or self._closed.cancelled()):
+            self._closed.set_exception(exc)
+
+    def _raise_if_disconnected(self):
+        if self._transport is None:
             raise SMTPServerDisconnected("Client not connected")
+        if self._exception:
+            raise self._exception
 
-        read_task = self._loop.create_task(
-            self._stream_reader.readuntil(separator=b"\n")
-        )
+    def _wakeup_waiter(self) -> None:
+        """Wakeup read*() functions waiting for data or EOF."""
+        waiter = self._read_waiter
+        if waiter is not None:
+            self._read_waiter = None
+            if not waiter.cancelled():
+                waiter.set_result(None)
+
+    def _maybe_resume_reading(self) -> None:
+        if self._transport is None:
+            return
+
+        if self._reading_paused and len(self._read_buffer) <= MAX_LINE_LENGTH:
+            self._reading_paused = False
+            self._transport.resume_reading()
+
+    async def _wait_for_data(self) -> None:
+        """Wait until feed_data() or feed_eof() is called.
+        If stream was paused, automatically resume it.
+        """
+        # StreamReader uses a future to link the protocol feed_data() method
+        # to a read coroutine. Running two read coroutines at the same time
+        # would have an unexpected behaviour. It would not possible to know
+        # which coroutine would get the next data.
+        if self._read_waiter is not None:
+            raise RuntimeError(
+                "_wait_for_data called while another coroutine is "
+                "already waiting for incoming data"
+            )
+        if self._transport is None:
+            raise RuntimeError("_wait_for_data called with no transport set")
+        if self._eof:
+            raise RuntimeError("_wait_for_data after EOF")
+
+        # Waiting for data while paused will make deadlock, so prevent it.
+        # This is essential for readexactly(n) for case when n > limit.
+        if self._reading_paused:
+            self._reading_paused = False
+            self._transport.resume_reading()
+
+        self._read_waiter = self._loop.create_future()
         try:
-            async with self._io_lock:
-                line = await asyncio.wait_for(read_task, timeout)  # type: bytes
-        except asyncio.LimitOverrunError as exc:
+            await self._read_waiter
+        finally:
+            self._read_waiter = None
+
+    async def readuntil(self, separator=b"\n") -> bytes:
+        """Read data from the stream until ``separator`` is found.
+        On success, the data and separator will be removed from the
+        internal buffer (consumed). Returned data will include the
+        separator at the end.
+        """
+        seplen = len(separator)
+        if seplen == 0:
+            raise ValueError("Separator should be at least one-byte string")
+
+        if self._exception is not None:
+            raise self._exception
+
+        # Consume whole buffer except last bytes, which length is
+        # one less than seplen. Let's check corner cases with
+        # separator='SEPARATOR':
+        # * we have received almost complete separator (without last
+        #   byte). i.e buffer='some textSEPARATO'. In this case we
+        #   can safely consume len(separator) - 1 bytes.
+        # * last byte of buffer is first byte of separator, i.e.
+        #   buffer='abcdefghijklmnopqrS'. We may safely consume
+        #   everything except that last byte, but this require to
+        #   analyze bytes of buffer that match partial separator.
+        #   This is slow and/or require FSM. For this case our
+        #   implementation is not optimal, since require rescanning
+        #   of data that is known to not belong to separator. In
+        #   real world, separator will not be so long to notice
+        #   performance problems. Even when reading MIME-encoded
+        #   messages :)
+
+        # `offset` is the number of bytes from the beginning of the buffer
+        # where there is no occurrence of `separator`.
+        offset = 0
+
+        # Loop until we find `separator` in the buffer, exceed the buffer size,
+        # or an EOF has happened.
+        while True:
+            buflen = len(self._read_buffer)
+
+            # Check if we now have enough data in the buffer for `separator` to
+            # fit.
+            if buflen - offset >= seplen:
+                isep = self._read_buffer.find(separator, offset)
+
+                if isep != -1:
+                    # `separator` is in the buffer. `isep` will be used later
+                    # to retrieve the data.
+                    break
+
+                # see upper comment for explanation.
+                offset = buflen + 1 - seplen
+                if offset > MAX_LINE_LENGTH:
+                    raise SMTPResponseException(
+                        SMTPStatus.unrecognized_command, "Line too long."
+                    )
+
+            # Complete message (with full separator) may be present in buffer
+            # even when EOF flag is set. This may happen when the last chunk
+            # adds data which makes separator be found. That's why we check for
+            # EOF *after* inspecting the buffer.
+            if self._eof:
+                chunk = bytes(self._read_buffer)
+                self._read_buffer.clear()
+                raise asyncio.IncompleteReadError(chunk, None)
+
+            # _wait_for_data() will resume reading if stream was paused.
+            await self._wait_for_data()
+
+        if isep > MAX_LINE_LENGTH:
             raise SMTPResponseException(
                 SMTPStatus.unrecognized_command, "Line too long."
-            ) from exc
-        except asyncio.TimeoutError as exc:
-            raise SMTPReadTimeoutError("Timed out waiting for server response") from exc
-        except asyncio.IncompleteReadError as exc:
-            if exc.partial == b"":
-                # if we got only an EOF, raise SMTPServerDisconnected
-                raise SMTPServerDisconnected("Unexpected EOF received") from exc
-            else:
-                # otherwise, close our connection but try to parse the
-                # response anyways
-                self._transport.close()
-                line = exc.partial
+            )
 
-        return line
+        chunk = self._read_buffer[: isep + seplen]
+        del self._read_buffer[: isep + seplen]
+        self._maybe_resume_reading()
+
+        return bytes(chunk)
 
     async def read_response(
-        self, timeout: Union[float, int, None] = None
+        self, timeout: Optional[Union[float, int]] = None
     ) -> SMTPResponse:
         """
         Get a status reponse from the server.
@@ -197,11 +261,24 @@ class SMTPProtocol(StreamReaderProtocol):
           - server response string corresponding to response code (multiline
             responses are converted to a single, multiline string).
         """
+        self._raise_if_disconnected()
+
         code = None
         response_lines = []
 
         while True:
-            line = await self.readline_with_timeout(timeout=timeout)
+            read_task = self._loop.create_task(self.readuntil(separator=b"\n"))
+            try:
+                async with self._io_lock:
+                    line = await asyncio.wait_for(read_task, timeout)
+            except asyncio.TimeoutError as exc:
+                raise SMTPReadTimeoutError(
+                    "Timed out waiting for server response"
+                ) from exc
+            except asyncio.IncompleteReadError as exc:
+                line = exc.partial
+                raise SMTPServerDisconnected("Unexpected EOF") from exc
+
             try:
                 code = int(line[:3])
             except ValueError:
@@ -223,9 +300,7 @@ class SMTPProtocol(StreamReaderProtocol):
 
         return SMTPResponse(code, full_message)
 
-    async def write_message_data(
-        self, data: bytes, timeout: Union[float, int, None] = None
-    ) -> None:
+    def write_message_data(self, data: bytes) -> None:
         """Encode and write email message data
 
         Automatically quotes lines beginning with a period per RFC821.
@@ -238,25 +313,16 @@ class SMTPProtocol(StreamReaderProtocol):
             data += b"\r\n"
         data += b".\r\n"
 
-        await self.write_and_drain(data, timeout=timeout)
+        self.write(data)
 
-    async def write_and_drain(
-        self, data: bytes, timeout: Union[float, int, None] = None
-    ) -> None:
-        if self._stream_writer is None:
-            raise SMTPServerDisconnected("Client not connected")
+    def write(self, data: bytes) -> None:
+        self._raise_if_disconnected()
+        assert self._transport is not None  # nosec
 
-        self._stream_writer.write(data)
-        try:
-            async with self._io_lock:
-                await asyncio.wait_for(self._stream_writer.drain(), timeout)
-        except ConnectionError as exc:
-            raise SMTPServerDisconnected(str(exc)) from exc
-        except asyncio.TimeoutError as exc:
-            raise SMTPTimeoutError("Timed out on write") from exc
+        self._transport.write(data)
 
     async def execute_command(
-        self, *args: bytes, timeout: Union[float, int, None] = None
+        self, *args: bytes, timeout: Optional[Union[float, int]] = None
     ) -> SMTPResponse:
         """
         Sends an SMTP command along with any args to the server, and returns
@@ -264,7 +330,7 @@ class SMTPProtocol(StreamReaderProtocol):
         """
         command = b" ".join(args) + b"\r\n"
 
-        await self.write_and_drain(command, timeout=timeout)
+        self.write(command)
         response = await self.read_response(timeout=timeout)
 
         return response
@@ -273,20 +339,17 @@ class SMTPProtocol(StreamReaderProtocol):
         self,
         tls_context: ssl.SSLContext,
         server_hostname: Optional[str] = None,
-        timeout: Union[float, int, None] = None,
+        timeout: Optional[Union[float, int]] = None,
     ) -> asyncio.Transport:
         """
         Puts the connection to the SMTP server into TLS mode.
         """
         if self._over_ssl:
             raise RuntimeError("Already using TLS.")
-
-        if (
-            self._transport is None
-            or self._stream_reader is None
-            or self._stream_writer is None
-        ):
+        if self._transport is None:
             raise SMTPServerDisconnected("Client not connected")
+        if self._exception:
+            raise self._exception
 
         try:
             tls_transport = await start_tls(
@@ -312,10 +375,5 @@ class SMTPProtocol(StreamReaderProtocol):
             raise SMTPServerDisconnected(message) from exc
 
         self._transport = tls_transport
-        self._stream_reader._transport = tls_transport  # type: ignore
-        self._stream_writer._transport = tls_transport  # type: ignore
 
         return tls_transport
-
-    # Backwards compatibility shim
-    starttls = start_tls

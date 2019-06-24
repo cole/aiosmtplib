@@ -95,42 +95,21 @@ async def test_timeout_on_starttls(
         await smtp_client.starttls(validate_certs=False, timeout=0.0)
 
 
-async def test_protocol_readline_with_timeout_times_out(
+async def test_protocol_read_response_with_timeout_times_out(
     event_loop, echo_server, hostname, port
 ):
     connect_future = event_loop.create_connection(
         SMTPProtocol, host=hostname, port=port
     )
 
-    _, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
-
-    protocol.pause_writing()
-    protocol._stream_writer.write(b"1234")
+    transport, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
 
     with pytest.raises(SMTPTimeoutError) as exc:
-        await protocol.readline_with_timeout(timeout=0.0)
+        await protocol.read_response(timeout=0.0)
 
-    protocol._stream_writer.close()
+    transport.close()
 
     assert str(exc.value) == "Timed out waiting for server response"
-
-
-async def test_protocol_timeout_on_drain_writer(
-    event_loop, echo_server, hostname, port
-):
-    connect_future = event_loop.create_connection(
-        SMTPProtocol, host=hostname, port=port
-    )
-
-    _, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
-
-    protocol.pause_writing()
-
-    with pytest.raises(SMTPTimeoutError) as exc:
-        await protocol.write_and_drain(b"1234", timeout=0.0)
-
-    protocol._stream_writer.close()
-    assert str(exc.value) == "Timed out on write"
 
 
 async def test_connect_timeout_error(hostname, port):

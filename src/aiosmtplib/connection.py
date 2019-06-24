@@ -126,7 +126,7 @@ class SMTPConnection:
         """
         Check if our transport is still connected.
         """
-        return bool(self.transport and not self.transport.is_closing())
+        return bool(self.protocol is not None and self.protocol.is_connected)
 
     @property
     def source_address(self) -> str:
@@ -335,11 +335,7 @@ class SMTPConnection:
         See if we're still connected, and if not, raise
         ``SMTPServerDisconnected``.
         """
-        if (
-            self.transport is None
-            or self.protocol is None
-            or self.transport.is_closing()
-        ):
+        if self.protocol is None or not self.protocol.is_connected:
             self.close()
             raise SMTPServerDisconnected("Disconnected from SMTP server")
 
