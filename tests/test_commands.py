@@ -6,38 +6,13 @@ import pytest
 from aiosmtplib import SMTPDataError, SMTPHeloError, SMTPResponseException, SMTPStatus
 
 
-ERROR_CODES = [
-    code
-    for code in SMTPStatus
-    if code not in (SMTPStatus.domain_unavailable, SMTPStatus.completed)
-]
-HELP_ERROR_CODES = [
-    code
-    for code in SMTPStatus
-    if code
-    not in (
-        SMTPStatus.domain_unavailable,
-        SMTPStatus.completed,
-        SMTPStatus.system_status_ok,
-        SMTPStatus.help_message,
-    )
-]
-QUIT_ERROR_CODES = [code for code in SMTPStatus if code is not SMTPStatus.closing]
-RCPT_ERROR_CODES = [
-    code
-    for code in SMTPStatus
-    if code
-    not in (
-        SMTPStatus.domain_unavailable,
-        SMTPStatus.completed,
-        SMTPStatus.will_forward,
-    )
-]
-DATA_START_ERROR_CODES = [
-    code
-    for code in SMTPStatus
-    if code not in (SMTPStatus.domain_unavailable, SMTPStatus.start_input)
-]
+ERROR_CODES = (
+    SMTPStatus.mailbox_unavailable,
+    SMTPStatus.unrecognized_command,
+    SMTPStatus.bad_command_sequence,
+    SMTPStatus.syntax_error,
+)
+
 
 pytestmark = pytest.mark.asyncio()
 
@@ -324,7 +299,7 @@ async def test_help_ok(smtp_client, smtpd_server):
         assert "Supported commands" in help_message
 
 
-@pytest.mark.parametrize("error_code", HELP_ERROR_CODES)
+@pytest.mark.parametrize("error_code", ERROR_CODES)
 async def test_help_error(
     smtp_client,
     smtpd_server,
@@ -342,7 +317,7 @@ async def test_help_error(
         assert exception_info.value.code == error_code
 
 
-@pytest.mark.parametrize("error_code", QUIT_ERROR_CODES)
+@pytest.mark.parametrize("error_code", ERROR_CODES)
 async def test_quit_error(
     smtp_client,
     smtpd_server,
@@ -435,7 +410,7 @@ async def test_rcpt_options_not_implemented(smtp_client, smtpd_server):
             assert err.code == SMTPStatus.syntax_error
 
 
-@pytest.mark.parametrize("error_code", RCPT_ERROR_CODES)
+@pytest.mark.parametrize("error_code", ERROR_CODES)
 async def test_rcpt_error(
     smtp_client,
     smtpd_server,
@@ -465,7 +440,7 @@ async def test_data_ok(smtp_client, smtpd_server):
         assert response.message == "OK"
 
 
-@pytest.mark.parametrize("error_code", DATA_START_ERROR_CODES)
+@pytest.mark.parametrize("error_code", ERROR_CODES)
 async def test_data_error_on_start_input(
     smtp_client,
     smtpd_server,
