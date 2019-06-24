@@ -9,8 +9,8 @@ from .smtpd import SMTPDController
 
 
 @pytest.fixture(scope="function")
-def threaded_smtpd_server(request, hostname, port, smtpd_handler):
-    controller = SMTPDController(smtpd_handler, hostname=hostname, port=port)
+def threaded_smtpd_server(request, bind_address, port, smtpd_handler):
+    controller = SMTPDController(smtpd_handler, hostname=bind_address, port=port)
     controller.start()
     request.addfinalizer(controller.stop)
 

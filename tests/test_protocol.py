@@ -25,7 +25,9 @@ async def test_protocol_connect(echo_server, event_loop, hostname, port):
     transport.close()
 
 
-async def test_protocol_read_limit_overrun(event_loop, hostname, port, monkeypatch):
+async def test_protocol_read_limit_overrun(
+    event_loop, bind_address, hostname, port, monkeypatch
+):
     async def client_connected(reader, writer):
         await reader.read(1000)
         long_response = (
@@ -37,7 +39,7 @@ async def test_protocol_read_limit_overrun(event_loop, hostname, port, monkeypat
         await writer.drain()
 
     server = await asyncio.start_server(
-        client_connected, host=hostname, port=port, family=socket.AF_INET
+        client_connected, host=bind_address, port=port, family=socket.AF_INET
     )
     connect_future = event_loop.create_connection(
         SMTPProtocol, host=hostname, port=port
@@ -79,7 +81,9 @@ async def test_protocol_writer_connected_check_on_start_tls(client_tls_context):
         await smtp_protocol.start_tls(client_tls_context)
 
 
-async def test_error_on_readline_with_partial_line(event_loop, hostname, port):
+async def test_error_on_readline_with_partial_line(
+    event_loop, bind_address, hostname, port
+):
     partial_response = b"499 incomplete response\\"
 
     async def client_connected(reader, writer):
@@ -88,7 +92,7 @@ async def test_error_on_readline_with_partial_line(event_loop, hostname, port):
         await writer.drain()
 
     server = await asyncio.start_server(
-        client_connected, host=hostname, port=port, family=socket.AF_INET
+        client_connected, host=bind_address, port=port, family=socket.AF_INET
     )
     connect_future = event_loop.create_connection(
         SMTPProtocol, host=hostname, port=port

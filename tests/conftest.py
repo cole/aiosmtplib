@@ -28,7 +28,17 @@ BASE_CERT_PATH = Path("tests/certs/")
 
 def pytest_addoption(parser):
     parser.addoption(
-        "--event-loop", action="store", default="asyncio", choices=["asyncio", "uvloop"]
+        "--event-loop",
+        action="store",
+        default="asyncio",
+        choices=["asyncio", "uvloop"],
+        help="event loop to run tests on",
+    )
+    parser.addoption(
+        "--bind-addr",
+        action="store",
+        default="127.0.0.1",
+        help="server address to bind on, e.g 127.0.0.1",
     )
 
 
@@ -64,6 +74,13 @@ def event_loop(request, event_loop_policy):
 @pytest.fixture(scope="session")
 def hostname(request):
     return "localhost"
+
+
+@pytest.fixture(scope="session")
+def bind_address(request):
+    """Server side address for socket binding
+    """
+    return request.config.getoption("--bind-addr")
 
 
 @pytest.fixture(scope="function")
@@ -147,7 +164,13 @@ def server_tls_context(request, valid_cert_path, valid_key_path):
 
 @pytest.fixture(scope="function")
 def smtpd_server(
-    request, event_loop, hostname, port, smtpd_class, smtpd_handler, server_tls_context
+    request,
+    event_loop,
+    bind_address,
+    port,
+    smtpd_class,
+    smtpd_handler,
+    server_tls_context,
 ):
     def factory():
         return smtpd_class(
@@ -159,7 +182,7 @@ def smtpd_server(
 
     server = event_loop.run_until_complete(
         event_loop.create_server(
-            factory, host=hostname, port=port, family=socket.AF_INET
+            factory, host=bind_address, port=port, family=socket.AF_INET
         )
     )
 
@@ -198,10 +221,10 @@ def smtp_client(request, event_loop, hostname, port):
 
 
 @pytest.fixture(scope="function")
-def echo_server(request, hostname, port, event_loop):
+def echo_server(request, bind_address, port, event_loop):
     server = event_loop.run_until_complete(
         event_loop.create_server(
-            EchoServerProtocol, host=hostname, port=port, family=socket.AF_INET
+            EchoServerProtocol, host=bind_address, port=port, family=socket.AF_INET
         )
     )
 

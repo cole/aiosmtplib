@@ -29,12 +29,18 @@ def tls_smtp_client(request, event_loop, hostname, port):
 
 @pytest.fixture(scope="function")
 def tls_smtpd_server(
-    request, event_loop, hostname, port, smtpd_class, smtpd_handler, server_tls_context
+    request,
+    event_loop,
+    bind_address,
+    port,
+    smtpd_class,
+    smtpd_handler,
+    server_tls_context,
 ):
     def factory():
         return smtpd_class(
             smtpd_handler,
-            hostname=hostname,
+            hostname=bind_address,
             enable_SMTPUTF8=False,
             tls_context=server_tls_context,
         )
@@ -42,7 +48,7 @@ def tls_smtpd_server(
     server = event_loop.run_until_complete(
         event_loop.create_server(
             factory,
-            host=hostname,
+            host=bind_address,
             port=port,
             ssl=server_tls_context,
             family=socket.AF_INET,

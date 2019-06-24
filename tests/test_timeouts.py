@@ -135,13 +135,13 @@ async def test_server_disconnected_error_after_connect_timeout(hostname, port, m
 
 
 async def test_protocol_timeout_on_starttls(
-    event_loop, hostname, port, client_tls_context
+    event_loop, bind_address, hostname, port, client_tls_context
 ):
     async def client_connected(reader, writer):
         await asyncio.sleep(1.0)
 
     server = await asyncio.start_server(
-        client_connected, host=hostname, port=port, family=socket.AF_INET
+        client_connected, host=bind_address, port=port, family=socket.AF_INET
     )
     connect_future = event_loop.create_connection(
         SMTPProtocol, host=hostname, port=port
