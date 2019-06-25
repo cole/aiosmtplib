@@ -19,8 +19,8 @@ async def test_protocol_connect(echo_server, event_loop, hostname, port):
     )
     transport, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
 
-    assert protocol._transport is transport
-    assert not protocol._transport.is_closing()
+    assert protocol.transport is transport
+    assert not protocol.transport.is_closing()
 
     transport.close()
 
@@ -53,7 +53,7 @@ async def test_protocol_read_limit_overrun(
         await protocol.execute_command(b"TEST\n", timeout=1.0)
 
     assert exc_info.value.code == 500
-    assert "Line too long" in exc_info.value.message
+    assert "Response too long" in exc_info.value.message
 
     server.close()
     await server.wait_closed()
@@ -61,7 +61,7 @@ async def test_protocol_read_limit_overrun(
 
 async def test_protocol_connected_check_on_read_response(monkeypatch):
     protocol = SMTPProtocol()
-    monkeypatch.setattr(protocol, "_transport", None)
+    monkeypatch.setattr(protocol, "transport", None)
 
     with pytest.raises(SMTPServerDisconnected):
         await protocol.read_response(timeout=1.0)
