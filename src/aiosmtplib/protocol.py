@@ -4,7 +4,7 @@ An ``asyncio.Protocol`` subclass for lower level IO handling.
 import asyncio
 import re
 import ssl
-from typing import Optional, cast
+from typing import Callable, Optional, cast
 
 from .compat import start_tls
 from .errors import (
@@ -26,13 +26,26 @@ PERIOD_REGEX = re.compile(rb"(?m)^\.")
 
 
 class SMTPProtocol(asyncio.Protocol):
-    def __init__(self, loop: Optional[asyncio.AbstractEventLoop] = None) -> None:
+    def __init__(
+        self,
+        loop: Optional[asyncio.AbstractEventLoop] = None,
+        connection_lost_callback: Optional[Callable] = None,
+    ) -> None:
         self._loop = loop or asyncio.get_event_loop()
         self._over_ssl = False
         self._buffer = bytearray()
         self._response_waiter = None  # type: Optional[asyncio.Future[SMTPResponse]]
+        self._connection_lost_callback = connection_lost_callback
+        self._connection_lost_waiter = None  # type: Optional[asyncio.Future[None]]
 
         self.transport = None  # type: Optional[asyncio.Transport]
+
+    def __del__(self):
+        waiters = (self._response_waiter, self._connection_lost_waiter)
+        for waiter in filter(None, waiters):
+            if waiter.done() and not waiter.cancelled():
+                # Avoid 'Future exception was never retrieved' warnings
+                waiter.exception()
 
     @property
     def is_connected(self) -> bool:
@@ -46,15 +59,26 @@ class SMTPProtocol(asyncio.Protocol):
         self._over_ssl = transport.get_extra_info("sslcontext") is not None
         self._response_waiter = self._loop.create_future()
 
+        if self._connection_lost_callback is not None:
+            self._connection_lost_waiter = self._loop.create_future()
+            self._connection_lost_waiter.add_done_callback(
+                self._connection_lost_callback
+            )
+
     def connection_lost(self, exc: Optional[Exception]) -> None:
-        if (
-            exc is not None
-            and self._response_waiter is not None
-            and not self._response_waiter.done()
-        ):
+        if exc:
             smtp_exc = SMTPServerDisconnected("Server disconnected unexpectedly")
             smtp_exc.__cause__ = exc
-            self._response_waiter.set_exception(smtp_exc)
+
+            if self._response_waiter and not self._response_waiter.done():
+                self._response_waiter.set_exception(smtp_exc)
+            if self._connection_lost_waiter:
+                self._connection_lost_waiter.set_exception(smtp_exc)
+        else:
+            if self._connection_lost_waiter:
+                self._connection_lost_waiter.set_result(None)
+            if self._response_waiter and not self._response_waiter.done():
+                self._response_waiter.cancel()
 
         self.transport = None
 
@@ -81,6 +105,16 @@ class SMTPProtocol(asyncio.Protocol):
         else:
             if response is not None:
                 self._response_waiter.set_result(response)
+
+    def eof_received(self) -> bool:
+        exc = SMTPServerDisconnected("Unexpected EOF recieved")
+        if self._response_waiter and not self._response_waiter.done():
+            self._response_waiter.set_exception(exc)
+        if self._connection_lost_waiter:
+            self._connection_lost_waiter.set_exception(exc)
+
+        # Returning false closes the transport
+        return False
 
     def _read_response_from_buffer(self) -> Optional[SMTPResponse]:
         """Parse the actual response (if any) from the data buffer
@@ -120,14 +154,6 @@ class SMTPProtocol(asyncio.Protocol):
             return response
         else:
             return None
-
-    def eof_received(self) -> bool:
-        if self._response_waiter is not None and not self._response_waiter.done():
-            exc = SMTPServerDisconnected("Unexpected EOF recieved")
-            self._response_waiter.set_exception(exc)
-
-        # Returning false closes the transport
-        return False
 
     async def read_response(self, timeout: Optional[float] = None) -> SMTPResponse:
         """
@@ -204,7 +230,7 @@ class SMTPProtocol(asyncio.Protocol):
         if self._over_ssl:
             raise RuntimeError("Already using TLS.")
         if self.transport is None or self.transport.is_closing():
-            raise SMTPServerDisconnected("Client not connected")
+            raise SMTPServerDisconnected("Not connected")
 
         try:
             tls_transport = await start_tls(

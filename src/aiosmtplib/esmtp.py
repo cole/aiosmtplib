@@ -303,11 +303,10 @@ class ESMTP(SMTPConnection):
         :raises SMTPServerDisconnected: connection lost
         """
         await self._ehlo_or_helo_if_needed()
-        # As data accesses protocol directly, some handling is required
 
-        if self.protocol is None or not self.protocol.is_connected:
-            self.close()
-            raise SMTPServerDisconnected("Disconnected from SMTP server")
+        # As data accesses protocol directly, some handling is required
+        if self.protocol is None:
+            raise SMTPServerDisconnected("Not connected")
 
         if timeout is _default:
             timeout = self.timeout
@@ -322,12 +321,8 @@ class ESMTP(SMTPConnection):
             if start_response.code != SMTPStatus.start_input:
                 raise SMTPDataError(start_response.code, start_response.message)
 
-            try:
-                self.protocol.write_message_data(message)
-                response = await self.protocol.read_response(timeout=timeout)
-            except SMTPServerDisconnected as exc:
-                self.close()
-                raise exc
+            self.protocol.write_message_data(message)
+            response = await self.protocol.read_response(timeout=timeout)
 
         if response.code != SMTPStatus.completed:
             raise SMTPDataError(response.code, response.message)
@@ -424,10 +419,8 @@ class ESMTP(SMTPConnection):
         :raises ValueError: invalid options provided
         """
         await self._ehlo_or_helo_if_needed()
-
-        if self.protocol is None or not self.protocol.is_connected:
-            self.close()
-            raise SMTPServerDisconnected("Disconnected from SMTP server")
+        if self.protocol is None:
+            raise SMTPServerDisconnected("Not connected")
 
         if validate_certs is not None:
             self.validate_certs = validate_certs
@@ -461,15 +454,9 @@ class ESMTP(SMTPConnection):
             if response.code != SMTPStatus.ready:
                 raise SMTPResponseException(response.code, response.message)
 
-            try:
-                transport = await self.protocol.start_tls(
-                    tls_context, server_hostname=server_hostname, timeout=timeout
-                )
-            except SMTPServerDisconnected:
-                self.close()
-                raise
-
-        self.transport = transport
+            self.transport = await self.protocol.start_tls(
+                tls_context, server_hostname=server_hostname, timeout=timeout
+            )
 
         # RFC 3207 part 4.2:
         # The client MUST discard any knowledge obtained from the server, such

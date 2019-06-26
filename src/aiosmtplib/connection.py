@@ -112,14 +112,14 @@ class SMTPConnection:
     async def __aexit__(
         self, exc_type: Type[Exception], exc: Exception, traceback: Any
     ) -> None:
-        is_connection_error = exc_type in (ConnectionError, SMTPTimeoutError)
-        if is_connection_error or not self.is_connected:
+        if isinstance(exc, (ConnectionError, TimeoutError)):
             self.close()
-        else:
-            try:
-                await self.quit()
-            except (ConnectionError, SMTPResponseException, SMTPTimeoutError):
-                self.close()
+            return
+
+        try:
+            await self.quit()
+        except (SMTPServerDisconnected, SMTPResponseException, SMTPTimeoutError):
+            pass
 
     @property
     def is_connected(self) -> bool:
@@ -218,7 +218,11 @@ class SMTPConnection:
                 "Either a TLS context or a certificate/key must be provided"
             )
 
-        response = await self._create_connection()
+        try:
+            response = await self._create_connection()
+        except Exception as exc:
+            self.close()  # Reset our state to disconnected
+            raise exc
 
         return response
 
@@ -228,7 +232,9 @@ class SMTPConnection:
         if self.port is None:
             raise ValueError("Port must be set.")
 
-        protocol = SMTPProtocol(loop=self.loop)
+        protocol = SMTPProtocol(
+            loop=self.loop, connection_lost_callback=self._connection_lost
+        )
 
         tls_context = None  # type: Optional[ssl.SSLContext]
         if self.use_tls:
@@ -240,14 +246,12 @@ class SMTPConnection:
         try:
             transport, _ = await asyncio.wait_for(connect_coro, timeout=self.timeout)
         except (ConnectionRefusedError, OSError) as exc:
-            self.close()
             raise SMTPConnectError(
                 "Error connecting to {host} on port {port}: {err}".format(
                     host=self.hostname, port=self.port, err=exc
                 )
             ) from exc
         except asyncio.TimeoutError as exc:
-            self.close()
             raise SMTPConnectTimeoutError(
                 "Timed out connecting to {host} on port {port}".format(
                     host=self.hostname, port=self.port
@@ -258,20 +262,20 @@ class SMTPConnection:
         self.transport = transport
 
         try:
-            response = await asyncio.wait_for(
-                protocol.read_response(), timeout=self.timeout
-            )
-        except asyncio.TimeoutError as exc:
-            self.close()
+            response = await protocol.read_response(timeout=self.timeout)
+        except SMTPTimeoutError as exc:
             raise SMTPConnectTimeoutError(
                 "Timed out waiting for server ready message"
             ) from exc
 
         if response.code != SMTPStatus.ready:
-            self.close()
             raise SMTPConnectError(str(response))
 
         return response
+
+    def _connection_lost(self, waiter: asyncio.Future) -> None:
+        if waiter.cancelled() or waiter.exception() is not None:
+            self.close()
 
     async def execute_command(
         self, *args: bytes, timeout: Optional[Union[float, Default]] = _default
@@ -282,20 +286,14 @@ class SMTPConnection:
 
         :raises SMTPServerDisconnected: connection lost
         """
-        if self.protocol is None or not self.protocol.is_connected:
-            self.close()
-            raise SMTPServerDisconnected("Disconnected from SMTP server")
+        if self.protocol is None:
+            raise SMTPServerDisconnected("Not connected")
 
         if timeout is _default:
             timeout = self.timeout
         timeout = cast(Optional[float], timeout)
 
-        try:
-            response = await self.protocol.execute_command(*args, timeout=timeout)
-        except SMTPServerDisconnected as exc:
-            # On disconnect, clean up the connection.
-            self.close()
-            raise exc
+        response = await self.protocol.execute_command(*args, timeout=timeout)
 
         # If the server is unavailable, be nice and close the connection
         if response.code == SMTPStatus.domain_unavailable:
