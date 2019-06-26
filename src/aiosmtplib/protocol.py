@@ -4,7 +4,7 @@ An ``asyncio.Protocol`` subclass for lower level IO handling.
 import asyncio
 import re
 import ssl
-from typing import Optional, Union, cast
+from typing import Optional, cast
 
 from .compat import start_tls
 from .errors import (
@@ -128,9 +128,7 @@ class SMTPProtocol(asyncio.Protocol):
         # Returning false closes the transport
         return False
 
-    async def read_response(
-        self, timeout: Optional[Union[float, int]] = None
-    ) -> SMTPResponse:
+    async def read_response(self, timeout: Optional[float] = None) -> SMTPResponse:
         """
         Get a status reponse from the server.
 
@@ -180,7 +178,7 @@ class SMTPProtocol(asyncio.Protocol):
         self.transport.write(data)
 
     async def execute_command(
-        self, *args: bytes, timeout: Optional[Union[float, int]] = None
+        self, *args: bytes, timeout: Optional[float] = None
     ) -> SMTPResponse:
         """
         Sends an SMTP command along with any args to the server, and returns
@@ -197,7 +195,7 @@ class SMTPProtocol(asyncio.Protocol):
         self,
         tls_context: ssl.SSLContext,
         server_hostname: Optional[str] = None,
-        timeout: Optional[Union[float, int]] = None,
+        timeout: Optional[float] = None,
     ) -> asyncio.Transport:
         """
         Puts the connection to the SMTP server into TLS mode.

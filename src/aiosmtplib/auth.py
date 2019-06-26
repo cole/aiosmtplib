@@ -44,7 +44,7 @@ class SMTPAuth(ESMTP):
         self,
         username: str,
         password: str,
-        timeout: Union[float, int, None, Default] = _default,
+        timeout: Optional[Union[float, Default]] = _default,
     ) -> SMTPResponse:
         """
         Tries to login with supported auth methods.
@@ -85,7 +85,7 @@ class SMTPAuth(ESMTP):
         self,
         username: str,
         password: str,
-        timeout: Union[float, int, None, Default] = _default,
+        timeout: Optional[Union[float, Default]] = _default,
     ) -> SMTPResponse:
         """
         CRAM-MD5 auth uses the password as a shared secret to MD5 the server's
@@ -128,7 +128,7 @@ class SMTPAuth(ESMTP):
         self,
         username: str,
         password: str,
-        timeout: Union[float, int, None, Default] = _default,
+        timeout: Optional[Union[float, Default]] = _default,
     ) -> SMTPResponse:
         """
         PLAIN auth encodes the username and password in one Base64 encoded
@@ -160,7 +160,7 @@ class SMTPAuth(ESMTP):
         self,
         username: str,
         password: str,
-        timeout: Union[float, int, None, Default] = _default,
+        timeout: Optional[Union[float, Default]] = _default,
     ) -> SMTPResponse:
         """
         LOGIN auth sends the Base64 encoded username and password in sequence.

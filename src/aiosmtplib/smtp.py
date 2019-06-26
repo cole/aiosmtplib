@@ -9,7 +9,7 @@ Implementation is split into the following parent classes:
 """
 import asyncio
 from email.message import Message
-from typing import Dict, Iterable, List, Tuple, Union
+from typing import Dict, Iterable, List, Optional, Tuple, Union
 
 from .auth import SMTPAuth
 from .connection import SMTPConnection
@@ -56,7 +56,7 @@ class SMTP(SMTPAuth):
         message: Union[str, bytes],
         mail_options: Iterable[str] = None,
         rcpt_options: Iterable[str] = None,
-        timeout: Union[float, int, None, Default] = _default,
+        timeout: Optional[Union[float, Default]] = _default,
     ) -> Tuple[Dict[str, SMTPResponse], str]:
         """
         This command performs an entire mail transaction.
@@ -164,7 +164,7 @@ class SMTP(SMTPAuth):
         self,
         recipients: List[str],
         options: List[str] = None,
-        timeout: Union[float, int, None, Default] = _default,
+        timeout: Optional[Union[float, Default]] = _default,
     ) -> Dict[str, SMTPResponse]:
         """
         Send the recipients given to the server. Used as part of
@@ -194,7 +194,7 @@ class SMTP(SMTPAuth):
         recipients: Union[str, Iterable[str], None] = None,
         mail_options: Iterable[str] = None,
         rcpt_options: Iterable[str] = None,
-        timeout: Union[float, int, None, Default] = _default,
+        timeout: Optional[Union[float, Default]] = _default,
     ) -> Tuple[Dict[str, SMTPResponse], str]:
         r"""
         Sends an :py:class:`email.message.Message` object.

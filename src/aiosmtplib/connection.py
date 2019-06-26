@@ -4,7 +4,7 @@ Handles client connection/disconnection.
 import asyncio
 import socket
 import ssl
-from typing import Any, Optional, Type, Union
+from typing import Any, Optional, Type, Union, cast
 
 from .default import Default, _default
 from .errors import (
@@ -144,7 +144,7 @@ class SMTPConnection:
         hostname: Optional[str] = None,
         port: Optional[int] = None,
         source_address: Union[str, Default] = _default,
-        timeout: Union[float, int, None, Default] = _default,
+        timeout: Optional[Union[float, Default]] = _default,
         loop: Optional[asyncio.AbstractEventLoop] = None,
         use_tls: bool = None,
         validate_certs: bool = None,
@@ -201,17 +201,17 @@ class SMTPConnection:
             self.port = SMTP_TLS_PORT if self.use_tls else SMTP_PORT
 
         if timeout is not _default:
-            self.timeout = timeout  # type: ignore
+            self.timeout = cast(Optional[Union[float, int]], timeout)
         if source_address is not _default:
-            self._source_address = source_address  # type: ignore
+            self._source_address = cast(str, source_address)
         if client_cert is not _default:
-            self.client_cert = client_cert  # type: ignore
+            self.client_cert = cast(str, client_cert)
         if client_key is not _default:
-            self.client_key = client_key  # type: ignore
+            self.client_key = cast(str, client_key)
         if tls_context is not _default:
-            self.tls_context = tls_context  # type: ignore
+            self.tls_context = cast(ssl.SSLContext, tls_context)
         if cert_bundle is not _default:
-            self.cert_bundle = cert_bundle  # type: ignore
+            self.cert_bundle = cast(str, cert_bundle)
 
         if self.tls_context is not None and self.client_cert is not None:
             raise ValueError(
@@ -274,7 +274,7 @@ class SMTPConnection:
         return response
 
     async def execute_command(
-        self, *args: bytes, timeout: Union[float, int, None, Default] = _default
+        self, *args: bytes, timeout: Optional[Union[float, Default]] = _default
     ) -> SMTPResponse:
         """
         Check that we're connected, if we got a timeout value, and then
@@ -282,15 +282,16 @@ class SMTPConnection:
 
         :raises SMTPServerDisconnected: connection lost
         """
-        if timeout is _default:
-            timeout = self.timeout  # type: ignore
+        if self.protocol is None or not self.protocol.is_connected:
+            self.close()
+            raise SMTPServerDisconnected("Disconnected from SMTP server")
 
-        self._raise_error_if_disconnected()
+        if timeout is _default:
+            timeout = self.timeout
+        timeout = cast(Optional[float], timeout)
 
         try:
-            response = await self.protocol.execute_command(  # type: ignore
-                *args, timeout=timeout
-            )
+            response = await self.protocol.execute_command(*args, timeout=timeout)
         except SMTPServerDisconnected as exc:
             # On disconnect, clean up the connection.
             self.close()
@@ -303,7 +304,7 @@ class SMTPConnection:
         return response
 
     async def quit(
-        self, timeout: Union[float, int, None, Default] = _default
+        self, timeout: Optional[Union[float, Default]] = _default
     ) -> SMTPResponse:
         raise NotImplementedError
 
@@ -329,15 +330,6 @@ class SMTPConnection:
                 context.load_cert_chain(self.client_cert, keyfile=self.client_key)
 
         return context
-
-    def _raise_error_if_disconnected(self) -> None:
-        """
-        See if we're still connected, and if not, raise
-        ``SMTPServerDisconnected``.
-        """
-        if self.protocol is None or not self.protocol.is_connected:
-            self.close()
-            raise SMTPServerDisconnected("Disconnected from SMTP server")
 
     def close(self) -> None:
         """
@@ -368,6 +360,7 @@ class SMTPConnection:
 
         :raises SMTPServerDisconnected: connection lost
         """
-        self._raise_error_if_disconnected()
-        assert self.transport is not None  # nosec
+        if self.transport is None:
+            raise SMTPServerDisconnected("Disconnected from SMTP server")
+
         return self.transport.get_extra_info(key)

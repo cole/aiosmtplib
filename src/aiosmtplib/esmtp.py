@@ -4,7 +4,7 @@ Low level ESMTP command API.
 import asyncio
 import re
 import ssl
-from typing import Dict, Iterable, List, Optional, Tuple, Union
+from typing import Dict, Iterable, List, Optional, Tuple, Union, cast
 
 from .connection import SMTPConnection
 from .default import Default, _default
@@ -78,7 +78,7 @@ class ESMTP(SMTPConnection):
     # Base SMTP commands #
 
     async def helo(
-        self, hostname: str = None, timeout: Union[float, int, None, Default] = _default
+        self, hostname: str = None, timeout: Optional[Union[float, Default]] = _default
     ) -> SMTPResponse:
         """
         Send the SMTP HELO command.
@@ -100,7 +100,7 @@ class ESMTP(SMTPConnection):
 
         return response
 
-    async def help(self, timeout: Union[float, int, None, Default] = _default) -> str:
+    async def help(self, timeout: Optional[Union[float, Default]] = _default) -> str:
         """
         Send the SMTP HELP command, which responds with help text.
 
@@ -121,7 +121,7 @@ class ESMTP(SMTPConnection):
         return response.message
 
     async def rset(
-        self, timeout: Union[float, int, None, Default] = _default
+        self, timeout: Optional[Union[float, Default]] = _default
     ) -> SMTPResponse:
         """
         Send an SMTP RSET command, which resets the server's envelope
@@ -139,7 +139,7 @@ class ESMTP(SMTPConnection):
         return response
 
     async def noop(
-        self, timeout: Union[float, int, None, Default] = _default
+        self, timeout: Optional[Union[float, Default]] = _default
     ) -> SMTPResponse:
         """
         Send an SMTP NOOP command, which does nothing.
@@ -156,7 +156,7 @@ class ESMTP(SMTPConnection):
         return response
 
     async def vrfy(
-        self, address: str, timeout: Union[float, int, None, Default] = _default
+        self, address: str, timeout: Optional[Union[float, Default]] = _default
     ) -> SMTPResponse:
         """
         Send an SMTP VRFY command, which tests an address for validity.
@@ -185,7 +185,7 @@ class ESMTP(SMTPConnection):
         return response
 
     async def expn(
-        self, address: str, timeout: Union[float, int, None, Default] = _default
+        self, address: str, timeout: Optional[Union[float, Default]] = _default
     ) -> SMTPResponse:
         """
         Send an SMTP EXPN command, which expands a mailing list.
@@ -208,7 +208,7 @@ class ESMTP(SMTPConnection):
         return response
 
     async def quit(
-        self, timeout: Union[float, int, None, Default] = _default
+        self, timeout: Optional[Union[float, Default]] = _default
     ) -> SMTPResponse:
         """
         Send the SMTP QUIT command, which closes the connection.
@@ -232,7 +232,7 @@ class ESMTP(SMTPConnection):
         self,
         sender: str,
         options: Optional[Iterable[str]] = None,
-        timeout: Union[float, int, None, Default] = _default,
+        timeout: Optional[Union[float, Default]] = _default,
     ) -> SMTPResponse:
         """
         Send an SMTP MAIL command, which specifies the message sender and
@@ -262,7 +262,7 @@ class ESMTP(SMTPConnection):
         self,
         recipient: str,
         options: Optional[Iterable[str]] = None,
-        timeout: Union[float, int, None, Default] = _default,
+        timeout: Optional[Union[float, Default]] = _default,
     ) -> SMTPResponse:
         """
         Send an SMTP RCPT command, which specifies a single recipient for
@@ -293,7 +293,7 @@ class ESMTP(SMTPConnection):
     async def data(
         self,
         message: Union[str, bytes],
-        timeout: Union[float, int, None, Default] = _default,
+        timeout: Optional[Union[float, Default]] = _default,
     ) -> SMTPResponse:
         """
         Send an SMTP DATA command, followed by the message given.
@@ -304,11 +304,14 @@ class ESMTP(SMTPConnection):
         """
         await self._ehlo_or_helo_if_needed()
         # As data accesses protocol directly, some handling is required
-        self._raise_error_if_disconnected()
-        assert self.protocol is not None  # nosec
+
+        if self.protocol is None or not self.protocol.is_connected:
+            self.close()
+            raise SMTPServerDisconnected("Disconnected from SMTP server")
 
         if timeout is _default:
-            timeout = self.timeout  # type: ignore
+            timeout = self.timeout
+        timeout = cast(Optional[float], timeout)
 
         if isinstance(message, str):
             message = message.encode("ascii")
@@ -321,9 +324,7 @@ class ESMTP(SMTPConnection):
 
             try:
                 self.protocol.write_message_data(message)
-                response = await self.protocol.read_response(  # type: ignore
-                    timeout=timeout
-                )
+                response = await self.protocol.read_response(timeout=timeout)
             except SMTPServerDisconnected as exc:
                 self.close()
                 raise exc
@@ -338,7 +339,7 @@ class ESMTP(SMTPConnection):
     async def ehlo(
         self,
         hostname: Optional[str] = None,
-        timeout: Union[float, int, None, Default] = _default,
+        timeout: Optional[Union[float, Default]] = _default,
     ) -> SMTPResponse:
         """
         Send the SMTP EHLO command.
@@ -398,11 +399,11 @@ class ESMTP(SMTPConnection):
         self,
         server_hostname: Optional[str] = None,
         validate_certs: Optional[bool] = None,
-        client_cert: Union[str, None, Default] = _default,
-        client_key: Union[str, None, Default] = _default,
-        cert_bundle: Union[str, None, Default] = _default,
-        tls_context: Union[ssl.SSLContext, None, Default] = _default,
-        timeout: Union[float, int, None, Default] = _default,
+        client_cert: Optional[Union[str, Default]] = _default,
+        client_key: Optional[Union[str, Default]] = _default,
+        cert_bundle: Optional[Union[str, Default]] = _default,
+        tls_context: Optional[Union[ssl.SSLContext, Default]] = _default,
+        timeout: Optional[Union[float, Default]] = _default,
     ) -> SMTPResponse:
         """
         Puts the connection to the SMTP server into TLS mode.
@@ -422,21 +423,25 @@ class ESMTP(SMTPConnection):
         :raises SMTPServerDisconnected: connection lost
         :raises ValueError: invalid options provided
         """
-        self._raise_error_if_disconnected()
         await self._ehlo_or_helo_if_needed()
+
+        if self.protocol is None or not self.protocol.is_connected:
+            self.close()
+            raise SMTPServerDisconnected("Disconnected from SMTP server")
 
         if validate_certs is not None:
             self.validate_certs = validate_certs
         if timeout is _default:
-            timeout = self.timeout  # type: ignore
+            timeout = self.timeout
+        timeout = cast(Optional[float], timeout)
         if client_cert is not _default:
-            self.client_cert = client_cert  # type: ignore
+            self.client_cert = cast(Optional[str], client_cert)
         if client_key is not _default:
-            self.client_key = client_key  # type: ignore
+            self.client_key = cast(Optional[str], client_key)
         if cert_bundle is not _default:
-            self.cert_bundle = cert_bundle  # type: ignore
+            self.cert_bundle = cast(Optional[str], cert_bundle)
         if tls_context is not _default:
-            self.tls_context = tls_context  # type: ignore
+            self.tls_context = cast(Optional[ssl.SSLContext], tls_context)
 
         if self.tls_context is not None and self.client_cert is not None:
             raise ValueError(
@@ -457,7 +462,7 @@ class ESMTP(SMTPConnection):
                 raise SMTPResponseException(response.code, response.message)
 
             try:
-                transport = await self.protocol.start_tls(  # type: ignore
+                transport = await self.protocol.start_tls(
                     tls_context, server_hostname=server_hostname, timeout=timeout
                 )
             except SMTPServerDisconnected:

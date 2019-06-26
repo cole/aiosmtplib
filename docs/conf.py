@@ -22,6 +22,7 @@ import os
 import pathlib
 import re
 import sys
+from typing import Dict
 
 
 sys.path.insert(0, os.path.abspath("../src"))
@@ -135,7 +136,7 @@ htmlhelp_basename = "aiosmtplibdoc"
 
 # -- Options for LaTeX output ---------------------------------------------
 
-latex_elements = {  # type: ignore
+latex_elements = {
     # The paper size ('letterpaper' or 'a4paper').
     #
     # 'papersize': 'letterpaper',
@@ -148,7 +149,7 @@ latex_elements = {  # type: ignore
     # Latex figure (float) alignment
     #
     # 'figure_align': 'htbp',
-}
+}  # type: Dict[str, str]
 
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title,

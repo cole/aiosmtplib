@@ -41,7 +41,7 @@ def all_tasks(loop: asyncio.AbstractEventLoop = None):
 
 async def start_tls(
     loop: asyncio.AbstractEventLoop,
-    transport: asyncio.BaseTransport,
+    transport: asyncio.Transport,
     protocol: asyncio.Protocol,
     sslcontext: ssl.SSLContext,
     server_side: bool = False,
@@ -66,7 +66,7 @@ async def start_tls(
 
     # Pause early so that "ssl_protocol.data_received()" doesn't
     # have a chance to get called before "ssl_protocol.connection_made()".
-    transport.pause_reading()  # type: ignore
+    transport.pause_reading()
 
     # Use set_protocol if we can
     if hasattr(transport, "set_protocol"):
@@ -75,7 +75,7 @@ async def start_tls(
         transport._protocol = ssl_protocol  # type: ignore
 
     conmade_cb = loop.call_soon(ssl_protocol.connection_made, transport)
-    resume_cb = loop.call_soon(transport.resume_reading)  # type: ignore
+    resume_cb = loop.call_soon(transport.resume_reading)
 
     try:
         await asyncio.wait_for(waiter, timeout=ssl_handshake_timeout)
