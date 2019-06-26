@@ -47,9 +47,11 @@ class SMTPProtocol(asyncio.Protocol):
         self._response_waiter = self._loop.create_future()
 
     def connection_lost(self, exc: Optional[Exception]) -> None:
-        assert self._response_waiter is not None, "Response waiter not set"  # nosec
-
-        if exc is not None and not self._response_waiter.done():
+        if (
+            exc is not None
+            and self._response_waiter is not None
+            and not self._response_waiter.done()
+        ):
             smtp_exc = SMTPServerDisconnected("Server disconnected unexpectedly")
             smtp_exc.__cause__ = exc
             self._response_waiter.set_exception(smtp_exc)
@@ -57,12 +59,13 @@ class SMTPProtocol(asyncio.Protocol):
         self.transport = None
 
     def data_received(self, data: bytes) -> None:
-        assert self._response_waiter is not None, "Response waiter not set"  # nosec
-
         if data == b"":
             return
 
         self._buffer.extend(data)
+
+        if self._response_waiter is None:
+            return
 
         if len(self._buffer) > MAX_LINE_LENGTH:
             exc = SMTPResponseException(
@@ -119,9 +122,7 @@ class SMTPProtocol(asyncio.Protocol):
             return None
 
     def eof_received(self) -> bool:
-        assert self._response_waiter is not None, "Response waiter not set"  # nosec
-
-        if not self._response_waiter.done():
+        if self._response_waiter is not None and not self._response_waiter.done():
             exc = SMTPServerDisconnected("Unexpected EOF recieved")
             self._response_waiter.set_exception(exc)
 
