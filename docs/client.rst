@@ -5,8 +5,7 @@ The SMTP Client Class
 =====================
 
 Use the :class:`SMTP` class as a client directly when you want more control
-over the email sending process than the :func:`send_message` async function
-provides.
+over the email sending process than the :func:`send` async function provides.
 
 
 Connecting to an SMTP Server
@@ -91,15 +90,12 @@ Sending Messages
 :meth:`SMTP.send_message`
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-This is the simplest API, and is the recommended way to send messages, as it
-makes it easy to set headers correctly and handle multi part messages. For
-details on creating :py:class:`email.message.Message` objects, see `the
+Use this method to send :py:class:`email.message.Message` objects, including
+:py:mod:`email.mime` subclasses such as :py:class:`email.mime.text.MIMEText`.
+
+For details on creating :py:class:`email.message.Message` objects, see `the
 stdlib documentation examples
 <https://docs.python.org/3.7/library/email.examples.html>`_.
-
-Use :meth:`SMTP.send_message` to send :py:class:`email.message.Message`
-objects, including :py:mod:`email.mime` subclasses such as
-:py:class:`email.mime.text.MIMEText`.
 
 .. testcode::
 
@@ -184,9 +180,9 @@ Timeouts
 
 All commands accept a ``timeout`` keyword argument of a numerical value in
 seconds. This value is used for all socket operations, and will raise
-:exc:`.SMTPTimeoutError` if exceeded. Timeout values passed to
-:func:`send_message`, :meth:`SMTP.__init__` or :meth:`SMTP.connect` will be
-used as the default value for commands executed on the connection.
+:exc:`.SMTPTimeoutError` if exceeded. Timeout values passed to :func:`send`,
+:meth:`SMTP.__init__` or :meth:`SMTP.connect` will be used as the default
+value for commands executed on the connection.
 
 The default timeout is 60 seconds.
 

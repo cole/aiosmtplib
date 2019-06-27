@@ -11,11 +11,11 @@ from .response import SMTPResponse
 from .smtp import SMTP
 
 
-__all__ = ("send_message",)
+__all__ = ("send",)
 
 
 @overload
-async def send_message(
+async def send(
     message: Message,
     sender: Optional[str] = None,
     recipients: Optional[Union[str, Iterable[str]]] = None,
@@ -39,7 +39,7 @@ async def send_message(
 
 
 @overload  # NOQA: F811
-async def send_message(
+async def send(
     message: Union[str, bytes],
     sender: str = None,
     recipients: Union[str, Iterable[str]] = None,
@@ -62,7 +62,7 @@ async def send_message(
     pass
 
 
-async def send_message(  # NOQA: F811
+async def send(  # NOQA: F811
     message,
     sender=None,
     recipients=None,

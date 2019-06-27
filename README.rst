@@ -18,7 +18,7 @@ Quickstart
     import asyncio
     from email.mime.text import MIMEText
 
-    from aiosmtplib import send_message
+    import aiosmtplib
 
     message = MIMEText("Sent via aiosmtplib")
     message["From"] = "root@localhost"
@@ -26,7 +26,7 @@ Quickstart
     message["Subject"] = "Hello World!"
 
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(send_message(message, hostname="127.0.0.1", port=1025))
+    loop.run_until_complete(aiosmtplib.send(message, hostname="127.0.0.1", port=1025))
 
 
 Requirements

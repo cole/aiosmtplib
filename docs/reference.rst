@@ -7,10 +7,10 @@ API Reference
     from aiosmtplib import SMTPResponse
 
 
-The send message API
---------------------
+The send Coroutine
+------------------
 
-.. autofunction:: aiosmtplib.send_message
+.. autofunction:: aiosmtplib.send
 
 
 The SMTP Class

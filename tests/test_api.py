@@ -1,10 +1,10 @@
 """
-send_message coroutine testing.
+send coroutine testing.
 """
 import pytest
 
 import aiosmtplib.api  # For monkeypatching
-from aiosmtplib import send_message
+from aiosmtplib import send
 from aiosmtplib.connection import SMTP_STARTTLS_PORT
 
 from .mocks import MockSMTP
@@ -13,17 +13,15 @@ from .mocks import MockSMTP
 pytestmark = pytest.mark.asyncio()
 
 
-async def test_send_message(hostname, port, smtpd_server, message, recieved_messages):
-    errors, response = await send_message(message, hostname=hostname, port=port)
+async def test_send(hostname, port, smtpd_server, message, recieved_messages):
+    errors, response = await send(message, hostname=hostname, port=port)
 
     assert not errors
     assert len(recieved_messages) == 1
 
 
-async def test_send_message_with_str(
-    hostname, port, smtpd_server, message, recieved_messages
-):
-    errors, response = await send_message(
+async def test_send_with_str(hostname, port, smtpd_server, message, recieved_messages):
+    errors, response = await send(
         str(message),
         hostname=hostname,
         port=port,
@@ -35,10 +33,10 @@ async def test_send_message_with_str(
     assert len(recieved_messages) == 1
 
 
-async def test_send_message_with_bytes(
+async def test_send_with_bytes(
     hostname, port, smtpd_server, message, recieved_messages
 ):
-    errors, response = await send_message(
+    errors, response = await send(
         bytes(message),
         hostname=hostname,
         port=port,
@@ -50,11 +48,11 @@ async def test_send_message_with_bytes(
     assert len(recieved_messages) == 1
 
 
-async def test_send_message_without_sender(
+async def test_send_without_sender(
     hostname, port, smtpd_server, message, recieved_messages
 ):
     with pytest.raises(ValueError):
-        errors, response = await send_message(
+        errors, response = await send(
             bytes(message),
             hostname=hostname,
             port=port,
@@ -63,11 +61,11 @@ async def test_send_message_without_sender(
         )
 
 
-async def test_send_message_without_recipients(
+async def test_send_without_recipients(
     hostname, port, smtpd_server, message, recieved_messages
 ):
     with pytest.raises(ValueError):
-        errors, response = await send_message(
+        errors, response = await send(
             bytes(message),
             hostname=hostname,
             port=port,
@@ -76,19 +74,19 @@ async def test_send_message_without_recipients(
         )
 
 
-async def test_send_message_with_start_and_use_tls(
+async def test_send_with_start_and_use_tls(
     hostname, port, smtpd_server, message, recieved_messages
 ):
     with pytest.raises(ValueError):
-        errors, response = await send_message(
+        errors, response = await send(
             message, hostname=hostname, port=port, start_tls=True, use_tls=True
         )
 
 
-async def test_send_message_with_start_tls(
+async def test_send_with_start_tls(
     hostname, port, smtpd_server, message, recieved_messages, recieved_commands
 ):
-    errors, response = await send_message(
+    errors, response = await send(
         message, hostname=hostname, port=port, start_tls=True, validate_certs=False
     )
 
@@ -97,10 +95,10 @@ async def test_send_message_with_start_tls(
     assert len(recieved_messages) == 1
 
 
-async def test_send_message_with_login(
+async def test_send_with_login(
     hostname, port, smtpd_server, message, recieved_messages, recieved_commands
 ):
-    errors, response = await send_message(  # nosec
+    errors, response = await send(  # nosec
         message,
         hostname=hostname,
         port=port,
@@ -115,9 +113,9 @@ async def test_send_message_with_login(
     assert len(recieved_messages) == 1
 
 
-async def test_send_message_start_tls_default_port(monkeypatch, message):
+async def test_send_start_tls_default_port(monkeypatch, message):
     monkeypatch.setattr(aiosmtplib.api, "SMTP", MockSMTP)
 
-    errors, response = await send_message(message, start_tls=True, validate_certs=False)
+    errors, response = await send(message, start_tls=True, validate_certs=False)
 
     assert MockSMTP.kwargs["port"] == SMTP_STARTTLS_PORT

@@ -4,7 +4,7 @@ Changelog
 1.1.0 (unreleased)
 ------------------
 
-- Feature: Added send_message async function.
+- Feature: Added send coroutine api.
 
 - Cleanup: Set context for timeout and connection exceptions properly.
 

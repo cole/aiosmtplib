@@ -12,7 +12,7 @@ Sending Message Objects
 
 To send a message, create an :py:class:`email.message.Message` object, set
 approprate headers ("From" and one of "To", "Cc" or "Bcc", at minimum), then
-pass it to :func:`send_message` with the hostname and port of an SMTP server.
+pass it to :func:`send` with the hostname and port of an SMTP server.
 
 For details on creating :py:class:`email.message.Message` objects, see `the
 stdlib documentation examples
@@ -24,7 +24,7 @@ stdlib documentation examples
     import asyncio
     from email.mime.text import MIMEText
 
-    from aiosmtplib import send_message
+    import aiosmtplib
 
     async def send_hello_world():
         message = MIMEText("Sent via aiosmtplib")
@@ -32,7 +32,7 @@ stdlib documentation examples
         message["To"] = "somebody@example.com"
         message["Subject"] = "Hello World!"
 
-        await send_message(message, hostname="127.0.0.1", port=1025)
+        await aiosmtplib.send(message, hostname="127.0.0.1", port=1025)
 
     event_loop = asyncio.get_event_loop()
     event_loop.run_until_complete(send_hello_world())
@@ -41,9 +41,8 @@ stdlib documentation examples
 Multipart Messages
 ~~~~~~~~~~~~~~~~~~
 
-Pass :py:class:`email.mime.multipart.MIMEMultipart` objects to
-:func:`send_message` to send messages with both HTML text and plain text
-alternatives.
+Pass :py:class:`email.mime.multipart.MIMEMultipart` objects to :func:`send` to
+send messages with both HTML text and plain text alternatives.
 
 .. testcode::
 
@@ -74,7 +73,7 @@ and ``recipients`` keyword arguments.
 
     import asyncio
 
-    from aiosmtplib import send_message
+    import aiosmtplib
 
     async def send_hello_world():
         message = """To: somebody@example.com
@@ -84,7 +83,7 @@ and ``recipients`` keyword arguments.
         Sent via aiosmtplib
         """
 
-        await send_message(
+        await aiosmtplib.send(
             message,
             sender="root@localhost",
             recipients=["somebody@example.com"],
@@ -100,11 +99,11 @@ Authentication
 --------------
 
 To authenticate, pass the ``username`` and ``password`` keyword arguments to
-:func:`send_message`.
+:func:`send`.
 
 .. code-block:: python
 
-    await send_message(
+    await send(
         message,
         hostname="127.0.0.1",
         port=1025,
@@ -119,12 +118,12 @@ Connection Options
 Connecting Over TLS/SSL
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-If an SMTP server supports direct connection via TLS/SSL, pass ``use_tls=True``
-to :func:`send_message`.
+If an SMTP server supports direct connection via TLS/SSL, pass
+``use_tls=True``.
 
 .. code-block:: python
 
-    await send_message(message, hostname="smtp.gmail.com", port=465, use_tls=True)
+    await send(message, hostname="smtp.gmail.com", port=465, use_tls=True)
 
 
 STARTTLS connections
@@ -137,4 +136,4 @@ To connect to a server that uses STARTTLS, set ``start_tls`` to ``True``.
 
 .. code-block:: python
 
-    await send_message(message, hostname="smtp.gmail.com", port=587, start_tls=True)
+    await send(message, hostname="smtp.gmail.com", port=587, start_tls=True)

@@ -9,7 +9,7 @@ The Dragon De Monsyne <dragondm@integral.org>
 
 Author: Cole Maclean <hi@cole.io>
 """
-from .api import send_message
+from .api import send
 from .errors import (
     SMTPAuthenticationError,
     SMTPConnectError,
@@ -37,7 +37,7 @@ __author__ = "Cole Maclean"
 __license__ = "MIT"
 __copyright__ = "Copyright 2019 Cole Maclean"
 __all__ = (
-    "send_message",
+    "send",
     "SMTP",
     "SMTPResponse",
     "SMTPStatus",
