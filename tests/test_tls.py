@@ -212,7 +212,10 @@ async def test_starttls_with_invalid_client_cert(
             )
 
 
-async def test_starttls_cert_error(smtp_client, smtpd_server):
+async def test_starttls_cert_error(event_loop, smtp_client, smtpd_server):
+    # Don't fail on the expected exception
+    event_loop.set_exception_handler(None)
+
     async with smtp_client:
         with pytest.raises(ssl.SSLError):
             await smtp_client.starttls(validate_certs=True)
@@ -251,6 +254,9 @@ async def test_tls_get_transport_info(
 async def test_tls_smtp_connect_to_non_tls_server(
     tls_smtp_client, smtpd_server, event_loop, hostname, port
 ):
+    # Don't fail on the expected exception
+    event_loop.set_exception_handler(None)
+
     with pytest.raises(SMTPConnectError):
         await tls_smtp_client.connect()
     assert not tls_smtp_client.is_connected
@@ -284,7 +290,12 @@ async def test_tls_connection_with_client_cert(
     assert not tls_smtp_client.is_connected
 
 
-async def test_tls_connection_with_cert_error(tls_smtp_client, tls_smtpd_server):
+async def test_tls_connection_with_cert_error(
+    event_loop, tls_smtp_client, tls_smtpd_server
+):
+    # Don't fail on the expected exception
+    event_loop.set_exception_handler(None)
+
     with pytest.raises(SMTPConnectError) as exception_info:
         await tls_smtp_client.connect(validate_certs=True)
 

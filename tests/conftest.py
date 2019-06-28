@@ -62,6 +62,12 @@ def event_loop(request, event_loop_policy):
     loop = event_loop_policy.new_event_loop()
     event_loop_policy.set_event_loop(loop)
 
+    def handle_async_exception(loop, context):
+        """Fail on exceptions by default"""
+        pytest.fail("{}: {}".format(context["message"], repr(context["exception"])))
+
+    loop.set_exception_handler(handle_async_exception)
+
     def cleanup():
         shutdown_loop(loop)
         event_loop_policy.set_event_loop(old_loop)
