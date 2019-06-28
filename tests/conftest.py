@@ -173,6 +173,7 @@ def smtpd_server(
     request,
     event_loop,
     bind_address,
+    hostname,
     port,
     smtpd_class,
     smtpd_handler,
