@@ -235,23 +235,23 @@ async def test_context_manager_disconnect_handling(
 
 
 async def test_context_manager_exception_quits(
-    smtp_client, smtpd_server, recieved_commands
+    smtp_client, smtpd_server, received_commands
 ):
     with pytest.raises(ZeroDivisionError):
         async with smtp_client:
             1 / 0
 
-    assert recieved_commands[-1][0] == "QUIT"
+    assert received_commands[-1][0] == "QUIT"
 
 
 async def test_context_manager_connect_exception_closes(
-    smtp_client, smtpd_server, recieved_commands
+    smtp_client, smtpd_server, received_commands
 ):
     with pytest.raises(ConnectionError):
         async with smtp_client:
             raise ConnectionError("Failed!")
 
-    assert len(recieved_commands) == 0
+    assert len(received_commands) == 0
 
 
 async def test_context_manager_with_manual_connection(smtp_client, smtpd_server):

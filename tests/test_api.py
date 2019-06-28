@@ -13,14 +13,14 @@ from .mocks import MockSMTP
 pytestmark = pytest.mark.asyncio()
 
 
-async def test_send(hostname, port, smtpd_server, message, recieved_messages):
+async def test_send(hostname, port, smtpd_server, message, received_messages):
     errors, response = await send(message, hostname=hostname, port=port)
 
     assert not errors
-    assert len(recieved_messages) == 1
+    assert len(received_messages) == 1
 
 
-async def test_send_with_str(hostname, port, smtpd_server, message, recieved_messages):
+async def test_send_with_str(hostname, port, smtpd_server, message, received_messages):
     errors, response = await send(
         str(message),
         hostname=hostname,
@@ -30,11 +30,11 @@ async def test_send_with_str(hostname, port, smtpd_server, message, recieved_mes
     )
 
     assert not errors
-    assert len(recieved_messages) == 1
+    assert len(received_messages) == 1
 
 
 async def test_send_with_bytes(
-    hostname, port, smtpd_server, message, recieved_messages
+    hostname, port, smtpd_server, message, received_messages
 ):
     errors, response = await send(
         bytes(message),
@@ -45,11 +45,11 @@ async def test_send_with_bytes(
     )
 
     assert not errors
-    assert len(recieved_messages) == 1
+    assert len(received_messages) == 1
 
 
 async def test_send_without_sender(
-    hostname, port, smtpd_server, message, recieved_messages
+    hostname, port, smtpd_server, message, received_messages
 ):
     with pytest.raises(ValueError):
         errors, response = await send(
@@ -62,7 +62,7 @@ async def test_send_without_sender(
 
 
 async def test_send_without_recipients(
-    hostname, port, smtpd_server, message, recieved_messages
+    hostname, port, smtpd_server, message, received_messages
 ):
     with pytest.raises(ValueError):
         errors, response = await send(
@@ -75,7 +75,7 @@ async def test_send_without_recipients(
 
 
 async def test_send_with_start_and_use_tls(
-    hostname, port, smtpd_server, message, recieved_messages
+    hostname, port, smtpd_server, message, received_messages
 ):
     with pytest.raises(ValueError):
         errors, response = await send(
@@ -84,19 +84,19 @@ async def test_send_with_start_and_use_tls(
 
 
 async def test_send_with_start_tls(
-    hostname, port, smtpd_server, message, recieved_messages, recieved_commands
+    hostname, port, smtpd_server, message, received_messages, received_commands
 ):
     errors, response = await send(
         message, hostname=hostname, port=port, start_tls=True, validate_certs=False
     )
 
     assert not errors
-    assert "STARTTLS" in [command[0] for command in recieved_commands]
-    assert len(recieved_messages) == 1
+    assert "STARTTLS" in [command[0] for command in received_commands]
+    assert len(received_messages) == 1
 
 
 async def test_send_with_login(
-    hostname, port, smtpd_server, message, recieved_messages, recieved_commands
+    hostname, port, smtpd_server, message, received_messages, received_commands
 ):
     errors, response = await send(  # nosec
         message,
@@ -109,8 +109,8 @@ async def test_send_with_login(
     )
 
     assert not errors
-    assert "AUTH" in [command[0] for command in recieved_commands]
-    assert len(recieved_messages) == 1
+    assert "AUTH" in [command[0] for command in received_commands]
+    assert len(received_messages) == 1
 
 
 async def test_send_start_tls_default_port(monkeypatch, message):

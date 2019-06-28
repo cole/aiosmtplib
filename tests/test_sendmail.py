@@ -63,7 +63,7 @@ async def test_sendmail_without_size_option(
     smtpd_response_handler,
     monkeypatch,
     message,
-    recieved_commands,
+    received_commands,
 ):
     response_handler = smtpd_response_handler("{} done".format(SMTPStatus.completed))
     monkeypatch.setattr(smtpd_class, "smtp_EHLO", response_handler)
@@ -124,7 +124,7 @@ async def test_sendmail_error_silent_rset_handles_disconnect(
 
 
 async def test_rset_after_sendmail_error_response_to_mail(
-    smtp_client, smtpd_server, recieved_commands
+    smtp_client, smtpd_server, received_commands
 ):
     """
     If an error response is given to the MAIL command in the sendmail method,
@@ -138,11 +138,11 @@ async def test_rset_after_sendmail_error_response_to_mail(
             await smtp_client.sendmail(">foobar<", ["test@example.com"], "Hello World")
         except SMTPResponseException as err:
             assert err.code == SMTPStatus.unrecognized_parameters
-            assert recieved_commands[-1][0] == "RSET"
+            assert received_commands[-1][0] == "RSET"
 
 
 async def test_rset_after_sendmail_error_response_to_rcpt(
-    smtp_client, smtpd_server, recieved_commands
+    smtp_client, smtpd_server, received_commands
 ):
     """
     If an error response is given to the RCPT command in the sendmail method,
@@ -158,7 +158,7 @@ async def test_rset_after_sendmail_error_response_to_rcpt(
             )
         except SMTPRecipientsRefused as err:
             assert err.recipients[0].code == SMTPStatus.unrecognized_parameters
-            assert recieved_commands[-1][0] == "RSET"
+            assert received_commands[-1][0] == "RSET"
 
 
 @pytest.mark.parametrize(
@@ -177,7 +177,7 @@ async def test_rset_after_sendmail_error_response_to_data(
     monkeypatch,
     error_code,
     message,
-    recieved_commands,
+    received_commands,
 ):
     """
     If an error response is given to the DATA command in the sendmail method,
@@ -194,7 +194,7 @@ async def test_rset_after_sendmail_error_response_to_data(
             await smtp_client.sendmail(message["From"], [message["To"]], str(message))
         except SMTPResponseException as err:
             assert err.code == error_code
-            assert recieved_commands[-1][0] == "RSET"
+            assert received_commands[-1][0] == "RSET"
 
 
 async def test_send_message(smtp_client, smtpd_server, message):
@@ -207,7 +207,7 @@ async def test_send_message(smtp_client, smtpd_server, message):
 
 
 async def test_send_message_with_sender_and_recipient_args(
-    smtp_client, smtpd_server, message, recieved_messages
+    smtp_client, smtpd_server, message, received_messages
 ):
     sender = "sender2@example.com"
     recipients = ["recipient1@example.com", "recipient2@example.com"]
@@ -220,9 +220,9 @@ async def test_send_message_with_sender_and_recipient_args(
     assert isinstance(errors, dict)
     assert response != ""
 
-    assert len(recieved_messages) == 1
-    assert recieved_messages[0]["X-MailFrom"] == sender
-    assert recieved_messages[0]["X-RcptTo"] == ", ".join(recipients)
+    assert len(received_messages) == 1
+    assert received_messages[0]["X-MailFrom"] == sender
+    assert received_messages[0]["X-RcptTo"] == ", ".join(recipients)
 
 
 async def test_send_multiple_messages_in_sequence(smtp_client, smtpd_server, message):

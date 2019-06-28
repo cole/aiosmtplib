@@ -134,7 +134,7 @@ async def test_protocol_response_waiter_unset(
 
 
 @pytest.mark.xfail(reason="Work in progress")
-async def test_protocol_data_recieved_called_twice(
+async def test_protocol_data_received_called_twice(
     event_loop, bind_address, hostname, port, monkeypatch
 ):
     async def client_connected(reader, writer):

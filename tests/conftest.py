@@ -107,12 +107,12 @@ def message(request):
 
 
 @pytest.fixture(scope="function")
-def recieved_messages(request):
+def received_messages(request):
     return []
 
 
 @pytest.fixture(scope="function")
-def recieved_commands(request):
+def received_commands(request):
     return []
 
 
@@ -122,8 +122,8 @@ def smtpd_responses(request):
 
 
 @pytest.fixture(scope="function")
-def smtpd_handler(request, recieved_messages, recieved_commands, smtpd_responses):
-    return RecordingHandler(recieved_messages, recieved_commands, smtpd_responses)
+def smtpd_handler(request, received_messages, received_commands, smtpd_responses):
+    return RecordingHandler(received_messages, received_commands, smtpd_responses)
 
 
 @pytest.fixture(scope="session")

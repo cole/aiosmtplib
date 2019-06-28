@@ -24,14 +24,14 @@ class DummySMTPAuth(SMTPAuth):
     def __init__(self):
         super().__init__()
 
-        self.recieved_commands = []
+        self.received_commands = []
         self.responses = deque()
         self.esmtp_extensions = {"auth": ""}
         self.server_auth_methods = ["cram-md5", "login", "plain"]
         self.supports_esmtp = True
 
     async def execute_command(self, *args, **kwargs):
-        self.recieved_commands.append(b" ".join(args))
+        self.received_commands.append(b" ".join(args))
 
         response = self.responses.popleft()
 
@@ -101,7 +101,7 @@ async def test_auth_plain_success(mock_auth, username, password):
     b64data = base64.b64encode(
         b"\0" + username.encode("ascii") + b"\0" + password.encode("ascii")
     )
-    assert mock_auth.recieved_commands == [b"AUTH PLAIN " + b64data]
+    assert mock_auth.received_commands == [b"AUTH PLAIN " + b64data]
 
 
 async def test_auth_plain_error(mock_auth):
@@ -120,7 +120,7 @@ async def test_auth_login_success(mock_auth, username, password):
     b64username = base64.b64encode(username.encode("ascii"))
     b64password = base64.b64encode(password.encode("ascii"))
 
-    assert mock_auth.recieved_commands == [b"AUTH LOGIN " + b64username, b64password]
+    assert mock_auth.received_commands == [b"AUTH LOGIN " + b64username, b64password]
 
 
 async def test_auth_login_error(mock_auth):
@@ -152,7 +152,7 @@ async def test_auth_crammd5_success(mock_auth, username, password):
 
     expected_command = crammd5_verify(username_bytes, password_bytes, response_bytes)
 
-    assert mock_auth.recieved_commands == [b"AUTH CRAM-MD5", expected_command]
+    assert mock_auth.received_commands == [b"AUTH CRAM-MD5", expected_command]
 
 
 async def test_auth_crammd5_initial_error(mock_auth):

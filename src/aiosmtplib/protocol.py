@@ -105,7 +105,7 @@ class SMTPProtocol(asyncio.Protocol):
                 self._response_waiter.set_result(response)
 
     def eof_received(self) -> bool:
-        exc = SMTPServerDisconnected("Unexpected EOF recieved")
+        exc = SMTPServerDisconnected("Unexpected EOF received")
         if self._response_waiter and not self._response_waiter.done():
             self._response_waiter.set_exception(exc)
         if self._connection_lost_waiter and not self._connection_lost_waiter.done():
