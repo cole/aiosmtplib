@@ -88,14 +88,17 @@ class SMTPProtocol(asyncio.Protocol):
         if data == b"":
             return
 
-        self._buffer.extend(data)
+        if self._response_waiter is None or self._response_waiter.done():
+            raise RuntimeError(
+                "data_received called with an unexpected response waiter state: "
+                "{!r} (data: {})".format(self._response_waiter, data)
+            )
 
-        if self._response_waiter is None:
-            return
+        self._buffer.extend(data)
 
         try:
             response = self._read_response_from_buffer()
-        except SMTPResponseException as exc:
+        except Exception as exc:
             self._response_waiter.set_exception(exc)
         else:
             if response is not None:
