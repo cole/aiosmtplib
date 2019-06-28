@@ -70,15 +70,17 @@ class SMTPProtocol(asyncio.Protocol):
             smtp_exc = SMTPServerDisconnected("Server disconnected unexpectedly")
             smtp_exc.__cause__ = exc
 
-            if self._response_waiter and not self._response_waiter.done():
+        if self._response_waiter and not self._response_waiter.done():
+            if exc:
                 self._response_waiter.set_exception(smtp_exc)
-            if self._connection_lost_waiter:
-                self._connection_lost_waiter.set_exception(smtp_exc)
-        else:
-            if self._connection_lost_waiter:
-                self._connection_lost_waiter.set_result(None)
-            if self._response_waiter and not self._response_waiter.done():
+            else:
                 self._response_waiter.cancel()
+
+        if self._connection_lost_waiter and not self._connection_lost_waiter.done():
+            if exc:
+                self._connection_lost_waiter.set_exception(smtp_exc)
+            else:
+                self._connection_lost_waiter.set_result(None)
 
         self.transport = None
 
@@ -89,13 +91,6 @@ class SMTPProtocol(asyncio.Protocol):
         self._buffer.extend(data)
 
         if self._response_waiter is None:
-            return
-
-        if len(self._buffer) > MAX_LINE_LENGTH:
-            exc = SMTPResponseException(
-                SMTPStatus.unrecognized_command, "Response too long"
-            )
-            self._response_waiter.set_exception(exc)
             return
 
         try:
@@ -110,7 +105,7 @@ class SMTPProtocol(asyncio.Protocol):
         exc = SMTPServerDisconnected("Unexpected EOF recieved")
         if self._response_waiter and not self._response_waiter.done():
             self._response_waiter.set_exception(exc)
-        if self._connection_lost_waiter:
+        if self._connection_lost_waiter and not self._connection_lost_waiter.done():
             self._connection_lost_waiter.set_exception(exc)
 
         # Returning false closes the transport
@@ -130,6 +125,12 @@ class SMTPProtocol(asyncio.Protocol):
                 break
 
             line = bytes(self._buffer[offset : line_end_index + 1])
+
+            if len(line) > MAX_LINE_LENGTH:
+                raise SMTPResponseException(
+                    SMTPStatus.unrecognized_command, "Response too long"
+                )
+
             try:
                 code = int(line[:3])
             except ValueError:
@@ -174,12 +175,12 @@ class SMTPProtocol(asyncio.Protocol):
             result = await asyncio.wait_for(self._response_waiter, timeout)
         except asyncio.TimeoutError as exc:
             raise SMTPReadTimeoutError("Timed out waiting for server response") from exc
-
-        # If we were disconnected, don't create a new waiter
-        if self.transport is None:
-            self._response_waiter = None
-        else:
-            self._response_waiter = self._loop.create_future()
+        finally:
+            # If we were disconnected, don't create a new waiter
+            if self.transport is None:
+                self._response_waiter = None
+            else:
+                self._response_waiter = self._loop.create_future()
 
         return result
 
