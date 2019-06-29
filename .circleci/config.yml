@@ -227,6 +227,36 @@ jobs:
       - run_tox:
           toxenv: coverage
 
+  py38-asyncio:
+    docker:
+      - image: python:3.8-rc-buster
+    steps:
+      - checkout
+      - install_tox
+      - install_tox_deps:
+          toxenvs: clean,py38-asyncio,coverage
+      - run_tox:
+          toxenv: clean
+      - run_tox:
+          toxenv: py38-asyncio
+      - run_tox:
+          toxenv: coverage
+
+  py38-uvloop:
+    docker:
+      - image: python:3.8-rc-buster
+    steps:
+      - checkout
+      - install_tox
+      - install_tox_deps:
+          toxenvs: clean,py38-uvloop,coverage
+      - run_tox:
+          toxenv: clean
+      - run_tox:
+          toxenv: py38-uvloop
+      - run_tox:
+          toxenv: coverage
+
 workflows:
   version: 2
   lint_and_test:
@@ -260,5 +290,11 @@ workflows:
           requires:
             - lint
       - pypy36-asyncio:
+          requires:
+            - lint
+      - py38-asyncio:
+          requires:
+            - lint
+      - py38-uvloop:
           requires:
             - lint
