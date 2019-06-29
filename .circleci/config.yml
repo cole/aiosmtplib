@@ -7,16 +7,18 @@ commands:
       - restore_cache:
           keys:
             - v2-pip
+          name: "Restoring pip cache"
       - run:
           command: mkdir -p ~/pip-cache
-          name: "Create pip cache dir"
+          name: "Creating pip cache dir"
       - run:
           command: pip --cache-dir ~/pip-cache install tox tox-venv
-          name: "Install tox & tox-venv"
+          name: "Installing tox & tox-venv"
       - save_cache:
           paths:
             - ~/pip-cache
           key: v2-pip
+          name: "Saving pip cache"
 
   install_tox_deps:
     description: "Install tox dependencies"
@@ -30,6 +32,7 @@ commands:
             - v3-tox-<< parameters.toxenvs >>-{{ .Branch }}-{{ checksum "requirements-test.txt" }}
             - v3-tox-<< parameters.toxenvs >>-{{ .Branch }}-
             - v3-tox-<< parameters.toxenvs >>-
+          name: "Restoring tox envs cache (<< parameters.toxenvs >>)"
       - run:
           command: mkdir -p ~/tox-workdir
           name: "Create tox work dir"
@@ -40,6 +43,7 @@ commands:
           paths:
             - ~/tox-workdir
           key: v3-tox-<< parameters.toxenvs >>-{{ .Branch }}-{{ checksum "requirements-test.txt" }}
+          name: "Saving tox envs cache (<< parameters.toxenvs >>)"
 
   run_tox:
     description: "Run tox"
@@ -50,7 +54,7 @@ commands:
     steps:
       - run:
           command: tox --workdir ~/tox-workdir -e << parameters.toxenv >>
-          name: "Tox: << parameters.toxenv >>"
+          name: "Running tox: << parameters.toxenv >>"
 
 jobs:
 
