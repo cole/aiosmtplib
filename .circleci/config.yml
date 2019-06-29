@@ -12,6 +12,26 @@ jobs:
       - run: pip install tox
       - run: tox
 
+  py352-asyncio:
+    docker:
+      - image: python:3.5.2
+    environment:
+      TOXENV: clean,py35-asyncio,coverage
+    steps:
+      - checkout
+      - run: pip install tox
+      - run: tox
+
+  py352-uvloop:
+    docker:
+      - image: python:3.5.2
+    environment:
+      TOXENV: clean,py35-uvloop,coverage
+    steps:
+      - checkout
+      - run: pip install tox
+      - run: tox
+
   py35-asyncio:
     docker:
       - image: python:3.5-stretch
