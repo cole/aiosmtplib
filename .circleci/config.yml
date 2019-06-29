@@ -4,7 +4,7 @@ commands:
   tox:
     description: "Run Tox"
     steps:
-      - run: pip install tox
+      - run: pip install tox tox-venv
       - run: tox
 
 jobs:
