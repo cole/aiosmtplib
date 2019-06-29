@@ -6,7 +6,7 @@ commands:
     steps:
       - restore_cache:
           keys:
-            - v1-pip
+            - v2-pip
       - run:
           command: mkdir -p ~/pip-cache
           name: "Create pip cache dir"
@@ -16,7 +16,22 @@ commands:
       - save_cache:
           paths:
             - ~/pip-cache
-          key: v1-pip
+          key: v2-pip
+      - run:
+          command: mkdir -p ~/tox-workdir
+          name: "Create tox work dir"
+      - restore_cache:
+          keys:
+            - v2-tox-{{ .Branch }}-{{ checksum "requirements-test.txt" }}
+            - v2-tox-{{ .Branch }}-
+            - v2-tox-
+      - run:
+          command: tox --workdir ~/tox-workdir --notest -e ALL
+          name: "Install tox env dependencies"
+      - save_cache:
+          paths:
+            - ~/tox-workdir
+          key: v2-tox-{{ .Branch }}-{{ checksum "requirements-test.txt" }}
 
   run_tox:
     description: "Run tox"
@@ -25,25 +40,9 @@ commands:
         type: string
         default: "ALL"
     steps:
-      - restore_cache:
-          keys:
-            - v1-tox-<< parameters.toxenv >>-{{ .Branch }}-{{ checksum "requirements-test.txt" }}
-            - v1-tox-<< parameters.toxenv >>-{{ .Branch }}--
-            - v1-tox-<< parameters.toxenv >>-
-            - v1-tox-
-      - run:
-          command: mkdir -p ~/tox-workdir
-          name: "Create tox work dir"
-      - run:
-          command: tox --workdir ~/tox-workdir --notest -e << parameters.toxenv >>
-          name: "Install tox env dependencies"
-      - save_cache:
-          paths:
-            - ~/tox-workdir/<< parameters.toxenv >>
-          key: v1-tox-<< parameters.toxenv >>-{{ .Branch }}-{{ checksum "requirements-test.txt" }}
       - run:
           command: tox --workdir ~/tox-workdir -e << parameters.toxenv >>
-          name: "Run tox (env: << parameters.toxenv >>)"
+          name: "Tox: << parameters.toxenv >>"
 
 jobs:
 
