@@ -17,22 +17,31 @@ commands:
           paths:
             - ~/pip-cache
           key: v2-pip
+
+  install_tox_deps:
+    description: "Install tox dependencies"
+    parameters:
+      toxenvs:
+        type: string
+        default: "ALL"
+    steps:
+      - restore_cache:
+          keys:
+            - v3-tox-<< parameters.toxenvs >>-{{ .Branch }}-{{ checksum "requirements-test.txt" }}
+            - v3-tox-<< parameters.toxenvs >>-{{ .Branch }}-
+            - v3-tox-<< parameters.toxenvs >>-{{ .Branch }}-
+            - v3-tox-<< parameters.toxenvs >>-
+            - v3-tox-
       - run:
           command: mkdir -p ~/tox-workdir
           name: "Create tox work dir"
-      - restore_cache:
-          keys:
-            - v2-tox-{{ .Branch }}-{{ .Environment.CIRCLE_JOB }}-{{ checksum "requirements-test.txt" }}
-            - v2-tox-{{ .Branch }}-{{ .Environment.CIRCLE_JOB }}-
-            - v2-tox-{{ .Branch }}-
-            - v2-tox-
       - run:
-          command: tox --workdir ~/tox-workdir --notest -e ALL
-          name: "Install tox env dependencies"
+          command: tox --workdir ~/tox-workdir --notest -e << parameters.toxenvs >>
+          name: "Install tox env dependencies: << parameters.toxenvs >>"
       - save_cache:
           paths:
             - ~/tox-workdir
-          key: v2-tox-{{ .Branch }}-{{ .Environment.CIRCLE_JOB }}-{{ checksum "requirements-test.txt" }}
+          key: v3-tox-<< parameters.toxenvs >>-{{ .Branch }}-{{ checksum "requirements-test.txt" }}
 
   run_tox:
     description: "Run tox"
@@ -53,6 +62,8 @@ jobs:
     steps:
       - checkout
       - install_tox
+      - install_tox_deps:
+          toxenvs: check,mypy,flake8,black,bandit
       - run_tox:
           toxenv: check
       - run_tox:
@@ -70,6 +81,8 @@ jobs:
     steps:
       - checkout
       - install_tox
+      - install_tox_deps:
+          toxenvs: clean,py35-asyncio,coverage
       - run_tox:
           toxenv: clean
       - run_tox:
@@ -83,6 +96,8 @@ jobs:
     steps:
       - checkout
       - install_tox
+      - install_tox_deps:
+          toxenvs: clean,py35-uvloop,coverage
       - run_tox:
           toxenv: clean
       - run_tox:
@@ -96,6 +111,8 @@ jobs:
     steps:
       - checkout
       - install_tox
+      - install_tox_deps:
+          toxenvs: clean,py35-asyncio,coverage
       - run_tox:
           toxenv: clean
       - run_tox:
@@ -109,6 +126,8 @@ jobs:
     steps:
       - checkout
       - install_tox
+      - install_tox_deps:
+          toxenvs: clean,py35-uvloop,coverage
       - run_tox:
           toxenv: clean
       - run_tox:
@@ -122,6 +141,8 @@ jobs:
     steps:
       - checkout
       - install_tox
+      - install_tox_deps:
+          toxenvs: clean,py36-asyncio,coverage
       - run_tox:
           toxenv: clean
       - run_tox:
@@ -135,6 +156,8 @@ jobs:
     steps:
       - checkout
       - install_tox
+      - install_tox_deps:
+          toxenvs: clean,py36-uvloop,coverage
       - run_tox:
           toxenv: clean
       - run_tox:
@@ -148,6 +171,8 @@ jobs:
     steps:
       - checkout
       - install_tox
+      - install_tox_deps:
+          toxenvs: clean,py37-asyncio,coverage
       - run_tox:
           toxenv: clean
       - run_tox:
@@ -161,6 +186,8 @@ jobs:
     steps:
       - checkout
       - install_tox
+      - install_tox_deps:
+          toxenvs: clean,py37-uvloop,coverage
       - run_tox:
           toxenv: clean
       - run_tox:
@@ -174,6 +201,8 @@ jobs:
     steps:
       - checkout
       - install_tox
+      - install_tox_deps:
+          toxenvs: clean,pypy35-asyncio,coverage
       - run_tox:
           toxenv: clean
       - run_tox:
@@ -187,6 +216,8 @@ jobs:
     steps:
       - checkout
       - install_tox
+      - install_tox_deps:
+          toxenvs: clean,pypy36-asyncio,coverage
       - run_tox:
           toxenv: clean
       - run_tox:
