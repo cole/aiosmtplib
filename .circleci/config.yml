@@ -29,9 +29,8 @@ commands:
     steps:
       - restore_cache:
           keys:
-            - v3-tox-<< parameters.toxenvs >>-{{ .Branch }}-{{ checksum "requirements-test.txt" }}
-            - v3-tox-<< parameters.toxenvs >>-{{ .Branch }}-
-            - v3-tox-<< parameters.toxenvs >>-
+            - v4-tox-<< parameters.toxenvs >>-{{ checksum "requirements-test.txt" }}-{{ .Branch }}
+            - v4-tox-<< parameters.toxenvs >>-{{ checksum "requirements-test.txt" }}-
           name: "Restoring tox envs cache: << parameters.toxenvs >>"
       - run:
           command: mkdir -p ~/tox-workdir
@@ -42,7 +41,7 @@ commands:
       - save_cache:
           paths:
             - ~/tox-workdir
-          key: v3-tox-<< parameters.toxenvs >>-{{ .Branch }}-{{ checksum "requirements-test.txt" }}
+          key: v4-tox-<< parameters.toxenvs >>-{{ checksum "requirements-test.txt" }}-{{ .Branch }}
           name: "Saving tox envs cache: << parameters.toxenvs >>"
 
   run_tox:
