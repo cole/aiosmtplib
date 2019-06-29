@@ -32,18 +32,18 @@ commands:
             - v3-tox-<< parameters.toxenvs >>-{{ .Branch }}-{{ checksum "requirements-test.txt" }}
             - v3-tox-<< parameters.toxenvs >>-{{ .Branch }}-
             - v3-tox-<< parameters.toxenvs >>-
-          name: "Restoring tox envs cache (<< parameters.toxenvs >>)"
+          name: "Restoring tox envs cache: << parameters.toxenvs >>"
       - run:
           command: mkdir -p ~/tox-workdir
-          name: "Create tox work dir"
+          name: "Creating tox work dir"
       - run:
           command: tox --workdir ~/tox-workdir --notest -e << parameters.toxenvs >>
-          name: "Install tox env dependencies: << parameters.toxenvs >>"
+          name: "Installing tox env dependencies: << parameters.toxenvs >>"
       - save_cache:
           paths:
             - ~/tox-workdir
           key: v3-tox-<< parameters.toxenvs >>-{{ .Branch }}-{{ checksum "requirements-test.txt" }}
-          name: "Saving tox envs cache (<< parameters.toxenvs >>)"
+          name: "Saving tox envs cache: << parameters.toxenvs >>"
 
   run_tox:
     description: "Run tox"
