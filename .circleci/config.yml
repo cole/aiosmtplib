@@ -181,13 +181,15 @@ jobs:
       - checkout
       - install_tox
       - install_tox_deps:
-          toxenvs: clean,py38-asyncio,py38-uvloop,coverage
+          toxenvs: clean,py38-asyncio,coverage
+          # uvloop on py38 is broken :(
+          # toxenvs: clean,py38-asyncio,py38-uvloop,coverage
       - run_tox:
           toxenv: clean
       - run_tox:
           toxenv: py38-asyncio
-      - run_tox:
-          toxenv: py38-uvloop
+      # - run_tox:
+      #     toxenv: py38-uvloop
       - run_tox:
           toxenv: coverage
 
