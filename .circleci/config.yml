@@ -2,33 +2,44 @@ version: 2.1
 
 commands:
   install_tox:
-    description: "pip install tox"
+    description: "Install tox"
     steps:
       - restore_cache:
           keys:
             - v1-pip
-      - run: mkdir -p /deps/pip
-      - run: pip --cache-dir /deps/pip install tox tox-venv
+      - run:
+          command: mkdir -p /deps/pip
+          name: "Create pip cache dir"
+      - run:
+          command: pip --cache-dir /deps/pip install tox tox-venv
+          name: "Install tox & tox-venv"
       - save_cache:
           paths:
             - /deps/pip
           key: v1-pip
 
   run_tox:
-    description: "tox"
+    description: "Run tox"
     steps:
       - restore_cache:
           keys:
-            - v1-tox-{{ .Branch }}-{{ checksum "requirements-test.txt" }}
-            - v1-tox-{{ .Branch }}-
+            - v1-tox-{{ .Environment.CIRCLE_JOB }}-{{ .Branch }}-{{ checksum "requirements-test.txt" }}
+            - v1-tox-{{ .Environment.CIRCLE_JOB }}-{{ .Branch }}-
+            - v1-tox-{{ .Environment.CIRCLE_JOB }}-
             - v1-tox-
-      - run: mkdir -p /deps/tox
-      - run: tox --workdir /deps/tox --notest
+      - run:
+          command: mkdir -p /deps/tox
+          name: "Create tox work dir"
+      - run:
+          command: tox --workdir /deps/tox --notest
+          name: "Install tox env dependencies"
       - save_cache:
           paths:
             - /deps/tox
-          key: v1-tox-{{ .Branch }}-{{ checksum "requirements-test.txt" }}
-      - run: tox --workdir /deps/tox
+          key: v1-tox-{{ .Environment.CIRCLE_JOB }}-{{ .Branch }}-{{ checksum "requirements-test.txt" }}
+      - run:
+          command: tox --workdir /deps/tox
+          name: "Run tox"
 
 jobs:
 
