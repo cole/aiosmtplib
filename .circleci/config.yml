@@ -1,11 +1,34 @@
 version: 2.1
 
 commands:
-  tox:
-    description: "Run Tox"
+  install_tox:
+    description: "pip install tox"
     steps:
-      - run: pip install tox tox-venv
-      - run: tox
+      - restore_cache:
+          keys:
+            - v1-pip
+      - run: mkdir -p /deps/pip
+      - run: pip --cache-dir /deps/pip install tox tox-venv
+      - save_cache:
+          paths:
+            - /deps/pip
+          key: v1-pip
+
+  run_tox:
+    description: "tox"
+    steps:
+      - restore_cache:
+          keys:
+            - v1-tox-{{ .Branch }}-{{ checksum "requirements-test.txt" }}
+            - v1-tox-{{ .Branch }}-
+            - v1-tox-
+      - run: mkdir -p /deps/tox
+      - run: tox --workdir /deps/tox --notest
+      - save_cache:
+          paths:
+            - /deps/tox
+          key: v1-tox-{{ .Branch }}-{{ checksum "requirements-test.txt" }}
+      - run: tox --workdir /deps/tox
 
 jobs:
 
@@ -16,7 +39,8 @@ jobs:
       TOXENV: check,mypy,flake8,black,bandit
     steps:
       - checkout
-      - tox
+      - install_tox
+      - run_tox
 
   py352-asyncio:
     docker:
@@ -25,7 +49,8 @@ jobs:
       TOXENV: clean,py35-asyncio,coverage
     steps:
       - checkout
-      - tox
+      - install_tox
+      - run_tox
 
   py352-uvloop:
     docker:
@@ -34,7 +59,8 @@ jobs:
       TOXENV: clean,py35-uvloop,coverage
     steps:
       - checkout
-      - tox
+      - install_tox
+      - run_tox
 
   py35-asyncio:
     docker:
@@ -43,7 +69,8 @@ jobs:
       TOXENV: clean,py35-asyncio,coverage
     steps:
       - checkout
-      - tox
+      - install_tox
+      - run_tox
 
   py35-uvloop:
     docker:
@@ -52,7 +79,8 @@ jobs:
       TOXENV: clean,py35-uvloop,coverage
     steps:
       - checkout
-      - tox
+      - install_tox
+      - run_tox
 
   py36-asyncio:
     docker:
@@ -61,7 +89,8 @@ jobs:
       TOXENV: clean,py36-asyncio,coverage
     steps:
       - checkout
-      - tox
+      - install_tox
+      - run_tox
 
   py36-uvloop:
     docker:
@@ -70,7 +99,8 @@ jobs:
       TOXENV: clean,py36-uvloop,coverage
     steps:
       - checkout
-      - tox
+      - install_tox
+      - run_tox
 
   py37-asyncio:
     docker:
@@ -79,7 +109,8 @@ jobs:
       TOXENV: clean,py37-asyncio,coverage
     steps:
       - checkout
-      - tox
+      - install_tox
+      - run_tox
 
   py37-uvloop:
     docker:
@@ -88,7 +119,8 @@ jobs:
       TOXENV: clean,py37-uvloop,coverage
     steps:
       - checkout
-      - tox
+      - install_tox
+      - run_tox
 
   pypy35-asyncio:
     docker:
@@ -97,7 +129,8 @@ jobs:
       TOXENV: clean,pypy35-asyncio,coverage
     steps:
       - checkout
-      - tox
+      - install_tox
+      - run_tox
 
   pypy36-asyncio:
     docker:
@@ -106,7 +139,8 @@ jobs:
       TOXENV: clean,pypy36-asyncio,coverage
     steps:
       - checkout
-      - tox
+      - install_tox
+      - run_tox
 
 
 workflows:
