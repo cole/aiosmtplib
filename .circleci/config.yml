@@ -29,9 +29,7 @@ commands:
           keys:
             - v3-tox-<< parameters.toxenvs >>-{{ .Branch }}-{{ checksum "requirements-test.txt" }}
             - v3-tox-<< parameters.toxenvs >>-{{ .Branch }}-
-            - v3-tox-<< parameters.toxenvs >>-{{ .Branch }}-
             - v3-tox-<< parameters.toxenvs >>-
-            - v3-tox-
       - run:
           command: mkdir -p ~/tox-workdir
           name: "Create tox work dir"
