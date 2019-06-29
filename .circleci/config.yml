@@ -8,151 +8,191 @@ commands:
           keys:
             - v1-pip
       - run:
-          command: mkdir -p /deps/pip
+          command: mkdir -p ~/pip-cache
           name: "Create pip cache dir"
       - run:
-          command: pip --cache-dir /deps/pip install tox tox-venv
+          command: pip --cache-dir ~/pip-cache install tox tox-venv
           name: "Install tox & tox-venv"
       - save_cache:
           paths:
-            - /deps/pip
+            - ~/pip-cache
           key: v1-pip
 
   run_tox:
     description: "Run tox"
+    parameters:
+      toxenv:
+        type: string
+        default: "ALL"
     steps:
       - restore_cache:
           keys:
-            - v1-tox-{{ .Environment.CIRCLE_JOB }}-{{ .Branch }}-{{ checksum "requirements-test.txt" }}
-            - v1-tox-{{ .Environment.CIRCLE_JOB }}-{{ .Branch }}-
-            - v1-tox-{{ .Environment.CIRCLE_JOB }}-
+            - v1-tox-<< parameters.toxenv >>-{{ .Branch }}-{{ checksum "requirements-test.txt" }}
+            - v1-tox-<< parameters.toxenv >>-{{ .Branch }}--
+            - v1-tox-<< parameters.toxenv >>-
             - v1-tox-
       - run:
-          command: mkdir -p /deps/tox
+          command: mkdir -p ~/tox-workdir
           name: "Create tox work dir"
       - run:
-          command: tox --workdir /deps/tox --notest
+          command: tox --workdir ~/tox-workdir --notest -e << parameters.toxenv >>
           name: "Install tox env dependencies"
       - save_cache:
           paths:
-            - /deps/tox
-          key: v1-tox-{{ .Environment.CIRCLE_JOB }}-{{ .Branch }}-{{ checksum "requirements-test.txt" }}
+            - ~/tox-workdir/<< parameters.toxenv >>
+          key: v1-tox-<< parameters.toxenv >>-{{ .Branch }}-{{ checksum "requirements-test.txt" }}
       - run:
-          command: tox --workdir /deps/tox
-          name: "Run tox"
+          command: tox --workdir ~/tox-workdir -e << parameters.toxenv >>
+          name: "Run tox (env: << parameters.toxenv >>)"
 
 jobs:
 
   lint:
     docker:
       - image: python:3.7
-    environment:
-      TOXENV: check,mypy,flake8,black,bandit
     steps:
       - checkout
       - install_tox
-      - run_tox
+      - run_tox:
+          toxenv: check
+      - run_tox:
+          toxenv: mypy
+      - run_tox:
+          toxenv: flake8
+      - run_tox:
+          toxenv: black
+      - run_tox:
+          toxenv: bandit
 
   py352-asyncio:
     docker:
       - image: python:3.5.2
-    environment:
-      TOXENV: clean,py35-asyncio,coverage
     steps:
       - checkout
       - install_tox
-      - run_tox
+      - run_tox:
+          toxenv: clean
+      - run_tox:
+          toxenv: py35-asyncio
+      - run_tox:
+          toxenv: coverage
 
   py352-uvloop:
     docker:
       - image: python:3.5.2
-    environment:
-      TOXENV: clean,py35-uvloop,coverage
     steps:
       - checkout
       - install_tox
-      - run_tox
+      - run_tox:
+          toxenv: clean
+      - run_tox:
+          toxenv: py35-uvloop
+      - run_tox:
+          toxenv: coverage
 
   py35-asyncio:
     docker:
       - image: python:3.5-stretch
-    environment:
-      TOXENV: clean,py35-asyncio,coverage
     steps:
       - checkout
       - install_tox
-      - run_tox
+      - run_tox:
+          toxenv: clean
+      - run_tox:
+          toxenv: py35-asyncio
+      - run_tox:
+          toxenv: coverage
 
   py35-uvloop:
     docker:
       - image: python:3.5-stretch
-    environment:
-      TOXENV: clean,py35-uvloop,coverage
     steps:
       - checkout
       - install_tox
-      - run_tox
+      - run_tox:
+          toxenv: clean
+      - run_tox:
+          toxenv: py35-uvloop
+      - run_tox:
+          toxenv: coverage
 
   py36-asyncio:
     docker:
       - image: python:3.6-stretch
-    environment:
-      TOXENV: clean,py36-asyncio,coverage
     steps:
       - checkout
       - install_tox
-      - run_tox
+      - run_tox:
+          toxenv: clean
+      - run_tox:
+          toxenv: py36-asyncio
+      - run_tox:
+          toxenv: coverage
 
   py36-uvloop:
     docker:
       - image: python:3.6-stretch
-    environment:
-      TOXENV: clean,py36-uvloop,coverage
     steps:
       - checkout
       - install_tox
-      - run_tox
+      - run_tox:
+          toxenv: clean
+      - run_tox:
+          toxenv: py36-uvloop
+      - run_tox:
+          toxenv: coverage
 
   py37-asyncio:
     docker:
       - image: python:3.7-stretch
-    environment:
-      TOXENV: clean,py37-asyncio,coverage
     steps:
       - checkout
       - install_tox
-      - run_tox
+      - run_tox:
+          toxenv: clean
+      - run_tox:
+          toxenv: py37-asyncio
+      - run_tox:
+          toxenv: coverage
 
   py37-uvloop:
     docker:
       - image: python:3.7-stretch
-    environment:
-      TOXENV: clean,py37-uvloop,coverage
     steps:
       - checkout
       - install_tox
-      - run_tox
+      - run_tox:
+          toxenv: clean
+      - run_tox:
+          toxenv: py37-uvloop
+      - run_tox:
+          toxenv: coverage
 
   pypy35-asyncio:
     docker:
       - image: pypy:3.5-stretch
-    environment:
-      TOXENV: clean,pypy35-asyncio,coverage
     steps:
       - checkout
       - install_tox
-      - run_tox
+      - run_tox:
+          toxenv: clean
+      - run_tox:
+          toxenv: pypy35-asyncio
+      - run_tox:
+          toxenv: coverage
 
   pypy36-asyncio:
     docker:
       - image: pypy:3.6-stretch
-    environment:
-      TOXENV: clean,pypy36-asyncio,coverage
     steps:
       - checkout
       - install_tox
-      - run_tox
-
+      - run_tox:
+          toxenv: clean
+      - run_tox:
+          toxenv: pypy36-asyncio
+      - run_tox:
+          toxenv: coverage
 
 workflows:
   version: 2
