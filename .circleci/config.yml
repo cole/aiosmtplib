@@ -22,7 +22,8 @@ commands:
           name: "Create tox work dir"
       - restore_cache:
           keys:
-            - v2-tox-{{ .Branch }}-{{ checksum "requirements-test.txt" }}
+            - v2-tox-{{ .Branch }}-{{ .Environment.CIRCLE_JOB }}-{{ checksum "requirements-test.txt" }}
+            - v2-tox-{{ .Branch }}-{{ .Environment.CIRCLE_JOB }}-
             - v2-tox-{{ .Branch }}-
             - v2-tox-
       - run:
@@ -31,7 +32,7 @@ commands:
       - save_cache:
           paths:
             - ~/tox-workdir
-          key: v2-tox-{{ .Branch }}-{{ checksum "requirements-test.txt" }}
+          key: v2-tox-{{ .Branch }}-{{ .Environment.CIRCLE_JOB }}-{{ checksum "requirements-test.txt" }}
 
   run_tox:
     description: "Run tox"
