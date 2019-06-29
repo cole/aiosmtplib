@@ -76,112 +76,58 @@ jobs:
       - run_tox:
           toxenv: bandit
 
-  py352-asyncio:
+  py352:
     docker:
       - image: python:3.5.2
     steps:
       - checkout
       - install_tox
       - install_tox_deps:
-          toxenvs: clean,py35-asyncio,coverage
+          toxenvs: clean,py35-asyncio,py35-uvloop,coverage
       - run_tox:
           toxenv: clean
       - run_tox:
           toxenv: py35-asyncio
       - run_tox:
-          toxenv: coverage
-
-  py352-uvloop:
-    docker:
-      - image: python:3.5.2
-    steps:
-      - checkout
-      - install_tox
-      - install_tox_deps:
-          toxenvs: clean,py35-uvloop,coverage
-      - run_tox:
-          toxenv: clean
-      - run_tox:
           toxenv: py35-uvloop
       - run_tox:
           toxenv: coverage
 
-  py35-asyncio:
+  py35:
     docker:
       - image: python:3.5-stretch
     steps:
       - checkout
       - install_tox
       - install_tox_deps:
-          toxenvs: clean,py35-asyncio,coverage
+          toxenvs: clean,py35-asyncio,py35-uvloop,coverage
       - run_tox:
           toxenv: clean
       - run_tox:
           toxenv: py35-asyncio
       - run_tox:
-          toxenv: coverage
-
-  py35-uvloop:
-    docker:
-      - image: python:3.5-stretch
-    steps:
-      - checkout
-      - install_tox
-      - install_tox_deps:
-          toxenvs: clean,py35-uvloop,coverage
-      - run_tox:
-          toxenv: clean
-      - run_tox:
           toxenv: py35-uvloop
       - run_tox:
           toxenv: coverage
 
-  py36-asyncio:
+  py36:
     docker:
       - image: python:3.6-stretch
     steps:
       - checkout
       - install_tox
       - install_tox_deps:
-          toxenvs: clean,py36-asyncio,coverage
+          toxenvs: clean,py36-asyncio,py36-uvloop,coverage
       - run_tox:
           toxenv: clean
       - run_tox:
           toxenv: py36-asyncio
       - run_tox:
-          toxenv: coverage
-
-  py36-uvloop:
-    docker:
-      - image: python:3.6-stretch
-    steps:
-      - checkout
-      - install_tox
-      - install_tox_deps:
-          toxenvs: clean,py36-uvloop,coverage
-      - run_tox:
-          toxenv: clean
-      - run_tox:
           toxenv: py36-uvloop
       - run_tox:
           toxenv: coverage
 
-  py37-asyncio:
-    docker:
-      - image: python:3.7-stretch
-    steps:
-      - checkout
-      - install_tox
-      - install_tox_deps:
-          toxenvs: clean,py37-asyncio,coverage
-      - run_tox:
-          toxenv: clean
-      - run_tox:
-          toxenv: py37-asyncio
-      - run_tox:
-          toxenv: coverage
-
-  py37-uvloop:
+  py37:
     docker:
       - image: python:3.7-stretch
     steps:
@@ -192,11 +138,13 @@ jobs:
       - run_tox:
           toxenv: clean
       - run_tox:
+          toxenv: py37-asyncio
+      - run_tox:
           toxenv: py37-uvloop
       - run_tox:
           toxenv: coverage
 
-  pypy35-asyncio:
+  pypy35:
     docker:
       - image: pypy:3.5-stretch
     steps:
@@ -211,7 +159,7 @@ jobs:
       - run_tox:
           toxenv: coverage
 
-  pypy36-asyncio:
+  pypy36:
     docker:
       - image: pypy:3.6-stretch
     steps:
@@ -226,31 +174,18 @@ jobs:
       - run_tox:
           toxenv: coverage
 
-  py38-asyncio:
+  py38:
     docker:
       - image: python:3.8-rc-buster
     steps:
       - checkout
       - install_tox
       - install_tox_deps:
-          toxenvs: clean,py38-asyncio,coverage
+          toxenvs: clean,py38-asyncio,py38-uvloop,coverage
       - run_tox:
           toxenv: clean
       - run_tox:
           toxenv: py38-asyncio
-      - run_tox:
-          toxenv: coverage
-
-  py38-uvloop:
-    docker:
-      - image: python:3.8-rc-buster
-    steps:
-      - checkout
-      - install_tox
-      - install_tox_deps:
-          toxenvs: clean,py38-uvloop,coverage
-      - run_tox:
-          toxenv: clean
       - run_tox:
           toxenv: py38-uvloop
       - run_tox:
@@ -261,39 +196,24 @@ workflows:
   lint_and_test:
     jobs:
       - lint
-      - py352-asyncio:
+      - py352:
           requires:
             - lint
-      - py35-asyncio:
+      - py35:
           requires:
             - lint
-      - py36-asyncio:
+      - py36:
           requires:
             - lint
-      - py37-asyncio:
+      - py37:
           requires:
             - lint
-      - py352-uvloop:
+      - pypy35:
           requires:
             - lint
-      - py35-uvloop:
+      - pypy36:
           requires:
             - lint
-      - py36-uvloop:
-          requires:
-            - lint
-      - py37-uvloop:
-          requires:
-            - lint
-      - pypy35-asyncio:
-          requires:
-            - lint
-      - pypy36-asyncio:
-          requires:
-            - lint
-      - py38-asyncio:
-          requires:
-            - lint
-      - py38-uvloop:
+      - py38:
           requires:
             - lint
