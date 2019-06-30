@@ -1,6 +1,5 @@
 variables:
   CI: 'true'
-  EVENT_LOOP: 'asyncio'
 
 trigger:
 - master
