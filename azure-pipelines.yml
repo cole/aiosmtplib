@@ -72,12 +72,12 @@ jobs:
     condition: ne(variables['python.version'], '3.5.2')
   - script: pip install tox tox-venv
     displayName: 'Install Tox'
-  - script: tox -- --junitxml=junit/test-results.xml
+  - script: tox
     displayName: 'Run Tox'
   - task: PublishTestResults@2
     condition: succeededOrFailed()
     inputs:
-      testResultsFiles: '**/test-results.xml'
+      testResultsFiles: 'test-results-*.xml'
       testRunTitle: 'Publish test results for Python $(python.version) ($(EVENT_LOOP))'
   - task: PublishCodeCoverageResults@1
     inputs:
