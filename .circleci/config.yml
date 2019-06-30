@@ -55,11 +55,12 @@ commands:
           command: tox --workdir ~/tox-workdir -e << parameters.toxenv >>
           name: "Running tox: << parameters.toxenv >>"
       - run:
-          command: mkdir -p test-results/<< parameters.toxenv >>
-          name: "Creating test result subdir"
-      - run:
-          command: cp test-results-<< parameters.toxenv >>.xml test-results/<< parameters.toxenv >>/results.xml
-          name: "Copying JUnit test results to subdir"
+          name: "Copying any JUnit test results to subdir"
+          command: |
+            if [-f "test-results-<< parameters.toxenv >>.xml"]; then
+              mkdir -p test-results/<< parameters.toxenv >>
+              cp test-results-<< parameters.toxenv >>.xml test-results/<< parameters.toxenv >>/results.xml
+            fi
 
   store_tox_results:
     description: "Store test results"
