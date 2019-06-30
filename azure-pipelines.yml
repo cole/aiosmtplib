@@ -12,55 +12,18 @@ jobs:
     vmImage: 'Ubuntu-16.04'
   strategy:
     matrix:
-      # Python352:
-      #   python.version: '3.5.2'
-      #   TOXENV: 'clean,py35-asyncio,coverage'
       Python35:
         python.version: '3.5'
-        TOXENV: 'clean,py35-asyncio,coverage'
+        TOXENV: 'clean,py35-asyncio,py35-uvloop,coverage'
       Python36:
         python.version: '3.6'
-        TOXENV: 'clean,py36-asyncio,coverage'
+        TOXENV: 'clean,py36-asyncio,py36-uvloop,coverage'
       Python37:
         python.version: '3.7'
-        TOXENV: 'clean,py37-asyncio,coverage'
-      # Python352-UVLoop:
-      #   python.version: '3.5.2'
-      #   TOXENV: 'clean,py35-uvloop,coverage'
-      #   EVENT_LOOP: 'uvloop'
+        TOXENV: 'clean,py37-asyncio,py37-uvloop,coverage'
       PyPy3:
         python.version: 'pypy3'
         TOXENV: 'clean,pypy35-asyncio,coverage'
-      Python35-UVLoop:
-        python.version: '3.5'
-        TOXENV: 'clean,py35-uvloop,coverage'
-        EVENT_LOOP: 'uvloop'
-      Python36-UVLoop:
-        python.version: '3.6'
-        TOXENV: 'clean,py36-uvloop,coverage'
-        EVENT_LOOP: 'uvloop'
-      Python37-UVLoop:
-        python.version: '3.7'
-        TOXENV: 'clean,py37-uvloop,coverage'
-        EVENT_LOOP: 'uvloop'
-      # Python35-Dev:
-      #   python.version: '3.5-dev'
-      #   TOXENV: 'clean,py35-asyncio,coverage'
-      # Python36-Dev:
-      #   python.version: '3.6-dev'
-      #   TOXENV: 'clean,py36-asyncio,coverage'
-      # Python37-Dev:
-      #   python.version: '3.7-dev'
-      #   TOXENV: 'clean,py37-asyncio,coverage'
-      # Python35-UVLoop-Dev:
-      #   python.version: '3.5-dev'
-      #   TOXENV: 'clean,py35-uvloop,coverage'
-      # Python36-UVLoop-Dev:
-      #   python.version: '3.6-dev'
-      #   TOXENV: 'clean,py36-uvloop,coverage'
-      # Python37-UVLoop-Dev:
-      #   python.version: '3.7-dev'
-      #   TOXENV: 'clean,py37-uvloop,coverage'
 
   steps:
   - task: UsePythonVersion@0
