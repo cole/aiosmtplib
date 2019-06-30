@@ -54,19 +54,22 @@ commands:
       - run:
           command: tox --workdir ~/tox-workdir -e << parameters.toxenv >>
           name: "Running tox: << parameters.toxenv >>"
+      - run:
+          command: mkdir -p test-results/<< parameters.toxenv >>
+          name: "Creating test result subdir"
+      - run:
+          command: cp test-results-<< parameters.toxenv >>.xml test-results/<< parameters.toxenv >>/results.xml
+          name: "Copying JUnit test results to subdir"
 
   store_tox_results:
     description: "Store test results"
     steps:
       - store_test_results:
-          path: test-results-*.xml
-
+          path: test-results
       - store_artifacts:
-          path: test-results-*.xml
-
+          path: test-results
       - store_artifacts:
           path: coverage.xml
-
       - store_artifacts:
           path: htmlcov
 
