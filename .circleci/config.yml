@@ -55,6 +55,21 @@ commands:
           command: tox --workdir ~/tox-workdir -e << parameters.toxenv >>
           name: "Running tox: << parameters.toxenv >>"
 
+  store_tox_results:
+    description: "Store test results"
+    steps:
+      - store_test_results:
+          path: test-results-*.xml
+
+      - store_artifacts:
+          path: test-results-*.xml
+
+      - store_artifacts:
+          path: coverage.xml
+
+      - store_artifacts:
+          path: htmlcov
+
 jobs:
 
   lint:
@@ -92,6 +107,7 @@ jobs:
           toxenv: py35-uvloop
       - run_tox:
           toxenv: coverage
+      - store_tox_results
 
   py35:
     docker:
@@ -109,6 +125,7 @@ jobs:
           toxenv: py35-uvloop
       - run_tox:
           toxenv: coverage
+      - store_tox_results
 
   py36:
     docker:
@@ -126,6 +143,7 @@ jobs:
           toxenv: py36-uvloop
       - run_tox:
           toxenv: coverage
+      - store_tox_results
 
   py37:
     docker:
@@ -143,6 +161,7 @@ jobs:
           toxenv: py37-uvloop
       - run_tox:
           toxenv: coverage
+      - store_tox_results
 
   pypy35:
     docker:
@@ -158,6 +177,7 @@ jobs:
           toxenv: pypy35-asyncio
       - run_tox:
           toxenv: coverage
+      - store_tox_results
 
   pypy36:
     docker:
@@ -173,6 +193,7 @@ jobs:
           toxenv: pypy36-asyncio
       - run_tox:
           toxenv: coverage
+      - store_tox_results
 
   py38:
     docker:
@@ -192,6 +213,7 @@ jobs:
       #     toxenv: py38-uvloop
       - run_tox:
           toxenv: coverage
+      - store_tox_results
 
 workflows:
   version: 2
