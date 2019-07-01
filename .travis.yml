@@ -12,21 +12,13 @@ python:
 matrix:
   include:
     - python: 3.5-dev
-    - env: EVENT_LOOP=asyncio TOXENV=clean,py35-asyncio,coverage
-    - python: 3.5-dev
-    - env: EVENT_LOOP=uvloop TOXENV=clean,py35-uvloop,coverage
+    - env: TOXENV=clean,py35-asyncio,py35-uvloop,coverage
     - python: 3.6-dev
-    - env: EVENT_LOOP=asyncio TOXENV=clean,py36-asyncio,coverage
-    - python: 3.6-dev
-    - env: EVENT_LOOP=uvloop TOXENV=clean,py36-uvloop,coverage
+    - env: TOXENV=clean,py36-asyncio,py36-uvloop,coverage
     - python: 3.7-dev
-    - env: EVENT_LOOP=asyncio TOXENV=clean,py37-asyncio,coverage
-    - python: 3.7-dev
-    - env: EVENT_LOOP=uvloop TOXENV=clean,py37-uvloop,coverage
+    - env: TOXENV=clean,py37-asyncio,py37-uvloop,coverage
     - python: 3.8-dev
-    - env: EVENT_LOOP=asyncio TOXENV=clean,py38-asyncio,coverage
-    - python: 3.8-dev
-    - env: EVENT_LOOP=uvloop TOXENV=clean,py38-uvloop,coverage
+    - env: TOXENV=clean,py38-asyncio,py38-uvloop,coverage
   allow_failures:
     - python: 3.5-dev
     - python: 3.6-dev
