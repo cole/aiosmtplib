@@ -173,6 +173,41 @@ jobs:
       - install_and_run_toxenvs:
           toxenvs: clean,py38-asyncio,coverage
 
+    deploy:
+      docker:
+        - image: python:3.7
+      steps:
+        - run:
+            name: Installing twine
+            command: pip install twine
+        - run:
+            name: Creating .pypirc
+            command: |
+              cat <<EOT >> ~/.pypirc
+              [distutils]
+              index-servers=
+                pypi
+                testpypi
+
+              [pypi]
+              username: colemaclean
+              password: $PYPI_PASSWORD
+
+              [testpypi]
+              repository: https://test.pypi.org/legacy/
+              username: colemaclean
+              password: $TESTPYPI_PASSWORD
+              EOT
+        - run:
+            name: Building packages
+            command: python setup.py sdist bdist_wheel
+        - run:
+            name: Uploading to Test PyPI
+            command: twine upload --repository testpypi dist/*
+        - run:
+            name: Uploading to PyPI
+            command: twine upload --repository pypi dist/*
+
 workflows:
   version: 2
   lint_and_test:
@@ -200,3 +235,17 @@ workflows:
       - py38:
           requires:
             - lint
+      - deploy:
+          requires:
+            - lint
+            - docs
+            - py352
+            - py35
+            - py36
+            - py37
+            - py38
+            - pypy35
+            - pypy36
+          filters:
+            tags:
+              only: /v[0-9]\.[0-9](\.[0-9])*/
