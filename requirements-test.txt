@@ -1,6 +1,6 @@
 # Used for automated testing
 pytest==4.4.1
 pytest-asyncio==0.10.0
-pytest-cov==2.6.1
+pytest-cov==2.7.1
 hypothesis==4.24.6
 aiosmtpd==1.2
