@@ -173,7 +173,7 @@ jobs:
       - install_and_run_toxenvs:
           toxenvs: clean,py38-asyncio,coverage
 
-  deploy:
+  deploy_to_pypi:
     docker:
       - image: python:3.7
     steps:
@@ -235,7 +235,7 @@ workflows:
       - py38:
           requires:
             - lint
-      - deploy:
+      - deploy_to_pypi:
           requires:
             - lint
             - docs
