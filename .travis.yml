@@ -4,8 +4,6 @@ cache: pip
 stages:
   - lint
   - test
-  - name: release
-    if: tag IS present
 python:
   - 3.5.2
   - '3.5'
@@ -76,18 +74,3 @@ jobs:
       after_success: skip
       python: '3.7'
       env: EVENT_LOOP=asyncio
-    - stage: release
-      name: 'Release to PyPi'
-      script: skip
-      install: skip
-      python: '3.7'
-      env: EVENT_LOOP=asyncio
-      deploy:
-        provider: pypi
-        user: colemaclean
-        password:
-          secure: bJ8T2v/YZlQU7iLmoJmrWZ0H51GtbhOw6AWtVErMQ2HF4HDRIcGhQXmxKmxG7Hs3mUbe7l7NWtJCtZzHKC1I5N0UZYlioFpC6yFYkqQDNoau9D203C7zdlXA47OezvzDmB/Kt1LQ3D/xd7Ji9hQHKwwVMC76IAhwZxl8Y5UBX6M=
-        distributions: 'sdist bdist_wheel'
-        on:
-          tags: true
-          repo: cole/aiosmtplib
