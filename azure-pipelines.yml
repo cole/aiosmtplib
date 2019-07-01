@@ -1,6 +1,5 @@
 variables:
   CI: 'true'
-  EVENT_LOOP: 'asyncio'
 
 trigger:
 - master
@@ -12,55 +11,18 @@ jobs:
     vmImage: 'Ubuntu-16.04'
   strategy:
     matrix:
-      # Python352:
-      #   python.version: '3.5.2'
-      #   TOXENV: 'clean,py35-asyncio,coverage'
       Python35:
         python.version: '3.5'
-        TOXENV: 'clean,py35-asyncio,coverage'
+        TOXENV: 'clean,py35-asyncio,py35-uvloop,coverage'
       Python36:
         python.version: '3.6'
-        TOXENV: 'clean,py36-asyncio,coverage'
+        TOXENV: 'clean,py36-asyncio,py36-uvloop,coverage'
       Python37:
         python.version: '3.7'
-        TOXENV: 'clean,py37-asyncio,coverage'
-      # Python352-UVLoop:
-      #   python.version: '3.5.2'
-      #   TOXENV: 'clean,py35-uvloop,coverage'
-      #   EVENT_LOOP: 'uvloop'
+        TOXENV: 'clean,py37-asyncio,py37-uvloop,coverage'
       PyPy3:
         python.version: 'pypy3'
         TOXENV: 'clean,pypy35-asyncio,coverage'
-      Python35-UVLoop:
-        python.version: '3.5'
-        TOXENV: 'clean,py35-uvloop,coverage'
-        EVENT_LOOP: 'uvloop'
-      Python36-UVLoop:
-        python.version: '3.6'
-        TOXENV: 'clean,py36-uvloop,coverage'
-        EVENT_LOOP: 'uvloop'
-      Python37-UVLoop:
-        python.version: '3.7'
-        TOXENV: 'clean,py37-uvloop,coverage'
-        EVENT_LOOP: 'uvloop'
-      # Python35-Dev:
-      #   python.version: '3.5-dev'
-      #   TOXENV: 'clean,py35-asyncio,coverage'
-      # Python36-Dev:
-      #   python.version: '3.6-dev'
-      #   TOXENV: 'clean,py36-asyncio,coverage'
-      # Python37-Dev:
-      #   python.version: '3.7-dev'
-      #   TOXENV: 'clean,py37-asyncio,coverage'
-      # Python35-UVLoop-Dev:
-      #   python.version: '3.5-dev'
-      #   TOXENV: 'clean,py35-uvloop,coverage'
-      # Python36-UVLoop-Dev:
-      #   python.version: '3.6-dev'
-      #   TOXENV: 'clean,py36-uvloop,coverage'
-      # Python37-UVLoop-Dev:
-      #   python.version: '3.7-dev'
-      #   TOXENV: 'clean,py37-uvloop,coverage'
 
   steps:
   - task: UsePythonVersion@0
@@ -68,20 +30,17 @@ jobs:
     inputs:
       versionSpec: '$(python.version)'
       architecture: 'x64'
-    # Ubuntu 16.04 default Python is 3.5.2
-    condition: ne(variables['python.version'], '3.5.2')
   - script: pip install tox tox-venv
     displayName: 'Install Tox'
-  - script: tox -- --junitxml=junit/test-results.xml
+  - script: tox
     displayName: 'Run Tox'
   - task: PublishTestResults@2
     condition: succeededOrFailed()
     inputs:
-      testResultsFiles: '**/test-results.xml'
-      testRunTitle: 'Publish test results for Python $(python.version) ($(EVENT_LOOP))'
+      testResultsFiles: 'test-results/**/results.xml'
+      testRunTitle: '$(python.version) Test Run'
   - task: PublishCodeCoverageResults@1
     inputs:
       codeCoverageTool: Cobertura
       summaryFileLocation: '$(System.DefaultWorkingDirectory)/**/coverage.xml'
-      reportDirectory: '$(System.DefaultWorkingDirectory)/**/htmlcov'
       failIfCoverageEmpty: true

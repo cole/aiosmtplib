@@ -1,146 +1,278 @@
 version: 2.1
 
+orbs:
+  codecov: codecov/codecov@1.0.5
+
 commands:
-  tox:
-    description: "Run Tox"
+  install_tox:
+    description: "Install tox"
     steps:
-      - run: pip install tox tox-venv
-      - run: tox
+      - restore_cache:
+          keys:
+            - v2-pip
+          name: "Restoring pip cache"
+      - run:
+          command: mkdir -p ~/pip-cache
+          name: "Creating pip cache dir"
+      - run:
+          command: pip --cache-dir ~/pip-cache install tox tox-venv
+          name: "Installing tox & tox-venv"
+      - save_cache:
+          paths:
+            - ~/pip-cache
+          key: v2-pip
+          name: "Saving pip cache"
+
+  cache_tox_workdir:
+    description: "Cache tox workdir"
+    parameters:
+      cache_key:
+        type: string
+      tox_runs:
+        type: steps
+        default: []
+    steps:
+      - restore_cache:
+          keys:
+            - v4-tox-<< parameters.cache_key >>-{{ checksum "requirements-test.txt" }}-{{ .Branch }}
+            - v4-tox-<< parameters.cache_key >>-{{ checksum "requirements-test.txt" }}-
+          name: "Restoring tox envs cache: << parameters.cache_key >>"
+      - run:
+          command: mkdir -p ~/tox-workdir
+          name: "Creating tox work dir"
+      - steps: << parameters.tox_runs >>
+      - save_cache:
+          paths:
+            - ~/tox-workdir
+          key: v4-tox-<< parameters.cache_key >>-{{ checksum "requirements-test.txt" }}-{{ .Branch }}
+          name: "Saving tox workdir cache: << parameters.cache_key >>"
+
+  run_tox:
+    description: "Run tox"
+    parameters:
+      toxenv:
+        type: string
+        default: "ALL"
+    steps:
+      - run:
+          command: tox --workdir ~/tox-workdir -e << parameters.toxenv >>
+          name: "Running tox: << parameters.toxenv >>"
+
+  install_and_run_toxenvs:
+    description: "Install and run tox with multiple envs"
+    parameters:
+      toxenvs:
+        type: string
+        default: "ALL"
+    steps:
+      - install_tox
+      - cache_tox_workdir:
+          cache_key: << parameters.toxenvs >>
+          tox_runs:
+            - run_tox:
+                toxenv: << parameters.toxenvs >>
+      - store_test_results:
+          path: test-results
+      - store_artifacts:
+          path: test-results
+      - store_artifacts:
+          path: coverage.xml
+      - store_artifacts:
+          path: htmlcov
+      - codecov/upload:
+          file: coverage.xml
 
 jobs:
 
   lint:
     docker:
       - image: python:3.7
-    environment:
-      TOXENV: check,mypy,flake8,black,bandit
     steps:
       - checkout
-      - tox
+      - install_tox
+      - cache_tox_workdir:
+          cache_key: check,mypy,flake8,black,bandit
+          tox_runs:
+            - run_tox:
+                toxenv: check
+            - run_tox:
+                toxenv: mypy
+            - run_tox:
+                toxenv: flake8
+            - run_tox:
+                toxenv: black
+            - run_tox:
+                toxenv: bandit
 
-  py352-asyncio:
+  docs:
+    docker:
+      - image: python:3.7
+    steps:
+      - checkout
+      - install_tox
+      - cache_tox_workdir:
+          cache_key: docs
+          tox_runs:
+            - run_tox:
+                toxenv: docs
+
+  py352:
     docker:
       - image: python:3.5.2
-    environment:
-      TOXENV: clean,py35-asyncio,coverage
     steps:
       - checkout
-      - tox
+      - install_and_run_toxenvs:
+          toxenvs: clean,py35-asyncio,py35-uvloop,coverage
 
-  py352-uvloop:
-    docker:
-      - image: python:3.5.2
-    environment:
-      TOXENV: clean,py35-uvloop,coverage
-    steps:
-      - checkout
-      - tox
-
-  py35-asyncio:
+  py35:
     docker:
       - image: python:3.5-stretch
-    environment:
-      TOXENV: clean,py35-asyncio,coverage
     steps:
       - checkout
-      - tox
+      - install_and_run_toxenvs:
+          toxenvs: clean,py35-asyncio,py35-uvloop,coverage
 
-  py35-uvloop:
-    docker:
-      - image: python:3.5-stretch
-    environment:
-      TOXENV: clean,py35-uvloop,coverage
-    steps:
-      - checkout
-      - tox
-
-  py36-asyncio:
+  py36:
     docker:
       - image: python:3.6-stretch
-    environment:
-      TOXENV: clean,py36-asyncio,coverage
     steps:
       - checkout
-      - tox
+      - install_and_run_toxenvs:
+          toxenvs: clean,py36-asyncio,py36-uvloop,coverage
 
-  py36-uvloop:
-    docker:
-      - image: python:3.6-stretch
-    environment:
-      TOXENV: clean,py36-uvloop,coverage
-    steps:
-      - checkout
-      - tox
-
-  py37-asyncio:
+  py37:
     docker:
       - image: python:3.7-stretch
-    environment:
-      TOXENV: clean,py37-asyncio,coverage
     steps:
       - checkout
-      - tox
+      - install_and_run_toxenvs:
+          toxenvs: clean,py37-asyncio,py37-uvloop,coverage
 
-  py37-uvloop:
-    docker:
-      - image: python:3.7-stretch
-    environment:
-      TOXENV: clean,py37-uvloop,coverage
-    steps:
-      - checkout
-      - tox
-
-  pypy35-asyncio:
+  pypy35:
     docker:
       - image: pypy:3.5-stretch
-    environment:
-      TOXENV: clean,pypy35-asyncio,coverage
     steps:
       - checkout
-      - tox
+      - install_and_run_toxenvs:
+          toxenvs: clean,pypy35-asyncio,coverage
 
-  pypy36-asyncio:
+  pypy36:
     docker:
       - image: pypy:3.6-stretch
-    environment:
-      TOXENV: clean,pypy36-asyncio,coverage
     steps:
       - checkout
-      - tox
+      - install_and_run_toxenvs:
+          toxenvs: clean,pypy36-asyncio,coverage
 
+  py38:
+    docker:
+      - image: python:3.8-rc-buster
+    steps:
+      - checkout
+      # uvloop on py38 is broken :(
+      - install_and_run_toxenvs:
+          toxenvs: clean,py38-asyncio,coverage
+
+  deploy_to_pypi:
+    docker:
+      - image: python:3.7
+    steps:
+      - checkout
+      - run:
+          name: Installing twine
+          command: pip install twine
+      - run:
+          name: Creating .pypirc
+          command: |
+            echo -e "[distutils]" >> ~/.pypirc
+            echo -e "index-servers=" >> ~/.pypirc
+            echo -e "  pypi" >> ~/.pypirc
+            echo -e "  testpypi" >> ~/.pypirc
+            echo -e "[pypi]" >> ~/.pypirc
+            echo -e "username: colemaclean" >> ~/.pypirc
+            echo -e "password: $PYPI_PASSWORD" >> ~/.pypirc
+            echo -e "" >> ~/.pypirc
+            echo -e "[testpypi]" >> ~/.pypirc
+            echo -e "repository: https://test.pypi.org/legacy/" >> ~/.pypirc
+            echo -e "username: colemaclean" >> ~/.pypirc
+            echo -e "password: $TESTPYPI_PASSWORD" >> ~/.pypirc
+      - run:
+          name: Building packages
+          command: python setup.py sdist bdist_wheel
+      - run:
+          name: Uploading to Test PyPI
+          command: twine upload --repository testpypi dist/*
+      - run:
+          name: Uploading to PyPI
+          command: twine upload --repository pypi dist/*
 
 workflows:
   version: 2
   lint_and_test:
     jobs:
-      - lint
-      - py352-asyncio:
+      - lint:
+          filters:
+            tags:
+              only: /.*/
+      - docs:
+          filters:
+            tags:
+              only: /.*/
+      - py352:
           requires:
             - lint
-      - py35-asyncio:
+          filters:
+            tags:
+              only: /.*/
+      - py35:
           requires:
             - lint
-      - py36-asyncio:
+          filters:
+            tags:
+              only: /.*/
+      - py36:
           requires:
             - lint
-      - py37-asyncio:
+          filters:
+            tags:
+              only: /.*/
+      - py37:
           requires:
             - lint
-      - py352-uvloop:
+          filters:
+            tags:
+              only: /.*/
+      - pypy35:
           requires:
             - lint
-      - py35-uvloop:
+          filters:
+            tags:
+              only: /.*/
+      - pypy36:
           requires:
             - lint
-      - py36-uvloop:
+          filters:
+            tags:
+              only: /.*/
+      - py38:
           requires:
             - lint
-      - py37-uvloop:
+          filters:
+            tags:
+              only: /.*/
+      - deploy_to_pypi:
           requires:
             - lint
-      - pypy35-asyncio:
-          requires:
-            - lint
-      - pypy36-asyncio:
-          requires:
-            - lint
+            - docs
+            - py352
+            - py35
+            - py36
+            - py37
+            - py38
+            - pypy35
+            - pypy36
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /v[0-9]\.[0-9](\.[0-9])*/
