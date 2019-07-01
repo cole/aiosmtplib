@@ -32,10 +32,9 @@ matrix:
     - python: 3.8-dev
 script: tox
 install:
-  - 'pip install tox-travis pytest-travis-fold coveralls codecov'
+  - 'pip install tox-travis pytest-travis-fold coveralls'
 after_success:
   - 'COVERALLS_PARALLEL=true coveralls'
-  - codecov
 notifications:
   webhooks: 'https://coveralls.io/webhook'
 jobs:

@@ -1,5 +1,8 @@
 version: 2.1
 
+orbs:
+  codecov: codecov/codecov@1.0.5
+
 commands:
   install_tox:
     description: "Install tox"
@@ -76,6 +79,8 @@ commands:
           path: coverage.xml
       - store_artifacts:
           path: htmlcov
+      - codecov/upload:
+          file: coverage.xml
 
 jobs:
 
