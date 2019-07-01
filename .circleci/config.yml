@@ -183,21 +183,18 @@ jobs:
       - run:
           name: Creating .pypirc
           command: |
-            cat <<EOT >> ~/.pypirc
-            [distutils]
-            index-servers=
-              pypi
-              testpypi
-
-            [pypi]
-            username: colemaclean
-            password: $PYPI_PASSWORD
-
-            [testpypi]
-            repository: https://test.pypi.org/legacy/
-            username: colemaclean
-            password: $TESTPYPI_PASSWORD
-            EOT
+            echo -e "[distutils]" >> ~/.pypirc
+            echo -e "index-servers=" >> ~/.pypirc
+            echo -e "  pypi" >> ~/.pypirc
+            echo -e "  testpypi" >> ~/.pypirc
+            echo -e "[pypi]" >> ~/.pypirc
+            echo -e "username: colemaclean" >> ~/.pypirc
+            echo -e "password: $PYPI_PASSWORD" >> ~/.pypirc
+            echo -e "" >> ~/.pypirc
+            echo -e "[testpypi]" >> ~/.pypirc
+            echo -e "repository: https://test.pypi.org/legacy/" >> ~/.pypirc
+            echo -e "username: colemaclean" >> ~/.pypirc
+            echo -e "password: $TESTPYPI_PASSWORD" >> ~/.pypirc
       - run:
           name: Building packages
           command: python setup.py sdist bdist_wheel
