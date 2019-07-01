@@ -20,29 +20,29 @@ commands:
           key: v2-pip
           name: "Saving pip cache"
 
-  install_tox_deps:
-    description: "Install tox dependencies"
+  cache_tox_workdir:
+    description: "Cache tox workdir"
     parameters:
-      toxenvs:
+      cache_key:
         type: string
-        default: "ALL"
+      tox_runs:
+        type: steps
+        default: []
     steps:
       - restore_cache:
           keys:
-            - v4-tox-<< parameters.toxenvs >>-{{ checksum "requirements-test.txt" }}-{{ .Branch }}
-            - v4-tox-<< parameters.toxenvs >>-{{ checksum "requirements-test.txt" }}-
-          name: "Restoring tox envs cache: << parameters.toxenvs >>"
+            - v4-tox-<< parameters.cache_key >>-{{ checksum "requirements-test.txt" }}-{{ .Branch }}
+            - v4-tox-<< parameters.cache_key >>-{{ checksum "requirements-test.txt" }}-
+          name: "Restoring tox envs cache: << parameters.cache_key >>"
       - run:
           command: mkdir -p ~/tox-workdir
           name: "Creating tox work dir"
-      - run:
-          command: tox --workdir ~/tox-workdir --notest -e << parameters.toxenvs >>
-          name: "Installing tox env dependencies: << parameters.toxenvs >>"
+      - steps: << parameters.tox_runs >>
       - save_cache:
           paths:
             - ~/tox-workdir
-          key: v4-tox-<< parameters.toxenvs >>-{{ checksum "requirements-test.txt" }}-{{ .Branch }}
-          name: "Saving tox envs cache: << parameters.toxenvs >>"
+          key: v4-tox-<< parameters.cache_key >>-{{ checksum "requirements-test.txt" }}-{{ .Branch }}
+          name: "Saving tox workdir cache: << parameters.cache_key >>"
 
   run_tox:
     description: "Run tox"
@@ -55,16 +55,19 @@ commands:
           command: tox --workdir ~/tox-workdir -e << parameters.toxenv >>
           name: "Running tox: << parameters.toxenv >>"
 
-  store_tox_results:
-    description: "Store test results"
+  install_and_run_toxenvs:
+    description: "Install and run tox with multiple envs"
+    parameters:
+      toxenvs:
+        type: string
+        default: "ALL"
     steps:
-      - run:
-          name: "Copying any JUnit test results to subdir"
-          command: |
-            if [ -f "test-results-<< parameters.toxenv >>.xml" ]; then
-              mkdir -p test-results/<< parameters.toxenv >>
-              cp test-results-<< parameters.toxenv >>.xml test-results/<< parameters.toxenv >>/results.xml
-            fi
+      - install_tox
+      - cache_tox_workdir:
+          cache_key: << parameters.toxenvs >>
+          tox_runs:
+            - run_tox:
+                toxenv: << parameters.toxenvs >>
       - store_test_results:
           path: test-results
       - store_artifacts:
@@ -82,142 +85,76 @@ jobs:
     steps:
       - checkout
       - install_tox
-      - install_tox_deps:
-          toxenvs: check,mypy,flake8,black,bandit
-      - run_tox:
-          toxenv: check
-      - run_tox:
-          toxenv: mypy
-      - run_tox:
-          toxenv: flake8
-      - run_tox:
-          toxenv: black
-      - run_tox:
-          toxenv: bandit
+      - cache_tox_workdir:
+          cache_key: check,mypy,flake8,black,bandit
+          tox_runs:
+            - run_tox:
+                toxenv: check
+            - run_tox:
+                toxenv: mypy
+            - run_tox:
+                toxenv: flake8
+            - run_tox:
+                toxenv: black
+            - run_tox:
+                toxenv: bandit
 
   py352:
     docker:
       - image: python:3.5.2
     steps:
       - checkout
-      - install_tox
-      - install_tox_deps:
+      - install_and_run_toxenvs:
           toxenvs: clean,py35-asyncio,py35-uvloop,coverage
-      - run_tox:
-          toxenv: clean
-      - run_tox:
-          toxenv: py35-asyncio
-      - run_tox:
-          toxenv: py35-uvloop
-      - run_tox:
-          toxenv: coverage
-      - store_tox_results
 
   py35:
     docker:
       - image: python:3.5-stretch
     steps:
       - checkout
-      - install_tox
-      - install_tox_deps:
+      - install_and_run_toxenvs:
           toxenvs: clean,py35-asyncio,py35-uvloop,coverage
-      - run_tox:
-          toxenv: clean
-      - run_tox:
-          toxenv: py35-asyncio
-      - run_tox:
-          toxenv: py35-uvloop
-      - run_tox:
-          toxenv: coverage
-      - store_tox_results
 
   py36:
     docker:
       - image: python:3.6-stretch
     steps:
       - checkout
-      - install_tox
-      - install_tox_deps:
+      - install_and_run_toxenvs:
           toxenvs: clean,py36-asyncio,py36-uvloop,coverage
-      - run_tox:
-          toxenv: clean
-      - run_tox:
-          toxenv: py36-asyncio
-      - run_tox:
-          toxenv: py36-uvloop
-      - run_tox:
-          toxenv: coverage
-      - store_tox_results
 
   py37:
     docker:
       - image: python:3.7-stretch
     steps:
       - checkout
-      - install_tox
-      - install_tox_deps:
-          toxenvs: clean,py37-uvloop,coverage
-      - run_tox:
-          toxenv: clean
-      - run_tox:
-          toxenv: py37-asyncio
-      - run_tox:
-          toxenv: py37-uvloop
-      - run_tox:
-          toxenv: coverage
-      - store_tox_results
+      - install_and_run_toxenvs:
+          toxenvs: clean,py37-asyncio,py37-uvloop,coverage
 
   pypy35:
     docker:
       - image: pypy:3.5-stretch
     steps:
       - checkout
-      - install_tox
-      - install_tox_deps:
+      - install_and_run_toxenvs:
           toxenvs: clean,pypy35-asyncio,coverage
-      - run_tox:
-          toxenv: clean
-      - run_tox:
-          toxenv: pypy35-asyncio
-      - run_tox:
-          toxenv: coverage
-      - store_tox_results
 
   pypy36:
     docker:
       - image: pypy:3.6-stretch
     steps:
       - checkout
-      - install_tox
-      - install_tox_deps:
+      - install_and_run_toxenvs:
           toxenvs: clean,pypy36-asyncio,coverage
-      - run_tox:
-          toxenv: clean
-      - run_tox:
-          toxenv: pypy36-asyncio
-      - run_tox:
-          toxenv: coverage
-      - store_tox_results
 
   py38:
     docker:
       - image: python:3.8-rc-buster
     steps:
       - checkout
-      - install_tox
-      - install_tox_deps:
+      # uvloop on py38 is broken :(
+      - install_and_run_toxenvs:
           toxenvs: clean,py38-asyncio,coverage
-          # uvloop on py38 is broken :(
-          # toxenvs: clean,py38-asyncio,py38-uvloop,coverage
-      - run_tox:
-          toxenv: clean
-      - run_tox:
-          toxenv: py38-asyncio
-      # - run_tox:
-      #     toxenv: py38-uvloop
-      - run_tox:
-          toxenv: coverage
-      - store_tox_results
 
 workflows:
   version: 2
