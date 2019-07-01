@@ -5,25 +5,29 @@ stages:
   - lint
   - test
 python:
-  - 3.5.2
-  - '3.5'
-  - '3.6'
-  - '3.7'
-  - pypy3.5
   - 3.5-dev
   - 3.6-dev
   - 3.7-dev
   - 3.8-dev
-env:
-  - EVENT_LOOP=asyncio
-  - EVENT_LOOP=uvloop
 matrix:
-  exclude:
-    - python: pypy3.5
-      env: EVENT_LOOP=uvloop
-  fast_finish: true
+  include:
+    - python: 3.5-dev
+    - env: EVENT_LOOP=asyncio TOXENV=clean,py35-asyncio,coverage
+    - python: 3.5-dev
+    - env: EVENT_LOOP=uvloop TOXENV=clean,py35-uvloop,coverage
+    - python: 3.6-dev
+    - env: EVENT_LOOP=asyncio TOXENV=clean,py36-asyncio,coverage
+    - python: 3.6-dev
+    - env: EVENT_LOOP=uvloop TOXENV=clean,py36-uvloop,coverage
+    - python: 3.7-dev
+    - env: EVENT_LOOP=asyncio TOXENV=clean,py37-asyncio,coverage
+    - python: 3.7-dev
+    - env: EVENT_LOOP=uvloop TOXENV=clean,py37-uvloop,coverage
+    - python: 3.8-dev
+    - env: EVENT_LOOP=asyncio TOXENV=clean,py38-asyncio,coverage
+    - python: 3.8-dev
+    - env: EVENT_LOOP=uvloop TOXENV=clean,py38-uvloop,coverage
   allow_failures:
-    - python: pypy3.5
     - python: 3.5-dev
     - python: 3.6-dev
     - python: 3.7-dev
@@ -38,39 +42,9 @@ notifications:
 jobs:
   include:
     - stage: lint
-      name: 'setup.py check'
+      name: 'Lint'
       install: 'pip install tox'
       after_success: skip
       python: '3.7'
-      env: EVENT_LOOP=asyncio
-      script: 'tox -e check'
-    - script: 'tox -e mypy'
-      name: 'mypy'
-      install: 'pip install tox'
-      after_success: skip
-      python: '3.7'
-      env: EVENT_LOOP=asyncio
-    - script: 'tox -e flake8'
-      name: 'flake8'
-      install: 'pip install tox'
-      after_success: skip
-      python: '3.7'
-      env: EVENT_LOOP=asyncio
-    - script: 'tox -e black'
-      name: 'black'
-      install: 'pip install tox'
-      after_success: skip
-      python: '3.7'
-      env: EVENT_LOOP=asyncio
-    - script: 'tox -e bandit'
-      name: 'bandit'
-      install: 'pip install tox'
-      after_success: skip
-      python: '3.7'
-      env: EVENT_LOOP=asyncio
-    - script: 'tox -e docs'
-      name: 'sphinx build & doctests'
-      install: 'pip install tox'
-      after_success: skip
-      python: '3.7'
-      env: EVENT_LOOP=asyncio
+      env: EVENT_LOOP=asyncio TOXENV=check,mypy,flake8,black,bandit,docs
+      script: tox
