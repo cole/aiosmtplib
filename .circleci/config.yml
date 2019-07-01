@@ -104,6 +104,18 @@ jobs:
             - run_tox:
                 toxenv: bandit
 
+  docs:
+    docker:
+      - image: python:3.7
+    steps:
+      - checkout
+      - install_tox
+      - cache_tox_workdir:
+          cache_key: docs
+          tox_runs:
+            - run_tox:
+                toxenv: docs
+
   py352:
     docker:
       - image: python:3.5.2
@@ -166,6 +178,7 @@ workflows:
   lint_and_test:
     jobs:
       - lint
+      - docs
       - py352:
           requires:
             - lint
