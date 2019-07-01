@@ -177,6 +177,7 @@ jobs:
     docker:
       - image: python:3.7
     steps:
+      - checkout
       - run:
           name: Installing twine
           command: pip install twine
@@ -209,29 +210,56 @@ workflows:
   version: 2
   lint_and_test:
     jobs:
-      - lint
-      - docs
+      - lint:
+          filters:
+            tags:
+              only: /.*/
+      - docs:
+          filters:
+            tags:
+              only: /.*/
       - py352:
           requires:
             - lint
+          filters:
+            tags:
+              only: /.*/
       - py35:
           requires:
             - lint
+          filters:
+            tags:
+              only: /.*/
       - py36:
           requires:
             - lint
+          filters:
+            tags:
+              only: /.*/
       - py37:
           requires:
             - lint
+          filters:
+            tags:
+              only: /.*/
       - pypy35:
           requires:
             - lint
+          filters:
+            tags:
+              only: /.*/
       - pypy36:
           requires:
             - lint
+          filters:
+            tags:
+              only: /.*/
       - py38:
           requires:
             - lint
+          filters:
+            tags:
+              only: /.*/
       - deploy_to_pypi:
           requires:
             - lint
@@ -244,5 +272,7 @@ workflows:
             - pypy35
             - pypy36
           filters:
+            branches:
+              ignore: /.*/
             tags:
               only: /v[0-9]\.[0-9](\.[0-9])*/
