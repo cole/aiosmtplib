@@ -10,15 +10,6 @@ python:
   - 3.7-dev
   - 3.8-dev
 matrix:
-  include:
-    - python: 3.5-dev
-    - env: TOXENV=clean,py35-asyncio,py35-uvloop,coverage
-    - python: 3.6-dev
-    - env: TOXENV=clean,py36-asyncio,py36-uvloop,coverage
-    - python: 3.7-dev
-    - env: TOXENV=clean,py37-asyncio,py37-uvloop,coverage
-    - python: 3.8-dev
-    - env: TOXENV=clean,py38-asyncio,py38-uvloop,coverage
   allow_failures:
     - python: 3.5-dev
     - python: 3.6-dev
