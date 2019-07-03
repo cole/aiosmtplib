@@ -1,9 +1,6 @@
 language: python
 dist: xenial
 cache: pip
-stages:
-  - lint
-  - test
 python:
   - 3.5-dev
   - 3.6-dev
@@ -22,12 +19,3 @@ after_success:
   - 'COVERALLS_PARALLEL=true coveralls'
 notifications:
   webhooks: 'https://coveralls.io/webhook'
-jobs:
-  include:
-    - stage: lint
-      name: 'Lint'
-      install: 'pip install tox'
-      after_success: skip
-      python: '3.7'
-      env: EVENT_LOOP=asyncio TOXENV=check,mypy,flake8,black,bandit,docs
-      script: tox
