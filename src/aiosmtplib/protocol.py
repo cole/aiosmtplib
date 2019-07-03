@@ -96,6 +96,14 @@ class SMTPProtocol(asyncio.Protocol):
 
         self._buffer.extend(data)
 
+        # If we got an obvious partial message, don't try to parse the buffer
+        last_linebreak = data.rfind(b"\n")
+        if (
+            last_linebreak == -1
+            or data[last_linebreak + 3 : last_linebreak + 4] == b"-"
+        ):
+            return
+
         try:
             response = self._read_response_from_buffer()
         except Exception as exc:
