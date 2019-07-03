@@ -1,7 +1,7 @@
 aiosmtplib
 ==========
 
-|travis| |codecov| |pypi-version| |pypi-python-versions| |pypi-status|
+|circleci| |codecov| |pypi-version| |pypi-python-versions| |pypi-status|
 |pypi-license| |black|
 
 ------------
@@ -40,9 +40,9 @@ Bug reports (and feature requests) are welcome via Github issues.
 
 
 
-.. |travis| image:: https://travis-ci.org/cole/aiosmtplib.svg?branch=master
-           :target: https://travis-ci.org/cole/aiosmtplib
-           :alt: "aiosmtplib TravisCI build status"
+.. |circleci| image:: https://circleci.com/gh/cole/aiosmtplib/tree/master.svg?style=svg
+           :target: https://circleci.com/gh/cole/aiosmtplib/tree/master
+           :alt: "aiosmtplib CircleCI build status"
 .. |pypi-version| image:: https://img.shields.io/pypi/v/aiosmtplib.svg
                  :target: https://pypi.python.org/pypi/aiosmtplib
                  :alt: "aiosmtplib on the Python Package Index"
