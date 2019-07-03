@@ -56,28 +56,19 @@ async def test_config_via_connect_kwargs(smtpd_server, event_loop, hostname, por
     await client.quit()
 
 
-async def test_default_port_on_connect(event_loop):
+@pytest.mark.parametrize(
+    "use_tls,start_tls,expected_port",
+    [(False, False, 25), (True, False, 465), (False, True, 587)],
+)
+async def test_default_port_on_connect(event_loop, use_tls, start_tls, expected_port):
     client = SMTP()
 
     try:
-        await client.connect(use_tls=False, timeout=1.0)
-    except (ValueError, OSError):
+        await client.connect(use_tls=use_tls, start_tls=start_tls, timeout=0.001)
+    except (asyncio.TimeoutError, ConnectionError):
         pass  # Ignore connection failure
 
-    assert client.port == 25
-
-    client.close()
-
-
-async def test_default_tls_port_on_connect(event_loop):
-    client = SMTP()
-
-    try:
-        await client.connect(use_tls=True, timeout=1.0)
-    except (ValueError, OSError):
-        pass  # Ignore connection failure
-
-    assert client.port == 465
+    assert client.port == expected_port
 
     client.close()
 

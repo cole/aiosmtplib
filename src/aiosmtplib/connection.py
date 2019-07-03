@@ -40,12 +40,13 @@ class SMTPConnection:
 
     def __init__(
         self,
-        hostname: str = "localhost",
+        hostname: Optional[str] = "localhost",
         port: Optional[int] = None,
         source_address: Optional[str] = None,
-        timeout: Union[float, int, None] = DEFAULT_TIMEOUT,
+        timeout: Optional[float] = DEFAULT_TIMEOUT,
         loop: Optional[asyncio.AbstractEventLoop] = None,
         use_tls: bool = False,
+        start_tls: bool = False,
         validate_certs: bool = True,
         client_cert: Optional[str] = None,
         client_key: Optional[str] = None,
@@ -83,16 +84,12 @@ class SMTPConnection:
         self.protocol = None  # type: Optional[SMTPProtocol]
         self.transport = None  # type: Optional[asyncio.BaseTransport]
 
-        if tls_context is not None and client_cert is not None:
-            raise ValueError(
-                "Either a TLS context or a certificate/key must be provided"
-            )
-
         # Kwarg defaults are provided here, and saved for connect.
         self.hostname = hostname
         self.port = port
         self.timeout = timeout
         self.use_tls = use_tls
+        self._start_tls_on_connect = start_tls
         self._source_address = source_address
         self.validate_certs = validate_certs
         self.client_cert = client_cert
@@ -102,6 +99,8 @@ class SMTPConnection:
 
         self.loop = loop or asyncio.get_event_loop()
         self._connect_lock = asyncio.Lock(loop=self.loop)
+
+        self._validate_config()
 
     async def __aenter__(self) -> "SMTPConnection":
         if not self.is_connected:
@@ -139,20 +138,61 @@ class SMTPConnection:
 
         return self._source_address
 
-    async def connect(
+    def _update_settings_from_kwargs(
         self,
         hostname: Optional[str] = None,
         port: Optional[int] = None,
         source_address: Union[str, Default] = _default,
         timeout: Optional[Union[float, Default]] = _default,
         loop: Optional[asyncio.AbstractEventLoop] = None,
-        use_tls: bool = None,
-        validate_certs: bool = None,
-        client_cert: Union[str, Default] = _default,
-        client_key: Union[str, Default] = _default,
-        tls_context: Union[ssl.SSLContext, Default] = _default,
-        cert_bundle: Union[str, Default] = _default,
-    ) -> SMTPResponse:
+        use_tls: Optional[bool] = None,
+        start_tls: Optional[bool] = None,
+        validate_certs: Optional[bool] = None,
+        client_cert: Optional[Union[str, Default]] = _default,
+        client_key: Optional[Union[str, Default]] = _default,
+        tls_context: Optional[Union[ssl.SSLContext, Default]] = _default,
+        cert_bundle: Optional[Union[str, Default]] = _default,
+    ) -> None:
+        """Update our configuration from the kwargs provided.
+
+        This method can be called multiple times.
+        """
+        if hostname is not None:
+            self.hostname = hostname
+        if loop is not None:
+            self.loop = loop
+        if use_tls is not None:
+            self.use_tls = use_tls
+        if start_tls is not None:
+            self._start_tls_on_connect = start_tls
+        if validate_certs is not None:
+            self.validate_certs = validate_certs
+        if port is not None:
+            self.port = port
+
+        if timeout is not _default:
+            self.timeout = cast(Optional[float], timeout)
+        if source_address is not _default:
+            self._source_address = cast(str, source_address)
+        if client_cert is not _default:
+            self.client_cert = cast(str, client_cert)
+        if client_key is not _default:
+            self.client_key = cast(str, client_key)
+        if tls_context is not _default:
+            self.tls_context = cast(ssl.SSLContext, tls_context)
+        if cert_bundle is not _default:
+            self.cert_bundle = cast(str, cert_bundle)
+
+    def _validate_config(self) -> None:
+        if self._start_tls_on_connect and self.use_tls:
+            raise ValueError("The start_tls and use_tls options are not compatible.")
+
+        if self.tls_context is not None and self.client_cert is not None:
+            raise ValueError(
+                "Either a TLS context or a certificate/key must be provided"
+            )
+
+    async def connect(self, **kwargs) -> SMTPResponse:
         """
         Initialize a connection to the server. Options provided to
         :meth:`.connect` take precedence over those used to initialize the
@@ -185,38 +225,17 @@ class SMTPConnection:
         """
         await self._connect_lock.acquire()
 
-        if hostname is not None:
-            self.hostname = hostname
-        if loop is not None:
-            self.loop = loop
-        if use_tls is not None:
-            self.use_tls = use_tls
-        if validate_certs is not None:
-            self.validate_certs = validate_certs
+        self._update_settings_from_kwargs(**kwargs)
+        self._validate_config()
 
-        if port is not None:
-            self.port = port
-
+        # Set default port last in case use_tls or start_tls is provided
         if self.port is None:
-            self.port = SMTP_TLS_PORT if self.use_tls else SMTP_PORT
-
-        if timeout is not _default:
-            self.timeout = cast(Optional[Union[float, int]], timeout)
-        if source_address is not _default:
-            self._source_address = cast(str, source_address)
-        if client_cert is not _default:
-            self.client_cert = cast(str, client_cert)
-        if client_key is not _default:
-            self.client_key = cast(str, client_key)
-        if tls_context is not _default:
-            self.tls_context = cast(ssl.SSLContext, tls_context)
-        if cert_bundle is not _default:
-            self.cert_bundle = cast(str, cert_bundle)
-
-        if self.tls_context is not None and self.client_cert is not None:
-            raise ValueError(
-                "Either a TLS context or a certificate/key must be provided"
-            )
+            if self.use_tls:
+                self.port = SMTP_TLS_PORT
+            elif self._start_tls_on_connect:
+                self.port = SMTP_STARTTLS_PORT
+            else:
+                self.port = SMTP_PORT
 
         try:
             response = await self._create_connection()
@@ -227,11 +246,6 @@ class SMTPConnection:
         return response
 
     async def _create_connection(self) -> SMTPResponse:
-        if self.hostname is None:
-            raise ValueError("Hostname must be set.")
-        if self.port is None:
-            raise ValueError("Port must be set.")
-
         protocol = SMTPProtocol(
             loop=self.loop, connection_lost_callback=self._connection_lost
         )
@@ -240,7 +254,7 @@ class SMTPConnection:
         if self.use_tls:
             tls_context = self._get_tls_context()
 
-        connect_coro = self.loop.create_connection(
+        connect_coro = self.loop.create_connection(  # type: ignore
             lambda: protocol, host=self.hostname, port=self.port, ssl=tls_context
         )
         try:
@@ -270,6 +284,9 @@ class SMTPConnection:
 
         if response.code != SMTPStatus.ready:
             raise SMTPConnectError(str(response))
+
+        if self._start_tls_on_connect:
+            await self.starttls()
 
         return response
 
@@ -303,6 +320,18 @@ class SMTPConnection:
 
     async def quit(
         self, timeout: Optional[Union[float, Default]] = _default
+    ) -> SMTPResponse:
+        raise NotImplementedError
+
+    async def starttls(
+        self,
+        server_hostname: Optional[str] = None,
+        validate_certs: Optional[bool] = None,
+        client_cert: Optional[Union[str, Default]] = _default,
+        client_key: Optional[Union[str, Default]] = _default,
+        cert_bundle: Optional[Union[str, Default]] = _default,
+        tls_context: Optional[Union[ssl.SSLContext, Default]] = _default,
+        timeout: Optional[Union[float, Default]] = _default,
     ) -> SMTPResponse:
         raise NotImplementedError
 

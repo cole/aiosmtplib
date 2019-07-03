@@ -13,7 +13,6 @@ import pytest
 from aiosmtplib import SMTP
 from aiosmtplib.sync import shutdown_loop
 
-from .mocks import EchoServerProtocol
 from .smtpd import RecordingHandler, TestSMTPD
 
 
@@ -225,6 +224,14 @@ def smtp_client(request, event_loop, hostname, port):
     client = SMTP(hostname=hostname, port=port, loop=event_loop, timeout=1.0)
 
     return client
+
+
+class EchoServerProtocol(asyncio.Protocol):
+    def connection_made(self, transport):
+        self.transport = transport
+
+    def data_received(self, data):
+        self.transport.write(data)
 
 
 @pytest.fixture(scope="function")

@@ -6,7 +6,7 @@ from email.message import Message
 from typing import Dict, Iterable, Optional, Tuple, Union, overload
 
 from .compat import get_running_loop
-from .connection import DEFAULT_TIMEOUT, SMTP_STARTTLS_PORT
+from .connection import DEFAULT_TIMEOUT
 from .response import SMTPResponse
 from .smtp import SMTP
 
@@ -41,8 +41,8 @@ async def send(
 @overload  # NOQA: F811
 async def send(
     message: Union[str, bytes],
-    sender: str = None,
-    recipients: Union[str, Iterable[str]] = None,
+    sender: str = "",
+    recipients: Union[str, Iterable[str]] = "",
     hostname: Optional[str] = None,
     port: Optional[int] = None,
     username: Optional[str] = None,
@@ -117,17 +117,11 @@ async def send(  # NOQA: F811
         if not sender:
             raise ValueError("Sender must be provided with raw messages.")
 
-    if start_tls and use_tls:
-        raise ValueError("The start_tls and use_tls options are not compatible.")
-
-    if start_tls and port is None:
-        port = SMTP_STARTTLS_PORT
-
     loop = get_running_loop()
 
-    async with SMTP(loop=loop, port=port, use_tls=use_tls, **kwargs) as client:
-        if start_tls:
-            await client.starttls()
+    async with SMTP(
+        loop=loop, port=port, use_tls=use_tls, start_tls=start_tls, **kwargs
+    ) as client:
         if username and password:
             await client.login(username, password)
 

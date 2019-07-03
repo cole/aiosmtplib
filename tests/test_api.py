@@ -3,11 +3,7 @@ send coroutine testing.
 """
 import pytest
 
-import aiosmtplib.api  # For monkeypatching
 from aiosmtplib import send
-from aiosmtplib.connection import SMTP_STARTTLS_PORT
-
-from .mocks import MockSMTP
 
 
 pytestmark = pytest.mark.asyncio()
@@ -111,11 +107,3 @@ async def test_send_with_login(
     assert not errors
     assert "AUTH" in [command[0] for command in received_commands]
     assert len(received_messages) == 1
-
-
-async def test_send_start_tls_default_port(monkeypatch, message):
-    monkeypatch.setattr(aiosmtplib.api, "SMTP", MockSMTP)
-
-    errors, response = await send(message, start_tls=True, validate_certs=False)
-
-    assert MockSMTP.kwargs["port"] == SMTP_STARTTLS_PORT

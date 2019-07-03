@@ -422,24 +422,15 @@ class ESMTP(SMTPConnection):
         if self.protocol is None:
             raise SMTPServerDisconnected("Not connected")
 
-        if validate_certs is not None:
-            self.validate_certs = validate_certs
-        if timeout is _default:
-            timeout = self.timeout
-        timeout = cast(Optional[float], timeout)
-        if client_cert is not _default:
-            self.client_cert = cast(Optional[str], client_cert)
-        if client_key is not _default:
-            self.client_key = cast(Optional[str], client_key)
-        if cert_bundle is not _default:
-            self.cert_bundle = cast(Optional[str], cert_bundle)
-        if tls_context is not _default:
-            self.tls_context = cast(Optional[ssl.SSLContext], tls_context)
-
-        if self.tls_context is not None and self.client_cert is not None:
-            raise ValueError(
-                "Either a TLS context or a certificate/key must be provided"
-            )
+        self._update_settings_from_kwargs(
+            validate_certs=validate_certs,
+            client_cert=client_cert,
+            client_key=client_key,
+            cert_bundle=cert_bundle,
+            tls_context=tls_context,
+            timeout=timeout,
+        )
+        self._validate_config()
 
         if server_hostname is None:
             server_hostname = self.hostname
@@ -450,12 +441,12 @@ class ESMTP(SMTPConnection):
             raise SMTPException("SMTP STARTTLS extension not supported by server.")
 
         async with self._command_lock:
-            response = await self.execute_command(b"STARTTLS", timeout=timeout)
+            response = await self.execute_command(b"STARTTLS", timeout=self.timeout)
             if response.code != SMTPStatus.ready:
                 raise SMTPResponseException(response.code, response.message)
 
             self.transport = await self.protocol.start_tls(
-                tls_context, server_hostname=server_hostname, timeout=timeout
+                tls_context, server_hostname=server_hostname, timeout=self.timeout
             )
 
         # RFC 3207 part 4.2:
