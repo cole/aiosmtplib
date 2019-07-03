@@ -42,6 +42,8 @@ class SMTPConnection:
         self,
         hostname: Optional[str] = "localhost",
         port: Optional[int] = None,
+        username: Optional[str] = None,
+        password: Optional[str] = None,
         source_address: Optional[str] = None,
         timeout: Optional[float] = DEFAULT_TIMEOUT,
         loop: Optional[asyncio.AbstractEventLoop] = None,
@@ -57,6 +59,8 @@ class SMTPConnection:
         :keyword hostname:  Server name (or IP) to connect to. Defaults to "localhost".
         :keyword port: Server port. Defaults ``465`` if ``use_tls`` is ``True``,
             ``587`` if ``start_tls`` is ``True``, or ``25`` otherwise.
+        :keyword username:  Username to login as after connect.
+        :keyword password:  Password for login after connect.
         :keyword source_address: The hostname of the client. Defaults to the
             result of :func:`socket.getfqdn`. Note that this call blocks.
         :keyword timeout: Default timeout value for the connection, in seconds.
@@ -87,6 +91,8 @@ class SMTPConnection:
         # Kwarg defaults are provided here, and saved for connect.
         self.hostname = hostname
         self.port = port
+        self._login_username = username
+        self._login_password = password
         self.timeout = timeout
         self.use_tls = use_tls
         self._start_tls_on_connect = start_tls
@@ -142,6 +148,8 @@ class SMTPConnection:
         self,
         hostname: Optional[str] = None,
         port: Optional[int] = None,
+        username: Optional[str] = None,
+        password: Optional[str] = None,
         source_address: Union[str, Default] = _default,
         timeout: Optional[Union[float, Default]] = _default,
         loop: Optional[asyncio.AbstractEventLoop] = None,
@@ -169,6 +177,10 @@ class SMTPConnection:
             self.validate_certs = validate_certs
         if port is not None:
             self.port = port
+        if username is not None:
+            self._login_username = username
+        if password is not None:
+            self._login_password = password
 
         if timeout is not _default:
             self.timeout = cast(Optional[float], timeout)
@@ -191,6 +203,11 @@ class SMTPConnection:
             raise ValueError(
                 "Either a TLS context or a certificate/key must be provided"
             )
+
+        if (self._login_username is not None and self._login_password is None) or (
+            self._login_username is None and self._login_password is not None
+        ):
+            raise ValueError("Both a username and password must be provided")
 
     async def connect(self, **kwargs) -> SMTPResponse:
         """
@@ -243,6 +260,12 @@ class SMTPConnection:
             self.close()  # Reset our state to disconnected
             raise exc
 
+        if self._start_tls_on_connect:
+            await self.starttls()
+
+        if self._login_username is not None and self._login_password is not None:
+            await self.login(self._login_username, self._login_password)
+
         return response
 
     async def _create_connection(self) -> SMTPResponse:
@@ -285,9 +308,6 @@ class SMTPConnection:
         if response.code != SMTPStatus.ready:
             raise SMTPConnectError(str(response))
 
-        if self._start_tls_on_connect:
-            await self.starttls()
-
         return response
 
     def _connection_lost(self, waiter: asyncio.Future) -> None:
@@ -320,6 +340,14 @@ class SMTPConnection:
 
     async def quit(
         self, timeout: Optional[Union[float, Default]] = _default
+    ) -> SMTPResponse:
+        raise NotImplementedError
+
+    async def login(
+        self,
+        username: str,
+        password: str,
+        timeout: Optional[Union[float, Default]] = _default,
     ) -> SMTPResponse:
         raise NotImplementedError
 

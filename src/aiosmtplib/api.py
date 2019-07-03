@@ -118,13 +118,17 @@ async def send(  # NOQA: F811
             raise ValueError("Sender must be provided with raw messages.")
 
     loop = get_running_loop()
+    client = SMTP(
+        loop=loop,
+        port=port,
+        username=username,
+        password=password,
+        use_tls=use_tls,
+        start_tls=start_tls,
+        **kwargs
+    )
 
-    async with SMTP(
-        loop=loop, port=port, use_tls=use_tls, start_tls=start_tls, **kwargs
-    ) as client:
-        if username and password:
-            await client.login(username, password)
-
+    async with client:
         if isinstance(message, Message):
             result = await client.send_message(
                 message, sender=sender, recipients=recipients
