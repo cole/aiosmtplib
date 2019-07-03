@@ -40,7 +40,7 @@ Bug reports (and feature requests) are welcome via Github issues.
 
 
 
-.. |circleci| image:: https://circleci.com/gh/cole/aiosmtplib/tree/master.svg?style=svg
+.. |circleci| image:: https://circleci.com/gh/cole/aiosmtplib/tree/master.svg?style=shield
            :target: https://circleci.com/gh/cole/aiosmtplib/tree/master
            :alt: "aiosmtplib CircleCI build status"
 .. |pypi-version| image:: https://img.shields.io/pypi/v/aiosmtplib.svg
