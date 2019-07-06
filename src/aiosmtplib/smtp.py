@@ -9,7 +9,7 @@ Implementation is split into the following parent classes:
 """
 import asyncio
 from email.message import Message
-from typing import Dict, Iterable, List, Optional, Tuple, Union
+from typing import Dict, Iterable, Optional, Sequence, Tuple, Union
 
 from .auth import SMTPAuth
 from .connection import SMTPConnection
@@ -44,7 +44,7 @@ class SMTP(SMTPAuth):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
-        self._sendmail_lock = asyncio.Lock(loop=self.loop)
+        self._sendmail_lock = None  # type: Optional[asyncio.Lock]
 
     # Hack to make Sphinx find the SMTPConnection docstring
     __init__.__doc__ = SMTPConnection.__init__.__doc__
@@ -52,10 +52,10 @@ class SMTP(SMTPAuth):
     async def sendmail(
         self,
         sender: str,
-        recipients: Union[str, Iterable[str]],
+        recipients: Union[str, Sequence[str]],
         message: Union[str, bytes],
-        mail_options: Iterable[str] = None,
-        rcpt_options: Iterable[str] = None,
+        mail_options: Optional[Iterable[str]] = None,
+        rcpt_options: Optional[Iterable[str]] = None,
         timeout: Optional[Union[float, Default]] = _default,
     ) -> Tuple[Dict[str, SMTPResponse], str]:
         """
@@ -124,8 +124,8 @@ class SMTP(SMTPAuth):
         """
         if isinstance(recipients, str):
             recipients = [recipients]
-        else:
-            recipients = list(recipients)
+        # else:
+        #     recipients = list(recipients)
 
         if mail_options is None:
             mail_options = []
@@ -134,8 +134,9 @@ class SMTP(SMTPAuth):
 
         if rcpt_options is None:
             rcpt_options = []
-        else:
-            rcpt_options = list(rcpt_options)
+
+        if self._sendmail_lock is None:
+            self._sendmail_lock = asyncio.Lock(loop=self.loop)
 
         async with self._sendmail_lock:
             if self.supports_extension("size"):
@@ -162,8 +163,8 @@ class SMTP(SMTPAuth):
 
     async def _send_recipients(
         self,
-        recipients: List[str],
-        options: List[str] = None,
+        recipients: Sequence[str],
+        options: Optional[Iterable[str]] = None,
         timeout: Optional[Union[float, Default]] = _default,
     ) -> Dict[str, SMTPResponse]:
         """
@@ -190,10 +191,10 @@ class SMTP(SMTPAuth):
     async def send_message(
         self,
         message: Message,
-        sender: str = None,
-        recipients: Union[str, Iterable[str], None] = None,
-        mail_options: Iterable[str] = None,
-        rcpt_options: Iterable[str] = None,
+        sender: Optional[str] = None,
+        recipients: Optional[Union[str, Sequence[str]]] = None,
+        mail_options: Optional[Iterable[str]] = None,
+        rcpt_options: Optional[Iterable[str]] = None,
         timeout: Optional[Union[float, Default]] = _default,
     ) -> Tuple[Dict[str, SMTPResponse], str]:
         r"""

@@ -108,8 +108,6 @@ async def test_disconnected_server_raises_on_client_read(
     with pytest.raises(SMTPServerDisconnected):
         await smtp_client.execute_command(b"NOOP")
 
-    # Verify that the connection was closed
-    assert not smtp_client._connect_lock.locked()
     assert smtp_client.protocol is None
     assert smtp_client.transport is None
 
@@ -125,8 +123,6 @@ async def test_disconnected_server_raises_on_client_write(
     with pytest.raises(SMTPServerDisconnected):
         await smtp_client.execute_command(b"NOOP")
 
-    # Verify that the connection was closed
-    assert not smtp_client._connect_lock.locked()
     assert smtp_client.protocol is None
     assert smtp_client.transport is None
 
@@ -149,8 +145,6 @@ async def test_disconnected_server_raises_on_data_read(
     with pytest.raises(SMTPServerDisconnected):
         await smtp_client.data("A MESSAGE")
 
-    # Verify that the connection was closed
-    assert not smtp_client._connect_lock.locked()
     assert smtp_client.protocol is None
     assert smtp_client.transport is None
 
@@ -175,8 +169,6 @@ async def test_disconnected_server_raises_on_data_write(
     with pytest.raises(SMTPServerDisconnected):
         await smtp_client.data("A MESSAGE\nLINE2")
 
-    # Verify that the connection was closed
-    assert not smtp_client._connect_lock.locked()
     assert smtp_client.protocol is None
     assert smtp_client.transport is None
 
@@ -197,8 +189,6 @@ async def test_disconnected_server_raises_on_starttls(
     with pytest.raises(SMTPServerDisconnected):
         await smtp_client.starttls(validate_certs=False, timeout=1.0)
 
-    # Verify that the connection was closed
-    assert not smtp_client._connect_lock.locked()
     assert smtp_client.protocol is None
     assert smtp_client.transport is None
 
@@ -266,6 +256,18 @@ async def test_context_manager_with_manual_connection(smtp_client, smtpd_server)
 
         assert not smtp_client.is_connected
 
+    assert not smtp_client.is_connected
+
+
+async def test_context_manager_double_entry(smtp_client, smtpd_server):
+    async with smtp_client:
+        async with smtp_client:
+            assert smtp_client.is_connected
+            response = await smtp_client.noop()
+            assert response.code == SMTPStatus.completed
+
+        # The first exit should disconnect us
+        assert not smtp_client.is_connected
     assert not smtp_client.is_connected
 
 

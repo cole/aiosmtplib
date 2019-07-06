@@ -104,7 +104,7 @@ class SMTPConnection:
         self.cert_bundle = cert_bundle
 
         self.loop = loop or asyncio.get_event_loop()
-        self._connect_lock = asyncio.Lock(loop=self.loop)
+        self._connect_lock = None  # type: Optional[asyncio.Lock]
 
         self._validate_config()
 
@@ -240,6 +240,8 @@ class SMTPConnection:
 
         :raises ValueError: mutually exclusive options provided
         """
+        if self._connect_lock is None:
+            self._connect_lock = asyncio.Lock(loop=self.loop)
         await self._connect_lock.acquire()
 
         self._update_settings_from_kwargs(**kwargs)
@@ -393,7 +395,7 @@ class SMTPConnection:
         if self.transport is not None and not self.transport.is_closing():
             self.transport.close()
 
-        if self._connect_lock.locked():
+        if self._connect_lock is not None and self._connect_lock.locked():
             self._connect_lock.release()
 
         self.protocol = None

@@ -1,7 +1,6 @@
 """
 Low level ESMTP command API.
 """
-import asyncio
 import re
 import ssl
 from typing import Dict, Iterable, List, Optional, Tuple, Union, cast
@@ -10,7 +9,6 @@ from .connection import SMTPConnection
 from .default import Default, _default
 from .email import parse_address, quote_address
 from .errors import (
-    SMTPDataError,
     SMTPException,
     SMTPHeloError,
     SMTPRecipientRefused,
@@ -42,8 +40,6 @@ class ESMTP(SMTPConnection):
         self.esmtp_extensions = {}  # type: Dict[str, str]
         self.supports_esmtp = False
         self.server_auth_methods = []  # type: List[str]
-        self._command_lock = asyncio.Lock(loop=self.loop)
-        self._ehlo_or_helo_lock = asyncio.Lock(loop=self.loop)
 
     @property
     def last_ehlo_response(self) -> Union[SMTPResponse, None]:
@@ -89,10 +85,9 @@ class ESMTP(SMTPConnection):
         """
         if hostname is None:
             hostname = self.source_address
-        async with self._command_lock:
-            response = await self.execute_command(
-                b"HELO", hostname.encode("ascii"), timeout=timeout
-            )
+        response = await self.execute_command(
+            b"HELO", hostname.encode("ascii"), timeout=timeout
+        )
         self.last_helo_response = response
 
         if response.code != SMTPStatus.completed:
@@ -108,14 +103,12 @@ class ESMTP(SMTPConnection):
         """
         await self._ehlo_or_helo_if_needed()
 
-        async with self._command_lock:
-            response = await self.execute_command(b"HELP", timeout=timeout)
-        success_codes = (
+        response = await self.execute_command(b"HELP", timeout=timeout)
+        if response.code not in (
             SMTPStatus.system_status_ok,
             SMTPStatus.help_message,
             SMTPStatus.completed,
-        )
-        if response.code not in success_codes:
+        ):
             raise SMTPResponseException(response.code, response.message)
 
         return response.message
@@ -131,8 +124,7 @@ class ESMTP(SMTPConnection):
         """
         await self._ehlo_or_helo_if_needed()
 
-        async with self._command_lock:
-            response = await self.execute_command(b"RSET", timeout=timeout)
+        response = await self.execute_command(b"RSET", timeout=timeout)
         if response.code != SMTPStatus.completed:
             raise SMTPResponseException(response.code, response.message)
 
@@ -148,8 +140,7 @@ class ESMTP(SMTPConnection):
         """
         await self._ehlo_or_helo_if_needed()
 
-        async with self._command_lock:
-            response = await self.execute_command(b"NOOP", timeout=timeout)
+        response = await self.execute_command(b"NOOP", timeout=timeout)
         if response.code != SMTPStatus.completed:
             raise SMTPResponseException(response.code, response.message)
 
@@ -168,18 +159,15 @@ class ESMTP(SMTPConnection):
 
         parsed_address = parse_address(address)
 
-        async with self._command_lock:
-            response = await self.execute_command(
-                b"VRFY", parsed_address.encode("ascii"), timeout=timeout
-            )
+        response = await self.execute_command(
+            b"VRFY", parsed_address.encode("ascii"), timeout=timeout
+        )
 
-        success_codes = (
+        if response.code not in (
             SMTPStatus.completed,
             SMTPStatus.will_forward,
             SMTPStatus.cannot_vrfy,
-        )
-
-        if response.code not in success_codes:
+        ):
             raise SMTPResponseException(response.code, response.message)
 
         return response
@@ -197,10 +185,9 @@ class ESMTP(SMTPConnection):
 
         parsed_address = parse_address(address)
 
-        async with self._command_lock:
-            response = await self.execute_command(
-                b"EXPN", parsed_address.encode("ascii"), timeout=timeout
-            )
+        response = await self.execute_command(
+            b"EXPN", parsed_address.encode("ascii"), timeout=timeout
+        )
 
         if response.code != SMTPStatus.completed:
             raise SMTPResponseException(response.code, response.message)
@@ -219,8 +206,7 @@ class ESMTP(SMTPConnection):
         # Can't quit without HELO/EHLO
         await self._ehlo_or_helo_if_needed()
 
-        async with self._command_lock:
-            response = await self.execute_command(b"QUIT", timeout=timeout)
+        response = await self.execute_command(b"QUIT", timeout=timeout)
         if response.code != SMTPStatus.closing:
             raise SMTPResponseException(response.code, response.message)
 
@@ -248,10 +234,9 @@ class ESMTP(SMTPConnection):
         options_bytes = [option.encode("ascii") for option in options]
         from_string = b"FROM:" + quote_address(sender).encode("ascii")
 
-        async with self._command_lock:
-            response = await self.execute_command(
-                b"MAIL", from_string, *options_bytes, timeout=timeout
-            )
+        response = await self.execute_command(
+            b"MAIL", from_string, *options_bytes, timeout=timeout
+        )
 
         if response.code != SMTPStatus.completed:
             raise SMTPSenderRefused(response.code, response.message, sender)
@@ -279,10 +264,9 @@ class ESMTP(SMTPConnection):
         options_bytes = [option.encode("ascii") for option in options]
         to = b"TO:" + quote_address(recipient).encode("ascii")
 
-        async with self._command_lock:
-            response = await self.execute_command(
-                b"RCPT", to, *options_bytes, timeout=timeout
-            )
+        response = await self.execute_command(
+            b"RCPT", to, *options_bytes, timeout=timeout
+        )
 
         success_codes = (SMTPStatus.completed, SMTPStatus.will_forward)
         if response.code not in success_codes:
@@ -315,19 +299,7 @@ class ESMTP(SMTPConnection):
         if isinstance(message, str):
             message = message.encode("ascii")
 
-        async with self._command_lock:
-            start_response = await self.execute_command(b"DATA", timeout=timeout)
-
-            if start_response.code != SMTPStatus.start_input:
-                raise SMTPDataError(start_response.code, start_response.message)
-
-            self.protocol.write_message_data(message)
-            response = await self.protocol.read_response(timeout=timeout)
-
-        if response.code != SMTPStatus.completed:
-            raise SMTPDataError(response.code, response.message)
-
-        return response
+        return await self.protocol.execute_data_command(message, timeout=timeout)
 
     # ESMTP commands #
 
@@ -346,10 +318,9 @@ class ESMTP(SMTPConnection):
         if hostname is None:
             hostname = self.source_address
 
-        async with self._command_lock:
-            response = await self.execute_command(
-                b"EHLO", hostname.encode("ascii"), timeout=timeout
-            )
+        response = await self.execute_command(
+            b"EHLO", hostname.encode("ascii"), timeout=timeout
+        )
         self.last_ehlo_response = response
 
         if response.code != SMTPStatus.completed:
@@ -370,15 +341,14 @@ class ESMTP(SMTPConnection):
         If there has been no previous EHLO or HELO command this session, this
         method tries ESMTP EHLO first.
         """
-        async with self._ehlo_or_helo_lock:
-            if self.is_ehlo_or_helo_needed:
-                try:
-                    await self.ehlo()
-                except SMTPHeloError as exc:
-                    if self.is_connected:
-                        await self.helo()
-                    else:
-                        raise exc
+        if self.is_ehlo_or_helo_needed:
+            try:
+                await self.ehlo()
+            except SMTPHeloError as exc:
+                if self.is_connected:
+                    await self.helo()
+                else:
+                    raise exc
 
     def _reset_server_state(self) -> None:
         """
@@ -440,14 +410,13 @@ class ESMTP(SMTPConnection):
         if not self.supports_extension("starttls"):
             raise SMTPException("SMTP STARTTLS extension not supported by server.")
 
-        async with self._command_lock:
-            response = await self.execute_command(b"STARTTLS", timeout=self.timeout)
-            if response.code != SMTPStatus.ready:
-                raise SMTPResponseException(response.code, response.message)
-
-            self.transport = await self.protocol.start_tls(
-                tls_context, server_hostname=server_hostname, timeout=self.timeout
-            )
+        response = await self.protocol.start_tls(
+            tls_context, server_hostname=server_hostname, timeout=self.timeout
+        )
+        if self.protocol is None:
+            raise SMTPServerDisconnected("Connection lost")
+        # Update our transport reference
+        self.transport = self.protocol.transport
 
         # RFC 3207 part 4.2:
         # The client MUST discard any knowledge obtained from the server, such

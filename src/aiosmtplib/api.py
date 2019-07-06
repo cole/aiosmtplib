@@ -3,7 +3,7 @@ Main public API.
 """
 import ssl
 from email.message import Message
-from typing import Dict, Iterable, Optional, Tuple, Union, overload
+from typing import Dict, Iterable, Optional, Sequence, Tuple, Union, overload
 
 from .compat import get_running_loop
 from .response import SMTPResponse
@@ -17,7 +17,7 @@ __all__ = ("send",)
 async def send(
     message: Message,
     sender: Optional[str] = ...,
-    recipients: Optional[Union[str, Iterable[str]]] = ...,
+    recipients: Optional[Union[str, Sequence[str]]] = ...,
     hostname: Optional[str] = ...,
     port: Optional[int] = ...,
     username: Optional[str] = ...,
@@ -41,7 +41,7 @@ async def send(
 async def send(
     message: Union[str, bytes],
     sender: str = ...,
-    recipients: Union[str, Iterable[str]] = ...,
+    recipients: Union[str, Sequence[str]] = ...,
     hostname: Optional[str] = ...,
     port: Optional[int] = ...,
     username: Optional[str] = ...,

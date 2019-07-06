@@ -8,6 +8,7 @@ from typing import Callable, Optional, cast
 
 from .compat import start_tls
 from .errors import (
+    SMTPDataError,
     SMTPReadTimeoutError,
     SMTPResponseException,
     SMTPServerDisconnected,
@@ -39,6 +40,7 @@ class SMTPProtocol(asyncio.Protocol):
         self._connection_lost_waiter = None  # type: Optional[asyncio.Future[None]]
 
         self.transport = None  # type: Optional[asyncio.Transport]
+        self._command_lock = None  # type: Optional[asyncio.Lock]
 
     def __del__(self):
         waiters = (self._response_waiter, self._connection_lost_waiter)
@@ -58,6 +60,7 @@ class SMTPProtocol(asyncio.Protocol):
         self.transport = cast(asyncio.Transport, transport)
         self._over_ssl = transport.get_extra_info("sslcontext") is not None
         self._response_waiter = self._loop.create_future()
+        self._command_lock = asyncio.Lock(loop=self._loop)
 
         if self._connection_lost_callback is not None:
             self._connection_lost_waiter = self._loop.create_future()
@@ -83,6 +86,7 @@ class SMTPProtocol(asyncio.Protocol):
                 self._connection_lost_waiter.set_result(None)
 
         self.transport = None
+        self._command_lock = None
 
     def data_received(self, data: bytes) -> None:
         if data == b"":
@@ -195,21 +199,6 @@ class SMTPProtocol(asyncio.Protocol):
 
         return result
 
-    def write_message_data(self, data: bytes) -> None:
-        """Encode and write email message data
-
-        Automatically quotes lines beginning with a period per RFC821.
-        Lone \\\\r and \\\\n characters are converted to \\\\r\\\\n
-        characters.
-        """
-        data = LINE_ENDINGS_REGEX.sub(b"\r\n", data)
-        data = PERIOD_REGEX.sub(b"..", data)
-        if not data.endswith(b"\r\n"):
-            data += b"\r\n"
-        data += b".\r\n"
-
-        self.write(data)
-
     def write(self, data: bytes) -> None:
         if self.transport is None or self.transport.is_closing():
             raise SMTPServerDisconnected("Client not connected")
@@ -223,10 +212,45 @@ class SMTPProtocol(asyncio.Protocol):
         Sends an SMTP command along with any args to the server, and returns
         a response.
         """
+        if self._command_lock is None:
+            raise SMTPServerDisconnected("Client not connected")
         command = b" ".join(args) + b"\r\n"
 
-        self.write(command)
-        response = await self.read_response(timeout=timeout)
+        async with self._command_lock:
+            self.write(command)
+            response = await self.read_response(timeout=timeout)
+
+        return response
+
+    async def execute_data_command(
+        self, message: bytes, timeout: Optional[float] = None
+    ) -> SMTPResponse:
+        """
+        Sends an SMTP DATA command to the server, followed by encoded message content.
+
+        Automatically quotes lines beginning with a period per RFC821.
+        Lone \\\\r and \\\\n characters are converted to \\\\r\\\\n
+        characters.
+        """
+        if self._command_lock is None:
+            raise SMTPServerDisconnected("Client not connected")
+
+        message = LINE_ENDINGS_REGEX.sub(b"\r\n", message)
+        message = PERIOD_REGEX.sub(b"..", message)
+        if not message.endswith(b"\r\n"):
+            message += b"\r\n"
+        message += b".\r\n"
+
+        async with self._command_lock:
+            self.write(b"DATA\r\n")
+            start_response = await self.read_response(timeout=timeout)
+            if start_response.code != SMTPStatus.start_input:
+                raise SMTPDataError(start_response.code, start_response.message)
+
+            self.write(message)
+            response = await self.read_response(timeout=timeout)
+            if response.code != SMTPStatus.completed:
+                raise SMTPDataError(response.code, response.message)
 
         return response
 
@@ -235,38 +259,47 @@ class SMTPProtocol(asyncio.Protocol):
         tls_context: ssl.SSLContext,
         server_hostname: Optional[str] = None,
         timeout: Optional[float] = None,
-    ) -> asyncio.Transport:
+    ) -> SMTPResponse:
         """
         Puts the connection to the SMTP server into TLS mode.
         """
         if self._over_ssl:
             raise RuntimeError("Already using TLS.")
-        if self.transport is None or self.transport.is_closing():
+        if (
+            self.transport is None
+            or self.transport.is_closing()
+            or self._command_lock is None
+        ):
             raise SMTPServerDisconnected("Not connected")
 
-        try:
-            tls_transport = await start_tls(
-                self._loop,
-                self.transport,
-                self,
-                tls_context,
-                server_side=False,
-                server_hostname=server_hostname,
-                ssl_handshake_timeout=timeout,
-            )
+        async with self._command_lock:
+            self.write(b"STARTTLS\r\n")
+            response = await self.read_response(timeout=timeout)
+            if response.code != SMTPStatus.ready:
+                raise SMTPResponseException(response.code, response.message)
 
-        except asyncio.TimeoutError as exc:
-            raise SMTPTimeoutError("Timed out while upgrading transport") from exc
-        # SSLProtocol only raises ConnectionAbortedError on timeout
-        except ConnectionAbortedError as exc:
-            raise SMTPTimeoutError(exc.args[0]) from exc
-        except ConnectionResetError as exc:
-            if exc.args:
-                message = exc.args[0]
-            else:
-                message = "Connection was reset while upgrading transport"
-            raise SMTPServerDisconnected(message) from exc
+            try:
+                tls_transport = await start_tls(
+                    self._loop,
+                    self.transport,
+                    self,
+                    tls_context,
+                    server_side=False,
+                    server_hostname=server_hostname,
+                    ssl_handshake_timeout=timeout,
+                )
+            except asyncio.TimeoutError as exc:
+                raise SMTPTimeoutError("Timed out while upgrading transport") from exc
+            # SSLProtocol only raises ConnectionAbortedError on timeout
+            except ConnectionAbortedError as exc:
+                raise SMTPTimeoutError(exc.args[0]) from exc
+            except ConnectionResetError as exc:
+                if exc.args:
+                    message = exc.args[0]
+                else:
+                    message = "Connection was reset while upgrading transport"
+                raise SMTPServerDisconnected(message) from exc
 
-        self.transport = tls_transport
+            self.transport = tls_transport
 
-        return tls_transport
+        return response
