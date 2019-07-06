@@ -5,7 +5,6 @@ import ssl
 from email.message import Message
 from typing import Dict, Iterable, Optional, Sequence, Tuple, Union, overload
 
-from .compat import get_running_loop
 from .response import SMTPResponse
 from .smtp import SMTP
 
@@ -116,9 +115,7 @@ async def send(  # NOQA: F811
         if not sender:
             raise ValueError("Sender must be provided with raw messages.")
 
-    loop = get_running_loop()
     client = SMTP(
-        loop=loop,
         port=port,
         username=username,
         password=password,

@@ -41,7 +41,7 @@ def test_sendmail_sync_when_connected(
     assert response != ""
 
 
-def test_send_message_sync(smtp_client, threaded_smtpd_server, message):
+def test_send_message_sync(smtp_client, event_loop, threaded_smtpd_server, message):
     errors, response = smtp_client.send_message_sync(message)
 
     assert not errors

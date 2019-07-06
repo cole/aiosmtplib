@@ -225,7 +225,7 @@ def smtpd_response_handler(request):
 
 @pytest.fixture(scope="function")
 def smtp_client(request, event_loop, hostname, port):
-    client = SMTP(hostname=hostname, port=port, loop=event_loop, timeout=1.0)
+    client = SMTP(hostname=hostname, port=port, timeout=1.0)
 
     return client
 

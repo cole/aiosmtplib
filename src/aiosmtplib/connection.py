@@ -4,8 +4,10 @@ Handles client connection/disconnection.
 import asyncio
 import socket
 import ssl
+import warnings
 from typing import Any, Optional, Type, Union, cast
 
+from .compat import get_running_loop
 from .default import Default, _default
 from .errors import (
     SMTPConnectError,
@@ -103,7 +105,14 @@ class SMTPConnection:
         self.tls_context = tls_context
         self.cert_bundle = cert_bundle
 
-        self.loop = loop or asyncio.get_event_loop()
+        if loop:
+            warnings.warn(
+                "Passing an event loop via the loop keyword argument is deprecated. "
+                "It will be removed in version 2.0.",
+                DeprecationWarning,
+                stacklevel=4,
+            )
+        self.loop = loop
         self._connect_lock = None  # type: Optional[asyncio.Lock]
 
         self._validate_config()
@@ -168,6 +177,12 @@ class SMTPConnection:
         if hostname is not None:
             self.hostname = hostname
         if loop is not None:
+            warnings.warn(
+                "Passing an event loop via the loop keyword argument is deprecated. "
+                "It will be removed in version 2.0.",
+                DeprecationWarning,
+                stacklevel=3,
+            )
             self.loop = loop
         if use_tls is not None:
             self.use_tls = use_tls
@@ -240,12 +255,14 @@ class SMTPConnection:
 
         :raises ValueError: mutually exclusive options provided
         """
+        self._update_settings_from_kwargs(**kwargs)
+        self._validate_config()
+
+        if self.loop is None:
+            self.loop = get_running_loop()
         if self._connect_lock is None:
             self._connect_lock = asyncio.Lock(loop=self.loop)
         await self._connect_lock.acquire()
-
-        self._update_settings_from_kwargs(**kwargs)
-        self._validate_config()
 
         # Set default port last in case use_tls or start_tls is provided
         if self.port is None:

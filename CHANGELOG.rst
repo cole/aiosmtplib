@@ -6,6 +6,10 @@ Changelog
 
 - Feature: Added send coroutine api.
 
+- Feature: Wait until the connect coroutine is awaited to get the event loop.
+  Passing an explicit event loop via the loop keyword argument is deprecated
+  and will be removed in version 2.0.
+
 - Cleanup: Set context for timeout and connection exceptions properly.
 
 - Cleanup: Use built in start_tls method on Python 3.7+.
