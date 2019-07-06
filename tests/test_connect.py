@@ -279,3 +279,21 @@ async def test_connect_error_second_attempt(hostname, port):
 
     with pytest.raises(SMTPConnectError):
         await client.connect()
+
+
+async def test_server_unexpected_disconnect(
+    smtp_client, smtpd_server, smtpd_class, smtpd_response_handler, monkeypatch
+):
+    response_handler = smtpd_response_handler(
+        "{} OK".format(SMTPStatus.completed),
+        second_response_text="{} Bye now!".format(SMTPStatus.closing),
+        close_after=True,
+    )
+
+    monkeypatch.setattr(smtpd_class, "smtp_EHLO", response_handler)
+
+    await smtp_client.connect()
+    await smtp_client.ehlo()
+
+    with pytest.raises(SMTPServerDisconnected):
+        await smtp_client.noop()

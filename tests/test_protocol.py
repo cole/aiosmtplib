@@ -133,7 +133,6 @@ async def test_protocol_response_waiter_unset(
     await server.wait_closed()
 
 
-@pytest.mark.xfail(reason="Work in progress")
 async def test_protocol_data_received_called_twice(
     event_loop, bind_address, hostname, port, monkeypatch
 ):
@@ -142,7 +141,7 @@ async def test_protocol_data_received_called_twice(
         writer.write(b"220 Hi\r\n")
         await writer.drain()
         await asyncio.sleep(0)
-        writer.write(b"220 Hi again\r\n")
+        writer.write(b"221 Hi again!\r\n")
         await writer.drain()
 
     server = await asyncio.start_server(
@@ -154,7 +153,10 @@ async def test_protocol_data_received_called_twice(
 
     _, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
 
-    await protocol.execute_command(b"TEST\n", timeout=1.0)
+    response = await protocol.execute_command(b"TEST\n", timeout=1.0)
+
+    assert response.code == 220
+    assert response.message == "Hi"
 
     server.close()
     await server.wait_closed()

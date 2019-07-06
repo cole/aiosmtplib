@@ -89,14 +89,13 @@ class SMTPProtocol(asyncio.Protocol):
         self._command_lock = None
 
     def data_received(self, data: bytes) -> None:
-        if data == b"":
-            return
-
-        if self._response_waiter is None or self._response_waiter.done():
+        if self._response_waiter is None:
             raise RuntimeError(
-                "data_received called with an unexpected response waiter state: "
-                "{!r} (data: {})".format(self._response_waiter, data)
+                "data_received called without a response waiter set: {}".format(data)
             )
+        elif self._response_waiter.done():
+            # We got a response without issuing a command; ignore it.
+            return
 
         self._buffer.extend(data)
 
