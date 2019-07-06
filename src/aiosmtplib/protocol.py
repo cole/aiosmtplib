@@ -264,11 +264,7 @@ class SMTPProtocol(asyncio.Protocol):
         """
         if self._over_ssl:
             raise RuntimeError("Already using TLS.")
-        if (
-            self.transport is None
-            or self.transport.is_closing()
-            or self._command_lock is None
-        ):
+        if self._command_lock is None:
             raise SMTPServerDisconnected("Not connected")
 
         async with self._command_lock:
@@ -276,6 +272,10 @@ class SMTPProtocol(asyncio.Protocol):
             response = await self.read_response(timeout=timeout)
             if response.code != SMTPStatus.ready:
                 raise SMTPResponseException(response.code, response.message)
+
+            # Check for disconnect after response
+            if self.transport is None or self.transport.is_closing():
+                raise SMTPServerDisconnected("Not connected")
 
             try:
                 tls_transport = await start_tls(
