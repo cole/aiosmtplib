@@ -139,11 +139,11 @@ async def test_rset_after_sendmail_error_response_to_mail(
         response = await smtp_client.ehlo()
         assert response.code == SMTPStatus.completed
 
-        try:
+        with pytest.raises(SMTPResponseException) as excinfo:
             await smtp_client.sendmail(">foobar<", ["test@example.com"], "Hello World")
-        except SMTPResponseException as err:
-            assert err.code == SMTPStatus.unrecognized_parameters
-            assert received_commands[-1][0] == "RSET"
+
+        assert excinfo.value.code == SMTPStatus.unrecognized_parameters
+        assert received_commands[-1][0] == "RSET"
 
 
 async def test_rset_after_sendmail_error_response_to_rcpt(
@@ -157,13 +157,13 @@ async def test_rset_after_sendmail_error_response_to_rcpt(
         response = await smtp_client.ehlo()
         assert response.code == SMTPStatus.completed
 
-        try:
+        with pytest.raises(SMTPRecipientsRefused) as excinfo:
             await smtp_client.sendmail(
                 "test@example.com", [">not an addr<"], "Hello World"
             )
-        except SMTPRecipientsRefused as err:
-            assert err.recipients[0].code == SMTPStatus.unrecognized_parameters
-            assert received_commands[-1][0] == "RSET"
+
+        assert excinfo.value.recipients[0].code == SMTPStatus.unrecognized_parameters
+        assert received_commands[-1][0] == "RSET"
 
 
 @pytest.mark.parametrize(
@@ -195,11 +195,11 @@ async def test_rset_after_sendmail_error_response_to_data(
         response = await smtp_client.ehlo()
         assert response.code == SMTPStatus.completed
 
-        try:
+        with pytest.raises(SMTPResponseException) as excinfo:
             await smtp_client.sendmail(message["From"], [message["To"]], str(message))
-        except SMTPResponseException as err:
-            assert err.code == error_code
-            assert received_commands[-1][0] == "RSET"
+
+        assert excinfo.value.code == error_code
+        assert received_commands[-1][0] == "RSET"
 
 
 async def test_send_message(smtp_client, smtpd_server, message):
