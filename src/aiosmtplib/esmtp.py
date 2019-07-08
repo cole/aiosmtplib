@@ -11,6 +11,7 @@ from .email import parse_address, quote_address
 from .errors import (
     SMTPException,
     SMTPHeloError,
+    SMTPNotSupported,
     SMTPRecipientRefused,
     SMTPResponseException,
     SMTPSenderRefused,
@@ -147,7 +148,10 @@ class ESMTP(SMTPConnection):
         return response
 
     async def vrfy(
-        self, address: str, timeout: Optional[Union[float, Default]] = _default
+        self,
+        address: str,
+        options: Optional[Iterable[str]] = None,
+        timeout: Optional[Union[float, Default]] = _default,
     ) -> SMTPResponse:
         """
         Send an SMTP VRFY command, which tests an address for validity.
@@ -155,12 +159,22 @@ class ESMTP(SMTPConnection):
 
         :raises SMTPResponseException: on unexpected server response code
         """
+        if options is None:
+            options = []
+
         await self._ehlo_or_helo_if_needed()
 
         parsed_address = parse_address(address)
+        if any(option.lower() == "smtputf8" for option in options):
+            if not self.supports_extension("smtputf8"):
+                raise SMTPNotSupported("SMTPUTF8 is not supported by this server")
+            addr_bytes = parsed_address.encode("utf-8")
+        else:
+            addr_bytes = parsed_address.encode("ascii")
+        options_bytes = [option.encode("ascii") for option in options]
 
         response = await self.execute_command(
-            b"VRFY", parsed_address.encode("ascii"), timeout=timeout
+            b"VRFY", addr_bytes, *options_bytes, timeout=timeout
         )
 
         if response.code not in (
@@ -173,7 +187,10 @@ class ESMTP(SMTPConnection):
         return response
 
     async def expn(
-        self, address: str, timeout: Optional[Union[float, Default]] = _default
+        self,
+        address: str,
+        options: Optional[Iterable[str]] = None,
+        timeout: Optional[Union[float, Default]] = _default,
     ) -> SMTPResponse:
         """
         Send an SMTP EXPN command, which expands a mailing list.
@@ -181,12 +198,22 @@ class ESMTP(SMTPConnection):
 
         :raises SMTPResponseException: on unexpected server response code
         """
+        if options is None:
+            options = []
+
         await self._ehlo_or_helo_if_needed()
 
         parsed_address = parse_address(address)
+        if any(option.lower() == "smtputf8" for option in options):
+            if not self.supports_extension("smtputf8"):
+                raise SMTPNotSupported("SMTPUTF8 is not supported by this server")
+            addr_bytes = parsed_address.encode("utf-8")
+        else:
+            addr_bytes = parsed_address.encode("ascii")
+        options_bytes = [option.encode("ascii") for option in options]
 
         response = await self.execute_command(
-            b"EXPN", parsed_address.encode("ascii"), timeout=timeout
+            b"EXPN", addr_bytes, *options_bytes, timeout=timeout
         )
 
         if response.code != SMTPStatus.completed:
@@ -226,16 +253,23 @@ class ESMTP(SMTPConnection):
 
         :raises SMTPSenderRefused: on unexpected server response code
         """
-        await self._ehlo_or_helo_if_needed()
-
         if options is None:
             options = []
 
+        await self._ehlo_or_helo_if_needed()
+
+        quoted_sender = quote_address(sender)
+        if any(option.lower() == "smtputf8" for option in options):
+            if not self.supports_extension("smtputf8"):
+                raise SMTPNotSupported("SMTPUTF8 is not supported by this server")
+            addr_bytes = quoted_sender.encode("utf-8")
+        else:
+            addr_bytes = quoted_sender.encode("ascii")
+
         options_bytes = [option.encode("ascii") for option in options]
-        from_string = b"FROM:" + quote_address(sender).encode("ascii")
 
         response = await self.execute_command(
-            b"MAIL", from_string, *options_bytes, timeout=timeout
+            b"MAIL", b"FROM:" + addr_bytes, *options_bytes, timeout=timeout
         )
 
         if response.code != SMTPStatus.completed:
@@ -256,20 +290,25 @@ class ESMTP(SMTPConnection):
 
         :raises SMTPRecipientRefused: on unexpected server response code
         """
-        await self._ehlo_or_helo_if_needed()
-
         if options is None:
             options = []
 
+        await self._ehlo_or_helo_if_needed()
+
+        quoted_recipient = quote_address(recipient)
+        if any(option.lower() == "smtputf8" for option in options):
+            if not self.supports_extension("smtputf8"):
+                raise SMTPNotSupported("SMTPUTF8 is not supported by this server")
+            addr_bytes = quoted_recipient.encode("utf-8")
+        else:
+            addr_bytes = quoted_recipient.encode("ascii")
         options_bytes = [option.encode("ascii") for option in options]
-        to = b"TO:" + quote_address(recipient).encode("ascii")
 
         response = await self.execute_command(
-            b"RCPT", to, *options_bytes, timeout=timeout
+            b"RCPT", b"TO:" + addr_bytes, *options_bytes, timeout=timeout
         )
 
-        success_codes = (SMTPStatus.completed, SMTPStatus.will_forward)
-        if response.code not in success_codes:
+        if response.code not in (SMTPStatus.completed, SMTPStatus.will_forward):
             raise SMTPRecipientRefused(response.code, response.message, recipient)
 
         return response

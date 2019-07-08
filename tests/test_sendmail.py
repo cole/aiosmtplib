@@ -79,7 +79,7 @@ async def test_sendmail_without_size_option(
 
 async def test_sendmail_with_invalid_mail_option(smtp_client, smtpd_server, message):
     async with smtp_client:
-        with pytest.raises(SMTPResponseException) as err:
+        with pytest.raises(SMTPResponseException) as excinfo:
             await smtp_client.sendmail(
                 message["From"],
                 [message["To"]],
@@ -87,20 +87,25 @@ async def test_sendmail_with_invalid_mail_option(smtp_client, smtpd_server, mess
                 mail_options=["BADDATA=0x00000000"],
             )
 
-            assert err.code == SMTPStatus.syntax_error
+        assert excinfo.value.code == SMTPStatus.syntax_error
 
 
 async def test_sendmail_with_rcpt_option(smtp_client, smtpd_server, message):
     async with smtp_client:
-        errors, response = await smtp_client.sendmail(
-            message["From"],
-            [message["To"]],
-            str(message),
-            rcpt_options=["NOTIFY=FAILURE,DELAY"],
-        )
+        with pytest.raises(SMTPRecipientsRefused) as excinfo:
+            await smtp_client.sendmail(
+                message["From"],
+                [message["To"]],
+                str(message),
+                rcpt_options=["NOTIFY=FAILURE,DELAY"],
+            )
 
-        assert not errors
-        assert response != ""
+        recipient_exc = excinfo.value.recipients[0]
+        assert recipient_exc.code == SMTPStatus.syntax_error
+        assert (
+            recipient_exc.message
+            == "RCPT TO parameters not recognized or not implemented"
+        )
 
 
 async def test_sendmail_simple_failure(smtp_client, smtpd_server):

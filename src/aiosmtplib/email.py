@@ -3,11 +3,11 @@ Email message and address formatting/parsing functions.
 """
 import copy
 import email.generator
+import email.policy
 import email.utils
 import io
-from email.header import Header
 from email.message import Message
-from typing import List, Optional, Tuple, Union
+from typing import List
 
 
 __all__ = ("flatten_message", "parse_address", "quote_address")
@@ -38,34 +38,41 @@ def quote_address(address: str) -> str:
     return quoted_address
 
 
-def flatten_message(message: Message) -> Tuple[str, List[str], str]:
-    resent_dates = message.get_all("Resent-Date")
-    if resent_dates is not None and len(resent_dates) > 1:
-        raise ValueError("Message has more than one 'Resent-' header block")
-
-    sender = _extract_sender(message, resent_dates=resent_dates)
-    recipients = _extract_recipients(message, resent_dates=resent_dates)
-
+def flatten_message(
+    message: Message, utf8: bool = False, cte_type: str = "8bit"
+) -> bytes:
     # Make a local copy so we can delete the bcc headers.
     message_copy = copy.copy(message)
     del message_copy["Bcc"]
     del message_copy["Resent-Bcc"]
 
-    messageio = io.StringIO()
-    generator = email.generator.Generator(messageio)
-    generator.flatten(message_copy, linesep="\r\n")
-    flat = messageio.getvalue()
+    if utf8:
+        policy = email.policy.SMTPUTF8  # type: email.policy.Policy
+    else:
+        policy = email.policy.SMTP
 
-    return str(sender), [str(recipient) for recipient in recipients], flat
+    if policy.cte_type != cte_type:
+        policy = policy.clone(cte_type=cte_type)
+
+    with io.BytesIO() as messageio:
+        generator = email.generator.BytesGenerator(  # type: ignore
+            messageio, policy=policy
+        )
+        generator.flatten(message_copy)
+        flat_message = messageio.getvalue()
+
+    return flat_message
 
 
-def _extract_sender(
-    message: Message, resent_dates: Optional[List[Union[str, Header]]] = None
-) -> str:
+def extract_sender(message: Message) -> str:
     """
     Extract the sender from the message object given.
     """
-    if resent_dates:
+    resent_dates = message.get_all("Resent-Date")
+
+    if resent_dates is not None and len(resent_dates) > 1:
+        raise ValueError("Message has more than one 'Resent-' header block")
+    elif resent_dates:
         sender_header = "Resent-Sender"
         from_header = "Resent-From"
     else:
@@ -78,18 +85,23 @@ def _extract_sender(
     else:
         sender = message[from_header]
 
-    return str(sender) if sender else ""
+    if sender is None:
+        sender = ""
+
+    return str(sender)
 
 
-def _extract_recipients(
-    message: Message, resent_dates: Optional[List[Union[str, Header]]] = None
-) -> List[str]:
+def extract_recipients(message: Message) -> List[str]:
     """
     Extract the recipients from the message object given.
     """
     recipients = []  # type: List[str]
 
-    if resent_dates:
+    resent_dates = message.get_all("Resent-Date")
+
+    if resent_dates is not None and len(resent_dates) > 1:
+        raise ValueError("Message has more than one 'Resent-' header block")
+    elif resent_dates:
         recipient_headers = ("Resent-To", "Resent-Cc", "Resent-Bcc")
     else:
         recipient_headers = ("To", "Cc", "Bcc")

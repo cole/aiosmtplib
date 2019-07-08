@@ -6,7 +6,13 @@ from email.message import EmailMessage
 
 import pytest
 
-from aiosmtplib.email import flatten_message, parse_address, quote_address
+from aiosmtplib.email import (
+    extract_recipients,
+    extract_sender,
+    flatten_message,
+    parse_address,
+    quote_address,
+)
 
 
 ADDRESS_EXAMPLES = (
@@ -32,15 +38,16 @@ def test_quote_address(address, expected_address):
     assert quoted_address == expected_address
 
 
-def test_simple_flatten_message():
+def test_flatten_message():
     message = EmailMessage()
     message["To"] = Address(username="bob", domain="example.com")
     message["Subject"] = "Hello, World."
     message["From"] = Address(username="alice", domain="example.com")
     message.set_content("This is a test")
 
-    sender, recipients, flat_message = flatten_message(message)
-    expected_message = """To: bob@example.com\r
+    flat_message = flatten_message(message)
+
+    expected_message = b"""To: bob@example.com\r
 Subject: Hello, World.\r
 From: alice@example.com\r
 Content-Type: text/plain; charset="utf-8"\r
@@ -49,9 +56,24 @@ MIME-Version: 1.0\r
 \r
 This is a test\r
 """
+    assert flat_message == expected_message
 
-    assert sender == message["From"]
-    assert recipients == [message["To"]]
+
+@pytest.mark.parametrize(
+    "utf8, cte_type, expected_message",
+    (
+        (False, "7bit", b"From: =?utf-8?q?=C3=A5lice?=\r@example.com\r\r\r\r\r\n\r\n"),
+        (True, "7bit", b"From: \xc3\xa5lice@example.com\r\n\r\n"),
+        (False, "8bit", b"From: =?utf-8?q?=C3=A5lice?=\r@example.com\r\r\r\r\r\n\r\n"),
+        (True, "8bit", b"From: \xc3\xa5lice@example.com\r\n\r\n"),
+    ),
+)
+def test_flatten_message_utf8_options(utf8, cte_type, expected_message):
+    message = EmailMessage()
+    message["From"] = Address(username="ålice", domain="example.com")
+
+    flat_message = flatten_message(message, utf8=utf8, cte_type=cte_type)
+
     assert flat_message == expected_message
 
 
@@ -59,26 +81,9 @@ def test_flatten_message_removes_bcc_from_message_text():
     message = EmailMessage()
     message["Bcc"] = Address(username="alice", domain="example.com")
 
-    sender, recipients, flat_message = flatten_message(message)
+    flat_message = flatten_message(message)
 
-    assert sender == ""
-    assert recipients == [message["Bcc"]]
-    assert flat_message == "\r\n"  # empty message
-
-
-def test_flatten_message_prefers_sender_header():
-    message = EmailMessage()
-    message["From"] = Address(username="bob", domain="example.com")
-    message["Sender"] = Address(username="alice", domain="example.com")
-
-    sender, recipients, flat_message = flatten_message(message)
-
-    assert sender != message["From"]
-    assert sender == message["Sender"]
-    assert recipients == []
-    assert flat_message == (
-        "From: bob@example.com\r\nSender: alice@example.com\r\n\r\n"
-    )
+    assert flat_message == b"\r\n"  # empty message
 
 
 def test_flatten_resent_message():
@@ -98,8 +103,9 @@ def test_flatten_resent_message():
     message["Resent-Subject"] = "Fwd: Hello, World."
     message["Resent-From"] = Address(username="hubert", domain="example.com")
 
-    sender, recipients, flat_message = flatten_message(message)
-    expected_message = """To: bob@example.com\r
+    flat_message = flatten_message(message)
+
+    expected_message = b"""To: bob@example.com\r
 Cc: claire@example.com\r
 Subject: Hello, World.\r
 From: alice@example.com\r
@@ -114,9 +120,41 @@ Resent-From: hubert@example.com\r
 \r
 This is a test\r
 """
+    assert flat_message == expected_message
 
-    assert sender == message["Resent-From"]
-    assert sender != message["From"]
+
+def test_extract_recipients():
+    message = EmailMessage()
+    message["To"] = Address(username="bob", domain="example.com")
+    message["Cc"] = Address(username="alice", domain="example.com")
+
+    recipients = extract_recipients(message)
+
+    assert recipients == [message["To"], message["Cc"]]
+
+
+def test_extract_recipients_includes_bcc():
+    message = EmailMessage()
+    message["Bcc"] = Address(username="alice", domain="example.com")
+
+    recipients = extract_recipients(message)
+
+    assert recipients == [message["Bcc"]]
+
+
+def test_extract_recipients_resent_message():
+    message = EmailMessage()
+    message["To"] = Address(username="bob", domain="example.com")
+    message["Cc"] = Address(username="claire", domain="example.com")
+    message["Bcc"] = Address(username="dustin", domain="example.com")
+
+    message["Resent-Date"] = "Mon, 20 Nov 2017 21:04:27 -0000"
+    message["Resent-To"] = Address(username="eliza", domain="example.com")
+    message["Resent-Cc"] = Address(username="fred", domain="example.com")
+    message["Resent-Bcc"] = Address(username="gina", domain="example.com")
+
+    recipients = extract_recipients(message)
+
     assert message["Resent-To"] in recipients
     assert message["Resent-Cc"] in recipients
     assert message["Resent-Bcc"] in recipients
@@ -124,13 +162,53 @@ This is a test\r
     assert message["Cc"] not in recipients
     assert message["Bcc"] not in recipients
 
-    assert flat_message == expected_message
 
-
-def test_valueerror_on_multiple_resent_message():
+def test_extract_recipients_valueerror_on_multiple_resent_message():
     message = EmailMessage()
     message["Resent-Date"] = "Mon, 20 Nov 2016 21:04:27 -0000"
     message["Resent-Date"] = "Mon, 20 Nov 2017 21:04:27 -0000"
 
     with pytest.raises(ValueError):
-        flatten_message(message)
+        extract_recipients(message)
+
+
+def test_extract_sender():
+    message = EmailMessage()
+    message["From"] = Address(username="alice", domain="example.com")
+
+    sender = extract_sender(message)
+
+    assert sender == message["From"]
+
+
+def test_extract_sender_prefers_sender_header():
+    message = EmailMessage()
+    message["From"] = Address(username="bob", domain="example.com")
+    message["Sender"] = Address(username="alice", domain="example.com")
+
+    sender = extract_sender(message)
+
+    assert sender != message["From"]
+    assert sender == message["Sender"]
+
+
+def test_extract_sender_resent_message():
+    message = EmailMessage()
+    message["From"] = Address(username="alice", domain="example.com")
+
+    message["Resent-Date"] = "Mon, 20 Nov 2017 21:04:27 -0000"
+    message["Resent-From"] = Address(username="hubert", domain="example.com")
+
+    sender = extract_sender(message)
+
+    assert sender == message["Resent-From"]
+    assert sender != message["From"]
+
+
+def test_extract_sender_valueerror_on_multiple_resent_message():
+    message = EmailMessage()
+    message["Resent-Date"] = "Mon, 20 Nov 2016 21:04:27 -0000"
+    message["Resent-Date"] = "Mon, 20 Nov 2017 21:04:27 -0000"
+
+    with pytest.raises(ValueError):
+        extract_sender(message)

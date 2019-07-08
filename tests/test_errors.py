@@ -31,12 +31,7 @@ CONNECTION_EXCEPTIONS = (
     SMTPConnectTimeoutError,
 )
 TIMEOUT_EXCEPTIONS = (SMTPTimeoutError, SMTPConnectTimeoutError, SMTPReadTimeoutError)
-SIMPLE_RESPONSE_EXCEPTIONS = (
-    SMTPNotSupported,
-    SMTPHeloError,
-    SMTPDataError,
-    SMTPAuthenticationError,
-)
+SIMPLE_RESPONSE_EXCEPTIONS = (SMTPHeloError, SMTPDataError, SMTPAuthenticationError)
 
 
 @given(text())
@@ -119,3 +114,12 @@ def test_raise_smtp_recipients_refused(addresses):
 
     assert issubclass(excinfo.type, SMTPException)
     assert excinfo.value.recipients == addresses
+
+
+@given(message=text())
+def test_smtp_not_supported(message):
+    with pytest.raises(SMTPNotSupported) as excinfo:
+        raise SMTPNotSupported(message)
+
+    assert issubclass(excinfo.type, SMTPException)
+    assert excinfo.value.message == message

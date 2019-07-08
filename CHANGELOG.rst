@@ -6,6 +6,8 @@ Changelog
 
 - Feature: Added send coroutine api.
 
+- Feature: Added SMTPUTF8 support for UTF8 chars in addresses.
+
 - Feature: Wait until the connect coroutine is awaited to get the event loop.
   Passing an explicit event loop via the loop keyword argument is deprecated
   and will be removed in version 2.0.

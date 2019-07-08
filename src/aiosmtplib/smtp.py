@@ -14,8 +14,13 @@ from typing import Dict, Iterable, Optional, Sequence, Tuple, Union
 from .auth import SMTPAuth
 from .connection import SMTPConnection
 from .default import Default, _default
-from .email import flatten_message
-from .errors import SMTPRecipientRefused, SMTPRecipientsRefused, SMTPResponseException
+from .email import extract_recipients, extract_sender, flatten_message
+from .errors import (
+    SMTPNotSupported,
+    SMTPRecipientRefused,
+    SMTPRecipientsRefused,
+    SMTPResponseException,
+)
 from .response import SMTPResponse
 from .sync import async_to_sync
 
@@ -124,29 +129,30 @@ class SMTP(SMTPAuth):
         """
         if isinstance(recipients, str):
             recipients = [recipients]
-        # else:
-        #     recipients = list(recipients)
-
         if mail_options is None:
             mail_options = []
         else:
             mail_options = list(mail_options)
-
         if rcpt_options is None:
             rcpt_options = []
+        else:
+            rcpt_options = list(rcpt_options)
 
         if self._sendmail_lock is None:
             self._sendmail_lock = asyncio.Lock(loop=self.loop)
 
         async with self._sendmail_lock:
+            # Make sure we've done an EHLO for extension checks
+            await self._ehlo_or_helo_if_needed()
+
             if self.supports_extension("size"):
                 size_option = "size={}".format(len(message))
-                mail_options.append(size_option)
+                mail_options.insert(0, size_option)
 
             try:
                 await self.mail(sender, options=mail_options, timeout=timeout)
                 recipient_errors = await self._send_recipients(
-                    recipients, options=rcpt_options, timeout=timeout
+                    recipients, rcpt_options, timeout=timeout
                 )
                 response = await self.data(message, timeout=timeout)
             except (SMTPResponseException, SMTPRecipientsRefused) as exc:
@@ -164,7 +170,7 @@ class SMTP(SMTPAuth):
     async def _send_recipients(
         self,
         recipients: Sequence[str],
-        options: Optional[Iterable[str]] = None,
+        options: Iterable[str],
         timeout: Optional[Union[float, Default]] = _default,
     ) -> Dict[str, SMTPResponse]:
         """
@@ -174,7 +180,7 @@ class SMTP(SMTPAuth):
         recipient_errors = []
         for address in recipients:
             try:
-                await self.rcpt(address, timeout=timeout)
+                await self.rcpt(address, options=options, timeout=timeout)
             except SMTPRecipientRefused as exc:
                 recipient_errors.append(exc)
 
@@ -222,21 +228,60 @@ class SMTP(SMTPAuth):
         :raises SMTPRecipientsRefused: delivery to all recipients failed
         :raises SMTPResponseException: on invalid response
         """
-        header_sender, header_recipients, flat_message = flatten_message(message)
+        if mail_options is None:
+            mail_options = []
+        else:
+            mail_options = list(mail_options)
 
         if sender is None:
-            sender = header_sender
-        if recipients is None:
-            recipients = header_recipients
-
+            sender = extract_sender(message)
         if not sender:
             raise ValueError("No From header provided in message")
+
+        if isinstance(recipients, str):
+            recipients = [recipients]
+        elif recipients is None:
+            recipients = extract_recipients(message)
         if not recipients:
             raise ValueError("No recipient headers provided in message")
 
-        result = await self.sendmail(sender, recipients, flat_message, timeout=timeout)
+        # Make sure we've done an EHLO for extension checks
+        await self._ehlo_or_helo_if_needed()
 
-        return result
+        try:
+            sender.encode("ascii")
+            "".join(recipients).encode("ascii")
+        except UnicodeEncodeError:
+            utf8_required = True
+        else:
+            utf8_required = False
+
+        if utf8_required:
+            if not self.supports_extension("smtputf8"):
+                raise SMTPNotSupported(
+                    "An address containing non-ASCII characters was provided, but "
+                    "SMTPUTF8 is not supported by this server"
+                )
+            elif "smtputf8" not in [option.lower() for option in mail_options]:
+                mail_options.append("SMTPUTF8")
+
+        if self.supports_extension("8BITMIME"):
+            if "body=8bitmime" not in [option.lower() for option in mail_options]:
+                mail_options.append("BODY=8BITMIME")
+            cte_type = "8bit"
+        else:
+            cte_type = "7bit"
+
+        flat_message = flatten_message(message, utf8=utf8_required, cte_type=cte_type)
+
+        return await self.sendmail(
+            sender,
+            recipients,
+            flat_message,
+            mail_options=mail_options,
+            rcpt_options=rcpt_options,
+            timeout=timeout,
+        )
 
     def sendmail_sync(self, *args, **kwargs) -> Tuple[Dict[str, SMTPResponse], str]:
         """

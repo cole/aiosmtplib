@@ -61,6 +61,12 @@ class SMTPReadTimeoutError(SMTPTimeoutError):
     """
 
 
+class SMTPNotSupported(SMTPException):
+    """
+    A command or argument sent to the SMTP server is not supported.
+    """
+
+
 class SMTPResponseException(SMTPException):
     """
     Base class for all server responses with error codes.
@@ -70,12 +76,6 @@ class SMTPResponseException(SMTPException):
         self.code = code
         self.message = message
         self.args = (code, message)
-
-
-class SMTPNotSupported(SMTPResponseException):
-    """
-    A command or argument sent to the SMTP server is not supported.
-    """
 
 
 class SMTPHeloError(SMTPResponseException):
