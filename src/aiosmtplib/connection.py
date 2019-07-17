@@ -349,7 +349,7 @@ class SMTPConnection:
         :raises SMTPServerDisconnected: connection lost
         """
         if self.protocol is None:
-            raise SMTPServerDisconnected("Not connected")
+            raise SMTPServerDisconnected("Server not connected")
 
         if timeout is _default:
             timeout = self.timeout
@@ -441,6 +441,6 @@ class SMTPConnection:
         :raises SMTPServerDisconnected: connection lost
         """
         if self.transport is None:
-            raise SMTPServerDisconnected("Disconnected from SMTP server")
+            raise SMTPServerDisconnected("Server not connected")
 
         return self.transport.get_extra_info(key)

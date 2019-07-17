@@ -70,7 +70,7 @@ class SMTPProtocol(asyncio.Protocol):
 
     def connection_lost(self, exc: Optional[Exception]) -> None:
         if exc:
-            smtp_exc = SMTPServerDisconnected("Server disconnected unexpectedly")
+            smtp_exc = SMTPServerDisconnected("Connection lost")
             smtp_exc.__cause__ = exc
 
         if self._response_waiter and not self._response_waiter.done():
@@ -183,7 +183,7 @@ class SMTPProtocol(asyncio.Protocol):
             single, multiline string).
         """
         if self._response_waiter is None:
-            raise SMTPServerDisconnected("Client not connected")
+            raise SMTPServerDisconnected("Connection lost")
 
         try:
             result = await asyncio.wait_for(self._response_waiter, timeout)
@@ -200,7 +200,7 @@ class SMTPProtocol(asyncio.Protocol):
 
     def write(self, data: bytes) -> None:
         if self.transport is None or self.transport.is_closing():
-            raise SMTPServerDisconnected("Client not connected")
+            raise SMTPServerDisconnected("Connection lost")
 
         self.transport.write(data)
 
@@ -212,7 +212,7 @@ class SMTPProtocol(asyncio.Protocol):
         a response.
         """
         if self._command_lock is None:
-            raise SMTPServerDisconnected("Client not connected")
+            raise SMTPServerDisconnected("Server not connected")
         command = b" ".join(args) + b"\r\n"
 
         async with self._command_lock:
@@ -232,7 +232,7 @@ class SMTPProtocol(asyncio.Protocol):
         characters.
         """
         if self._command_lock is None:
-            raise SMTPServerDisconnected("Client not connected")
+            raise SMTPServerDisconnected("Server not connected")
 
         message = LINE_ENDINGS_REGEX.sub(b"\r\n", message)
         message = PERIOD_REGEX.sub(b"..", message)
@@ -265,7 +265,7 @@ class SMTPProtocol(asyncio.Protocol):
         if self._over_ssl:
             raise RuntimeError("Already using TLS.")
         if self._command_lock is None:
-            raise SMTPServerDisconnected("Not connected")
+            raise SMTPServerDisconnected("Server not connected")
 
         async with self._command_lock:
             self.write(b"STARTTLS\r\n")
@@ -275,7 +275,7 @@ class SMTPProtocol(asyncio.Protocol):
 
             # Check for disconnect after response
             if self.transport is None or self.transport.is_closing():
-                raise SMTPServerDisconnected("Not connected")
+                raise SMTPServerDisconnected("Connection lost")
 
             try:
                 tls_transport = await start_tls(

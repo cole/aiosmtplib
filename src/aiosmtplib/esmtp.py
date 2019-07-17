@@ -329,7 +329,7 @@ class ESMTP(SMTPConnection):
 
         # As data accesses protocol directly, some handling is required
         if self.protocol is None:
-            raise SMTPServerDisconnected("Not connected")
+            raise SMTPServerDisconnected("Connection lost")
 
         if timeout is _default:
             timeout = self.timeout
@@ -429,7 +429,7 @@ class ESMTP(SMTPConnection):
         """
         await self._ehlo_or_helo_if_needed()
         if self.protocol is None:
-            raise SMTPServerDisconnected("Not connected")
+            raise SMTPServerDisconnected("Server not connected")
 
         self._update_settings_from_kwargs(
             validate_certs=validate_certs,
