@@ -30,6 +30,28 @@ async def test_tls_context_and_cert_to_starttls_raises(smtp_client, smtpd_server
             await smtp_client.starttls(client_cert="test.cert", tls_context=True)
 
 
+async def test_use_tls_and_start_tls_raises():
+    with pytest.raises(ValueError):
+        SMTP(use_tls=True, start_tls=True)
+
+
+async def test_use_tls_and_start_tls_to_connect_raises():
+    client = SMTP(use_tls=True)
+
+    with pytest.raises(ValueError):
+        await client.connect(start_tls=True)
+
+
+async def test_username_and_no_password_raises():
+    with pytest.raises(ValueError):
+        SMTP(username="test", password=None)  # nosec
+
+
+async def test_password_and_no_username_raises():
+    with pytest.raises(ValueError):
+        SMTP(username=None, password="test")  # nosec
+
+
 async def test_config_via_connect_kwargs(smtpd_server, hostname, port):
     client = SMTP(
         hostname="", use_tls=True, port=port + 1, source_address="example.com"

@@ -94,6 +94,27 @@ async def test_starttls(smtp_client, smtpd_server):
         assert response.code == SMTPStatus.completed
 
 
+async def test_starttls_init_kwarg(hostname, port, smtpd_server):
+    smtp_client = SMTP(
+        hostname=hostname, port=port, start_tls=True, validate_certs=False
+    )
+
+    async with smtp_client:
+        # Make sure our connection was actually upgraded. ssl protocol transport is
+        # private in UVloop, so just check the class name.
+        assert "SSL" in type(smtp_client.transport).__name__
+
+
+async def test_starttls_connect_kwarg(smtp_client, smtpd_server):
+    await smtp_client.connect(start_tls=True, validate_certs=False)
+
+    # Make sure our connection was actually upgraded. ssl protocol transport is
+    # private in UVloop, so just check the class name.
+    assert "SSL" in type(smtp_client.transport).__name__
+
+    await smtp_client.quit()
+
+
 async def test_starttls_with_explicit_server_hostname(
     smtp_client, hostname, smtpd_server
 ):

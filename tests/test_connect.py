@@ -323,3 +323,16 @@ async def test_server_unexpected_disconnect(
 
     with pytest.raises(SMTPServerDisconnected):
         await smtp_client.noop()
+
+
+async def test_connect_with_login(
+    smtp_client, smtpd_server, message, received_messages, received_commands
+):
+    # STARTTLS is required for login
+    await smtp_client.connect(  # nosec
+        start_tls=True, validate_certs=False, username="test", password="test"
+    )
+
+    assert "AUTH" in [command[0] for command in received_commands]
+
+    await smtp_client.quit()

@@ -70,15 +70,6 @@ async def test_send_without_recipients(
         )
 
 
-async def test_send_with_start_and_use_tls(
-    hostname, port, smtpd_server, message, received_messages
-):
-    with pytest.raises(ValueError):
-        errors, response = await send(
-            message, hostname=hostname, port=port, start_tls=True, use_tls=True
-        )
-
-
 async def test_send_with_start_tls(
     hostname, port, smtpd_server, message, received_messages, received_commands
 ):
