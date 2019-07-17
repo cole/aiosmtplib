@@ -319,6 +319,12 @@ class SMTPConnection:
 
         try:
             response = await protocol.read_response(timeout=self.timeout)
+        except SMTPServerDisconnected as exc:
+            raise SMTPConnectError(
+                "Error connecting to {host} on port {port}: {err}".format(
+                    host=self.hostname, port=self.port, err=exc
+                )
+            ) from exc
         except SMTPTimeoutError as exc:
             raise SMTPConnectTimeoutError(
                 "Timed out waiting for server ready message"

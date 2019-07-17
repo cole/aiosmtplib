@@ -160,3 +160,21 @@ async def test_protocol_data_received_called_twice(
 
     server.close()
     await server.wait_closed()
+
+
+async def test_protocol_eof_response(
+    event_loop, bind_address, hostname, port, monkeypatch
+):
+    async def client_connected(reader, writer):
+        writer.transport.abort()
+
+    server = await asyncio.start_server(
+        client_connected, host=bind_address, port=port, family=socket.AF_INET
+    )
+    connect_future = event_loop.create_connection(
+        SMTPProtocol, host=hostname, port=port
+    )
+    transport, _ = await asyncio.wait_for(connect_future, timeout=1.0)
+
+    server.close()
+    await server.wait_closed()

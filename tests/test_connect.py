@@ -71,6 +71,32 @@ async def test_bad_connect_response_raises_error(
     assert smtp_client.protocol is None
 
 
+async def test_eof_on_connect_raises_connect_error(
+    smtp_client, smtpd_server, smtpd_class, smtpd_response_handler, monkeypatch
+):
+    response_handler = smtpd_response_handler(None, write_eof=True)
+    monkeypatch.setattr(smtpd_class, "_handle_client", response_handler)
+
+    with pytest.raises(SMTPConnectError):
+        await smtp_client.connect()
+
+    assert smtp_client.transport is None
+    assert smtp_client.protocol is None
+
+
+async def test_close_on_connect_raises_connect_error(
+    smtp_client, smtpd_server, smtpd_class, smtpd_response_handler, monkeypatch
+):
+    response_handler = smtpd_response_handler(None, close_after=True)
+    monkeypatch.setattr(smtpd_class, "_handle_client", response_handler)
+
+    with pytest.raises(SMTPConnectError):
+        await smtp_client.connect()
+
+    assert smtp_client.transport is None
+    assert smtp_client.protocol is None
+
+
 async def test_421_closes_connection(
     smtp_client, smtpd_server, smtpd_class, smtpd_response_handler, monkeypatch
 ):

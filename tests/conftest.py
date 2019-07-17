@@ -211,10 +211,10 @@ def smtpd_response_handler(request):
                 smtpd.session.host_name = args[0]
             if response_text is not None:
                 await smtpd.push(response_text)
-            if second_response_text is not None:
-                await smtpd.push(second_response_text)
             if write_eof:
                 smtpd.transport.write_eof()
+            if second_response_text is not None:
+                await smtpd.push(second_response_text)
             if close_after:
                 smtpd.transport.close()
 
