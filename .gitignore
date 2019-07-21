@@ -17,8 +17,11 @@ aiosmtplib.code-workspace
 .idea/
 build/
 coverage/
+coverage.xml
+htmlcov/
 dist/
 docs/_build/
+test-results/
 TODO
 venv/
 Pipfile
