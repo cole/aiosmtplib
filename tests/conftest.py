@@ -6,6 +6,7 @@ import email.mime.multipart
 import email.mime.text
 import socket
 import ssl
+import sys
 from pathlib import Path
 
 import pytest
@@ -92,6 +93,23 @@ def bind_address(request):
 def port(request, unused_tcp_port):
     """Alias for ununsed_tcp_port."""
     return unused_tcp_port
+
+
+@pytest.fixture(scope="function")
+def socket_path(tmp_path):
+    if sys.platform.startswith("darwin"):
+        # Work around OSError: AF_UNIX path too long
+        tmp_dir = Path("/tmp")  # nosec
+    else:
+        tmp_dir = tmp_path
+
+    index = 0
+    socket_path = tmp_dir / "aiosmtplib-test{}".format(index)
+    while socket_path.exists():
+        index += 1
+        socket_path = tmp_dir / "aiosmtplib-test{}".format(index)
+
+    return socket_path
 
 
 @pytest.fixture(scope="function")
@@ -224,6 +242,31 @@ def smtpd_server_smtputf8(
         event_loop.create_server(
             factory, host=bind_address, port=port, family=socket.AF_INET
         )
+    )
+
+    def close_server():
+        server.close()
+        event_loop.run_until_complete(server.wait_closed())
+
+    request.addfinalizer(close_server)
+
+    return server
+
+
+@pytest.fixture(scope="function")
+def smtpd_server_socket_path(
+    request, socket_path, event_loop, smtpd_class, smtpd_handler, server_tls_context
+):
+    def factory():
+        return smtpd_class(
+            smtpd_handler,
+            hostname=hostname,
+            enable_SMTPUTF8=False,
+            tls_context=server_tls_context,
+        )
+
+    server = event_loop.run_until_complete(
+        event_loop.create_unix_server(factory, path=socket_path)
     )
 
     def close_server():

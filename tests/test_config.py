@@ -52,6 +52,31 @@ async def test_password_and_no_username_raises():
         SMTP(username=None, password="test")  # nosec
 
 
+async def test_socket_and_hostname_raises():
+    with pytest.raises(ValueError):
+        SMTP(hostname="example.com", sock=socket.socket(socket.AF_INET))
+
+
+async def test_socket_and_port_raises():
+    with pytest.raises(ValueError):
+        SMTP(port=1, sock=socket.socket(socket.AF_INET))
+
+
+async def test_socket_and_socket_path_raises():
+    with pytest.raises(ValueError):
+        SMTP(socket_path="/tmp/test", sock=socket.socket(socket.AF_INET))  # nosec
+
+
+async def test_hostname_and_socket_path_raises():
+    with pytest.raises(ValueError):
+        SMTP(hostname="example.com", socket_path="/tmp/test")  # nosec
+
+
+async def test_port_and_socket_path_raises():
+    with pytest.raises(ValueError):
+        SMTP(port=1, socket_path="/tmp/test")  # nosec
+
+
 async def test_config_via_connect_kwargs(smtpd_server, hostname, port):
     client = SMTP(
         hostname="", use_tls=True, port=port + 1, source_address="example.com"

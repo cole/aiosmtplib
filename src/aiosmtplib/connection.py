@@ -2,6 +2,7 @@
 Handles client connection/disconnection.
 """
 import asyncio
+import os
 import socket
 import ssl
 import warnings
@@ -56,6 +57,8 @@ class SMTPConnection:
         client_key: Optional[str] = None,
         tls_context: Optional[ssl.SSLContext] = None,
         cert_bundle: Optional[str] = None,
+        socket_path: Optional[Union[str, bytes, os.PathLike]] = None,
+        sock: Optional[socket.socket] = None,
     ) -> None:
         """
         :keyword hostname:  Server name (or IP) to connect to. Defaults to "localhost".
@@ -84,6 +87,10 @@ class SMTPConnection:
             verification. Mutually exclusive with ``client_cert``/
             ``client_key``.
         :keyword cert_bundle: Path to certificate bundle, for TLS verification.
+        :keyword socket_path: Path to a Unix domain socket. Not compatible with
+            hostname or port.
+        :keyword sock: An existing, connected socket object. If given, none of
+            hostname, port, or socket_path should be provided.
 
         :raises ValueError: mutually exclusive options provided
         """
@@ -104,6 +111,8 @@ class SMTPConnection:
         self.client_key = client_key
         self.tls_context = tls_context
         self.cert_bundle = cert_bundle
+        self.socket_path = socket_path
+        self.sock = sock
 
         if loop:
             warnings.warn(
@@ -155,13 +164,13 @@ class SMTPConnection:
 
     def _update_settings_from_kwargs(
         self,
-        hostname: Optional[str] = None,
-        port: Optional[int] = None,
-        username: Optional[str] = None,
-        password: Optional[str] = None,
-        source_address: Union[str, Default] = _default,
+        hostname: Optional[Union[str, Default]] = _default,
+        port: Optional[Union[int, Default]] = _default,
+        username: Optional[Union[str, Default]] = _default,
+        password: Optional[Union[str, Default]] = _default,
+        source_address: Optional[Union[str, Default]] = _default,
         timeout: Optional[Union[float, Default]] = _default,
-        loop: Optional[asyncio.AbstractEventLoop] = None,
+        loop: Optional[Union[asyncio.AbstractEventLoop, Default]] = _default,
         use_tls: Optional[bool] = None,
         start_tls: Optional[bool] = None,
         validate_certs: Optional[bool] = None,
@@ -169,46 +178,55 @@ class SMTPConnection:
         client_key: Optional[Union[str, Default]] = _default,
         tls_context: Optional[Union[ssl.SSLContext, Default]] = _default,
         cert_bundle: Optional[Union[str, Default]] = _default,
+        socket_path: Optional[Union[str, bytes, os.PathLike, Default]] = _default,
+        sock: Optional[Union[socket.socket, Default]] = _default,
     ) -> None:
         """Update our configuration from the kwargs provided.
 
         This method can be called multiple times.
         """
-        if hostname is not None:
-            self.hostname = hostname
-        if loop is not None:
-            warnings.warn(
-                "Passing an event loop via the loop keyword argument is deprecated. "
-                "It will be removed in version 2.0.",
-                DeprecationWarning,
-                stacklevel=3,
-            )
-            self.loop = loop
+        if hostname is not _default:
+            self.hostname = cast(Optional[str], hostname)
+        if loop is not _default:
+            if loop is not None:
+                warnings.warn(
+                    "Passing an event loop via the loop keyword argument is deprecated."
+                    " It will be removed in version 2.0.",
+                    DeprecationWarning,
+                    stacklevel=3,
+                )
+            self.loop = cast(Optional[asyncio.AbstractEventLoop], loop)
         if use_tls is not None:
             self.use_tls = use_tls
         if start_tls is not None:
             self._start_tls_on_connect = start_tls
         if validate_certs is not None:
             self.validate_certs = validate_certs
-        if port is not None:
-            self.port = port
-        if username is not None:
-            self._login_username = username
-        if password is not None:
-            self._login_password = password
+        if port is not _default:
+            self.port = cast(Optional[int], port)
+        if username is not _default:
+            self._login_username = cast(Optional[str], username)
+        if password is not _default:
+            self._login_password = cast(Optional[str], password)
 
         if timeout is not _default:
             self.timeout = cast(Optional[float], timeout)
         if source_address is not _default:
-            self._source_address = cast(str, source_address)
+            self._source_address = cast(Optional[str], source_address)
         if client_cert is not _default:
-            self.client_cert = cast(str, client_cert)
+            self.client_cert = cast(Optional[str], client_cert)
         if client_key is not _default:
-            self.client_key = cast(str, client_key)
+            self.client_key = cast(Optional[str], client_key)
         if tls_context is not _default:
-            self.tls_context = cast(ssl.SSLContext, tls_context)
+            self.tls_context = cast(Optional[ssl.SSLContext], tls_context)
         if cert_bundle is not _default:
-            self.cert_bundle = cast(str, cert_bundle)
+            self.cert_bundle = cast(Optional[str], cert_bundle)
+        if socket_path is not _default:
+            self.socket_path = cast(
+                Optional[Union[str, bytes, os.PathLike]], socket_path
+            )
+        if sock is not _default:
+            self.sock = cast(Optional[socket.socket], sock)
 
     def _validate_config(self) -> None:
         if self._start_tls_on_connect and self.use_tls:
@@ -223,6 +241,16 @@ class SMTPConnection:
             self._login_username is None and self._login_password is not None
         ):
             raise ValueError("Both a username and password must be provided")
+
+        if self.sock is not None and any([self.hostname, self.port, self.socket_path]):
+            raise ValueError(
+                "The socket option is not compatible with hostname, port or socket_path"
+            )
+
+        if self.socket_path is not None and any([self.hostname, self.port]):
+            raise ValueError(
+                "The socket_path option is not compatible with hostname/port"
+            )
 
     async def connect(self, **kwargs) -> SMTPResponse:
         """
@@ -252,6 +280,10 @@ class SMTPConnection:
         :keyword tls_context: An existing :py:class:`ssl.SSLContext`, for TLS.
             Mutually exclusive with ``client_cert``/``client_key``.
         :keyword cert_bundle: Path to certificate bundle, for TLS verification.
+        :keyword socket_path: Path to a Unix domain socket. Not compatible with
+            hostname or port.
+        :keyword sock: An existing, connected socket object. If given, none of
+            hostname, port, or socket_path should be provided.
 
         :raises ValueError: mutually exclusive options provided
         """
@@ -264,8 +296,9 @@ class SMTPConnection:
             self._connect_lock = asyncio.Lock(loop=self.loop)
         await self._connect_lock.acquire()
 
-        # Set default port last in case use_tls or start_tls is provided
-        if self.port is None:
+        # Set default port last in case use_tls or start_tls is provided,
+        # and only if we're not using a socket.
+        if self.port is None and self.sock is None and self.socket_path is None:
             if self.use_tls:
                 self.port = SMTP_TLS_PORT
             elif self._start_tls_on_connect:
@@ -296,9 +329,19 @@ class SMTPConnection:
         if self.use_tls:
             tls_context = self._get_tls_context()
 
-        connect_coro = self.loop.create_connection(  # type: ignore
-            lambda: protocol, host=self.hostname, port=self.port, ssl=tls_context
-        )
+        if self.sock:
+            connect_coro = self.loop.create_connection(  # type: ignore
+                lambda: protocol, sock=self.sock, ssl=tls_context
+            )
+        elif self.socket_path:
+            connect_coro = self.loop.create_unix_connection(  # type: ignore
+                lambda: protocol, path=self.socket_path, ssl=tls_context
+            )
+        else:
+            connect_coro = self.loop.create_connection(  # type: ignore
+                lambda: protocol, host=self.hostname, port=self.port, ssl=tls_context
+            )
+
         try:
             transport, _ = await asyncio.wait_for(connect_coro, timeout=self.timeout)
         except (ConnectionRefusedError, OSError) as exc:

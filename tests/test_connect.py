@@ -1,6 +1,8 @@
 """
 Connectivity tests.
 """
+import socket
+
 import pytest
 
 from aiosmtplib import (
@@ -336,3 +338,22 @@ async def test_connect_with_login(
     assert "AUTH" in [command[0] for command in received_commands]
 
     await smtp_client.quit()
+
+
+async def test_connect_via_socket(smtp_client, smtpd_server, hostname, port):
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.connect((hostname, port))
+
+        await smtp_client.connect(hostname=None, port=None, sock=sock)
+        response = await smtp_client.ehlo()
+
+    assert response.code == SMTPStatus.completed
+
+
+async def test_connect_via_socket_path(
+    smtp_client, smtpd_server_socket_path, socket_path
+):
+    await smtp_client.connect(hostname=None, port=None, socket_path=socket_path)
+    response = await smtp_client.ehlo()
+
+    assert response.code == SMTPStatus.completed
