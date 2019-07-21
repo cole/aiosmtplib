@@ -1,6 +1,7 @@
 """
 Test message and address parsing/formatting functions.
 """
+import sys
 from email.headerregistry import Address
 from email.message import EmailMessage
 
@@ -62,9 +63,23 @@ This is a test\r
 @pytest.mark.parametrize(
     "utf8, cte_type, expected_message",
     (
-        (False, "7bit", b"From: =?utf-8?q?=C3=A5lice?=\r@example.com\r\r\r\r\r\n\r\n"),
+        pytest.param(
+            False,
+            "7bit",
+            b"From: =?utf-8?q?=C3=A5lice?=\r@example.com\r\r\r\r\r\n\r\n",
+            marks=pytest.mark.xfail(
+                sys.version_info <= (3, 5, 3), reason="Escape behvaiour changes"
+            ),
+        ),
         (True, "7bit", b"From: \xc3\xa5lice@example.com\r\n\r\n"),
-        (False, "8bit", b"From: =?utf-8?q?=C3=A5lice?=\r@example.com\r\r\r\r\r\n\r\n"),
+        pytest.param(
+            False,
+            "8bit",
+            b"From: =?utf-8?q?=C3=A5lice?=\r@example.com\r\r\r\r\r\n\r\n",
+            marks=pytest.mark.xfail(
+                sys.version_info <= (3, 5, 3), reason="Escape behvaiour changes"
+            ),
+        ),
         (True, "8bit", b"From: \xc3\xa5lice@example.com\r\n\r\n"),
     ),
 )
