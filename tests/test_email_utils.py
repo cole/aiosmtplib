@@ -1,7 +1,6 @@
 """
 Test message and address parsing/formatting functions.
 """
-import sys
 from email.headerregistry import Address
 from email.message import EmailMessage
 
@@ -61,35 +60,21 @@ This is a test\r
 
 
 @pytest.mark.parametrize(
-    "utf8, cte_type, expected_message",
+    "utf8, cte_type, expected_chunk",
     (
-        pytest.param(
-            False,
-            "7bit",
-            b"From: =?utf-8?q?=C3=A5lice?=\r@example.com\r\r\r\r\r\n\r\n",
-            marks=pytest.mark.xfail(
-                sys.version_info <= (3, 5, 3), reason="Escape behvaiour changes"
-            ),
-        ),
-        (True, "7bit", b"From: \xc3\xa5lice@example.com\r\n\r\n"),
-        pytest.param(
-            False,
-            "8bit",
-            b"From: =?utf-8?q?=C3=A5lice?=\r@example.com\r\r\r\r\r\n\r\n",
-            marks=pytest.mark.xfail(
-                sys.version_info <= (3, 5, 3), reason="Escape behvaiour changes"
-            ),
-        ),
-        (True, "8bit", b"From: \xc3\xa5lice@example.com\r\n\r\n"),
+        (False, "7bit", b"=?utf-8?q?=C3=A5lice?="),
+        (True, "7bit", b"From: \xc3\xa5lice@example.com"),
+        (False, "8bit", b"=?utf-8?q?=C3=A5lice?="),
+        (True, "8bit", b"\xc3\xa5lice@example.com"),
     ),
 )
-def test_flatten_message_utf8_options(utf8, cte_type, expected_message):
+def test_flatten_message_utf8_options(utf8, cte_type, expected_chunk):
     message = EmailMessage()
     message["From"] = Address(username="ålice", domain="example.com")
 
     flat_message = flatten_message(message, utf8=utf8, cte_type=cte_type)
 
-    assert flat_message == expected_message
+    assert expected_chunk in flat_message
 
 
 def test_flatten_message_removes_bcc_from_message_text():
