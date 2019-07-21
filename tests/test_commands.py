@@ -3,7 +3,13 @@ Lower level SMTP command tests.
 """
 import pytest
 
-from aiosmtplib import SMTPDataError, SMTPHeloError, SMTPResponseException, SMTPStatus
+from aiosmtplib import (
+    SMTPDataError,
+    SMTPHeloError,
+    SMTPNotSupported,
+    SMTPResponseException,
+    SMTPStatus,
+)
 
 
 ERROR_CODES = (
@@ -269,6 +275,19 @@ async def test_vrfy_with_blank_address(smtp_client, smtpd_server):
             await smtp_client.vrfy(bad_address)
 
 
+async def test_vrfy_smtputf8_supported(smtp_client, smtpd_server_smtputf8):
+    async with smtp_client:
+        response = await smtp_client.vrfy("tést@exåmple.com", options=["SMTPUTF8"])
+
+        assert response.code == SMTPStatus.cannot_vrfy
+
+
+async def test_vrfy_smtputf8_not_supported(smtp_client, smtpd_server):
+    async with smtp_client:
+        with pytest.raises(SMTPNotSupported):
+            await smtp_client.vrfy("tést@exåmple.com", options=["SMTPUTF8"])
+
+
 async def test_expn_ok(
     smtp_client, smtpd_server, smtpd_class, smtpd_response_handler, monkeypatch
 ):
@@ -290,6 +309,29 @@ async def test_expn_error(smtp_client, smtpd_server):
     async with smtp_client:
         with pytest.raises(SMTPResponseException):
             await smtp_client.expn("a-list")
+
+
+async def test_expn_smtputf8_supported(
+    smtp_client, smtpd_server_smtputf8, smtpd_class, smtpd_response_handler, monkeypatch
+):
+    response_handler = smtpd_response_handler(
+        """250-Joseph Blow <jblow@example.com>
+250 Alice Smith <asmith@example.com>"""
+    )
+    monkeypatch.setattr(smtpd_class, "smtp_EXPN", response_handler)
+
+    utf8_list = "tést-lïst"
+    async with smtp_client:
+        response = await smtp_client.expn(utf8_list, options=["SMTPUTF8"])
+
+        assert response.code == SMTPStatus.completed
+
+
+async def test_expn_smtputf8_not_supported(smtp_client, smtpd_server):
+    utf8_list = "tést-lïst"
+    async with smtp_client:
+        with pytest.raises(SMTPNotSupported):
+            await smtp_client.expn(utf8_list, options=["SMTPUTF8"])
 
 
 async def test_help_ok(smtp_client, smtpd_server):
@@ -371,6 +413,27 @@ async def test_mail_error(
         assert exception_info.value.code == error_code
 
 
+async def test_mail_options_not_implemented(smtp_client, smtpd_server):
+    async with smtp_client:
+        with pytest.raises(SMTPResponseException):
+            await smtp_client.mail("j@example.com", options=["OPT=1"])
+
+
+async def test_mail_smtputf8(smtp_client, smtpd_server_smtputf8):
+    async with smtp_client:
+        response = await smtp_client.mail(
+            "tést@exåmple.com", options=["SMTPUTF8"], encoding="utf-8"
+        )
+
+        assert response.code == SMTPStatus.completed
+
+
+async def test_mail_default_encoding_utf8_encode_error(smtp_client, smtpd_server):
+    async with smtp_client:
+        with pytest.raises(UnicodeEncodeError):
+            await smtp_client.mail("tést@exåmple.com", options=["SMTPUTF8"])
+
+
 async def test_rcpt_ok(smtp_client, smtpd_server):
     async with smtp_client:
         await smtp_client.mail("j@example.com")
@@ -428,6 +491,22 @@ async def test_rcpt_error(
         with pytest.raises(SMTPResponseException) as exception_info:
             await smtp_client.rcpt("test@example.com")
         assert exception_info.value.code == error_code
+
+
+async def test_rcpt_smtputf8(smtp_client, smtpd_server_smtputf8):
+    async with smtp_client:
+        await smtp_client.mail("j@example.com", options=["SMTPUTF8"])
+        response = await smtp_client.rcpt("tést@exåmple.com", encoding="utf-8")
+
+        assert response.code == SMTPStatus.completed
+
+
+async def test_rcpt_default_encoding_utf8_encode_error(smtp_client, smtpd_server):
+    async with smtp_client:
+        await smtp_client.mail("j@example.com")
+
+        with pytest.raises(UnicodeEncodeError):
+            await smtp_client.rcpt("tést@exåmple.com", options=["SMTPUTF8"])
 
 
 async def test_data_ok(smtp_client, smtpd_server):

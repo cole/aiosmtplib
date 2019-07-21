@@ -245,6 +245,7 @@ class ESMTP(SMTPConnection):
         self,
         sender: str,
         options: Optional[Iterable[str]] = None,
+        encoding: str = "ascii",
         timeout: Optional[Union[float, Default]] = _default,
     ) -> SMTPResponse:
         """
@@ -259,13 +260,7 @@ class ESMTP(SMTPConnection):
         await self._ehlo_or_helo_if_needed()
 
         quoted_sender = quote_address(sender)
-        if any(option.lower() == "smtputf8" for option in options):
-            if not self.supports_extension("smtputf8"):
-                raise SMTPNotSupported("SMTPUTF8 is not supported by this server")
-            addr_bytes = quoted_sender.encode("utf-8")
-        else:
-            addr_bytes = quoted_sender.encode("ascii")
-
+        addr_bytes = quoted_sender.encode(encoding)
         options_bytes = [option.encode("ascii") for option in options]
 
         response = await self.execute_command(
@@ -281,6 +276,7 @@ class ESMTP(SMTPConnection):
         self,
         recipient: str,
         options: Optional[Iterable[str]] = None,
+        encoding: str = "ascii",
         timeout: Optional[Union[float, Default]] = _default,
     ) -> SMTPResponse:
         """
@@ -296,12 +292,7 @@ class ESMTP(SMTPConnection):
         await self._ehlo_or_helo_if_needed()
 
         quoted_recipient = quote_address(recipient)
-        if any(option.lower() == "smtputf8" for option in options):
-            if not self.supports_extension("smtputf8"):
-                raise SMTPNotSupported("SMTPUTF8 is not supported by this server")
-            addr_bytes = quoted_recipient.encode("utf-8")
-        else:
-            addr_bytes = quoted_recipient.encode("ascii")
+        addr_bytes = quoted_recipient.encode(encoding)
         options_bytes = [option.encode("ascii") for option in options]
 
         response = await self.execute_command(

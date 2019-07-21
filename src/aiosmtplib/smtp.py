@@ -138,6 +138,11 @@ class SMTP(SMTPAuth):
         else:
             rcpt_options = list(rcpt_options)
 
+        if any(option.lower() == "smtputf8" for option in mail_options):
+            mailbox_encoding = "utf-8"
+        else:
+            mailbox_encoding = "ascii"
+
         if self._sendmail_lock is None:
             self._sendmail_lock = asyncio.Lock(loop=self.loop)
 
@@ -145,14 +150,22 @@ class SMTP(SMTPAuth):
             # Make sure we've done an EHLO for extension checks
             await self._ehlo_or_helo_if_needed()
 
+            if mailbox_encoding == "utf-8" and not self.supports_extension("smtputf8"):
+                raise SMTPNotSupported("SMTPUTF8 is not supported by this server")
+
             if self.supports_extension("size"):
                 size_option = "size={}".format(len(message))
                 mail_options.insert(0, size_option)
 
             try:
-                await self.mail(sender, options=mail_options, timeout=timeout)
+                await self.mail(
+                    sender,
+                    options=mail_options,
+                    encoding=mailbox_encoding,
+                    timeout=timeout,
+                )
                 recipient_errors = await self._send_recipients(
-                    recipients, rcpt_options, timeout=timeout
+                    recipients, rcpt_options, encoding=mailbox_encoding, timeout=timeout
                 )
                 response = await self.data(message, timeout=timeout)
             except (SMTPResponseException, SMTPRecipientsRefused) as exc:
@@ -171,6 +184,7 @@ class SMTP(SMTPAuth):
         self,
         recipients: Sequence[str],
         options: Iterable[str],
+        encoding: str = "ascii",
         timeout: Optional[Union[float, Default]] = _default,
     ) -> Dict[str, SMTPResponse]:
         """
@@ -180,7 +194,9 @@ class SMTP(SMTPAuth):
         recipient_errors = []
         for address in recipients:
             try:
-                await self.rcpt(address, options=options, timeout=timeout)
+                await self.rcpt(
+                    address, options=options, encoding=encoding, timeout=timeout
+                )
             except SMTPRecipientRefused as exc:
                 recipient_errors.append(exc)
 

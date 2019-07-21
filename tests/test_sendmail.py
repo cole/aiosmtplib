@@ -5,7 +5,12 @@ import copy
 
 import pytest
 
-from aiosmtplib import SMTPRecipientsRefused, SMTPResponseException, SMTPStatus
+from aiosmtplib import (
+    SMTPNotSupported,
+    SMTPRecipientsRefused,
+    SMTPResponseException,
+    SMTPStatus,
+)
 
 
 pytestmark = pytest.mark.asyncio()
@@ -264,4 +269,50 @@ async def test_send_message_without_sender(smtp_client, smtpd_server, message):
 
     async with smtp_client:
         with pytest.raises(ValueError):
+            await smtp_client.send_message(message)
+
+
+async def test_send_message_smtputf8_sender(
+    smtp_client, smtpd_server_smtputf8, message, received_commands, received_messages
+):
+    del message["From"]
+    message["From"] = "séndër@exåmple.com"
+
+    async with smtp_client:
+        errors, response = await smtp_client.send_message(message)
+
+    assert not errors
+    assert response != ""
+
+    assert received_commands[1][0] == "MAIL"
+    assert received_commands[1][1] == message["From"]
+    assert received_commands[1][2] == ["SIZE=372", "SMTPUTF8", "BODY=8BITMIME"]
+
+    assert len(received_messages) == 1
+    assert received_messages[0]["X-MailFrom"] == message["From"]
+
+
+async def test_send_message_smtputf8_recipient(
+    smtp_client, smtpd_server_smtputf8, message, received_commands, received_messages
+):
+    message["To"] = "reçipïént@exåmple.com"
+
+    async with smtp_client:
+        errors, response = await smtp_client.send_message(message)
+
+    assert not errors
+    assert response != ""
+
+    assert received_commands[2][0] == "RCPT"
+    assert received_commands[2][1] == message["To"]
+
+    assert len(received_messages) == 1
+    assert received_messages[0]["X-RcptTo"] == ", ".join(message.get_all("To"))
+
+
+async def test_send_message_smtputf8_not_supported(smtp_client, smtpd_server, message):
+    message["To"] = "reçipïént2@exåmple.com"
+
+    async with smtp_client:
+        with pytest.raises(SMTPNotSupported):
             await smtp_client.send_message(message)

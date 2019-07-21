@@ -2,15 +2,22 @@
 Email message and address formatting/parsing functions.
 """
 import copy
+import email.charset
 import email.generator
 import email.policy
 import email.utils
 import io
+import re
 from email.message import Message
 from typing import List
 
 
 __all__ = ("flatten_message", "parse_address", "quote_address")
+
+
+SPECIALS_REGEX = re.compile(r'[][\\()<>@,:;".]')
+ESCAPES_REGEX = re.compile(r'[\\"]')
+UTF8_CHARSET = email.charset.Charset("utf-8")
 
 
 def parse_address(address: str) -> str:
@@ -36,6 +43,30 @@ def quote_address(address: str) -> str:
         quoted_address = "<{}>".format(address.strip())
 
     return quoted_address
+
+
+def formataddr(pair):
+    """
+    Copied from the standard library, and modified to handle international (UTF-8)
+    email addresses.
+
+    The inverse of parseaddr(), this takes a 2-tuple of the form
+    (realname, email_address) and returns the string value suitable
+    for an RFC 2822 From, To or Cc header.
+    If the first element of pair is false, then the second element is
+    returned unmodified.
+    """
+    name, address = pair
+    if name:
+        encoded_name = UTF8_CHARSET.header_encode(name)
+        return "{} <{}>".format(encoded_name, address)
+    else:
+        quotes = ""
+        if SPECIALS_REGEX.search(name):
+            quotes = '"'
+            name = ESCAPES_REGEX.sub(r"\\\g<0>", name)
+            return "{}{}{} <{}>".format(quotes, name, quotes, address)
+    return address
 
 
 def flatten_message(
@@ -111,8 +142,7 @@ def extract_recipients(message: Message) -> List[str]:
             recipients.append(str(recipient))
 
     parsed_recipients = [
-        str(email.utils.formataddr(address))
-        for address in email.utils.getaddresses(recipients)
+        str(formataddr(address)) for address in email.utils.getaddresses(recipients)
     ]
 
     return parsed_recipients

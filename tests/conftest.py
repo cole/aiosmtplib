@@ -201,6 +201,40 @@ def smtpd_server(
     return server
 
 
+@pytest.fixture(scope="function")
+def smtpd_server_smtputf8(
+    request,
+    event_loop,
+    bind_address,
+    hostname,
+    port,
+    smtpd_class,
+    smtpd_handler,
+    server_tls_context,
+):
+    def factory():
+        return smtpd_class(
+            smtpd_handler,
+            hostname=hostname,
+            enable_SMTPUTF8=True,
+            tls_context=server_tls_context,
+        )
+
+    server = event_loop.run_until_complete(
+        event_loop.create_server(
+            factory, host=bind_address, port=port, family=socket.AF_INET
+        )
+    )
+
+    def close_server():
+        server.close()
+        event_loop.run_until_complete(server.wait_closed())
+
+    request.addfinalizer(close_server)
+
+    return server
+
+
 @pytest.fixture(scope="session")
 def smtpd_response_handler(request):
     def smtpd_response(
