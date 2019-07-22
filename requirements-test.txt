@@ -1,5 +1,5 @@
 # Used for automated testing
-pytest==5.0.0
+pytest==5.0.1
 pytest-asyncio==0.10.0
 pytest-cov==2.7.1
 hypothesis==4.28.2
