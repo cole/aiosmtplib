@@ -26,23 +26,15 @@ def parse_address(address: str) -> str:
     """
     display_name, parsed_address = email.utils.parseaddr(address)
 
-    return parsed_address or address
+    return parsed_address or address.strip()
 
 
 def quote_address(address: str) -> str:
     """
     Quote a subset of the email addresses defined by RFC 821.
-
-    Should be able to handle anything email.utils.parseaddr can handle.
     """
-    display_name, parsed_address = email.utils.parseaddr(address)
-    if parsed_address:
-        quoted_address = "<{}>".format(parsed_address)
-    # parseaddr couldn't parse it, use it as is and hope for the best.
-    else:
-        quoted_address = "<{}>".format(address.strip())
-
-    return quoted_address
+    parsed_address = parse_address(address)
+    return "<{}>".format(parsed_address)
 
 
 def formataddr(pair):
