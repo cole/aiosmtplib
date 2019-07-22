@@ -12,7 +12,6 @@ from aiosmtplib.status import SMTPStatus
 pytestmark = pytest.mark.asyncio()
 
 
-USERNAMES_AND_PASSWORDS = [("test", "test"), ("admin124", "$3cr3t$")]
 SUCCESS_RESPONSE = SMTPResponse(SMTPStatus.auth_successful, "OK")
 FAILURE_RESPONSE = SMTPResponse(SMTPStatus.auth_failed, "Nope")
 
@@ -90,7 +89,11 @@ async def test_login_all_methods_fail_raises_error(mock_auth):
         await mock_auth.login("username", "bogus")
 
 
-@pytest.mark.parametrize("username,password", USERNAMES_AND_PASSWORDS)
+@pytest.mark.parametrize(
+    "username,password",
+    [("test", "test"), ("admin124", "$3cr3t$")],
+    ids=["test user", "admin user"],
+)
 async def test_auth_plain_success(mock_auth, username, password):
     """
     Check that auth_plain base64 encodes the username/password given.
@@ -111,7 +114,11 @@ async def test_auth_plain_error(mock_auth):
         await mock_auth.auth_plain("username", "bogus")
 
 
-@pytest.mark.parametrize("username,password", USERNAMES_AND_PASSWORDS)
+@pytest.mark.parametrize(
+    "username,password",
+    [("test", "test"), ("admin124", "$3cr3t$")],
+    ids=["test user", "admin user"],
+)
 async def test_auth_login_success(mock_auth, username, password):
     continue_response = (SMTPStatus.auth_continue, "VXNlcm5hbWU6")
     mock_auth.responses.extend([continue_response, SUCCESS_RESPONSE])
@@ -137,7 +144,11 @@ async def test_auth_plain_continue_error(mock_auth):
         await mock_auth.auth_login("username", "bogus")
 
 
-@pytest.mark.parametrize("username,password", USERNAMES_AND_PASSWORDS)
+@pytest.mark.parametrize(
+    "username,password",
+    [("test", "test"), ("admin124", "$3cr3t$")],
+    ids=["test user", "admin user"],
+)
 async def test_auth_crammd5_success(mock_auth, username, password):
     continue_response = (
         SMTPStatus.auth_continue,

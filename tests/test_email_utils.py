@@ -15,25 +15,36 @@ from aiosmtplib.email import (
 )
 
 
-ADDRESS_EXAMPLES = (
-    ('"A.Smith" <asmith+foo@example.com>', "asmith+foo@example.com"),
-    ("Pepé Le Pew <pépe@example.com>", "pépe@example.com"),
-    ("<a@new.topleveldomain>", "a@new.topleveldomain"),
-    ("email@[123.123.123.123]", "email@[123.123.123.123]"),
-    ("_______@example.com", "_______@example.com"),
-    ("B. Smith <b@example.com", "b@example.com"),
+@pytest.mark.parametrize(
+    "address, expected_address",
+    (
+        ('"A.Smith" <asmith+foo@example.com>', "asmith+foo@example.com"),
+        ("Pepé Le Pew <pépe@example.com>", "pépe@example.com"),
+        ("<a@new.topleveldomain>", "a@new.topleveldomain"),
+        ("email@[123.123.123.123]", "email@[123.123.123.123]"),
+        ("_______@example.com", "_______@example.com"),
+        ("B. Smith <b@example.com", "b@example.com"),
+    ),
+    ids=("quotes", "nonascii", "newtld", "ipaddr", "underscores", "missing_end_<"),
 )
-
-
-@pytest.mark.parametrize("address, expected_address", ADDRESS_EXAMPLES)
 def test_parse_address(address, expected_address):
     parsed_address = parse_address(address)
     assert parsed_address == expected_address
 
 
-@pytest.mark.parametrize("address, expected_address", ADDRESS_EXAMPLES)
+@pytest.mark.parametrize(
+    "address, expected_address",
+    (
+        ('"A.Smith" <asmith+foo@example.com>', "<asmith+foo@example.com>"),
+        ("Pepé Le Pew <pépe@example.com>", "<pépe@example.com>"),
+        ("<a@new.topleveldomain>", "<a@new.topleveldomain>"),
+        ("email@[123.123.123.123]", "<email@[123.123.123.123]>"),
+        ("_______@example.com", "<_______@example.com>"),
+        ("B. Smith <b@example.com", "<b@example.com>"),
+    ),
+    ids=("quotes", "nonascii", "newtld", "ipaddr", "underscores", "missing_end_quote"),
+)
 def test_quote_address(address, expected_address):
-    expected_address = "<{}>".format(expected_address)
     quoted_address = quote_address(address)
     assert quoted_address == expected_address
 
@@ -67,6 +78,7 @@ This is a test\r
         (False, "8bit", b"=?utf-8?q?=C3=A5lice?="),
         (True, "8bit", b"\xc3\xa5lice@example.com"),
     ),
+    ids=("ascii-7bit", "utf8-7bit", "ascii-8bit", "utf8-8bit"),
 )
 def test_flatten_message_utf8_options(utf8, cte_type, expected_chunk):
     message = EmailMessage()

@@ -171,14 +171,6 @@ async def test_rset_after_sendmail_error_response_to_rcpt(
         assert received_commands[-1][0] == "RSET"
 
 
-@pytest.mark.parametrize(
-    "error_code",
-    [
-        code
-        for code in SMTPStatus
-        if code not in (SMTPStatus.domain_unavailable, SMTPStatus.start_input)
-    ],
-)
 async def test_rset_after_sendmail_error_response_to_data(
     smtp_client,
     smtpd_server,

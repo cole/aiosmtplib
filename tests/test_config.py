@@ -99,6 +99,7 @@ async def test_config_via_connect_kwargs(smtpd_server, hostname, port):
 @pytest.mark.parametrize(
     "use_tls,start_tls,expected_port",
     [(False, False, 25), (True, False, 465), (False, True, 587)],
+    ids=["plaintext", "tls", "starttls"],
 )
 async def test_default_port_on_connect(event_loop, use_tls, start_tls, expected_port):
     client = SMTP()

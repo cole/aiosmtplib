@@ -25,15 +25,6 @@ from aiosmtplib import (
 )
 
 
-CONNECTION_EXCEPTIONS = (
-    SMTPServerDisconnected,
-    SMTPConnectError,
-    SMTPConnectTimeoutError,
-)
-TIMEOUT_EXCEPTIONS = (SMTPTimeoutError, SMTPConnectTimeoutError, SMTPReadTimeoutError)
-SIMPLE_RESPONSE_EXCEPTIONS = (SMTPHeloError, SMTPDataError, SMTPAuthenticationError)
-
-
 @given(text())
 def test_raise_smtp_exception(message):
     with pytest.raises(SMTPException) as excinfo:
@@ -52,7 +43,9 @@ def test_raise_smtp_response_exception(code, message):
     assert excinfo.value.message == message
 
 
-@pytest.mark.parametrize("error_class", CONNECTION_EXCEPTIONS)
+@pytest.mark.parametrize(
+    "error_class", (SMTPServerDisconnected, SMTPConnectError, SMTPConnectTimeoutError)
+)
 @given(message=text())
 def test_connection_exceptions(message, error_class):
     with pytest.raises(error_class) as excinfo:
@@ -63,7 +56,9 @@ def test_connection_exceptions(message, error_class):
     assert excinfo.value.message == message
 
 
-@pytest.mark.parametrize("error_class", TIMEOUT_EXCEPTIONS)
+@pytest.mark.parametrize(
+    "error_class", (SMTPTimeoutError, SMTPConnectTimeoutError, SMTPReadTimeoutError)
+)
 @given(message=text())
 def test_timeout_exceptions(message, error_class):
     with pytest.raises(error_class) as excinfo:
@@ -74,7 +69,9 @@ def test_timeout_exceptions(message, error_class):
     assert excinfo.value.message == message
 
 
-@pytest.mark.parametrize("error_class", SIMPLE_RESPONSE_EXCEPTIONS)
+@pytest.mark.parametrize(
+    "error_class", (SMTPHeloError, SMTPDataError, SMTPAuthenticationError)
+)
 @given(code=integers(), message=text())
 def test_simple_response_exceptions(code, message, error_class):
     with pytest.raises(error_class) as excinfo:

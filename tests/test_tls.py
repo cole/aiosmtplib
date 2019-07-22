@@ -165,14 +165,6 @@ async def test_starttls_disconnect_before_upgrade(
             await smtp_client.starttls(validate_certs=False)
 
 
-@pytest.mark.parametrize(
-    "error_code",
-    [
-        code
-        for code in SMTPStatus
-        if code not in (SMTPStatus.domain_unavailable, SMTPStatus.ready)
-    ],
-)
 async def test_starttls_invalid_responses(
     smtp_client,
     smtpd_server,

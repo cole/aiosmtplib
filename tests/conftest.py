@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from aiosmtplib import SMTP
+from aiosmtplib import SMTP, SMTPStatus
 from aiosmtplib.sync import shutdown_loop
 
 from .smtpd import RecordingHandler, TestSMTPD
@@ -328,3 +328,21 @@ def echo_server(request, bind_address, port, event_loop):
         event_loop.run_until_complete(server.wait_closed())
 
     request.addfinalizer(close_server)
+
+
+@pytest.fixture(
+    params=[
+        SMTPStatus.mailbox_unavailable,
+        SMTPStatus.unrecognized_command,
+        SMTPStatus.bad_command_sequence,
+        SMTPStatus.syntax_error,
+    ],
+    ids=[
+        SMTPStatus.mailbox_unavailable.name,
+        SMTPStatus.unrecognized_command.name,
+        SMTPStatus.bad_command_sequence.name,
+        SMTPStatus.syntax_error.name,
+    ],
+)
+def error_code(request):
+    return request.param

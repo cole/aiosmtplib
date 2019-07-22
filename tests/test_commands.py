@@ -12,14 +12,6 @@ from aiosmtplib import (
 )
 
 
-ERROR_CODES = (
-    SMTPStatus.mailbox_unavailable,
-    SMTPStatus.unrecognized_command,
-    SMTPStatus.bad_command_sequence,
-    SMTPStatus.syntax_error,
-)
-
-
 pytestmark = pytest.mark.asyncio()
 
 
@@ -46,7 +38,6 @@ async def test_helo_with_hostname(smtp_client, smtpd_server):
         assert response.code == SMTPStatus.completed
 
 
-@pytest.mark.parametrize("error_code", ERROR_CODES)
 async def test_helo_error(
     smtp_client,
     smtpd_server,
@@ -78,7 +69,6 @@ async def test_ehlo_with_hostname(smtp_client, smtpd_server):
         assert response.code == SMTPStatus.completed
 
 
-@pytest.mark.parametrize("error_code", ERROR_CODES)
 async def test_ehlo_error(
     smtp_client,
     smtpd_server,
@@ -150,7 +140,6 @@ async def test_ehlo_or_helo_if_needed_ehlo_success(smtp_client, smtpd_server):
         assert smtp_client.is_ehlo_or_helo_needed is False
 
 
-@pytest.mark.parametrize("error_code", ERROR_CODES)
 async def test_ehlo_or_helo_if_needed_helo_success(
     smtp_client,
     smtpd_server,
@@ -170,18 +159,31 @@ async def test_ehlo_or_helo_if_needed_helo_success(
         assert smtp_client.is_ehlo_or_helo_needed is False
 
 
-@pytest.mark.parametrize("helo_error_code", ERROR_CODES)
-@pytest.mark.parametrize("ehlo_error_code", ERROR_CODES)
+@pytest.mark.parametrize(
+    "ehlo_error_code",
+    [
+        SMTPStatus.mailbox_unavailable,
+        SMTPStatus.unrecognized_command,
+        SMTPStatus.bad_command_sequence,
+        SMTPStatus.syntax_error,
+    ],
+    ids=[
+        SMTPStatus.mailbox_unavailable.name,
+        SMTPStatus.unrecognized_command.name,
+        SMTPStatus.bad_command_sequence.name,
+        SMTPStatus.syntax_error.name,
+    ],
+)
 async def test_ehlo_or_helo_if_needed_neither_succeeds(
     smtp_client,
     smtpd_server,
     smtpd_class,
     smtpd_response_handler,
     monkeypatch,
-    helo_error_code,
+    error_code,
     ehlo_error_code,
 ):
-    helo_response_handler = smtpd_response_handler("{} error".format(helo_error_code))
+    helo_response_handler = smtpd_response_handler("{} error".format(error_code))
     monkeypatch.setattr(smtpd_class, "smtp_HELO", helo_response_handler)
 
     ehlo_response_handler = smtpd_response_handler("{} error".format(ehlo_error_code))
@@ -192,7 +194,7 @@ async def test_ehlo_or_helo_if_needed_neither_succeeds(
 
         with pytest.raises(SMTPHeloError) as exception_info:
             await smtp_client._ehlo_or_helo_if_needed()
-        assert exception_info.value.code == helo_error_code
+        assert exception_info.value.code == error_code
 
 
 async def test_ehlo_or_helo_if_needed_disconnect_after_ehlo(
@@ -216,7 +218,6 @@ async def test_rset_ok(smtp_client, smtpd_server):
         assert response.message == "OK"
 
 
-@pytest.mark.parametrize("error_code", ERROR_CODES)
 async def test_rset_error(
     smtp_client,
     smtpd_server,
@@ -242,7 +243,6 @@ async def test_noop_ok(smtp_client, smtpd_server):
         assert response.message == "OK"
 
 
-@pytest.mark.parametrize("error_code", ERROR_CODES)
 async def test_noop_error(
     smtp_client,
     smtpd_server,
@@ -341,7 +341,6 @@ async def test_help_ok(smtp_client, smtpd_server):
         assert "Supported commands" in help_message
 
 
-@pytest.mark.parametrize("error_code", ERROR_CODES)
 async def test_help_error(
     smtp_client,
     smtpd_server,
@@ -359,7 +358,6 @@ async def test_help_error(
         assert exception_info.value.code == error_code
 
 
-@pytest.mark.parametrize("error_code", ERROR_CODES)
 async def test_quit_error(
     smtp_client,
     smtpd_server,
@@ -395,7 +393,6 @@ async def test_mail_ok(smtp_client, smtpd_server):
         assert response.message == "OK"
 
 
-@pytest.mark.parametrize("error_code", ERROR_CODES)
 async def test_mail_error(
     smtp_client,
     smtpd_server,
@@ -473,7 +470,6 @@ async def test_rcpt_options_not_implemented(smtp_client, smtpd_server):
             assert err.code == SMTPStatus.syntax_error
 
 
-@pytest.mark.parametrize("error_code", ERROR_CODES)
 async def test_rcpt_error(
     smtp_client,
     smtpd_server,
@@ -519,7 +515,6 @@ async def test_data_ok(smtp_client, smtpd_server):
         assert response.message == "OK"
 
 
-@pytest.mark.parametrize("error_code", ERROR_CODES)
 async def test_data_error_on_start_input(
     smtp_client,
     smtpd_server,
@@ -539,7 +534,6 @@ async def test_data_error_on_start_input(
         assert exception_info.value.code == error_code
 
 
-@pytest.mark.parametrize("error_code", ERROR_CODES)
 async def test_data_complete_error(
     smtp_client,
     smtpd_server,
