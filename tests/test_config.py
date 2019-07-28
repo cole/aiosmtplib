@@ -106,8 +106,10 @@ async def test_default_port_on_connect(event_loop, use_tls, start_tls, expected_
 
     try:
         await client.connect(use_tls=use_tls, start_tls=start_tls, timeout=0.001)
-    except (asyncio.TimeoutError, ConnectionError):
-        pass  # Ignore connection failure
+    # Ignore connection or bind failure, or cases where the event loop shuts down
+    # before the connect future is resolved (3.5.2)
+    except (asyncio.TimeoutError, asyncio.InvalidStateError, OSError):
+        pass
 
     assert client.port == expected_port
 
