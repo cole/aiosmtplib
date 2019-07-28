@@ -95,8 +95,22 @@ def port(request, unused_tcp_port):
     return unused_tcp_port
 
 
-@pytest.fixture(scope="function")
-def socket_path(tmp_path):
+@pytest.fixture(
+    scope="function",
+    params=(
+        str,
+        bytes,
+        pytest.param(
+            lambda path: path,
+            marks=pytest.mark.xfail(
+                sys.version_info < (3, 7),
+                reason="os.PathLike support introduced in 3.7.",
+            ),
+        ),
+    ),
+    ids=("str", "bytes", "pathlike"),
+)
+def socket_path(request, tmp_path):
     if sys.platform.startswith("darwin"):
         # Work around OSError: AF_UNIX path too long
         tmp_dir = Path("/tmp")  # nosec
@@ -109,7 +123,7 @@ def socket_path(tmp_path):
         index += 1
         socket_path = tmp_dir / "aiosmtplib-test{}".format(index)
 
-    return socket_path
+    return request.param(socket_path)
 
 
 @pytest.fixture(scope="function")
