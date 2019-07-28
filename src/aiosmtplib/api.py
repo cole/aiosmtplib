@@ -1,176 +1,15 @@
 """
 Main public API.
 """
-import os
-import socket
-import ssl
 from email.message import Message
-from typing import Dict, List, Optional, Sequence, Tuple, Union, overload
 
-from .response import SMTPResponse
 from .smtp import SMTP
 
 
 __all__ = ("send",)
 
 
-@overload
-async def send(
-    message: Message,
-    sender: Optional[str] = ...,
-    recipients: Optional[Union[str, Sequence[str]]] = ...,
-    hostname: str = ...,
-    port: Optional[int] = ...,
-    username: Optional[str] = ...,
-    password: Optional[str] = ...,
-    mail_options: Optional[List[str]] = ...,
-    rcpt_options: Optional[List[str]] = ...,
-    timeout: Optional[float] = ...,
-    source_address: Optional[str] = ...,
-    use_tls: bool = ...,
-    start_tls: bool = ...,
-    validate_certs: bool = ...,
-    client_cert: Optional[str] = ...,
-    client_key: Optional[str] = ...,
-    tls_context: Optional[ssl.SSLContext] = ...,
-    cert_bundle: Optional[str] = ...,
-    socket_path: None = ...,
-    sock: None = ...,
-) -> Tuple[Dict[str, SMTPResponse], str]:
-    ...
-
-
-@overload  # NOQA: F811
-async def send(
-    message: Union[str, bytes],
-    sender: str = ...,
-    recipients: Union[str, Sequence[str]] = ...,
-    hostname: str = ...,
-    port: Optional[int] = ...,
-    username: Optional[str] = ...,
-    password: Optional[str] = ...,
-    mail_options: Optional[List[str]] = ...,
-    rcpt_options: Optional[List[str]] = ...,
-    timeout: Optional[float] = ...,
-    source_address: Optional[str] = ...,
-    use_tls: bool = ...,
-    start_tls: bool = ...,
-    validate_certs: bool = ...,
-    client_cert: Optional[str] = ...,
-    client_key: Optional[str] = ...,
-    tls_context: Optional[ssl.SSLContext] = ...,
-    cert_bundle: Optional[str] = ...,
-    socket_path: None = ...,
-    sock: None = ...,
-) -> Tuple[Dict[str, SMTPResponse], str]:
-    ...
-
-
-@overload  # NOQA: F811
-async def send(
-    message: Message,
-    sender: Optional[str] = ...,
-    recipients: Optional[Union[str, Sequence[str]]] = ...,
-    hostname: None = ...,
-    port: None = ...,
-    username: Optional[str] = ...,
-    password: Optional[str] = ...,
-    mail_options: Optional[List[str]] = ...,
-    rcpt_options: Optional[List[str]] = ...,
-    timeout: Optional[float] = ...,
-    source_address: Optional[str] = ...,
-    use_tls: bool = ...,
-    start_tls: bool = ...,
-    validate_certs: bool = ...,
-    client_cert: Optional[str] = ...,
-    client_key: Optional[str] = ...,
-    tls_context: Optional[ssl.SSLContext] = ...,
-    cert_bundle: Optional[str] = ...,
-    socket_path: Union[str, bytes, os.PathLike] = ...,
-    sock: None = ...,
-) -> Tuple[Dict[str, SMTPResponse], str]:
-    ...
-
-
-@overload  # NOQA: F811
-async def send(
-    message: Union[str, bytes],
-    sender: str = ...,
-    recipients: Union[str, Sequence[str]] = ...,
-    hostname: None = ...,
-    port: None = ...,
-    username: Optional[str] = ...,
-    password: Optional[str] = ...,
-    mail_options: Optional[List[str]] = ...,
-    rcpt_options: Optional[List[str]] = ...,
-    timeout: Optional[float] = ...,
-    source_address: Optional[str] = ...,
-    use_tls: bool = ...,
-    start_tls: bool = ...,
-    validate_certs: bool = ...,
-    client_cert: Optional[str] = ...,
-    client_key: Optional[str] = ...,
-    tls_context: Optional[ssl.SSLContext] = ...,
-    cert_bundle: Optional[str] = ...,
-    socket_path: Union[str, bytes, os.PathLike] = ...,
-    sock: None = ...,
-) -> Tuple[Dict[str, SMTPResponse], str]:
-    ...
-
-
-@overload  # NOQA: F811
-async def send(
-    message: Message,
-    sender: Optional[str] = ...,
-    recipients: Optional[Union[str, Sequence[str]]] = ...,
-    hostname: None = ...,
-    port: None = ...,
-    username: Optional[str] = ...,
-    password: Optional[str] = ...,
-    mail_options: Optional[List[str]] = ...,
-    rcpt_options: Optional[List[str]] = ...,
-    timeout: Optional[float] = ...,
-    source_address: Optional[str] = ...,
-    use_tls: bool = ...,
-    start_tls: bool = ...,
-    validate_certs: bool = ...,
-    client_cert: Optional[str] = ...,
-    client_key: Optional[str] = ...,
-    tls_context: Optional[ssl.SSLContext] = ...,
-    cert_bundle: Optional[str] = ...,
-    socket_path: None = ...,
-    sock: socket.socket = ...,
-) -> Tuple[Dict[str, SMTPResponse], str]:
-    ...
-
-
-@overload  # NOQA: F811
-async def send(
-    message: Union[str, bytes],
-    sender: str = ...,
-    recipients: Union[str, Sequence[str]] = ...,
-    hostname: None = ...,
-    port: None = ...,
-    username: Optional[str] = ...,
-    password: Optional[str] = ...,
-    mail_options: Optional[List[str]] = ...,
-    rcpt_options: Optional[List[str]] = ...,
-    timeout: Optional[float] = ...,
-    source_address: Optional[str] = ...,
-    use_tls: bool = ...,
-    start_tls: bool = ...,
-    validate_certs: bool = ...,
-    client_cert: Optional[str] = ...,
-    client_key: Optional[str] = ...,
-    tls_context: Optional[ssl.SSLContext] = ...,
-    cert_bundle: Optional[str] = ...,
-    socket_path: None = ...,
-    sock: socket.socket = ...,
-) -> Tuple[Dict[str, SMTPResponse], str]:
-    ...
-
-
-async def send(message, sender=None, recipients=None, **kwargs):  # NOQA: F811
+async def send(message, sender=None, recipients=None, **kwargs):
     """
     Send an email message. On await, connects to the SMTP server using the details
     provided, sends the message, then disconnects.
@@ -206,7 +45,7 @@ async def send(message, sender=None, recipients=None, **kwargs):  # NOQA: F811
         Mutually exclusive with ``client_cert``/``client_key``.
     :keyword cert_bundle: Path to certificate bundle, for TLS verification.
     :keyword socket_path: Path to a Unix domain socket. Not compatible with
-        hostname or port.
+        hostname or port. Accepts str or bytes, or a pathlike object in 3.7+.
     :keyword sock: An existing, connected socket object. If given, none of
         hostname, port, or socket_path should be provided.
 

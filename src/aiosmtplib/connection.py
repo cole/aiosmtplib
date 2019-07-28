@@ -8,7 +8,7 @@ import ssl
 import warnings
 from typing import Any, Optional, Type, Union, cast
 
-from .compat import get_running_loop
+from .compat import PY37_OR_LATER, get_running_loop
 from .default import Default, _default
 from .errors import (
     SMTPConnectError,
@@ -43,22 +43,22 @@ class SMTPConnection:
 
     def __init__(
         self,
-        hostname: Optional[str] = "localhost",
-        port: Optional[int] = None,
-        username: Optional[str] = None,
-        password: Optional[str] = None,
-        source_address: Optional[str] = None,
-        timeout: Optional[float] = DEFAULT_TIMEOUT,
-        loop: Optional[asyncio.AbstractEventLoop] = None,
-        use_tls: bool = False,
-        start_tls: bool = False,
-        validate_certs: bool = True,
-        client_cert: Optional[str] = None,
-        client_key: Optional[str] = None,
-        tls_context: Optional[ssl.SSLContext] = None,
-        cert_bundle: Optional[str] = None,
-        socket_path: Optional[Union[str, bytes, os.PathLike]] = None,
-        sock: Optional[socket.socket] = None,
+        hostname="localhost",
+        port=None,
+        username=None,
+        password=None,
+        source_address=None,
+        timeout=DEFAULT_TIMEOUT,
+        loop=None,
+        use_tls=False,
+        start_tls=False,
+        validate_certs=True,
+        client_cert=None,
+        client_key=None,
+        tls_context=None,
+        cert_bundle=None,
+        socket_path=None,
+        sock=None,
     ) -> None:
         """
         :keyword hostname:  Server name (or IP) to connect to. Defaults to "localhost".
@@ -88,7 +88,7 @@ class SMTPConnection:
             ``client_key``.
         :keyword cert_bundle: Path to certificate bundle, for TLS verification.
         :keyword socket_path: Path to a Unix domain socket. Not compatible with
-            hostname or port.
+            hostname or port. Accepts str or bytes, or a pathlike object in 3.7+.
         :keyword sock: An existing, connected socket object. If given, none of
             hostname, port, or socket_path should be provided.
 
@@ -164,22 +164,22 @@ class SMTPConnection:
 
     def _update_settings_from_kwargs(
         self,
-        hostname: Optional[Union[str, Default]] = _default,
-        port: Optional[Union[int, Default]] = _default,
-        username: Optional[Union[str, Default]] = _default,
-        password: Optional[Union[str, Default]] = _default,
-        source_address: Optional[Union[str, Default]] = _default,
-        timeout: Optional[Union[float, Default]] = _default,
-        loop: Optional[Union[asyncio.AbstractEventLoop, Default]] = _default,
-        use_tls: Optional[bool] = None,
-        start_tls: Optional[bool] = None,
-        validate_certs: Optional[bool] = None,
-        client_cert: Optional[Union[str, Default]] = _default,
-        client_key: Optional[Union[str, Default]] = _default,
-        tls_context: Optional[Union[ssl.SSLContext, Default]] = _default,
-        cert_bundle: Optional[Union[str, Default]] = _default,
-        socket_path: Optional[Union[str, bytes, os.PathLike, Default]] = _default,
-        sock: Optional[Union[socket.socket, Default]] = _default,
+        hostname=_default,
+        port=_default,
+        username=_default,
+        password=_default,
+        source_address=_default,
+        timeout=_default,
+        loop=_default,
+        use_tls=None,
+        start_tls=None,
+        validate_certs=None,
+        client_cert=_default,
+        client_key=_default,
+        tls_context=_default,
+        cert_bundle=_default,
+        socket_path=_default,
+        sock=_default,
     ) -> None:
         """Update our configuration from the kwargs provided.
 
@@ -222,9 +222,12 @@ class SMTPConnection:
         if cert_bundle is not _default:
             self.cert_bundle = cast(Optional[str], cert_bundle)
         if socket_path is not _default:
-            self.socket_path = cast(
-                Optional[Union[str, bytes, os.PathLike]], socket_path
-            )
+            if PY37_OR_LATER:
+                self.socket_path = cast(
+                    Optional[Union[str, bytes, os.PathLike]], socket_path
+                )
+            else:
+                self.socket_path = cast(Optional[Union[str, bytes]], socket_path)
         if sock is not _default:
             self.sock = cast(Optional[socket.socket], sock)
 
@@ -281,7 +284,7 @@ class SMTPConnection:
             Mutually exclusive with ``client_cert``/``client_key``.
         :keyword cert_bundle: Path to certificate bundle, for TLS verification.
         :keyword socket_path: Path to a Unix domain socket. Not compatible with
-            hostname or port.
+            hostname or port. Accepts str or bytes, or a pathlike object in 3.7+.
         :keyword sock: An existing, connected socket object. If given, none of
             hostname, port, or socket_path should be provided.
 
