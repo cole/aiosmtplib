@@ -101,14 +101,16 @@ async def test_config_via_connect_kwargs(smtpd_server, hostname, port):
     [(False, False, 25), (True, False, 465), (False, True, 587)],
     ids=["plaintext", "tls", "starttls"],
 )
-async def test_default_port_on_connect(event_loop, use_tls, start_tls, expected_port):
+async def test_default_port_on_connect(
+    event_loop, bind_address, use_tls, start_tls, expected_port
+):
     client = SMTP()
 
     try:
-        await client.connect(use_tls=use_tls, start_tls=start_tls, timeout=0.001)
-    # Ignore connection or bind failure, or cases where the event loop shuts down
-    # before the connect future is resolved (3.5.2)
-    except (asyncio.TimeoutError, asyncio.InvalidStateError, OSError):
+        await client.connect(
+            hostname=bind_address, use_tls=use_tls, start_tls=start_tls, timeout=0.001
+        )
+    except (asyncio.TimeoutError, OSError):
         pass
 
     assert client.port == expected_port
