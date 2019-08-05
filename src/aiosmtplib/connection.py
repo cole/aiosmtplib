@@ -243,11 +243,6 @@ class SMTPConnection:
                 "Either a TLS context or a certificate/key must be provided"
             )
 
-        if (self._login_username is not None and self._login_password is None) or (
-            self._login_username is None and self._login_password is not None
-        ):
-            raise ValueError("Both a username and password must be provided")
-
         if self.sock is not None and any([self.hostname, self.port, self.socket_path]):
             raise ValueError(
                 "The socket option is not compatible with hostname, port or socket_path"
@@ -321,8 +316,9 @@ class SMTPConnection:
         if self._start_tls_on_connect:
             await self.starttls()
 
-        if self._login_username is not None and self._login_password is not None:
-            await self.login(self._login_username, self._login_password)
+        if self._login_username is not None:
+            password = self._login_password if self._login_password is not None else ""
+            await self.login(self._login_username, password)
 
         return response
 

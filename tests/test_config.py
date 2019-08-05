@@ -42,16 +42,6 @@ async def test_use_tls_and_start_tls_to_connect_raises():
         await client.connect(start_tls=True)
 
 
-async def test_username_and_no_password_raises():
-    with pytest.raises(ValueError):
-        SMTP(username="test", password=None)  # nosec
-
-
-async def test_password_and_no_username_raises():
-    with pytest.raises(ValueError):
-        SMTP(username=None, password="test")  # nosec
-
-
 async def test_socket_and_hostname_raises():
     with pytest.raises(ValueError):
         SMTP(hostname="example.com", sock=socket.socket(socket.AF_INET))
