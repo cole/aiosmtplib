@@ -189,12 +189,12 @@ jobs:
             echo -e "  pypi" >> ~/.pypirc
             echo -e "  testpypi" >> ~/.pypirc
             echo -e "[pypi]" >> ~/.pypirc
-            echo -e "username: colemaclean" >> ~/.pypirc
+            echo -e "username: $PYPI_USERNAME" >> ~/.pypirc
             echo -e "password: $PYPI_PASSWORD" >> ~/.pypirc
             echo -e "" >> ~/.pypirc
             echo -e "[testpypi]" >> ~/.pypirc
             echo -e "repository: https://test.pypi.org/legacy/" >> ~/.pypirc
-            echo -e "username: colemaclean" >> ~/.pypirc
+            echo -e "username: $TESTPYPI_USERNAME" >> ~/.pypirc
             echo -e "password: $TESTPYPI_PASSWORD" >> ~/.pypirc
       - run:
           name: Building packages
@@ -275,4 +275,4 @@ workflows:
             branches:
               ignore: /.*/
             tags:
-              only: /v[0-9]\.[0-9](\.[0-9])*/
+              only: /^v.*/
