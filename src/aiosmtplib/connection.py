@@ -78,8 +78,8 @@ class SMTPConnection:
             result of :func:`socket.getfqdn`. Note that this call blocks.
         :keyword timeout: Default timeout value for the connection, in seconds.
             Defaults to 60.
-        :keyword loop: event loop  to run on. If not set, uses
-            :py:func:`asyncio.get_event_loop`.
+        :keyword loop: event loop to run on. If no loop is passed, the running loop
+            will be used. This option is deprecated, and will be removed in future.
         :keyword use_tls: If True, make the _initial_ connection to the server
             over TLS/SSL. Note that if the server supports STARTTLS only, this
             should be False.
@@ -271,8 +271,8 @@ class SMTPConnection:
             result of :func:`socket.getfqdn`. Note that this call blocks.
         :keyword timeout: Default timeout value for the connection, in seconds.
             Defaults to 60.
-        :keyword loop: event loop to run on. If not set, uses
-            :py:func:`asyncio.get_event_loop`.
+        :keyword loop: event loop to run on. If no loop is passed, the running loop
+            will be used. This option is deprecated, and will be removed in future.
         :keyword use_tls: If True, make the initial connection to the server
             over TLS/SSL. Note that if the server supports STARTTLS only, this
             should be False.
