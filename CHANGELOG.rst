@@ -18,6 +18,8 @@ Changelog
 
 - Cleanup: Use built in start_tls method on Python 3.7+.
 
+- Cleanup: Timeout correctly if TLS handshake takes too long on Python 3.7+.
+
 - Cleanup: Updated SMTPProcotol class and removed StreamReader/StreamWriter
   usage to remove deprecation warnings in 3.8.
 

@@ -9,7 +9,7 @@ import sys
 import warnings
 from typing import Any, Optional, Type, Union, cast
 
-from .compat import get_running_loop
+from .compat import create_connection, create_unix_connection, get_running_loop
 from .default import Default, _default
 from .errors import (
     SMTPConnectError,
@@ -323,25 +323,43 @@ class SMTPConnection:
         return response
 
     async def _create_connection(self) -> SMTPResponse:
+        if self.loop is None:
+            raise RuntimeError("No event loop set")
+
         protocol = SMTPProtocol(
             loop=self.loop, connection_lost_callback=self._connection_lost
         )
 
         tls_context = None  # type: Optional[ssl.SSLContext]
+        ssl_handshake_timeout = None  # type: Optional[float]
         if self.use_tls:
             tls_context = self._get_tls_context()
+            ssl_handshake_timeout = self.timeout
 
         if self.sock:
-            connect_coro = self.loop.create_connection(  # type: ignore
-                lambda: protocol, sock=self.sock, ssl=tls_context
+            connect_coro = create_connection(
+                self.loop,
+                lambda: protocol,
+                sock=self.sock,
+                ssl=tls_context,
+                ssl_handshake_timeout=ssl_handshake_timeout,
             )
         elif self.socket_path:
-            connect_coro = self.loop.create_unix_connection(  # type: ignore
-                lambda: protocol, path=self.socket_path, ssl=tls_context
+            connect_coro = create_unix_connection(
+                self.loop,
+                lambda: protocol,
+                path=self.socket_path,
+                ssl=tls_context,
+                ssl_handshake_timeout=ssl_handshake_timeout,
             )
         else:
-            connect_coro = self.loop.create_connection(  # type: ignore
-                lambda: protocol, host=self.hostname, port=self.port, ssl=tls_context
+            connect_coro = create_connection(
+                self.loop,
+                lambda: protocol,
+                host=self.hostname,
+                port=self.port,
+                ssl=tls_context,
+                ssl_handshake_timeout=ssl_handshake_timeout,
             )
 
         try:

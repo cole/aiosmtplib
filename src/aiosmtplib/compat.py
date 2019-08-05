@@ -86,3 +86,17 @@ async def start_tls(
         raise
 
     return ssl_protocol._app_transport
+
+
+def create_connection(loop: asyncio.AbstractEventLoop, *args, **kwargs):
+    if not PY37_OR_LATER:
+        kwargs.pop("ssl_handshake_timeout")
+
+    return loop.create_connection(*args, **kwargs)
+
+
+def create_unix_connection(loop: asyncio.AbstractEventLoop, *args, **kwargs):
+    if not PY37_OR_LATER:
+        kwargs.pop("ssl_handshake_timeout")
+
+    return loop.create_unix_connection(*args, **kwargs)
