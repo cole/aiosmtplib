@@ -7,6 +7,7 @@ import enum
 __all__ = ("SMTPStatus",)
 
 
+@enum.unique
 class SMTPStatus(enum.IntEnum):
     """
     Defines SMTP statuses for code readability.
