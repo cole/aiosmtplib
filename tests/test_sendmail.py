@@ -65,12 +65,14 @@ async def test_sendmail_without_size_option(
     smtp_client,
     smtpd_server,
     smtpd_class,
-    smtpd_response_handler,
+    smtpd_response_handler_factory,
     monkeypatch,
     message,
     received_commands,
 ):
-    response_handler = smtpd_response_handler("{} done".format(SMTPStatus.completed))
+    response_handler = smtpd_response_handler_factory(
+        "{} done".format(SMTPStatus.completed)
+    )
     monkeypatch.setattr(smtpd_class, "smtp_EHLO", response_handler)
 
     async with smtp_client:
@@ -121,9 +123,14 @@ async def test_sendmail_simple_failure(smtp_client, smtpd_server):
 
 
 async def test_sendmail_error_silent_rset_handles_disconnect(
-    smtp_client, smtpd_server, smtpd_class, smtpd_response_handler, monkeypatch, message
+    smtp_client,
+    smtpd_server,
+    smtpd_class,
+    smtpd_response_handler_factory,
+    monkeypatch,
+    message,
 ):
-    response_handler = smtpd_response_handler(
+    response_handler = smtpd_response_handler_factory(
         "{} error".format(SMTPStatus.unrecognized_parameters), close_after=True
     )
     monkeypatch.setattr(smtpd_class, "smtp_DATA", response_handler)
@@ -175,7 +182,7 @@ async def test_rset_after_sendmail_error_response_to_data(
     smtp_client,
     smtpd_server,
     smtpd_class,
-    smtpd_response_handler,
+    smtpd_response_handler_factory,
     monkeypatch,
     error_code,
     message,
@@ -185,7 +192,7 @@ async def test_rset_after_sendmail_error_response_to_data(
     If an error response is given to the DATA command in the sendmail method,
     test that we reset the server session.
     """
-    response_handler = smtpd_response_handler("{} error".format(error_code))
+    response_handler = smtpd_response_handler_factory("{} error".format(error_code))
     monkeypatch.setattr(smtpd_class, "smtp_DATA", response_handler)
 
     async with smtp_client:

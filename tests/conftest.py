@@ -293,7 +293,7 @@ def smtpd_server_socket_path(
 
 
 @pytest.fixture(scope="session")
-def smtpd_response_handler(request):
+def smtpd_response_handler_factory(request):
     def smtpd_response(
         response_text, second_response_text=None, write_eof=False, close_after=False
     ):

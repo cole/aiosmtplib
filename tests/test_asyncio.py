@@ -103,12 +103,12 @@ async def test_multiple_actions_in_context_manager_with_gather(
 
 
 async def test_many_commands_with_gather(
-    monkeypatch, smtp_client, smtpd_server, smtpd_class, smtpd_response_handler
+    monkeypatch, smtp_client, smtpd_server, smtpd_class, smtpd_response_handler_factory
 ):
     """
     Tests that appropriate locks are in place to prevent commands confusing each other.
     """
-    response_handler = smtpd_response_handler(
+    response_handler = smtpd_response_handler_factory(
         "{}  Alice Smith <asmith@example.com>".format(SMTPStatus.completed)
     )
     monkeypatch.setattr(smtpd_class, "smtp_EXPN", response_handler)

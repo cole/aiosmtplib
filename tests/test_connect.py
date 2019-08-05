@@ -59,9 +59,9 @@ async def test_quit_then_connect_ok(smtp_client, smtpd_server):
 
 
 async def test_bad_connect_response_raises_error(
-    smtp_client, smtpd_server, smtpd_class, smtpd_response_handler, monkeypatch
+    smtp_client, smtpd_server, smtpd_class, smtpd_response_handler_factory, monkeypatch
 ):
-    response_handler = smtpd_response_handler(
+    response_handler = smtpd_response_handler_factory(
         "{} retry in 5 minutes".format(SMTPStatus.domain_unavailable), close_after=True
     )
     monkeypatch.setattr(smtpd_class, "_handle_client", response_handler)
@@ -74,9 +74,9 @@ async def test_bad_connect_response_raises_error(
 
 
 async def test_eof_on_connect_raises_connect_error(
-    smtp_client, smtpd_server, smtpd_class, smtpd_response_handler, monkeypatch
+    smtp_client, smtpd_server, smtpd_class, smtpd_response_handler_factory, monkeypatch
 ):
-    response_handler = smtpd_response_handler(None, write_eof=True)
+    response_handler = smtpd_response_handler_factory(None, write_eof=True)
     monkeypatch.setattr(smtpd_class, "_handle_client", response_handler)
 
     with pytest.raises(SMTPConnectError):
@@ -87,9 +87,9 @@ async def test_eof_on_connect_raises_connect_error(
 
 
 async def test_close_on_connect_raises_connect_error(
-    smtp_client, smtpd_server, smtpd_class, smtpd_response_handler, monkeypatch
+    smtp_client, smtpd_server, smtpd_class, smtpd_response_handler_factory, monkeypatch
 ):
-    response_handler = smtpd_response_handler(None, close_after=True)
+    response_handler = smtpd_response_handler_factory(None, close_after=True)
     monkeypatch.setattr(smtpd_class, "_handle_client", response_handler)
 
     with pytest.raises(SMTPConnectError):
@@ -100,9 +100,9 @@ async def test_close_on_connect_raises_connect_error(
 
 
 async def test_421_closes_connection(
-    smtp_client, smtpd_server, smtpd_class, smtpd_response_handler, monkeypatch
+    smtp_client, smtpd_server, smtpd_class, smtpd_response_handler_factory, monkeypatch
 ):
-    response_handler = smtpd_response_handler(
+    response_handler = smtpd_response_handler_factory(
         "{} Please come back in 15 seconds.".format(SMTPStatus.domain_unavailable)
     )
 
@@ -126,9 +126,9 @@ async def test_connect_error_with_no_server(hostname, port):
 
 
 async def test_disconnected_server_raises_on_client_read(
-    smtp_client, smtpd_server, smtpd_class, smtpd_response_handler, monkeypatch
+    smtp_client, smtpd_server, smtpd_class, smtpd_response_handler_factory, monkeypatch
 ):
-    response_handler = smtpd_response_handler(None, close_after=True)
+    response_handler = smtpd_response_handler_factory(None, close_after=True)
     monkeypatch.setattr(smtpd_class, "smtp_NOOP", response_handler)
 
     await smtp_client.connect()
@@ -141,9 +141,11 @@ async def test_disconnected_server_raises_on_client_read(
 
 
 async def test_disconnected_server_raises_on_client_write(
-    smtp_client, smtpd_server, smtpd_class, smtpd_response_handler, monkeypatch
+    smtp_client, smtpd_server, smtpd_class, smtpd_response_handler_factory, monkeypatch
 ):
-    response_handler = smtpd_response_handler(None, write_eof=True, close_after=True)
+    response_handler = smtpd_response_handler_factory(
+        None, write_eof=True, close_after=True
+    )
     monkeypatch.setattr(smtpd_class, "smtp_NOOP", response_handler)
 
     await smtp_client.connect()
@@ -156,13 +158,13 @@ async def test_disconnected_server_raises_on_client_write(
 
 
 async def test_disconnected_server_raises_on_data_read(
-    smtp_client, smtpd_server, smtpd_class, smtpd_response_handler, monkeypatch
+    smtp_client, smtpd_server, smtpd_class, smtpd_response_handler_factory, monkeypatch
 ):
     """
     The `data` command is a special case - it accesses protocol directly,
     rather than using `execute_command`.
     """
-    response_handler = smtpd_response_handler(None, close_after=True)
+    response_handler = smtpd_response_handler_factory(None, close_after=True)
     monkeypatch.setattr(smtpd_class, "smtp_DATA", response_handler)
 
     await smtp_client.connect()
@@ -202,13 +204,13 @@ async def test_disconnected_server_raises_on_data_write(
 
 
 async def test_disconnected_server_raises_on_starttls(
-    smtp_client, smtpd_server, smtpd_class, smtpd_response_handler, monkeypatch
+    smtp_client, smtpd_server, smtpd_class, smtpd_response_handler_factory, monkeypatch
 ):
     """
     The `starttls` command is a special case - it accesses protocol directly,
     rather than using `execute_command`.
     """
-    response_handler = smtpd_response_handler(None, close_after=True)
+    response_handler = smtpd_response_handler_factory(None, close_after=True)
     monkeypatch.setattr(smtpd_class, "smtp_STARTTLS", response_handler)
 
     await smtp_client.connect()
@@ -232,13 +234,13 @@ async def test_context_manager(smtp_client, smtpd_server):
 
 
 async def test_context_manager_disconnect_handling(
-    smtp_client, smtpd_server, smtpd_class, smtpd_response_handler, monkeypatch
+    smtp_client, smtpd_server, smtpd_class, smtpd_response_handler_factory, monkeypatch
 ):
     """
     Exceptions can be raised, but the context manager should handle
     disconnection.
     """
-    response_handler = smtpd_response_handler(None, close_after=True)
+    response_handler = smtpd_response_handler_factory(None, close_after=True)
     monkeypatch.setattr(smtpd_class, "smtp_NOOP", response_handler)
 
     async with smtp_client:
@@ -310,9 +312,9 @@ async def test_connect_error_second_attempt(hostname, port):
 
 
 async def test_server_unexpected_disconnect(
-    smtp_client, smtpd_server, smtpd_class, smtpd_response_handler, monkeypatch
+    smtp_client, smtpd_server, smtpd_class, smtpd_response_handler_factory, monkeypatch
 ):
-    response_handler = smtpd_response_handler(
+    response_handler = smtpd_response_handler_factory(
         "{} OK".format(SMTPStatus.completed),
         second_response_text="{} Bye now!".format(SMTPStatus.closing),
         close_after=True,
