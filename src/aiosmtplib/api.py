@@ -20,6 +20,11 @@ if sys.version_info >= (3, 7):
 else:
     SocketPathType = Union[str, bytes]
 
+# overloaded matrix is split by:
+# * message type (Message, str/bytes)
+# * connection type (hostname/socket/socket path)
+# * cert info (client_cert/tls_context)
+
 
 @overload  # noqa: F811
 async def send(
@@ -39,7 +44,7 @@ async def send(
     validate_certs: bool = ...,
     client_cert: Optional[str] = ...,
     client_key: Optional[str] = ...,
-    tls_context: Optional[ssl.SSLContext] = ...,
+    tls_context: None = ...,
     cert_bundle: Optional[str] = ...,
     socket_path: None = ...,
     sock: None = ...,
@@ -65,8 +70,60 @@ async def send(
     validate_certs: bool = ...,
     client_cert: Optional[str] = ...,
     client_key: Optional[str] = ...,
-    tls_context: Optional[ssl.SSLContext] = ...,
+    tls_context: None = ...,
     cert_bundle: Optional[str] = ...,
+    socket_path: None = ...,
+    sock: None = ...,
+) -> Tuple[Dict[str, SMTPResponse], str]:
+    ...
+
+
+@overload  # noqa: F811
+async def send(
+    message: Message,
+    sender: Optional[str] = ...,
+    recipients: Optional[Union[str, Sequence[str]]] = ...,
+    hostname: str = ...,
+    port: Optional[int] = ...,
+    username: Optional[str] = ...,
+    password: Optional[str] = ...,
+    mail_options: Optional[List[str]] = ...,
+    rcpt_options: Optional[List[str]] = ...,
+    timeout: Optional[float] = ...,
+    source_address: Optional[str] = ...,
+    use_tls: bool = ...,
+    start_tls: bool = ...,
+    validate_certs: bool = ...,
+    client_cert: None = ...,
+    client_key: None = ...,
+    tls_context: Optional[ssl.SSLContext] = ...,
+    cert_bundle: None = ...,
+    socket_path: None = ...,
+    sock: None = ...,
+) -> Tuple[Dict[str, SMTPResponse], str]:
+    ...
+
+
+@overload  # noqa: F811
+async def send(
+    message: Union[str, bytes],
+    sender: str = ...,
+    recipients: Union[str, Sequence[str]] = ...,
+    hostname: str = ...,
+    port: Optional[int] = ...,
+    username: Optional[str] = ...,
+    password: Optional[str] = ...,
+    mail_options: Optional[List[str]] = ...,
+    rcpt_options: Optional[List[str]] = ...,
+    timeout: Optional[float] = ...,
+    source_address: Optional[str] = ...,
+    use_tls: bool = ...,
+    start_tls: bool = ...,
+    validate_certs: bool = ...,
+    client_cert: None = ...,
+    client_key: None = ...,
+    tls_context: Optional[ssl.SSLContext] = ...,
+    cert_bundle: None = ...,
     socket_path: None = ...,
     sock: None = ...,
 ) -> Tuple[Dict[str, SMTPResponse], str]:
@@ -91,7 +148,7 @@ async def send(
     validate_certs: bool = ...,
     client_cert: Optional[str] = ...,
     client_key: Optional[str] = ...,
-    tls_context: Optional[ssl.SSLContext] = ...,
+    tls_context: None = ...,
     cert_bundle: Optional[str] = ...,
     socket_path: None = ...,
     sock: socket.socket = ...,
@@ -117,8 +174,60 @@ async def send(
     validate_certs: bool = ...,
     client_cert: Optional[str] = ...,
     client_key: Optional[str] = ...,
-    tls_context: Optional[ssl.SSLContext] = ...,
+    tls_context: None = ...,
     cert_bundle: Optional[str] = ...,
+    socket_path: None = ...,
+    sock: socket.socket = ...,
+) -> Tuple[Dict[str, SMTPResponse], str]:
+    ...
+
+
+@overload  # noqa: F811
+async def send(
+    message: Message,
+    sender: Optional[str] = ...,
+    recipients: Optional[Union[str, Sequence[str]]] = ...,
+    hostname: None = ...,
+    port: None = ...,
+    username: Optional[str] = ...,
+    password: Optional[str] = ...,
+    mail_options: Optional[List[str]] = ...,
+    rcpt_options: Optional[List[str]] = ...,
+    timeout: Optional[float] = ...,
+    source_address: Optional[str] = ...,
+    use_tls: bool = ...,
+    start_tls: bool = ...,
+    validate_certs: bool = ...,
+    client_cert: None = ...,
+    client_key: None = ...,
+    tls_context: Optional[ssl.SSLContext] = ...,
+    cert_bundle: None = ...,
+    socket_path: None = ...,
+    sock: socket.socket = ...,
+) -> Tuple[Dict[str, SMTPResponse], str]:
+    ...
+
+
+@overload  # noqa: F811
+async def send(
+    message: Union[str, bytes],
+    sender: str = ...,
+    recipients: Union[str, Sequence[str]] = ...,
+    hostname: None = ...,
+    port: None = ...,
+    username: Optional[str] = ...,
+    password: Optional[str] = ...,
+    mail_options: Optional[List[str]] = ...,
+    rcpt_options: Optional[List[str]] = ...,
+    timeout: Optional[float] = ...,
+    source_address: Optional[str] = ...,
+    use_tls: bool = ...,
+    start_tls: bool = ...,
+    validate_certs: bool = ...,
+    client_cert: None = ...,
+    client_key: None = ...,
+    tls_context: Optional[ssl.SSLContext] = ...,
+    cert_bundle: None = ...,
     socket_path: None = ...,
     sock: socket.socket = ...,
 ) -> Tuple[Dict[str, SMTPResponse], str]:
@@ -143,7 +252,7 @@ async def send(
     validate_certs: bool = ...,
     client_cert: Optional[str] = ...,
     client_key: Optional[str] = ...,
-    tls_context: Optional[ssl.SSLContext] = ...,
+    tls_context: None = ...,
     cert_bundle: Optional[str] = ...,
     socket_path: SocketPathType = ...,
     sock: None = ...,
@@ -169,8 +278,60 @@ async def send(
     validate_certs: bool = ...,
     client_cert: Optional[str] = ...,
     client_key: Optional[str] = ...,
-    tls_context: Optional[ssl.SSLContext] = ...,
+    tls_context: None = ...,
     cert_bundle: Optional[str] = ...,
+    socket_path: SocketPathType = ...,
+    sock: None = ...,
+) -> Tuple[Dict[str, SMTPResponse], str]:
+    ...
+
+
+@overload  # noqa: F811
+async def send(
+    message: Message,
+    sender: Optional[str] = ...,
+    recipients: Optional[Union[str, Sequence[str]]] = ...,
+    hostname: None = ...,
+    port: None = ...,
+    username: Optional[str] = ...,
+    password: Optional[str] = ...,
+    mail_options: Optional[List[str]] = ...,
+    rcpt_options: Optional[List[str]] = ...,
+    timeout: Optional[float] = ...,
+    source_address: Optional[str] = ...,
+    use_tls: bool = ...,
+    start_tls: bool = ...,
+    validate_certs: bool = ...,
+    client_cert: None = ...,
+    client_key: None = ...,
+    tls_context: Optional[ssl.SSLContext] = ...,
+    cert_bundle: None = ...,
+    socket_path: SocketPathType = ...,
+    sock: None = ...,
+) -> Tuple[Dict[str, SMTPResponse], str]:
+    ...
+
+
+@overload  # noqa: F811
+async def send(
+    message: Union[str, bytes],
+    sender: str = ...,
+    recipients: Union[str, Sequence[str]] = ...,
+    hostname: None = ...,
+    port: None = ...,
+    username: Optional[str] = ...,
+    password: Optional[str] = ...,
+    mail_options: Optional[List[str]] = ...,
+    rcpt_options: Optional[List[str]] = ...,
+    timeout: Optional[float] = ...,
+    source_address: Optional[str] = ...,
+    use_tls: bool = ...,
+    start_tls: bool = ...,
+    validate_certs: bool = ...,
+    client_cert: None = ...,
+    client_key: None = ...,
+    tls_context: Optional[ssl.SSLContext] = ...,
+    cert_bundle: None = ...,
     socket_path: SocketPathType = ...,
     sock: None = ...,
 ) -> Tuple[Dict[str, SMTPResponse], str]:
