@@ -16,22 +16,25 @@ async def test_command_line_send(smtpd_server, hostname, port):
         stdout=asyncio.subprocess.PIPE,
     )
 
-    expected = (
-        (b"hostname", bytes(hostname, "ascii")),
-        (b"port", bytes(str(port), "ascii")),
-        (b"From", b"sender@example.com"),
-        (b"To", b"recipient@example.com"),
-        (b"message", b"Subject: Hello World\n\nHi there."),
+    inputs = (
+        bytes(hostname, "ascii"),
+        bytes(str(port), "ascii"),
+        b"sender@example.com",
+        b"recipient@example.com",
+        b"Subject: Hello World\n\nHi there.",
+    )
+    messages = (
+        b"SMTP server hostname [localhost]:",
+        b"SMTP server port [25]:",
+        b"From:",
+        b"To:",
+        b"Enter message, end with ^D:",
     )
 
-    for expected_output, write_bytes in expected:
-        output = await proc.stdout.readuntil(separator=b":")
-        assert expected_output in output
-        proc.stdin.write(write_bytes + b"\n")
-        await proc.stdin.drain()
+    output, errors = await proc.communicate(input=b"\n".join(inputs))
 
-    proc.stdin.write_eof()
-    await proc.stdin.drain()
+    assert errors is None
+    for message in messages:
+        assert message in output
 
-    return_code = await proc.wait()
-    assert return_code == 0
+    assert proc.returncode == 0
