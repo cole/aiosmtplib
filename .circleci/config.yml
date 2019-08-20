@@ -34,8 +34,8 @@ commands:
     steps:
       - restore_cache:
           keys:
-            - v4-tox-<< parameters.cache_key >>-{{ checksum "requirements-test.txt" }}-{{ .Branch }}
-            - v4-tox-<< parameters.cache_key >>-{{ checksum "requirements-test.txt" }}-
+            - v5-tox-<< parameters.cache_key >>-{{ checksum "requirements-test.txt" }}-{{ checksum "requirements-uvloop.txt" }}-{{ .Branch }}
+            - v5-tox-<< parameters.cache_key >>-{{ checksum "requirements-test.txt" }}-{{ checksum "requirements-uvloop.txt" }}-
           name: "Restoring tox envs cache: << parameters.cache_key >>"
       - run:
           command: mkdir -p ~/tox-workdir
@@ -44,7 +44,7 @@ commands:
       - save_cache:
           paths:
             - ~/tox-workdir
-          key: v4-tox-<< parameters.cache_key >>-{{ checksum "requirements-test.txt" }}-{{ .Branch }}
+          key: v5-tox-<< parameters.cache_key >>-{{ checksum "requirements-test.txt" }}-{{ checksum "requirements-uvloop.txt" }}-{{ .Branch }}
           name: "Saving tox workdir cache: << parameters.cache_key >>"
 
   run_tox:
