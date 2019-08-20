@@ -96,10 +96,10 @@ async def test_timeout_on_starttls(
 
 
 async def test_protocol_read_response_with_timeout_times_out(
-    event_loop, echo_server, hostname, port
+    event_loop, echo_server, hostname, echo_server_port
 ):
     connect_future = event_loop.create_connection(
-        SMTPProtocol, host=hostname, port=port
+        SMTPProtocol, host=hostname, port=echo_server_port
     )
 
     transport, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
@@ -112,20 +112,22 @@ async def test_protocol_read_response_with_timeout_times_out(
     assert str(exc.value) == "Timed out waiting for server response"
 
 
-async def test_connect_timeout_error(hostname, port):
-    client = SMTP(hostname=hostname, port=port, timeout=0.0)
+async def test_connect_timeout_error(hostname, unused_tcp_port):
+    client = SMTP(hostname=hostname, port=unused_tcp_port, timeout=0.0)
 
     with pytest.raises(SMTPConnectTimeoutError) as exc:
         await client.connect()
 
     expected_message = "Timed out connecting to {host} on port {port}".format(
-        host=hostname, port=port
+        host=hostname, port=unused_tcp_port
     )
     assert str(exc.value) == expected_message
 
 
-async def test_server_disconnected_error_after_connect_timeout(hostname, port, message):
-    client = SMTP(hostname=hostname, port=port)
+async def test_server_disconnected_error_after_connect_timeout(
+    hostname, unused_tcp_port, message
+):
+    client = SMTP(hostname=hostname, port=unused_tcp_port)
 
     with pytest.raises(SMTPConnectTimeoutError):
         await client.connect(timeout=0.0)
@@ -135,16 +137,18 @@ async def test_server_disconnected_error_after_connect_timeout(hostname, port, m
 
 
 async def test_protocol_timeout_on_starttls(
-    event_loop, bind_address, hostname, port, client_tls_context
+    event_loop, bind_address, hostname, client_tls_context
 ):
     async def client_connected(reader, writer):
         await asyncio.sleep(1.0)
 
     server = await asyncio.start_server(
-        client_connected, host=bind_address, port=port, family=socket.AF_INET
+        client_connected, host=bind_address, port=0, family=socket.AF_INET
     )
+    server_port = server.sockets[0].getsockname()[1]
+
     connect_future = event_loop.create_connection(
-        SMTPProtocol, host=hostname, port=port
+        SMTPProtocol, host=hostname, port=server_port
     )
 
     _, protocol = await asyncio.wait_for(connect_future, timeout=1.0)

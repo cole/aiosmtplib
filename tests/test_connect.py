@@ -116,8 +116,8 @@ async def test_421_closes_connection(
     assert not smtp_client.is_connected
 
 
-async def test_connect_error_with_no_server(hostname, port):
-    client = SMTP(hostname=hostname, port=port)
+async def test_connect_error_with_no_server(hostname, unused_tcp_port):
+    client = SMTP(hostname=hostname, port=unused_tcp_port)
 
     with pytest.raises(SMTPConnectError):
         # SMTPConnectTimeoutError vs SMTPConnectError here depends on
@@ -301,8 +301,8 @@ async def test_context_manager_double_entry(smtp_client, smtpd_server):
     assert not smtp_client.is_connected
 
 
-async def test_connect_error_second_attempt(hostname, port):
-    client = SMTP(hostname=hostname, port=port, timeout=1.0)
+async def test_connect_error_second_attempt(hostname, unused_tcp_port):
+    client = SMTP(hostname=hostname, port=unused_tcp_port, timeout=1.0)
 
     with pytest.raises(SMTPConnectError):
         await client.connect()
@@ -342,9 +342,9 @@ async def test_connect_with_login(
     await smtp_client.quit()
 
 
-async def test_connect_via_socket(smtp_client, smtpd_server, hostname, port):
+async def test_connect_via_socket(smtp_client, hostname, smtpd_server_port):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.connect((hostname, port))
+        sock.connect((hostname, smtpd_server_port))
 
         await smtp_client.connect(hostname=None, port=None, sock=sock)
         response = await smtp_client.ehlo()

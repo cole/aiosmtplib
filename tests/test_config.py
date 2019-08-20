@@ -67,19 +67,25 @@ async def test_port_and_socket_path_raises():
         SMTP(port=1, socket_path="/tmp/test")  # nosec
 
 
-async def test_config_via_connect_kwargs(smtpd_server, hostname, port):
+async def test_config_via_connect_kwargs(hostname, smtpd_server_port):
     client = SMTP(
-        hostname="", use_tls=True, port=port + 1, source_address="example.com"
+        hostname="",
+        use_tls=True,
+        port=smtpd_server_port + 1,
+        source_address="example.com",
     )
 
     source_address = socket.getfqdn()
     await client.connect(
-        hostname=hostname, port=port, use_tls=False, source_address=source_address
+        hostname=hostname,
+        port=smtpd_server_port,
+        use_tls=False,
+        source_address=source_address,
     )
     assert client.is_connected
 
     assert client.hostname == hostname
-    assert client.port == port
+    assert client.port == smtpd_server_port
     assert client.use_tls is False
     assert client.source_address == source_address
 
@@ -109,9 +115,9 @@ async def test_default_port_on_connect(
 
 
 async def test_connect_hostname_takes_precedence(
-    event_loop, hostname, port, smtpd_server
+    event_loop, hostname, smtpd_server_port
 ):
-    client = SMTP(hostname="example.com", port=port)
+    client = SMTP(hostname="example.com", port=smtpd_server_port)
     await client.connect(hostname=hostname)
 
     assert client.hostname == hostname
@@ -119,19 +125,17 @@ async def test_connect_hostname_takes_precedence(
     await client.quit()
 
 
-async def test_connect_port_takes_precedence(event_loop, hostname, port, smtpd_server):
+async def test_connect_port_takes_precedence(event_loop, hostname, smtpd_server_port):
     client = SMTP(hostname=hostname, port=17)
-    await client.connect(port=port)
+    await client.connect(port=smtpd_server_port)
 
-    assert client.port == port
+    assert client.port == smtpd_server_port
 
     await client.quit()
 
 
-async def test_connect_timeout_takes_precedence(
-    event_loop, hostname, port, smtpd_server
-):
-    client = SMTP(hostname=hostname, port=port, timeout=0.66)
+async def test_connect_timeout_takes_precedence(hostname, smtpd_server_port):
+    client = SMTP(hostname=hostname, port=smtpd_server_port, timeout=0.66)
     await client.connect(timeout=0.99)
 
     assert client.timeout == 0.99
@@ -139,10 +143,10 @@ async def test_connect_timeout_takes_precedence(
     await client.quit()
 
 
-async def test_connect_source_address_takes_precedence(
-    event_loop, hostname, port, smtpd_server
-):
-    client = SMTP(hostname=hostname, port=port, source_address="example.com")
+async def test_connect_source_address_takes_precedence(hostname, smtpd_server_port):
+    client = SMTP(
+        hostname=hostname, port=smtpd_server_port, source_address="example.com"
+    )
     await client.connect(source_address=socket.getfqdn())
 
     assert client.source_address != "example.com"
@@ -151,11 +155,11 @@ async def test_connect_source_address_takes_precedence(
 
 
 async def test_connect_event_loop_takes_precedence(
-    event_loop, event_loop_policy, hostname, port, smtpd_server
+    event_loop, event_loop_policy, hostname, smtpd_server_port
 ):
     init_loop = event_loop_policy.new_event_loop()
     with pytest.warns(DeprecationWarning):
-        client = SMTP(hostname=hostname, port=port, loop=init_loop)
+        client = SMTP(hostname=hostname, port=smtpd_server_port, loop=init_loop)
 
     with pytest.warns(DeprecationWarning):
         await client.connect(loop=event_loop)
@@ -166,10 +170,8 @@ async def test_connect_event_loop_takes_precedence(
     await client.quit()
 
 
-async def test_connect_use_tls_takes_precedence(
-    event_loop, hostname, port, smtpd_server
-):
-    client = SMTP(hostname=hostname, port=port, use_tls=True)
+async def test_connect_use_tls_takes_precedence(hostname, smtpd_server_port):
+    client = SMTP(hostname=hostname, port=smtpd_server_port, use_tls=True)
 
     await client.connect(use_tls=False)
 
@@ -178,10 +180,8 @@ async def test_connect_use_tls_takes_precedence(
     await client.quit()
 
 
-async def test_connect_validate_certs_takes_precedence(
-    event_loop, hostname, port, smtpd_server
-):
-    client = SMTP(hostname=hostname, port=port, validate_certs=False)
+async def test_connect_validate_certs_takes_precedence(hostname, smtpd_server_port):
+    client = SMTP(hostname=hostname, port=smtpd_server_port, validate_certs=False)
 
     await client.connect(validate_certs=True)
 
@@ -190,12 +190,10 @@ async def test_connect_validate_certs_takes_precedence(
     await client.quit()
 
 
-async def test_connect_certificate_options_take_precedence(
-    event_loop, hostname, port, smtpd_server
-):
+async def test_connect_certificate_options_take_precedence(hostname, smtpd_server_port):
     client = SMTP(
         hostname=hostname,
-        port=port,
+        port=smtpd_server_port,
         client_cert="test",
         client_key="test",
         cert_bundle="test",
@@ -211,9 +209,11 @@ async def test_connect_certificate_options_take_precedence(
 
 
 async def test_connect_tls_context_option_takes_precedence(
-    event_loop, hostname, port, smtpd_server, client_tls_context, server_tls_context
+    hostname, smtpd_server_port, client_tls_context, server_tls_context
 ):
-    client = SMTP(hostname=hostname, port=port, tls_context=server_tls_context)
+    client = SMTP(
+        hostname=hostname, port=smtpd_server_port, tls_context=server_tls_context
+    )
 
     await client.connect(tls_context=client_tls_context)
 
@@ -223,11 +223,11 @@ async def test_connect_tls_context_option_takes_precedence(
 
 
 async def test_starttls_certificate_options_take_precedence(
-    event_loop, hostname, port, smtpd_server, valid_cert_path, valid_key_path
+    hostname, smtpd_server_port, valid_cert_path, valid_key_path
 ):
     client = SMTP(
         hostname=hostname,
-        port=port,
+        port=smtpd_server_port,
         validate_certs=False,
         client_cert="test1",
         client_key="test1",
@@ -264,9 +264,9 @@ async def test_loop_kwarg_deprecation_warning_init(event_loop):
 
 
 async def test_loop_kwarg_deprecation_warning_connect(
-    event_loop, hostname, port, smtpd_server
+    event_loop, hostname, smtpd_server_port, smtpd_server
 ):
-    client = SMTP(hostname=hostname, port=port)
+    client = SMTP(hostname=hostname, port=smtpd_server_port)
 
     with pytest.warns(DeprecationWarning):
         await client.connect(loop=event_loop)

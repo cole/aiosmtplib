@@ -13,9 +13,9 @@ from aiosmtplib.protocol import SMTPProtocol
 pytestmark = pytest.mark.asyncio()
 
 
-async def test_protocol_connect(echo_server, event_loop, hostname, port):
+async def test_protocol_connect(event_loop, hostname, echo_server_port):
     connect_future = event_loop.create_connection(
-        SMTPProtocol, host=hostname, port=port
+        SMTPProtocol, host=hostname, port=echo_server_port
     )
     transport, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
 
@@ -26,7 +26,7 @@ async def test_protocol_connect(echo_server, event_loop, hostname, port):
 
 
 async def test_protocol_read_limit_overrun(
-    event_loop, bind_address, hostname, port, monkeypatch
+    event_loop, bind_address, hostname, monkeypatch
 ):
     async def client_connected(reader, writer):
         await reader.read(1000)
@@ -39,10 +39,11 @@ async def test_protocol_read_limit_overrun(
         await writer.drain()
 
     server = await asyncio.start_server(
-        client_connected, host=bind_address, port=port, family=socket.AF_INET
+        client_connected, host=bind_address, port=0, family=socket.AF_INET
     )
+    server_port = server.sockets[0].getsockname()[1]
     connect_future = event_loop.create_connection(
-        SMTPProtocol, host=hostname, port=port
+        SMTPProtocol, host=hostname, port=server_port
     )
 
     _, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
@@ -81,9 +82,7 @@ async def test_protocol_writer_connected_check_on_start_tls(client_tls_context):
         await smtp_protocol.start_tls(client_tls_context)
 
 
-async def test_error_on_readline_with_partial_line(
-    event_loop, bind_address, hostname, port
-):
+async def test_error_on_readline_with_partial_line(event_loop, bind_address, hostname):
     partial_response = b"499 incomplete response\\"
 
     async def client_connected(reader, writer):
@@ -92,10 +91,12 @@ async def test_error_on_readline_with_partial_line(
         await writer.drain()
 
     server = await asyncio.start_server(
-        client_connected, host=bind_address, port=port, family=socket.AF_INET
+        client_connected, host=bind_address, port=0, family=socket.AF_INET
     )
+    server_port = server.sockets[0].getsockname()[1]
+
     connect_future = event_loop.create_connection(
-        SMTPProtocol, host=hostname, port=port
+        SMTPProtocol, host=hostname, port=server_port
     )
 
     _, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
@@ -108,7 +109,7 @@ async def test_error_on_readline_with_partial_line(
 
 
 async def test_protocol_response_waiter_unset(
-    event_loop, bind_address, hostname, port, monkeypatch
+    event_loop, bind_address, hostname, monkeypatch
 ):
     async def client_connected(reader, writer):
         await reader.read(1000)
@@ -116,10 +117,12 @@ async def test_protocol_response_waiter_unset(
         await writer.drain()
 
     server = await asyncio.start_server(
-        client_connected, host=bind_address, port=port, family=socket.AF_INET
+        client_connected, host=bind_address, port=0, family=socket.AF_INET
     )
+    server_port = server.sockets[0].getsockname()[1]
+
     connect_future = event_loop.create_connection(
-        SMTPProtocol, host=hostname, port=port
+        SMTPProtocol, host=hostname, port=server_port
     )
 
     _, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
@@ -134,7 +137,7 @@ async def test_protocol_response_waiter_unset(
 
 
 async def test_protocol_data_received_called_twice(
-    event_loop, bind_address, hostname, port, monkeypatch
+    event_loop, bind_address, hostname, monkeypatch
 ):
     async def client_connected(reader, writer):
         await reader.read(1000)
@@ -145,10 +148,12 @@ async def test_protocol_data_received_called_twice(
         await writer.drain()
 
     server = await asyncio.start_server(
-        client_connected, host=bind_address, port=port, family=socket.AF_INET
+        client_connected, host=bind_address, port=0, family=socket.AF_INET
     )
+    server_port = server.sockets[0].getsockname()[1]
+
     connect_future = event_loop.create_connection(
-        SMTPProtocol, host=hostname, port=port
+        SMTPProtocol, host=hostname, port=server_port
     )
 
     _, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
@@ -162,17 +167,17 @@ async def test_protocol_data_received_called_twice(
     await server.wait_closed()
 
 
-async def test_protocol_eof_response(
-    event_loop, bind_address, hostname, port, monkeypatch
-):
+async def test_protocol_eof_response(event_loop, bind_address, hostname, monkeypatch):
     async def client_connected(reader, writer):
         writer.transport.abort()
 
     server = await asyncio.start_server(
-        client_connected, host=bind_address, port=port, family=socket.AF_INET
+        client_connected, host=bind_address, port=0, family=socket.AF_INET
     )
+    server_port = server.sockets[0].getsockname()[1]
+
     connect_future = event_loop.create_connection(
-        SMTPProtocol, host=hostname, port=port
+        SMTPProtocol, host=hostname, port=server_port
     )
     transport, _ = await asyncio.wait_for(connect_future, timeout=1.0)
 

@@ -2,7 +2,6 @@
 TLS and STARTTLS handling.
 """
 import copy
-import socket
 import ssl
 
 import pytest
@@ -18,50 +17,6 @@ from aiosmtplib import (
 
 
 pytestmark = pytest.mark.asyncio()
-
-
-@pytest.fixture(scope="function")
-def tls_smtp_client(request, event_loop, hostname, port):
-    tls_client = SMTP(hostname=hostname, port=port, use_tls=True, validate_certs=False)
-
-    return tls_client
-
-
-@pytest.fixture(scope="function")
-def tls_smtpd_server(
-    request,
-    event_loop,
-    bind_address,
-    port,
-    smtpd_class,
-    smtpd_handler,
-    server_tls_context,
-):
-    def factory():
-        return smtpd_class(
-            smtpd_handler,
-            hostname=bind_address,
-            enable_SMTPUTF8=False,
-            tls_context=server_tls_context,
-        )
-
-    server = event_loop.run_until_complete(
-        event_loop.create_server(
-            factory,
-            host=bind_address,
-            port=port,
-            ssl=server_tls_context,
-            family=socket.AF_INET,
-        )
-    )
-
-    def close_server():
-        server.close()
-        event_loop.run_until_complete(server.wait_closed())
-
-    request.addfinalizer(close_server)
-
-    return server
 
 
 async def test_tls_connection(tls_smtp_client, tls_smtpd_server):
@@ -94,9 +49,9 @@ async def test_starttls(smtp_client, smtpd_server):
         assert response.code == SMTPStatus.completed
 
 
-async def test_starttls_init_kwarg(hostname, port, smtpd_server):
+async def test_starttls_init_kwarg(hostname, smtpd_server_port):
     smtp_client = SMTP(
-        hostname=hostname, port=port, start_tls=True, validate_certs=False
+        hostname=hostname, port=smtpd_server_port, start_tls=True, validate_certs=False
     )
 
     async with smtp_client:
@@ -237,7 +192,7 @@ async def test_starttls_cert_error(event_loop, smtp_client, smtpd_server):
 
 
 async def test_tls_get_transport_info(
-    tls_smtp_client, tls_smtpd_server, hostname, port, event_loop
+    tls_smtp_client, hostname, tls_smtpd_server_port, event_loop
 ):
     async with tls_smtp_client:
         compression = tls_smtp_client.get_transport_info("compression")
@@ -245,7 +200,7 @@ async def test_tls_get_transport_info(
 
         peername = tls_smtp_client.get_transport_info("peername")
         assert peername[0] in ("127.0.0.1", "::1")  # IP v4 and 6
-        assert peername[1] == port
+        assert peername[1] == tls_smtpd_server_port
 
         sock = tls_smtp_client.get_transport_info("socket")
         assert sock is not None
@@ -267,13 +222,13 @@ async def test_tls_get_transport_info(
 
 
 async def test_tls_smtp_connect_to_non_tls_server(
-    tls_smtp_client, smtpd_server, event_loop, hostname, port
+    event_loop, tls_smtp_client, smtpd_server_port
 ):
     # Don't fail on the expected exception
     event_loop.set_exception_handler(None)
 
     with pytest.raises(SMTPConnectError):
-        await tls_smtp_client.connect()
+        await tls_smtp_client.connect(port=smtpd_server_port)
     assert not tls_smtp_client.is_connected
 
 

@@ -44,10 +44,10 @@ async def test_sendmail_multiple_times_with_gather(smtp_client, smtpd_server, me
 
 
 async def test_connect_and_sendmail_multiple_times_with_gather(
-    smtpd_server, hostname, port, message
+    hostname, smtpd_server_port, message
 ):
     async def connect_and_send(*args, **kwargs):
-        async with SMTP(hostname=hostname, port=port) as client:
+        async with SMTP(hostname=hostname, port=smtpd_server_port) as client:
             response = await client.sendmail(*args, **kwargs)
 
         return response
@@ -63,9 +63,9 @@ async def test_connect_and_sendmail_multiple_times_with_gather(
         assert message != ""
 
 
-async def test_multiple_clients_with_gather(smtpd_server, hostname, port, message):
+async def test_multiple_clients_with_gather(hostname, smtpd_server_port, message):
     async def connect_and_send(*args, **kwargs):
-        client = SMTP(hostname=hostname, port=port)
+        client = SMTP(hostname=hostname, port=smtpd_server_port)
         async with client:
             response = await client.sendmail(*args, **kwargs)
 
@@ -83,10 +83,10 @@ async def test_multiple_clients_with_gather(smtpd_server, hostname, port, messag
 
 
 async def test_multiple_actions_in_context_manager_with_gather(
-    smtpd_server, hostname, port, message
+    hostname, smtpd_server_port, message
 ):
     async def connect_and_run_commands(*args, **kwargs):
-        async with SMTP(hostname=hostname, port=port) as client:
+        async with SMTP(hostname=hostname, port=smtpd_server_port) as client:
             await client.ehlo()
             await client.help()
             response = await client.noop()
@@ -132,8 +132,8 @@ async def test_many_commands_with_gather(
     assert "Supported commands" in results[-1]
 
 
-async def test_close_works_on_stopped_loop(smtpd_server, event_loop, hostname, port):
-    client = SMTP(hostname=hostname, port=port)
+async def test_close_works_on_stopped_loop(event_loop, hostname, smtpd_server_port):
+    client = SMTP(hostname=hostname, port=smtpd_server_port)
 
     await client.connect()
     assert client.is_connected

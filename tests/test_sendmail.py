@@ -272,13 +272,17 @@ async def test_send_message_without_sender(smtp_client, smtpd_server, message):
 
 
 async def test_send_message_smtputf8_sender(
-    smtp_client, smtpd_server_smtputf8, message, received_commands, received_messages
+    smtp_client_smtputf8,
+    smtpd_server_smtputf8,
+    message,
+    received_commands,
+    received_messages,
 ):
     del message["From"]
     message["From"] = "séndër@exåmple.com"
 
-    async with smtp_client:
-        errors, response = await smtp_client.send_message(message)
+    async with smtp_client_smtputf8:
+        errors, response = await smtp_client_smtputf8.send_message(message)
 
     assert not errors
     assert response != ""
@@ -292,12 +296,16 @@ async def test_send_message_smtputf8_sender(
 
 
 async def test_send_message_smtputf8_recipient(
-    smtp_client, smtpd_server_smtputf8, message, received_commands, received_messages
+    smtp_client_smtputf8,
+    smtpd_server_smtputf8,
+    message,
+    received_commands,
+    received_messages,
 ):
     message["To"] = "reçipïént@exåmple.com"
 
-    async with smtp_client:
-        errors, response = await smtp_client.send_message(message)
+    async with smtp_client_smtputf8:
+        errors, response = await smtp_client_smtputf8.send_message(message)
 
     assert not errors
     assert response != ""

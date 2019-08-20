@@ -5,20 +5,9 @@ import pytest
 
 from aiosmtplib.sync import async_to_sync
 
-from .smtpd import SMTPDController
 
-
-@pytest.fixture(scope="function")
-def threaded_smtpd_server(request, bind_address, port, smtpd_handler):
-    controller = SMTPDController(smtpd_handler, hostname=bind_address, port=port)
-    controller.start()
-    request.addfinalizer(controller.stop)
-
-    return controller.server
-
-
-def test_sendmail_sync(smtp_client, threaded_smtpd_server, message):
-    errors, response = smtp_client.sendmail_sync(
+def test_sendmail_sync(event_loop, smtp_client_threaded, message):
+    errors, response = smtp_client_threaded.sendmail_sync(
         message["From"], [message["To"]], str(message)
     )
 
@@ -27,12 +16,10 @@ def test_sendmail_sync(smtp_client, threaded_smtpd_server, message):
     assert response != ""
 
 
-def test_sendmail_sync_when_connected(
-    smtp_client, event_loop, threaded_smtpd_server, message
-):
-    event_loop.run_until_complete(smtp_client.connect())
+def test_sendmail_sync_when_connected(event_loop, smtp_client_threaded, message):
+    event_loop.run_until_complete(smtp_client_threaded.connect())
 
-    errors, response = smtp_client.sendmail_sync(
+    errors, response = smtp_client_threaded.sendmail_sync(
         message["From"], [message["To"]], str(message)
     )
 
@@ -41,20 +28,18 @@ def test_sendmail_sync_when_connected(
     assert response != ""
 
 
-def test_send_message_sync(smtp_client, event_loop, threaded_smtpd_server, message):
-    errors, response = smtp_client.send_message_sync(message)
+def test_send_message_sync(event_loop, smtp_client_threaded, message):
+    errors, response = smtp_client_threaded.send_message_sync(message)
 
     assert not errors
     assert isinstance(errors, dict)
     assert response != ""
 
 
-def test_send_message_sync_when_connected(
-    smtp_client, event_loop, threaded_smtpd_server, message
-):
-    event_loop.run_until_complete(smtp_client.connect())
+def test_send_message_sync_when_connected(event_loop, smtp_client_threaded, message):
+    event_loop.run_until_complete(smtp_client_threaded.connect())
 
-    errors, response = smtp_client.send_message_sync(message)
+    errors, response = smtp_client_threaded.send_message_sync(message)
 
     assert not errors
     assert isinstance(errors, dict)

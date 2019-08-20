@@ -7,7 +7,7 @@ import pytest
 pytestmark = pytest.mark.asyncio()
 
 
-async def test_command_line_send(smtpd_server, hostname, port):
+async def test_command_line_send(hostname, smtpd_server_port):
     proc = await asyncio.create_subprocess_exec(
         sys.executable,
         b"-m",
@@ -18,7 +18,7 @@ async def test_command_line_send(smtpd_server, hostname, port):
 
     inputs = (
         bytes(hostname, "ascii"),
-        bytes(str(port), "ascii"),
+        bytes(str(smtpd_server_port), "ascii"),
         b"sender@example.com",
         b"recipient@example.com",
         b"Subject: Hello World\n\nHi there.",

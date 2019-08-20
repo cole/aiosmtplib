@@ -14,7 +14,7 @@ import pytest
 from aiosmtplib import SMTP, SMTPStatus
 from aiosmtplib.sync import shutdown_loop
 
-from .smtpd import RecordingHandler, TestSMTPD
+from .smtpd import RecordingHandler, SMTPDController, TestSMTPD
 
 
 try:
@@ -87,12 +87,6 @@ def bind_address(request):
     """Server side address for socket binding
     """
     return request.config.getoption("--bind-addr")
-
-
-@pytest.fixture(scope="function")
-def port(request, unused_tcp_port):
-    """Alias for ununsed_tcp_port."""
-    return unused_tcp_port
 
 
 @pytest.fixture(
@@ -205,7 +199,6 @@ def smtpd_server(
     event_loop,
     bind_address,
     hostname,
-    port,
     smtpd_class,
     smtpd_handler,
     server_tls_context,
@@ -220,7 +213,7 @@ def smtpd_server(
 
     server = event_loop.run_until_complete(
         event_loop.create_server(
-            factory, host=bind_address, port=port, family=socket.AF_INET
+            factory, host=bind_address, port=0, family=socket.AF_INET
         )
     )
 
@@ -234,12 +227,16 @@ def smtpd_server(
 
 
 @pytest.fixture(scope="function")
+def smtpd_server_port(request, smtpd_server):
+    return smtpd_server.sockets[0].getsockname()[1]
+
+
+@pytest.fixture(scope="function")
 def smtpd_server_smtputf8(
     request,
     event_loop,
     bind_address,
     hostname,
-    port,
     smtpd_class,
     smtpd_handler,
     server_tls_context,
@@ -254,7 +251,7 @@ def smtpd_server_smtputf8(
 
     server = event_loop.run_until_complete(
         event_loop.create_server(
-            factory, host=bind_address, port=port, family=socket.AF_INET
+            factory, host=bind_address, port=0, family=socket.AF_INET
         )
     )
 
@@ -265,6 +262,11 @@ def smtpd_server_smtputf8(
     request.addfinalizer(close_server)
 
     return server
+
+
+@pytest.fixture(scope="function")
+def smtpd_server_smtputf8_port(request, smtpd_server_smtputf8):
+    return smtpd_server_smtputf8.sockets[0].getsockname()[1]
 
 
 @pytest.fixture(scope="function")
@@ -315,8 +317,15 @@ def smtpd_response_handler_factory(request):
 
 
 @pytest.fixture(scope="function")
-def smtp_client(request, event_loop, hostname, port):
-    client = SMTP(hostname=hostname, port=port, timeout=1.0)
+def smtp_client(request, event_loop, hostname, smtpd_server_port):
+    client = SMTP(hostname=hostname, port=smtpd_server_port, timeout=1.0)
+
+    return client
+
+
+@pytest.fixture(scope="function")
+def smtp_client_smtputf8(request, event_loop, hostname, smtpd_server_smtputf8_port):
+    client = SMTP(hostname=hostname, port=smtpd_server_smtputf8_port, timeout=1.0)
 
     return client
 
@@ -330,10 +339,10 @@ class EchoServerProtocol(asyncio.Protocol):
 
 
 @pytest.fixture(scope="function")
-def echo_server(request, bind_address, port, event_loop):
+def echo_server(request, bind_address, event_loop):
     server = event_loop.run_until_complete(
         event_loop.create_server(
-            EchoServerProtocol, host=bind_address, port=port, family=socket.AF_INET
+            EchoServerProtocol, host=bind_address, port=0, family=socket.AF_INET
         )
     )
 
@@ -342,6 +351,13 @@ def echo_server(request, bind_address, port, event_loop):
         event_loop.run_until_complete(server.wait_closed())
 
     request.addfinalizer(close_server)
+
+    return server
+
+
+@pytest.fixture(scope="function")
+def echo_server_port(request, echo_server):
+    return echo_server.sockets[0].getsockname()[1]
 
 
 @pytest.fixture(
@@ -360,3 +376,72 @@ def echo_server(request, bind_address, port, event_loop):
 )
 def error_code(request):
     return request.param
+
+
+@pytest.fixture(scope="function")
+def tls_smtpd_server(
+    request, event_loop, bind_address, smtpd_class, smtpd_handler, server_tls_context
+):
+    def factory():
+        return smtpd_class(
+            smtpd_handler,
+            hostname=bind_address,
+            enable_SMTPUTF8=False,
+            tls_context=server_tls_context,
+        )
+
+    server = event_loop.run_until_complete(
+        event_loop.create_server(
+            factory,
+            host=bind_address,
+            port=0,
+            ssl=server_tls_context,
+            family=socket.AF_INET,
+        )
+    )
+
+    def close_server():
+        server.close()
+        event_loop.run_until_complete(server.wait_closed())
+
+    request.addfinalizer(close_server)
+
+    return server
+
+
+@pytest.fixture(scope="function")
+def tls_smtpd_server_port(request, tls_smtpd_server):
+    return tls_smtpd_server.sockets[0].getsockname()[1]
+
+
+@pytest.fixture(scope="function")
+def tls_smtp_client(request, event_loop, hostname, tls_smtpd_server_port):
+    tls_client = SMTP(
+        hostname=hostname,
+        port=tls_smtpd_server_port,
+        use_tls=True,
+        validate_certs=False,
+    )
+
+    return tls_client
+
+
+@pytest.fixture(scope="function")
+def threaded_smtpd_server(request, bind_address, smtpd_handler):
+    controller = SMTPDController(smtpd_handler, hostname=bind_address, port=0)
+    controller.start()
+    request.addfinalizer(controller.stop)
+
+    return controller.server
+
+
+@pytest.fixture(scope="function")
+def threaded_smtpd_server_port(request, threaded_smtpd_server):
+    return threaded_smtpd_server.sockets[0].getsockname()[1]
+
+
+@pytest.fixture(scope="function")
+def smtp_client_threaded(request, hostname, threaded_smtpd_server_port):
+    client = SMTP(hostname=hostname, port=threaded_smtpd_server_port, timeout=1.0)
+
+    return client
