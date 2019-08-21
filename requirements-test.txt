@@ -2,5 +2,5 @@
 pytest==5.1.0
 pytest-asyncio==0.10.0
 pytest-cov==2.7.1
-hypothesis==4.33.0
+hypothesis==4.33.1
 aiosmtpd==1.2
