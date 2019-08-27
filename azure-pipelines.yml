@@ -4,6 +4,25 @@ variables:
 trigger:
 - master
 
+resources:
+  containers:
+  - container: py352
+    image: python:3.5.2
+  - container: py35
+    image: python:3.5-buster
+  - container: py36
+    image: python:3.6-buster
+  - container: py37
+    image: python:3.7-buster
+  - container: py38
+    image: python:3.8-rc-buster
+  - container: py38
+    image: python:3.8-rc-buster
+  - container: pypy35
+    image: pypy:3.5-stretch
+  - container: pypy36
+    image: pypy:3.6-stretch
+
 jobs:
 
 - job: 'Test'
@@ -12,24 +31,20 @@ jobs:
   strategy:
     matrix:
       Python35:
-        python.version: '3.5'
+        containerResource: py35
         TOXENV: 'clean,py35-asyncio,py35-uvloop,coverage'
       Python36:
-        python.version: '3.6'
+        containerResource: py36
         TOXENV: 'clean,py36-asyncio,py36-uvloop,coverage'
       Python37:
-        python.version: '3.7'
+        containerResource: py37
         TOXENV: 'clean,py37-asyncio,py37-uvloop,coverage'
-      PyPy3:
-        python.version: 'pypy3'
+      PyPy35:
+        containerResource: pypy35
         TOXENV: 'clean,pypy35-asyncio,coverage'
+  container: '$(containerResource)'
 
   steps:
-  - task: UsePythonVersion@0
-    displayName: 'Use Python $(python.version)'
-    inputs:
-      versionSpec: '$(python.version)'
-      architecture: 'x64'
   - script: pip install tox tox-venv
     displayName: 'Install Tox'
   - script: tox
