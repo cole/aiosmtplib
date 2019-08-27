@@ -39,7 +39,7 @@ jobs:
   - script: $(toxPython.pythonLocation)/bin/pip install --upgrade tox tox-venv
     displayName: 'Install tox'
   - task: UsePythonVersion@0
-    condition: not(in(variables['python.version'], '3.8'))
+    condition: not(in(variables['python.version'], '3.5.2', '3.8'))
     inputs:
       versionSpec: '$(python.version)'
       architecture: 'x64'
@@ -48,7 +48,7 @@ jobs:
       sudo add-apt-repository ppa:deadsnakes
       sudo apt-get update
       sudo apt-get install -y --no-install-recommends python$(python.version)-dev python$(python.version)-distutils
-    condition: in(variables['python.version'], '3.8')
+    condition: in(variables['python.version'], '3.5.2', '3.8')
     displayName: 'Install Python $(python.version) from the deadsnakes PPA for tests'
   - script: $(toxPython.pythonLocation)/bin/tox -e $(tox.env)
     displayName: 'Run Tox (env: $(tox.env))'
