@@ -29,6 +29,9 @@ jobs:
       PyPy35:
         python.version: 'pypy3'
         tox.env: 'clean,pypy35-asyncio,coverage'
+      PyPy36:
+        python.version: 'pypy36'
+        tox.env: 'clean,pypy36-asyncio,coverage'
 
   steps:
   - task: UsePythonVersion@0
@@ -42,7 +45,7 @@ jobs:
   - script: $(toxPython.pythonLocation)/bin/pip install --upgrade tox tox-venv
     displayName: 'Install tox'
   - task: UsePythonVersion@0
-    condition: not(in(variables['python.version'], '3.5.2', '3.8'))
+    condition: in(variables['python.version'], '3.5', '3.6', '3.7', 'pypy3')
     inputs:
       versionSpec: '$(python.version)'
       architecture: 'x64'
@@ -58,6 +61,12 @@ jobs:
       sudo apt-get install -y --no-install-recommends python3-venv
     condition: in(variables['python.version'], '3.5.2')
     displayName: 'Install python3-venv package for Python 3.5.2'
+  - script: |
+      sudo add-apt-repository ppa:pypy
+      sudo apt-get update
+      sudo apt-get install -y --no-install-recommends pypy3
+    condition: in(variables['python.version'], 'pypy36')
+    displayName: 'Install PyPy36 from the pypy PPA'
   - script: $(toxPython.pythonLocation)/bin/tox -e $(tox.env)
     displayName: 'Run Tox (env: $(tox.env))'
   - task: PublishTestResults@2
