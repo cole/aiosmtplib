@@ -50,14 +50,14 @@ jobs:
   - script: |
       sudo add-apt-repository ppa:deadsnakes
       sudo apt-get update
-      sudo apt-get install -y --no-install-recommends python$(python.version)-dev python$(python.version)-distutils
+      sudo apt-get install -y --no-install-recommends python$(python.version)-dev python$(python.version)-distutils python$(python.version)-venv
     condition: in(variables['python.version'], '3.8')
     displayName: 'Install Python 3.8 from the deadsnakes PPA'
   - script: |
       sudo apt-get update
       sudo apt-get install -y --no-install-recommends python3-venv
-    condition: in(variables['python.version'], '3.8', '3.5.2')
-    displayName: 'Install python3-venv package for Python $(python.version)'
+    condition: in(variables['python.version'], '3.5.2')
+    displayName: 'Install python3-venv package for Python 3.5.2'
   - script: $(toxPython.pythonLocation)/bin/tox -e $(tox.env)
     displayName: 'Run Tox (env: $(tox.env))'
   - task: PublishTestResults@2
