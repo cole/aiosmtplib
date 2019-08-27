@@ -45,6 +45,8 @@ jobs:
   container: $[ variables['containerResource'] ]
 
   steps:
+  - script: export PATH=~/.local/bin/:$PATH
+    displayName: 'Add ~/.local/bin to PATH'
   - script: pip install --user tox tox-venv
     displayName: 'Install Tox'
   - script: tox
