@@ -45,9 +45,7 @@ jobs:
     displayName: 'Build docs'
 
 - job: Test
-  dependsOn:
-  - Lint
-  - Docs
+  dependsOn: Lint
   pool:
     vmImage: 'ubuntu-16.04'
   strategy:
