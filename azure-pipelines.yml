@@ -8,23 +8,22 @@ jobs:
 
 - job: 'Test'
   pool:
-    vmImage: 'Ubuntu-16.04'
+      vmImage: 'ubuntu-latest'
   strategy:
     matrix:
+      Python352:
+        python.version: '3.5.2'
+        tox.env: 'clean,py35-asyncio,py35-uvloop,coverage'
       Python35:
-        containerImage: ubuntu:16.04
         python.version: '3.5'
         tox.env: 'clean,py35-asyncio,py35-uvloop,coverage'
       Python36:
-        containerImage: ubuntu:16.04
         python.version: '3.6'
         tox.env: 'clean,py36-asyncio,py36-uvloop,coverage'
       Python37:
-        containerImage: ubuntu:16.04
         python.version: '3.7'
         tox.env: 'clean,py37-asyncio,py37-uvloop,coverage'
       PyPy35:
-        containerImage: ubuntu:16.04
         python.version: 'pypy3'
         tox.env: 'clean,pypy35-asyncio,coverage'
 
@@ -40,10 +39,17 @@ jobs:
   - script: $(toxPython.pythonLocation)/bin/pip install --upgrade tox tox-venv
     displayName: 'Install tox'
   - task: UsePythonVersion@0
-    displayName: 'Use Python $(python.version) for tests'
+    condition: not(in(variables['python.version'], '3.8'))
     inputs:
       versionSpec: '$(python.version)'
       architecture: 'x64'
+    displayName: 'Use Python $(python.version) for tests'
+  - script: |
+      sudo add-apt-repository ppa:deadsnakes
+      sudo apt-get update
+      sudo apt-get install -y --no-install-recommends python$(python.version)-dev python$(python.version)-distutils
+    condition: in(variables['python.version'], '3.8')
+    displayName: 'Install Python $(python.version) from the deadsnakes PPA for tests'
   - script: $(toxPython.pythonLocation)/bin/tox -e $(tox.env)
     displayName: 'Run Tox (env: $(tox.env))'
   - task: PublishTestResults@2
