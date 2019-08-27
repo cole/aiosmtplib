@@ -4,106 +4,119 @@ variables:
 trigger:
 - master
 
-stages:
-- stage: Lint
-  jobs:
-  - job: 'Lint'
-    pool:
-      vmImage: 'ubuntu-16.04'
-    steps:
-    - task: UsePythonVersion@0
-      displayName: 'Use Python 3.7'
-      inputs:
-        versionSpec: '3.7'
-        architecture: 'x64'
-    - script: pip install --upgrade pip
-      displayName: 'Upgrade pip'
-    - script: pip install --upgrade tox tox-venv
-      displayName: 'Install tox'
-    - script: tox -e black
-      displayName: 'black'
-    - script: tox -e flake8
-      displayName: 'flake8'
-    - script: tox -e mypy
-      displayName: 'mypy'
-    - script: tox -e bandit
-      displayName: 'bandit'
+jobs:
+- job: Lint
+  pool:
+    vmImage: 'ubuntu-16.04'
+  steps:
+  - task: UsePythonVersion@0
+    displayName: 'Use Python 3.7'
+    inputs:
+      versionSpec: '3.7'
+      architecture: 'x64'
+  - script: pip install --upgrade pip
+    displayName: 'Upgrade pip'
+  - script: pip install --upgrade tox tox-venv
+    displayName: 'Install tox'
+  - script: tox -e black
+    displayName: 'black'
+  - script: tox -e flake8
+    displayName: 'flake8'
+  - script: tox -e mypy
+    displayName: 'mypy'
+  - script: tox -e bandit
+    displayName: 'bandit'
 
-- stage: Test
-  jobs:
-  - job: 'Test'
-    pool:
-      vmImage: 'ubuntu-16.04'
-    strategy:
-      matrix:
-        Docs:
-          python.version: '3.7'
-          tox.env: 'docs'
-        Python352:
-          python.version: '3.5.2'
-          tox.env: 'clean,py35-asyncio,py35-uvloop,coverage'
-        Python35:
-          python.version: '3.5'
-          tox.env: 'clean,py35-asyncio,py35-uvloop,coverage'
-        Python36:
-          python.version: '3.6'
-          tox.env: 'clean,py36-asyncio,py36-uvloop,coverage'
-        Python37:
-          python.version: '3.7'
-          tox.env: 'clean,py37-asyncio,py37-uvloop,coverage'
-        Python38:
-          python.version: '3.8'
-          tox.env: 'clean,py38-asyncio,coverage'
-        PyPy35:
-          python.version: 'pypy3'
-          tox.env: 'clean,pypy35-asyncio,coverage'
-        PyPy36:
-          python.version: 'pypy36'
-          tox.env: 'clean,pypy36-asyncio,coverage'
+- job: Docs
+  dependsOn: Lint
+  pool:
+    vmImage: 'ubuntu-16.04'
+  steps:
+  - task: UsePythonVersion@0
+    displayName: 'Use Python 3.7'
+    inputs:
+      versionSpec: '3.7'
+      architecture: 'x64'
+  - script: pip install --upgrade pip
+    displayName: 'Upgrade pip'
+  - script: pip install --upgrade tox tox-venv
+    displayName: 'Install tox'
+  - script: tox -e docs
+    displayName: 'Build docs'
 
-    steps:
-    - task: UsePythonVersion@0
-      displayName: 'Use Python 3.7 for tox'
-      inputs:
-        versionSpec: '3.7'
-        addToPath: false
-      name: toxPython
-    - script: $(toxPython.pythonLocation)/bin/pip install --upgrade pip
-      displayName: 'Upgrade pip'
-    - script: $(toxPython.pythonLocation)/bin/pip install --upgrade tox tox-venv
-      displayName: 'Install tox'
-    - task: UsePythonVersion@0
-      condition: in(variables['python.version'], '3.5', '3.6', '3.7', 'pypy3')
-      inputs:
-        versionSpec: '$(python.version)'
-        architecture: 'x64'
-      displayName: 'Use Python $(python.version) from tools'
-    - script: |
-        sudo add-apt-repository ppa:deadsnakes
-        sudo apt-get update
-        sudo apt-get install -y --no-install-recommends python$(python.version)-dev python$(python.version)-distutils python$(python.version)-venv
-      condition: in(variables['python.version'], '3.8')
-      displayName: 'Install Python 3.8 from the deadsnakes PPA'
-    - script: |
-        sudo apt-get update
-        sudo apt-get install -y --no-install-recommends python3-venv
-      condition: in(variables['python.version'], '3.5.2')
-      displayName: 'Install python3-venv package for Python 3.5.2'
-    - script: |
-        sudo add-apt-repository ppa:pypy
-        sudo apt-get update
-        sudo apt-get install -y --no-install-recommends pypy3
-      condition: in(variables['python.version'], 'pypy36')
-      displayName: 'Install PyPy36 from the pypy PPA'
-    - script: $(toxPython.pythonLocation)/bin/tox -e $(tox.env)
-      displayName: 'Run Tox (env: $(tox.env))'
-    - task: PublishTestResults@2
-      condition: succeededOrFailed()
-      inputs:
-        testResultsFiles: 'test-results/**/results.xml'
-        testRunTitle: '$(python.version) Test Run'
-    - task: PublishCodeCoverageResults@1
-      inputs:
-        codeCoverageTool: Cobertura
-        summaryFileLocation: '$(System.DefaultWorkingDirectory)/**/coverage.xml'
-        failIfCoverageEmpty: true
+- job: Test
+  dependsOn:
+  - Lint
+  - Docs
+  pool:
+    vmImage: 'ubuntu-16.04'
+  strategy:
+    matrix:
+      Python352:
+        python.version: '3.5.2'
+        tox.env: 'clean,py35-asyncio,py35-uvloop,coverage'
+      Python35:
+        python.version: '3.5'
+        tox.env: 'clean,py35-asyncio,py35-uvloop,coverage'
+      Python36:
+        python.version: '3.6'
+        tox.env: 'clean,py36-asyncio,py36-uvloop,coverage'
+      Python37:
+        python.version: '3.7'
+        tox.env: 'clean,py37-asyncio,py37-uvloop,coverage'
+      Python38:
+        python.version: '3.8'
+        tox.env: 'clean,py38-asyncio,coverage'
+      PyPy35:
+        python.version: 'pypy3'
+        tox.env: 'clean,pypy35-asyncio,coverage'
+      PyPy36:
+        python.version: 'pypy36'
+        tox.env: 'clean,pypy36-asyncio,coverage'
+
+  steps:
+  - task: UsePythonVersion@0
+    displayName: 'Use Python 3.7 for tox'
+    inputs:
+      versionSpec: '3.7'
+      addToPath: false
+    name: toxPython
+  - script: $(toxPython.pythonLocation)/bin/pip install --upgrade pip
+    displayName: 'Upgrade pip'
+  - script: $(toxPython.pythonLocation)/bin/pip install --upgrade tox tox-venv
+    displayName: 'Install tox'
+  - task: UsePythonVersion@0
+    condition: in(variables['python.version'], '3.5', '3.6', '3.7', 'pypy3')
+    inputs:
+      versionSpec: '$(python.version)'
+      architecture: 'x64'
+    displayName: 'Use Python $(python.version) from tools'
+  - script: |
+      sudo add-apt-repository ppa:deadsnakes
+      sudo apt-get update
+      sudo apt-get install -y --no-install-recommends python$(python.version)-dev python$(python.version)-distutils python$(python.version)-venv
+    condition: in(variables['python.version'], '3.8')
+    displayName: 'Install Python 3.8 from the deadsnakes PPA'
+  - script: |
+      sudo apt-get update
+      sudo apt-get install -y --no-install-recommends python3-venv
+    condition: in(variables['python.version'], '3.5.2')
+    displayName: 'Install python3-venv package for Python 3.5.2'
+  - script: |
+      sudo add-apt-repository ppa:pypy
+      sudo apt-get update
+      sudo apt-get install -y --no-install-recommends pypy3
+    condition: in(variables['python.version'], 'pypy36')
+    displayName: 'Install PyPy36 from the pypy PPA'
+  - script: $(toxPython.pythonLocation)/bin/tox -e $(tox.env)
+    displayName: 'Run Tox (env: $(tox.env))'
+  - task: PublishTestResults@2
+    condition: succeededOrFailed()
+    inputs:
+      testResultsFiles: 'test-results/**/results.xml'
+      testRunTitle: '$(python.version) Test Run'
+  - task: PublishCodeCoverageResults@1
+    inputs:
+      codeCoverageTool: Cobertura
+      summaryFileLocation: '$(System.DefaultWorkingDirectory)/**/coverage.xml'
+      failIfCoverageEmpty: true
