@@ -32,7 +32,7 @@ jobs:
 
   steps:
   - task: UsePythonVersion@0
-    displayName: 'Set Python 3.7 for tox'
+    displayName: 'Use Python 3.7 for tox'
     inputs:
       versionSpec: '3.7'
       addToPath: false
@@ -46,13 +46,18 @@ jobs:
     inputs:
       versionSpec: '$(python.version)'
       architecture: 'x64'
-    displayName: 'Use Python $(python.version) for tests'
+    displayName: 'Use Python $(python.version) from tools'
   - script: |
       sudo add-apt-repository ppa:deadsnakes
       sudo apt-get update
       sudo apt-get install -y --no-install-recommends python$(python.version)-dev python$(python.version)-distutils
     condition: in(variables['python.version'], '3.8')
-    displayName: 'Install Python $(python.version) from the deadsnakes PPA for tests'
+    displayName: 'Install Python 3.8 from the deadsnakes PPA'
+  - script: |
+      sudo apt-get update
+      sudo apt-get install -y --no-install-recommends python3-venv
+    condition: in(variables['python.version'], '3.8', '3.5.2')
+    displayName: 'Install python3-venv package for Python $(python.version)'
   - script: $(toxPython.pythonLocation)/bin/tox -e $(tox.env)
     displayName: 'Run Tox (env: $(tox.env))'
   - task: PublishTestResults@2
