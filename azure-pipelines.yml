@@ -4,25 +4,6 @@ variables:
 trigger:
 - master
 
-resources:
-  containers:
-  - container: py352
-    image: python:3.5.2
-  - container: py35
-    image: python:3.5-buster
-  - container: py36
-    image: python:3.6-buster
-  - container: py37
-    image: python:3.7-buster
-  - container: py38
-    image: python:3.8-rc-buster
-  - container: py38
-    image: python:3.8-rc-buster
-  - container: pypy35
-    image: pypy:3.5-stretch
-  - container: pypy36
-    image: pypy:3.6-stretch
-
 jobs:
 
 - job: 'Test'
@@ -31,24 +12,40 @@ jobs:
   strategy:
     matrix:
       Python35:
-        containerResource: py35
-        TOXENV: 'clean,py35-asyncio,py35-uvloop,coverage'
+        containerImage: ubuntu:16.04
+        python.version: '3.5'
+        tox.env: 'clean,py35-asyncio,py35-uvloop,coverage'
       Python36:
-        containerResource: py36
-        TOXENV: 'clean,py36-asyncio,py36-uvloop,coverage'
+        containerImage: ubuntu:16.04
+        python.version: '3.6'
+        tox.env: 'clean,py36-asyncio,py36-uvloop,coverage'
       Python37:
-        containerResource: py37
-        TOXENV: 'clean,py37-asyncio,py37-uvloop,coverage'
+        containerImage: ubuntu:16.04
+        python.version: '3.7'
+        tox.env: 'clean,py37-asyncio,py37-uvloop,coverage'
       PyPy35:
-        containerResource: pypy35
-        TOXENV: 'clean,pypy35-asyncio,coverage'
-  container: $[ variables['containerResource'] ]
+        containerImage: ubuntu:16.04
+        python.version: 'pypy3'
+        tox.env: 'clean,pypy35-asyncio,coverage'
 
   steps:
-  - script: pip install --user --no-warn-script-location tox tox-venv
-    displayName: 'Install Tox'
-  - script: ~/.local/bin/tox
-    displayName: 'Run Tox'
+  - task: UsePythonVersion@0
+    displayName: 'Set Python 3.7 for tox'
+    inputs:
+      versionSpec: '3.7'
+      addToPath: false
+    name: toxPython
+  - script: $(toxPython.pythonLocation)/bin/pip install --upgrade pip
+    displayName: 'Upgrade pip'
+  - script: $(toxPython.pythonLocation)/bin/pip install --upgrade tox tox-venv
+    displayName: 'Install tox'
+  - task: UsePythonVersion@0
+    displayName: 'Use Python $(python.version) for tests'
+    inputs:
+      versionSpec: '$(python.version)'
+      architecture: 'x64'
+  - script: tox -e $(tox.env)
+    displayName: 'Run Tox (env: $(tox.env))'
   - task: PublishTestResults@2
     condition: succeededOrFailed()
     inputs:
