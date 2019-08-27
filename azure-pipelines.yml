@@ -25,7 +25,7 @@ jobs:
         tox.env: 'clean,py37-asyncio,py37-uvloop,coverage'
       Python38:
         python.version: '3.8'
-        tox.env: 'clean,py38-asyncio,py38-uvloop,coverage'
+        tox.env: 'clean,py38-asyncio,coverage'
       PyPy35:
         python.version: 'pypy3'
         tox.env: 'clean,pypy35-asyncio,coverage'
