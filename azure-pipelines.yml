@@ -44,7 +44,7 @@ jobs:
     inputs:
       versionSpec: '$(python.version)'
       architecture: 'x64'
-  - script: tox -e $(tox.env)
+  - script: $(toxPython.pythonLocation)/bin/tox -e $(tox.env)
     displayName: 'Run Tox (env: $(tox.env))'
   - task: PublishTestResults@2
     condition: succeededOrFailed()
