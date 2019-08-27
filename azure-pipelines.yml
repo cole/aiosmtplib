@@ -42,7 +42,7 @@ jobs:
       PyPy35:
         containerResource: pypy35
         TOXENV: 'clean,pypy35-asyncio,coverage'
-  container: '$(containerResource)'
+  container: $[ variables['containerResource'] ]
 
   steps:
   - script: pip install tox tox-venv
