@@ -67,10 +67,10 @@ jobs:
         tox.env: 'clean,py38-asyncio,coverage'
       PyPy35:
         python.version: 'pypy3'
-        tox.env: 'clean,pypy35-asyncio,coverage'
+        tox.env: 'clean,pypy3-70-asyncio,coverage'
       PyPy36:
         python.version: 'pypy36'
-        tox.env: 'clean,pypy36-asyncio,coverage'
+        tox.env: 'clean,pypy3-71-asyncio,coverage'
 
   steps:
   - task: UsePythonVersion@0

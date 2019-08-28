@@ -154,7 +154,7 @@ jobs:
     steps:
       - checkout
       - install_and_run_toxenvs:
-          toxenvs: clean,pypy35-asyncio,coverage
+          toxenvs: clean,pypy3-70-asyncio,coverage
 
   pypy36:
     docker:
@@ -162,7 +162,7 @@ jobs:
     steps:
       - checkout
       - install_and_run_toxenvs:
-          toxenvs: clean,pypy36-asyncio,coverage
+          toxenvs: clean,pypy3-71-asyncio,coverage
 
   py38:
     docker:
