@@ -1,12 +1,16 @@
 language: python
 dist: xenial
 cache: pip
-python:
-  - 3.5-dev
-  - 3.6-dev
-  - 3.7-dev
-  - 3.8-dev
 matrix:
+  include:
+    - python: 3.5-dev
+      env: TOXENV=py35-asyncio,py35-uvloop
+    - python: 3.6-dev
+      env: TOXENV=py36-asyncio,py36-uvloop
+    - python: 3.7-dev
+      env: TOXENV=py37-asyncio,py37-uvloop
+    - python: 3.8-dev
+      env: TOXENV=py38-asyncio,py38-uvloop
   allow_failures:
     - python: 3.5-dev
     - python: 3.6-dev
@@ -14,8 +18,4 @@ matrix:
     - python: 3.8-dev
 script: tox
 install:
-  - 'pip install tox-travis pytest-travis-fold coveralls'
-after_success:
-  - 'COVERALLS_PARALLEL=true coveralls'
-notifications:
-  webhooks: 'https://coveralls.io/webhook'
+  - 'pip install tox'
