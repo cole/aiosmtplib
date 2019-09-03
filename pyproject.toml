@@ -53,9 +53,6 @@ pytest-cov = "^2.7.1"
 coverage = "^4.5.4"
 hypothesis = "^4.33.1"
 aiosmtpd = "1.2"
-tox = "^3.13"
-tox-venv = "^0.4.0"
-pre-commit = "^1.18.0"
 
 [tool.poetry.extras]
 docs = ["sphinx", "sphinx_autodoc_typehints"]

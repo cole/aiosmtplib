@@ -18,9 +18,9 @@ jobs:
     displayName: 'Upgrade pip'
   - script: pip install --upgrade poetry
     displayName: 'Install poetry'
-  - script: poetry install -v
-    displayName: 'Install dependencies'
-  - script: poetry run tox -e lint
+  - script: pip install --upgrade tox
+    displayName: 'Install tox'
+  - script: tox -e lint
     displayName: 'Run pre-commit on all files'
 
 - job: Docs
@@ -37,9 +37,9 @@ jobs:
     displayName: 'Upgrade pip'
   - script: pip install --upgrade poetry
     displayName: 'Install poetry'
-  - script: poetry install -v
-    displayName: 'Install dependencies'
-  - script: poetry run tox -e docs
+  - script: pip install --upgrade tox
+    displayName: 'Install tox'
+  - script: tox -e docs
     displayName: 'Build docs'
 
 - job: Test
@@ -81,6 +81,8 @@ jobs:
     displayName: 'Upgrade pip'
   - script: $(toolPython.pythonLocation)/bin/pip install --upgrade poetry
     displayName: 'Install poetry'
+  - script: $(toolPython.pythonLocation)/bin/pip install --upgrade tox
+    displayName: 'Install tox'
   - task: UsePythonVersion@0
     condition: in(variables['python.version'], '3.5', '3.6', '3.7', 'pypy3')
     inputs:
@@ -104,9 +106,7 @@ jobs:
       sudo apt-get install -y --no-install-recommends pypy3
     condition: in(variables['python.version'], 'pypy36')
     displayName: 'Install PyPy36 from the pypy PPA'
-  - script: $(toolPython.pythonLocation)/bin/poetry install -v
-    displayName: 'Install dependencies'
-  - script: $(toolPython.pythonLocation)/bin/poetry run tox -e $(tox.env)
+  - script: $(toolPython.pythonLocation)/bin/tox -e $(tox.env)
     displayName: 'Run Tox (env: $(tox.env))'
   - task: PublishTestResults@2
     condition: succeededOrFailed()

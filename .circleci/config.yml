@@ -33,7 +33,7 @@ commands:
           paths:
             - ~/pip-cache
             - ~/poetry-venvs
-          key: v-prereqs
+          key: v1-prereqs
           name: "Saving prerequisites cache"
 
   cache_tox_workdir:
