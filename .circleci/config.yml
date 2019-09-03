@@ -68,7 +68,7 @@ commands:
         default: "ALL"
     steps:
       - run:
-          command: tox --workdir ~/tox-workdir -e << parameters.toxenv >>
+          command: poetry run tox --workdir ~/tox-workdir -e << parameters.toxenv >>
           name: "Running tox: << parameters.toxenv >>"
 
   install_and_run_toxenvs:
