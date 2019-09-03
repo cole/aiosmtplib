@@ -4,61 +4,68 @@ orbs:
   codecov: codecov/codecov@1.0.5
 
 commands:
-  install_prerequisites:
-    description: "Install poetry and tox"
+
+  upgrade_pip:
+    description: "Upgrade pip"
     steps:
-      - restore_cache:
-          keys:
-            - v2-prereqs
-          name: "Restoring prerequisites cache"
       - run:
-          command: mkdir -p ~/pip-cache
-          name: "Creating pip cache dir"
-      - run:
-          command: mkdir -p ~/poetry-venvs
-          name: "Creating poetry venv dir"
-      - run:
-          command: pip --cache-dir ~/pip-cache install --upgrade pip
+          command: pip --cache-dir ~/.cache/pip install --upgrade pip
           name: "Upgrading pip"
+
+  install_tox:
+    description: "Install tox"
+    steps:
       - run:
-          command: pip --cache-dir ~/pip-cache install --upgrade poetry
-          name: "Installing poetry"
-      - run:
-          command: pip --cache-dir ~/pip-cache install --upgrade tox tox-venv
+          command: pip --cache-dir ~/.cache/pip install --upgrade tox tox-venv
           name: "Installing tox"
       - run:
-          command: poetry config settings.virtualenvs.path ~/poetry-venvs
-          name: "Setting poetry venv dir"
-      - save_cache:
-          paths:
-            - ~/pip-cache
-            - ~/poetry-venvs
-          key: v2-prereqs
-          name: "Saving prerequisites cache"
+          command: pip --cache-dir ~/.cache/pip install --upgrade tox-venv
+          name: "Installing tox plugins"
 
-  cache_tox_workdir:
-    description: "Cache tox workdir"
+  install_poetry:
+    description: "Install poetry"
+    steps:
+      - run:
+          command: pip --cache-dir ~/.cache/pip install --upgrade poetry
+          name: "Installing poetry"
+      - run:
+          command: poetry config settings.virtualenvs.path ~/.cache/poetry
+          name: "Setting poetry venv dir"
+
+  with_cachedirs:
+    description: "Create/restore cache dirs"
     parameters:
       cache_key:
         type: string
-      tox_runs:
+      commands:
         type: steps
         default: []
     steps:
       - restore_cache:
           keys:
-            - v6-tox-<< parameters.cache_key >>-{{ checksum "poetry.lock" }}-{{ .Branch }}
-            - v6-tox-<< parameters.cache_key >>-{{ checksum "poetry.lock" }}-
-          name: "Restoring tox envs cache: << parameters.cache_key >>"
+            - v1-cache-<< parameters.cache_key >>-{{ checksum "poetry.lock" }}-{{ .Branch }}
+            - v1-cache-<< parameters.cache_key >>-{{ checksum "poetry.lock" }}-
+          name: "Restoring cache dir: << parameters.cache_key >>"
       - run:
-          command: mkdir -p ~/tox-workdir
+          command: mkdir -p ~/.cache/pip
+          name: "Creating pip cache dir"
+      - run:
+          command: mkdir -p ~/.cache/pre-commit
+          name: "Creating pre-commit cache dir"
+      - run:
+          command: mkdir -p ~/.poetry
+          name: "Creating poetry venv dir"
+      - run:
+          command: mkdir -p ~/.tox
           name: "Creating tox work dir"
-      - steps: << parameters.tox_runs >>
+      - steps: << parameters.commands >>
       - save_cache:
           paths:
-            - ~/tox-workdir
-          key: v6-tox-<< parameters.cache_key >>-{{ checksum "poetry.lock" }}-{{ .Branch }}
-          name: "Saving tox workdir cache: << parameters.cache_key >>"
+            - ~/.cache
+            - ~/.poetry
+            - ~/.tox
+          key: v1-cache-<< parameters.cache_key >>-{{ checksum "poetry.lock" }}-{{ .Branch }}
+          name: "Saving cache dirs: << parameters.cache_key >>"
 
   run_tox:
     description: "Run tox"
@@ -68,7 +75,7 @@ commands:
         default: "ALL"
     steps:
       - run:
-          command: poetry run tox --workdir ~/tox-workdir -e << parameters.toxenv >>
+          command: tox --workdir ~/.tox -e << parameters.toxenv >>
           name: "Running tox: << parameters.toxenv >>"
 
   install_and_run_toxenvs:
@@ -78,10 +85,12 @@ commands:
         type: string
         default: "ALL"
     steps:
-      - install_prerequisites
-      - cache_tox_workdir:
+      - with_cachedirs:
           cache_key: << parameters.toxenvs >>
-          tox_runs:
+          commands:
+            - upgrade_pip
+            - install_tox
+            - install_poetry
             - run_tox:
                 toxenv: << parameters.toxenvs >>
       - store_test_results:
@@ -102,10 +111,12 @@ jobs:
       - image: python:3.7
     steps:
       - checkout
-      - install_prerequisites
-      - cache_tox_workdir:
+      - with_cachedirs:
           cache_key: lint
-          tox_runs:
+          commands:
+            - upgrade_pip
+            - install_tox
+            - install_poetry
             - run_tox:
                 toxenv: lint
 
@@ -114,10 +125,12 @@ jobs:
       - image: python:3.7
     steps:
       - checkout
-      - install_prerequisites
-      - cache_tox_workdir:
+      - with_cachedirs:
           cache_key: docs
-          tox_runs:
+          commands:
+            - upgrade_pip
+            - install_tox
+            - install_poetry
             - run_tox:
                 toxenv: docs
 
@@ -183,14 +196,11 @@ jobs:
       - image: python:3.7
     steps:
       - checkout
-      - install_prerequisites
+      - upgrade_pip
+      - install_poetry
       - run:
           name: Building packages
           command: poetry build
-      - run:
-          name: Configuring pypi
-          command: |
-            poetry config http-basic.pypi $PYPI_USERNAME $PYPI_PASSWORD
       - run:
           name: Uploading to Test PyPI
           command: |
