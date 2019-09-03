@@ -77,9 +77,9 @@ jobs:
       versionSpec: '3.7'
       addToPath: false
     name: toolPython
-  - script: $(toolPython.pythonLocation)/bin/pip -m pip install --upgrade pip
+  - script: $(toolPython.pythonLocation)/bin/python -m pip install --upgrade pip
     displayName: 'Upgrade pip (3.7)'
-  - script: $(toolPython.pythonLocation)/bin/pip install --upgrade tox
+  - script: $(toolPython.pythonLocation)/bin/python -m pip install --upgrade tox
     displayName: 'Install tox (3.7)'
   - task: UsePythonVersion@0
     condition: in(variables['python.version'], '3.5', '3.6', '3.7', 'pypy3')
