@@ -79,8 +79,6 @@ jobs:
     name: toolPython
   - script: $(toolPython.pythonLocation)/bin/pip install --upgrade pip
     displayName: 'Upgrade pip'
-  - script: $(toolPython.pythonLocation)/bin/pip install --upgrade poetry
-    displayName: 'Install poetry'
   - script: $(toolPython.pythonLocation)/bin/pip install --upgrade tox
     displayName: 'Install tox'
   - task: UsePythonVersion@0
@@ -106,6 +104,8 @@ jobs:
       sudo apt-get install -y --no-install-recommends pypy3
     condition: in(variables['python.version'], 'pypy36')
     displayName: 'Install PyPy36 from the pypy PPA'
+  - script: pip3 install --upgrade poetry
+    displayName: 'Install poetry'
   - script: $(toolPython.pythonLocation)/bin/tox -e $(tox.env)
     displayName: 'Run Tox (env: $(tox.env))'
   - task: PublishTestResults@2
