@@ -24,7 +24,7 @@ commands:
           command: pip --cache-dir ~/pip-cache install --upgrade poetry
           name: "Installing poetry"
       - run:
-          command: pip --cache-dir ~/pip-cache install --upgrade tox
+          command: pip --cache-dir ~/pip-cache install --upgrade tox tox-venv
           name: "Installing tox"
       - run:
           command: poetry config settings.virtualenvs.path ~/poetry-venvs
