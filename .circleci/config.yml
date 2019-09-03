@@ -9,7 +9,7 @@ commands:
     steps:
       - restore_cache:
           keys:
-            - v1-prereqs
+            - v2-prereqs
           name: "Restoring prerequisites cache"
       - run:
           command: mkdir -p ~/pip-cache
@@ -21,19 +21,19 @@ commands:
           command: pip --cache-dir ~/pip-cache install --upgrade pip
           name: "Upgrading pip"
       - run:
-          command: pip --cache-dir ~/pip-cache install poetry
+          command: pip --cache-dir ~/pip-cache install --upgrade poetry
           name: "Installing poetry"
+      - run:
+          command: pip --cache-dir ~/pip-cache install --upgrade tox
+          name: "Installing tox"
       - run:
           command: poetry config settings.virtualenvs.path ~/poetry-venvs
           name: "Setting poetry venv dir"
-      - run:
-          command: poetry install -v
-          name: "Installing dependencies via poetry"
       - save_cache:
           paths:
             - ~/pip-cache
             - ~/poetry-venvs
-          key: v1-prereqs
+          key: v2-prereqs
           name: "Saving prerequisites cache"
 
   cache_tox_workdir:
