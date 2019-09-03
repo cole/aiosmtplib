@@ -16,16 +16,12 @@ jobs:
       architecture: 'x64'
   - script: pip install --upgrade pip
     displayName: 'Upgrade pip'
-  - script: pip install --upgrade tox tox-venv
-    displayName: 'Install tox'
-  - script: tox -e black
-    displayName: 'black'
-  - script: tox -e flake8
-    displayName: 'flake8'
-  - script: tox -e mypy
-    displayName: 'mypy'
-  - script: tox -e bandit
-    displayName: 'bandit'
+  - script: pip install --upgrade poetry
+    displayName: 'Install poetry'
+  - script: poetry install -v
+    displayName: 'Install dependencies'
+  - script: tox -e lint
+    displayName: 'Run pre-commit on all files'
 
 - job: Docs
   dependsOn: Lint
@@ -39,8 +35,10 @@ jobs:
       architecture: 'x64'
   - script: pip install --upgrade pip
     displayName: 'Upgrade pip'
-  - script: pip install --upgrade tox tox-venv
-    displayName: 'Install tox'
+  - script: pip install --upgrade poetry
+    displayName: 'Install poetry'
+  - script: poetry install -v
+    displayName: 'Install dependencies'
   - script: tox -e docs
     displayName: 'Build docs'
 
@@ -81,8 +79,10 @@ jobs:
     name: toxPython
   - script: $(toxPython.pythonLocation)/bin/pip install --upgrade pip
     displayName: 'Upgrade pip'
-  - script: $(toxPython.pythonLocation)/bin/pip install --upgrade tox tox-venv
-    displayName: 'Install tox'
+  - script: $(toxPython.pythonLocation)/bin/pip install --upgrade poetry
+    displayName: 'Install poetry'
+  - script: $(toxPython.pythonLocation)/bin/poetry install -v
+    displayName: 'Install dependencies'
   - task: UsePythonVersion@0
     condition: in(variables['python.version'], '3.5', '3.6', '3.7', 'pypy3')
     inputs:

@@ -1,2 +1,0 @@
-# Used for automated testing
-uvloop==0.13.0

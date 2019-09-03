@@ -4,24 +4,37 @@ orbs:
   codecov: codecov/codecov@1.0.5
 
 commands:
-  install_tox:
-    description: "Install tox"
+  install_prerequisites:
+    description: "Install poetry and tox"
     steps:
       - restore_cache:
           keys:
-            - v2-pip
-          name: "Restoring pip cache"
+            - v1-prereqs
+          name: "Restoring prerequisites cache"
       - run:
           command: mkdir -p ~/pip-cache
           name: "Creating pip cache dir"
       - run:
-          command: pip --cache-dir ~/pip-cache install tox tox-venv
-          name: "Installing tox & tox-venv"
+          command: mkdir -p ~/poetry-venvs
+          name: "Creating poetry venv dir"
+      - run:
+          command: pip --cache-dir ~/pip-cache install --upgrade pip
+          name: "Upgrading pip"
+      - run:
+          command: pip --cache-dir ~/pip-cache install poetry
+          name: "Installing poetry"
+      - run:
+          command: poetry config settings.virtualenvs.path ~/poetry-venvs
+          name: "Setting poetry venv dir"
+      - run:
+          command: poetry install -v
+          name: "Installing dependencies via poetry"
       - save_cache:
           paths:
             - ~/pip-cache
-          key: v2-pip
-          name: "Saving pip cache"
+            - ~/poetry-venvs
+          key: v-prereqs
+          name: "Saving prerequisites cache"
 
   cache_tox_workdir:
     description: "Cache tox workdir"
@@ -34,8 +47,8 @@ commands:
     steps:
       - restore_cache:
           keys:
-            - v5-tox-<< parameters.cache_key >>-{{ checksum "requirements-test.txt" }}-{{ checksum "requirements-uvloop.txt" }}-{{ .Branch }}
-            - v5-tox-<< parameters.cache_key >>-{{ checksum "requirements-test.txt" }}-{{ checksum "requirements-uvloop.txt" }}-
+            - v6-tox-<< parameters.cache_key >>-{{ checksum "poetry.lock" }}-{{ .Branch }}
+            - v6-tox-<< parameters.cache_key >>-{{ checksum "poetry.lock" }}-
           name: "Restoring tox envs cache: << parameters.cache_key >>"
       - run:
           command: mkdir -p ~/tox-workdir
@@ -44,7 +57,7 @@ commands:
       - save_cache:
           paths:
             - ~/tox-workdir
-          key: v5-tox-<< parameters.cache_key >>-{{ checksum "requirements-test.txt" }}-{{ checksum "requirements-uvloop.txt" }}-{{ .Branch }}
+          key: v6-tox-<< parameters.cache_key >>-{{ checksum "poetry.lock" }}-{{ .Branch }}
           name: "Saving tox workdir cache: << parameters.cache_key >>"
 
   run_tox:
@@ -65,7 +78,7 @@ commands:
         type: string
         default: "ALL"
     steps:
-      - install_tox
+      - install_prerequisites
       - cache_tox_workdir:
           cache_key: << parameters.toxenvs >>
           tox_runs:
@@ -89,27 +102,19 @@ jobs:
       - image: python:3.7
     steps:
       - checkout
-      - install_tox
+      - install_prerequisites
       - cache_tox_workdir:
-          cache_key: check,mypy,flake8,black,bandit
+          cache_key: lint
           tox_runs:
             - run_tox:
-                toxenv: check
-            - run_tox:
-                toxenv: mypy
-            - run_tox:
-                toxenv: flake8
-            - run_tox:
-                toxenv: black
-            - run_tox:
-                toxenv: bandit
+                toxenv: lint
 
   docs:
     docker:
       - image: python:3.7
     steps:
       - checkout
-      - install_tox
+      - install_prerequisites
       - cache_tox_workdir:
           cache_key: docs
           tox_runs:
@@ -178,33 +183,22 @@ jobs:
       - image: python:3.7
     steps:
       - checkout
-      - run:
-          name: Installing twine
-          command: pip install twine
-      - run:
-          name: Creating .pypirc
-          command: |
-            echo -e "[distutils]" >> ~/.pypirc
-            echo -e "index-servers=" >> ~/.pypirc
-            echo -e "  pypi" >> ~/.pypirc
-            echo -e "  testpypi" >> ~/.pypirc
-            echo -e "[pypi]" >> ~/.pypirc
-            echo -e "username: $PYPI_USERNAME" >> ~/.pypirc
-            echo -e "password: $PYPI_PASSWORD" >> ~/.pypirc
-            echo -e "" >> ~/.pypirc
-            echo -e "[testpypi]" >> ~/.pypirc
-            echo -e "repository: https://test.pypi.org/legacy/" >> ~/.pypirc
-            echo -e "username: $TESTPYPI_USERNAME" >> ~/.pypirc
-            echo -e "password: $TESTPYPI_PASSWORD" >> ~/.pypirc
+      - install_prerequisites
       - run:
           name: Building packages
-          command: python setup.py sdist bdist_wheel
+          command: poetry build
+      - run:
+          name: Configuring pypi
+          command: |
+            poetry config http-basic.pypi $PYPI_USERNAME $PYPI_PASSWORD
       - run:
           name: Uploading to Test PyPI
-          command: twine upload --repository testpypi dist/*
+          command: |
+            poetry config repositories.testpypi https://test.pypi.org/simple
+            poetry publish --repository testpypi --username $TESTPYPI_USERNAME --password $TESTPYPI_PASSWORD
       - run:
           name: Uploading to PyPI
-          command: twine upload --repository pypi dist/*
+          command: poetry publish --repository pypi --username $PYPI_USERNAME --password $PYPI_PASSWORD
 
 workflows:
   version: 2

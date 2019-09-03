@@ -18,4 +18,6 @@ matrix:
     - python: 3.8-dev
 script: tox
 install:
-  - 'pip install tox'
+  - 'pip install --upgrade pip'
+  - 'pip install poetry'
+  - 'poetry install -v'

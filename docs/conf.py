@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 #
 # aiosmtplib documentation build configuration file, created by
 # sphinx-quickstart on Wed Dec  7 11:17:39 2016.
