@@ -20,7 +20,7 @@ jobs:
     displayName: 'Install poetry'
   - script: poetry install -v
     displayName: 'Install dependencies'
-  - script: tox -e lint
+  - script: poetry run tox -e lint
     displayName: 'Run pre-commit on all files'
 
 - job: Docs
@@ -39,7 +39,7 @@ jobs:
     displayName: 'Install poetry'
   - script: poetry install -v
     displayName: 'Install dependencies'
-  - script: tox -e docs
+  - script: poetry run tox -e docs
     displayName: 'Build docs'
 
 - job: Test
@@ -72,17 +72,15 @@ jobs:
 
   steps:
   - task: UsePythonVersion@0
-    displayName: 'Use Python 3.7 for tox'
+    displayName: 'Use Python 3.7 for poetry'
     inputs:
       versionSpec: '3.7'
       addToPath: false
-    name: toxPython
-  - script: $(toxPython.pythonLocation)/bin/pip install --upgrade pip
+    name: toolPython
+  - script: $(toolPython.pythonLocation)/bin/pip install --upgrade pip
     displayName: 'Upgrade pip'
-  - script: $(toxPython.pythonLocation)/bin/pip install --upgrade poetry
+  - script: $(toolPython.pythonLocation)/bin/pip install --upgrade poetry
     displayName: 'Install poetry'
-  - script: $(toxPython.pythonLocation)/bin/poetry install -v
-    displayName: 'Install dependencies'
   - task: UsePythonVersion@0
     condition: in(variables['python.version'], '3.5', '3.6', '3.7', 'pypy3')
     inputs:
@@ -106,7 +104,9 @@ jobs:
       sudo apt-get install -y --no-install-recommends pypy3
     condition: in(variables['python.version'], 'pypy36')
     displayName: 'Install PyPy36 from the pypy PPA'
-  - script: $(toxPython.pythonLocation)/bin/tox -e $(tox.env)
+  - script: $(toolPython.pythonLocation)/bin/poetry install -v
+    displayName: 'Install dependencies'
+  - script: $(toolPython.pythonLocation)/bin/poetry run tox -e $(tox.env)
     displayName: 'Run Tox (env: $(tox.env))'
   - task: PublishTestResults@2
     condition: succeededOrFailed()
