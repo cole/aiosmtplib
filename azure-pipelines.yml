@@ -104,13 +104,16 @@ jobs:
       sudo apt-get install -y --no-install-recommends pypy3
     condition: in(variables['python.version'], 'pypy36')
     displayName: 'Install PyPy36 from the pypy PPA'
+  - script: sudo python3 -m pip install --upgrade pip
+    condition: not(in(variables['python.version'], '3.5', '3.6', '3.7', 'pypy3'))
+    displayName: 'Upgrade pip ($(python.version), with sudo)'
   - script: python3 -m pip install --upgrade pip
-    condition: not(in(variables['python.version'], '3.7'))
-    displayName: 'Upgrade pip ($(python.version))'
-  - script: pip3 install --upgrade poetry
+    condition: in(variables['python.version'], '3.5', '3.6', '3.7', 'pypy3')
+    displayName: 'Upgrade pip ($(python.version), without sudo)'
+  - script: python3 -m pip install --upgrade poetry
     displayName: 'Install poetry ($(python.version))'
   - script: $(toolPython.pythonLocation)/bin/tox -e $(tox.env)
-    displayName: 'Run Tox (env: $(tox.env))'
+    displayName: 'Run tox (env: $(tox.env))'
   - task: PublishTestResults@2
     condition: succeededOrFailed()
     inputs:
