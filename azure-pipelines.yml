@@ -14,11 +14,9 @@ jobs:
     inputs:
       versionSpec: '3.7'
       architecture: 'x64'
-  - script: pip install --upgrade pip
-    displayName: 'Upgrade pip'
-  - script: pip install --upgrade poetry
-    displayName: 'Install poetry'
-  - script: pip install --upgrade tox
+  - script: |
+      pip install --upgrade tox
+      tox --version
     displayName: 'Install tox'
   - script: tox -e lint
     displayName: 'Run pre-commit on all files'
@@ -33,11 +31,9 @@ jobs:
     inputs:
       versionSpec: '3.7'
       architecture: 'x64'
-  - script: pip install --upgrade pip
-    displayName: 'Upgrade pip'
-  - script: pip install --upgrade poetry
-    displayName: 'Install poetry'
-  - script: pip install --upgrade tox
+  - script: |
+      pip install --upgrade tox
+      tox --version
     displayName: 'Install tox'
   - script: tox -e docs
     displayName: 'Build docs'
@@ -77,9 +73,9 @@ jobs:
       versionSpec: '3.7'
       addToPath: false
     name: toolPython
-  - script: $(toolPython.pythonLocation)/bin/python -m pip install --upgrade pip
-    displayName: 'Upgrade pip (3.7)'
-  - script: $(toolPython.pythonLocation)/bin/python -m pip install --upgrade tox
+  - script: |
+      $(toolPython.pythonLocation)/bin/python -m pip install --upgrade tox
+      tox --version
     displayName: 'Install tox (3.7)'
   - task: UsePythonVersion@0
     condition: in(variables['python.version'], '3.5', '3.6', '3.7', 'pypy3')
@@ -89,29 +85,21 @@ jobs:
     displayName: 'Use Python $(python.version) from tools'
   - script: |
       sudo add-apt-repository ppa:deadsnakes
-      sudo apt-get update
-      sudo apt-get install -y --no-install-recommends python$(python.version)-dev python$(python.version)-distutils python$(python.version)-venv
+      sudo apt update
+      sudo apt install -y --no-install-recommends python$(python.version)-dev python$(python.version)-distutils python$(python.version)-venv
     condition: in(variables['python.version'], '3.8')
     displayName: 'Install Python 3.8 from the deadsnakes PPA'
   - script: |
-      sudo apt-get update
-      sudo apt-get install -y --no-install-recommends python3-venv
+      sudo apt update
+      sudo apt install -y --no-install-recommends python3-venv
     condition: in(variables['python.version'], '3.5.2')
     displayName: 'Install python3-venv package for Python 3.5.2'
   - script: |
       sudo add-apt-repository ppa:pypy
-      sudo apt-get update
-      sudo apt-get install -y --no-install-recommends pypy3
+      sudo apt update
+      sudo apt install -y --no-install-recommends pypy3
     condition: in(variables['python.version'], 'pypy36')
     displayName: 'Install PyPy36 from the pypy PPA'
-  - script: sudo python3 -m pip install --upgrade pip
-    condition: not(in(variables['python.version'], '3.5', '3.6', '3.7', 'pypy3'))
-    displayName: 'Upgrade pip ($(python.version), with sudo)'
-  - script: python3 -m pip install --upgrade pip
-    condition: in(variables['python.version'], '3.5', '3.6', '3.7', 'pypy3')
-    displayName: 'Upgrade pip ($(python.version), without sudo)'
-  - script: python3 -m pip install --upgrade poetry
-    displayName: 'Install poetry ($(python.version))'
   - script: $(toolPython.pythonLocation)/bin/tox -e $(tox.env)
     displayName: 'Run tox (env: $(tox.env))'
   - task: PublishTestResults@2
