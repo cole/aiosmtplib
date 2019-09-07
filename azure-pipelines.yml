@@ -9,7 +9,7 @@ jobs:
   pool:
     vmImage: 'ubuntu-16.04'
   variables:
-     XDG_CACHE_HOME: $[ format('{0}/.cache', $[ Pipeline.Workspace ]) ]
+     XDG_CACHE_HOME: $[ format('{0}/.cache', Pipeline.Workspace) ]
   steps:
   - task: UsePythonVersion@0
     displayName: 'Use Python 3.7'
