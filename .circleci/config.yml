@@ -88,9 +88,7 @@ commands:
       - with_cachedirs:
           cache_key: << parameters.toxenvs >>
           commands:
-            - upgrade_pip
             - install_tox
-            - install_poetry
             - run_tox:
                 toxenv: << parameters.toxenvs >>
       - store_test_results:
@@ -114,9 +112,7 @@ jobs:
       - with_cachedirs:
           cache_key: lint
           commands:
-            - upgrade_pip
             - install_tox
-            - install_poetry
             - run_tox:
                 toxenv: lint
 
@@ -128,9 +124,7 @@ jobs:
       - with_cachedirs:
           cache_key: docs
           commands:
-            - upgrade_pip
             - install_tox
-            - install_poetry
             - run_tox:
                 toxenv: docs
 
