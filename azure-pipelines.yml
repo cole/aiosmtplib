@@ -16,16 +16,16 @@ jobs:
     inputs:
       versionSpec: '3.7'
       architecture: 'x64'
-  - task: CacheBeta@0
-    inputs:
-      key: $(Agent.OS) | $(Build.SourcesDirectory)/poetry.lock
-      path: $(Pipeline.Workspace)/.cache/pip
-    displayName: Cache pip packages
-  - task: CacheBeta@0
-    inputs:
-      key: $(Agent.OS) | $(Build.SourcesDirectory)/tox.ini | $(Build.SourcesDirectory)/poetry.lock
-      path: $(Pipeline.Workspace)/.tox
-    displayName: Cache tox workdir
+  # - task: CacheBeta@0
+  #   inputs:
+  #     key: $(Agent.OS) | $(Build.SourcesDirectory)/poetry.lock
+  #     path: $(Pipeline.Workspace)/.cache/pip
+  #   displayName: Cache pip packages
+  # - task: CacheBeta@0
+  #   inputs:
+  #     key: $(Agent.OS) | $(Build.SourcesDirectory)/tox.ini | $(Build.SourcesDirectory)/poetry.lock
+  #     path: $(Pipeline.Workspace)/.tox
+  #   displayName: Cache tox workdir
   # - task: CacheBeta@0
   #   inputs:
   #     key: $(Agent.OS) | $(Build.SourcesDirectory)/.pre-commit-config.yaml
@@ -46,16 +46,16 @@ jobs:
     inputs:
       versionSpec: '3.7'
       architecture: 'x64'
-  - task: CacheBeta@0
-    inputs:
-      key: $(Agent.OS) | $(Build.SourcesDirectory)/poetry.lock
-      path: $(Pipeline.Workspace)/.cache/pip
-    displayName: Cache pip packages
-  - task: CacheBeta@0
-    inputs:
-      key: $(Agent.OS) | $(Build.SourcesDirectory)/tox.ini | $(Build.SourcesDirectory)/poetry.lock
-      path: $(Pipeline.Workspace)/.tox
-    displayName: Cache tox workdir
+  # - task: CacheBeta@0
+  #   inputs:
+  #     key: $(Agent.OS) | $(Build.SourcesDirectory)/poetry.lock
+  #     path: $(Pipeline.Workspace)/.cache/pip
+  #   displayName: Cache pip packages
+  # - task: CacheBeta@0
+  #   inputs:
+  #     key: $(Agent.OS) | $(Build.SourcesDirectory)/tox.ini | $(Build.SourcesDirectory)/poetry.lock
+  #     path: $(Pipeline.Workspace)/.tox
+    # displayName: Cache tox workdir
   - script: pip --cache-dir $(Pipeline.Workspace)/.cache/pip install --upgrade tox
     displayName: 'Install tox'
   - script: tox --workdir $(Pipeline.Workspace)/.tox -e docs
