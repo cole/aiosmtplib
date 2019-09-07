@@ -14,9 +14,7 @@ jobs:
     inputs:
       versionSpec: '3.7'
       architecture: 'x64'
-  - script: |
-      pip install --upgrade tox
-      tox --version
+  - script: pip install --upgrade tox
     displayName: 'Install tox'
   - script: tox -e lint
     displayName: 'Run pre-commit on all files'
@@ -31,9 +29,7 @@ jobs:
     inputs:
       versionSpec: '3.7'
       architecture: 'x64'
-  - script: |
-      pip install --upgrade tox
-      tox --version
+  - script: pip install --upgrade tox
     displayName: 'Install tox'
   - script: tox -e docs
     displayName: 'Build docs'
@@ -68,14 +64,12 @@ jobs:
 
   steps:
   - task: UsePythonVersion@0
-    displayName: 'Use Python 3.7 for poetry'
+    displayName: 'Use Python 3.7 for tox'
     inputs:
       versionSpec: '3.7'
       addToPath: false
     name: toolPython
-  - script: |
-      $(toolPython.pythonLocation)/bin/python -m pip install --upgrade tox
-      tox --version
+  - script: $(toolPython.pythonLocation)/bin/pip install --upgrade tox
     displayName: 'Install tox (3.7)'
   - task: UsePythonVersion@0
     condition: in(variables['python.version'], '3.5', '3.6', '3.7', 'pypy3')
