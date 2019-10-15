@@ -4,17 +4,26 @@ Email message and address formatting/parsing functions.
 import copy
 import email.charset
 import email.generator
+import email.header
+import email.headerregistry
+import email.message
 import email.policy
 import email.utils
 import io
 import re
-from email.message import Message
-from typing import List
+from typing import List, Optional, Tuple, Union
 
 
-__all__ = ("flatten_message", "parse_address", "quote_address")
+__all__ = (
+    "extract_recipients",
+    "extract_sender",
+    "flatten_message",
+    "parse_address",
+    "quote_address",
+)
 
 
+LINE_SEP = "\r\n"
 SPECIALS_REGEX = re.compile(r'[][\\()<>@,:;".]')
 ESCAPES_REGEX = re.compile(r'[\\"]')
 UTF8_CHARSET = email.charset.Charset("utf-8")
@@ -37,7 +46,7 @@ def quote_address(address: str) -> str:
     return "<{}>".format(parsed_address)
 
 
-def formataddr(pair):
+def formataddr(pair: Tuple[str, str]) -> str:
     """
     Copied from the standard library, and modified to handle international (UTF-8)
     email addresses.
@@ -58,24 +67,27 @@ def formataddr(pair):
             quotes = '"'
             name = ESCAPES_REGEX.sub(r"\\\g<0>", name)
             return "{}{}{} <{}>".format(quotes, name, quotes, address)
+
     return address
 
 
 def flatten_message(
-    message: Message, utf8: bool = False, cte_type: str = "8bit"
+    message: email.message.Message, utf8: bool = False, cte_type: str = "8bit"
 ) -> bytes:
     # Make a local copy so we can delete the bcc headers.
     message_copy = copy.copy(message)
     del message_copy["Bcc"]
     del message_copy["Resent-Bcc"]
 
-    if utf8:
-        policy = email.policy.SMTPUTF8  # type: email.policy.Policy
+    if isinstance(message.policy, email.policy.Compat32):  # type: ignore
+        # Compat32 cannot use UTF8
+        policy = message.policy.clone(  # type: ignore
+            linesep=LINE_SEP, cte_type=cte_type
+        )
     else:
-        policy = email.policy.SMTP
-
-    if policy.cte_type != cte_type:
-        policy = policy.clone(cte_type=cte_type)
+        policy = message.policy.clone(  # type: ignore
+            linesep=LINE_SEP, utf8=utf8, cte_type=cte_type
+        )
 
     with io.BytesIO() as messageio:
         generator = email.generator.BytesGenerator(  # type: ignore
@@ -87,7 +99,22 @@ def flatten_message(
     return flat_message
 
 
-def extract_sender(message: Message) -> str:
+def extract_addresses(
+    header: Union[str, email.headerregistry.AddressHeader, email.header.Header]
+) -> List[str]:
+    """
+    Convert address headers into email addresses.
+    """
+    if isinstance(header, email.headerregistry.AddressHeader):
+        return [str(address) for address in header.addresses]
+    elif isinstance(header, email.header.Header):
+        encoded = header.encode(linesep=LINE_SEP, maxlinelen=None)
+        return [formataddr(email.utils.parseaddr(encoded))]
+    else:
+        return [formataddr(email.utils.parseaddr(header))]
+
+
+def extract_sender(message: email.message.Message) -> Optional[str]:
     """
     Extract the sender from the message object given.
     """
@@ -96,25 +123,25 @@ def extract_sender(message: Message) -> str:
     if resent_dates is not None and len(resent_dates) > 1:
         raise ValueError("Message has more than one 'Resent-' header block")
     elif resent_dates:
-        sender_header = "Resent-Sender"
-        from_header = "Resent-From"
+        sender_header_name = "Resent-Sender"
+        from_header_name = "Resent-From"
     else:
-        sender_header = "Sender"
-        from_header = "From"
+        sender_header_name = "Sender"
+        from_header_name = "From"
 
     # Prefer the sender field per RFC 2822:3.6.2.
-    if sender_header in message:
-        sender = message[sender_header]
+    if sender_header_name in message:
+        sender_header = message[sender_header_name]
     else:
-        sender = message[from_header]
+        sender_header = message[from_header_name]
 
-    if sender is None:
-        sender = ""
+    if sender_header is None:
+        return None
 
-    return str(sender)
+    return extract_addresses(sender_header)[0]
 
 
-def extract_recipients(message: Message) -> List[str]:
+def extract_recipients(message: email.message.Message) -> List[str]:
     """
     Extract the recipients from the message object given.
     """
@@ -131,10 +158,6 @@ def extract_recipients(message: Message) -> List[str]:
 
     for header in recipient_headers:
         for recipient in message.get_all(header, failobj=[]):
-            recipients.append(str(recipient))
+            recipients.extend(extract_addresses(recipient))
 
-    parsed_recipients = [
-        str(formataddr(address)) for address in email.utils.getaddresses(recipients)
-    ]
-
-    return parsed_recipients
+    return recipients

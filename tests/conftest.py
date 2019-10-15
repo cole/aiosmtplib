@@ -2,6 +2,8 @@
 Pytest fixtures and config.
 """
 import asyncio
+import email.header
+import email.message
 import email.mime.multipart
 import email.mime.text
 import socket
@@ -121,7 +123,18 @@ def socket_path(request, tmp_path):
 
 
 @pytest.fixture(scope="function")
-def message(request):
+def compat32_message(request):
+    message = email.message.Message()
+    message["To"] = email.header.Header("recipient@example.com")
+    message["From"] = email.header.Header("sender@example.com")
+    message["Subject"] = "A message"
+    message.set_payload("Hello World")
+
+    return message
+
+
+@pytest.fixture(scope="function")
+def mime_message(request):
     message = email.mime.multipart.MIMEMultipart()
     message["To"] = "recipient@example.com"
     message["From"] = "sender@example.com"
@@ -129,6 +142,42 @@ def message(request):
     message.attach(email.mime.text.MIMEText("Hello World"))
 
     return message
+
+
+@pytest.fixture(scope="function", params=["mime_multipart", "compat32"])
+def message(request, compat32_message, mime_message):
+    if request.param == "compat32":
+        return compat32_message
+    else:
+        return mime_message
+
+
+@pytest.fixture(scope="session")
+def recipient_str(request):
+    return "recipient@example.com"
+
+
+@pytest.fixture(scope="session")
+def sender_str(request):
+    return "sender@example.com"
+
+
+@pytest.fixture(scope="session")
+def message_str(request, recipient_str, sender_str):
+    return """Content-Type: multipart/mixed; boundary="===============6842273139637972052=="
+MIME-Version: 1.0
+To: recipient@example.com
+From: sender@example.com
+Subject: A message
+
+--===============6842273139637972052==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+
+Hello World
+--===============6842273139637972052==--
+"""
 
 
 @pytest.fixture(scope="function")

@@ -16,26 +16,40 @@ async def test_send(hostname, smtpd_server_port, message, received_messages):
     assert len(received_messages) == 1
 
 
-async def test_send_with_str(hostname, smtpd_server_port, message, received_messages):
+async def test_send_with_str(
+    hostname,
+    smtpd_server_port,
+    recipient_str,
+    sender_str,
+    message_str,
+    received_messages,
+):
     errors, response = await send(
-        str(message),
+        message_str,
         hostname=hostname,
         port=smtpd_server_port,
-        sender=message["From"],
-        recipients=[message["To"]],
+        sender=sender_str,
+        recipients=[recipient_str],
     )
 
     assert not errors
     assert len(received_messages) == 1
 
 
-async def test_send_with_bytes(hostname, smtpd_server_port, message, received_messages):
+async def test_send_with_bytes(
+    hostname,
+    smtpd_server_port,
+    recipient_str,
+    sender_str,
+    message_str,
+    received_messages,
+):
     errors, response = await send(
-        bytes(message),
+        bytes(message_str, "ascii"),
         hostname=hostname,
         port=smtpd_server_port,
-        sender=message["From"],
-        recipients=[message["To"]],
+        sender=sender_str,
+        recipients=[recipient_str],
     )
 
     assert not errors
@@ -43,27 +57,27 @@ async def test_send_with_bytes(hostname, smtpd_server_port, message, received_me
 
 
 async def test_send_without_sender(
-    hostname, smtpd_server_port, message, received_messages
+    hostname, smtpd_server_port, recipient_str, message_str, received_messages
 ):
     with pytest.raises(ValueError):
         errors, response = await send(
-            bytes(message),
+            message_str,
             hostname=hostname,
             port=smtpd_server_port,
             sender=None,
-            recipients=[message["To"]],
+            recipients=[recipient_str],
         )
 
 
 async def test_send_without_recipients(
-    hostname, smtpd_server_port, message, received_messages
+    hostname, smtpd_server_port, sender_str, message_str, received_messages
 ):
     with pytest.raises(ValueError):
         errors, response = await send(
-            bytes(message),
+            message_str,
             hostname=hostname,
             port=smtpd_server_port,
-            sender=message["From"],
+            sender=sender_str,
             recipients=[],
         )
 

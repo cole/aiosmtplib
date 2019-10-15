@@ -18,11 +18,13 @@ RECIPIENTS = [
 pytestmark = pytest.mark.asyncio()
 
 
-async def test_sendmail_multiple_times_in_sequence(smtp_client, smtpd_server, message):
+async def test_sendmail_multiple_times_in_sequence(
+    smtp_client, smtpd_server, sender_str, message_str
+):
     async with smtp_client:
         for recipient in RECIPIENTS:
             errors, response = await smtp_client.sendmail(
-                message["From"], [recipient], str(message)
+                sender_str, [recipient], message_str
             )
 
             assert not errors
@@ -30,10 +32,12 @@ async def test_sendmail_multiple_times_in_sequence(smtp_client, smtpd_server, me
             assert response != ""
 
 
-async def test_sendmail_multiple_times_with_gather(smtp_client, smtpd_server, message):
+async def test_sendmail_multiple_times_with_gather(
+    smtp_client, smtpd_server, sender_str, message_str
+):
     async with smtp_client:
         tasks = [
-            smtp_client.sendmail(message["From"], [recipient], str(message))
+            smtp_client.sendmail(sender_str, [recipient], message_str)
             for recipient in RECIPIENTS
         ]
         results = await asyncio.gather(*tasks)
@@ -44,7 +48,7 @@ async def test_sendmail_multiple_times_with_gather(smtp_client, smtpd_server, me
 
 
 async def test_connect_and_sendmail_multiple_times_with_gather(
-    hostname, smtpd_server_port, message
+    hostname, smtpd_server_port, sender_str, message_str
 ):
     async def connect_and_send(*args, **kwargs):
         async with SMTP(hostname=hostname, port=smtpd_server_port) as client:
@@ -53,7 +57,7 @@ async def test_connect_and_sendmail_multiple_times_with_gather(
         return response
 
     tasks = [
-        connect_and_send(message["From"], [recipient], str(message))
+        connect_and_send(sender_str, [recipient], message_str)
         for recipient in RECIPIENTS
     ]
     results = await asyncio.gather(*tasks)
@@ -63,7 +67,9 @@ async def test_connect_and_sendmail_multiple_times_with_gather(
         assert message != ""
 
 
-async def test_multiple_clients_with_gather(hostname, smtpd_server_port, message):
+async def test_multiple_clients_with_gather(
+    hostname, smtpd_server_port, sender_str, message_str
+):
     async def connect_and_send(*args, **kwargs):
         client = SMTP(hostname=hostname, port=smtpd_server_port)
         async with client:
@@ -72,7 +78,7 @@ async def test_multiple_clients_with_gather(hostname, smtpd_server_port, message
         return response
 
     tasks = [
-        connect_and_send(message["From"], [recipient], str(message))
+        connect_and_send(sender_str, [recipient], message_str)
         for recipient in RECIPIENTS
     ]
     results = await asyncio.gather(*tasks)
@@ -83,7 +89,7 @@ async def test_multiple_clients_with_gather(hostname, smtpd_server_port, message
 
 
 async def test_multiple_actions_in_context_manager_with_gather(
-    hostname, smtpd_server_port, message
+    hostname, smtpd_server_port, sender_str, message_str
 ):
     async def connect_and_run_commands(*args, **kwargs):
         async with SMTP(hostname=hostname, port=smtpd_server_port) as client:
@@ -94,7 +100,7 @@ async def test_multiple_actions_in_context_manager_with_gather(
         return response
 
     tasks = [
-        connect_and_run_commands(message["From"], [recipient], str(message))
+        connect_and_run_commands(sender_str, [recipient], message_str)
         for recipient in RECIPIENTS
     ]
     responses = await asyncio.gather(*tasks)
@@ -146,7 +152,7 @@ async def test_close_works_on_stopped_loop(event_loop, hostname, smtpd_server_po
 
 
 async def test_context_manager_entry_multiple_times_with_gather(
-    smtpd_server, smtp_client, message
+    smtpd_server, smtp_client, sender_str, message_str
 ):
     async def connect_and_send(*args, **kwargs):
         async with smtp_client:
@@ -155,7 +161,7 @@ async def test_context_manager_entry_multiple_times_with_gather(
         return response
 
     tasks = [
-        connect_and_send(message["From"], [recipient], str(message))
+        connect_and_send(sender_str, [recipient], message_str)
         for recipient in RECIPIENTS
     ]
     results = await asyncio.gather(*tasks)

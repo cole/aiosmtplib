@@ -6,9 +6,11 @@ import pytest
 from aiosmtplib.sync import async_to_sync
 
 
-def test_sendmail_sync(event_loop, smtp_client_threaded, message):
+def test_sendmail_sync(
+    event_loop, smtp_client_threaded, sender_str, recipient_str, message_str
+):
     errors, response = smtp_client_threaded.sendmail_sync(
-        message["From"], [message["To"]], str(message)
+        sender_str, [recipient_str], message_str
     )
 
     assert not errors
@@ -16,11 +18,13 @@ def test_sendmail_sync(event_loop, smtp_client_threaded, message):
     assert response != ""
 
 
-def test_sendmail_sync_when_connected(event_loop, smtp_client_threaded, message):
+def test_sendmail_sync_when_connected(
+    event_loop, smtp_client_threaded, sender_str, recipient_str, message_str
+):
     event_loop.run_until_complete(smtp_client_threaded.connect())
 
     errors, response = smtp_client_threaded.sendmail_sync(
-        message["From"], [message["To"]], str(message)
+        sender_str, [recipient_str], message_str
     )
 
     assert not errors

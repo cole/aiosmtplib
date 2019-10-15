@@ -125,7 +125,7 @@ async def test_connect_timeout_error(hostname, unused_tcp_port):
 
 
 async def test_server_disconnected_error_after_connect_timeout(
-    hostname, unused_tcp_port, message
+    hostname, unused_tcp_port, sender_str, recipient_str, message_str
 ):
     client = SMTP(hostname=hostname, port=unused_tcp_port)
 
@@ -133,7 +133,7 @@ async def test_server_disconnected_error_after_connect_timeout(
         await client.connect(timeout=0.0)
 
     with pytest.raises(SMTPServerDisconnected):
-        await client.sendmail(message["From"], [message["To"]], str(message))
+        await client.sendmail(sender_str, [recipient_str], message_str)
 
 
 async def test_protocol_timeout_on_starttls(

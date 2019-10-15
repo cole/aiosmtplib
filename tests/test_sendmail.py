@@ -2,6 +2,8 @@
 SMTP.sendmail and SMTP.send_message method testing.
 """
 import copy
+import email.generator
+import email.header
 
 import pytest
 
@@ -16,10 +18,12 @@ from aiosmtplib import (
 pytestmark = pytest.mark.asyncio()
 
 
-async def test_sendmail_simple_success(smtp_client, smtpd_server, message):
+async def test_sendmail_simple_success(
+    smtp_client, smtpd_server, sender_str, recipient_str, message_str
+):
     async with smtp_client:
         errors, response = await smtp_client.sendmail(
-            message["From"], [message["To"]], str(message)
+            sender_str, [recipient_str], message_str
         )
 
         assert not errors
@@ -27,10 +31,12 @@ async def test_sendmail_simple_success(smtp_client, smtpd_server, message):
         assert response != ""
 
 
-async def test_sendmail_binary_content(smtp_client, smtpd_server, message):
+async def test_sendmail_binary_content(
+    smtp_client, smtpd_server, sender_str, recipient_str, message_str
+):
     async with smtp_client:
         errors, response = await smtp_client.sendmail(
-            message["From"], [message["To"]], bytes(str(message), "ascii")
+            sender_str, [recipient_str], bytes(message_str, "ascii")
         )
 
         assert not errors
@@ -38,23 +44,24 @@ async def test_sendmail_binary_content(smtp_client, smtpd_server, message):
         assert response != ""
 
 
-async def test_sendmail_with_recipients_string(smtp_client, smtpd_server, message):
+async def test_sendmail_with_recipients_string(
+    smtp_client, smtpd_server, sender_str, recipient_str, message_str
+):
     async with smtp_client:
         errors, response = await smtp_client.sendmail(
-            message["From"], message["To"], str(message)
+            sender_str, recipient_str, message_str
         )
 
         assert not errors
         assert response != ""
 
 
-async def test_sendmail_with_mail_option(smtp_client, smtpd_server, message):
+async def test_sendmail_with_mail_option(
+    smtp_client, smtpd_server, sender_str, recipient_str, message_str
+):
     async with smtp_client:
         errors, response = await smtp_client.sendmail(
-            message["From"],
-            [message["To"]],
-            str(message),
-            mail_options=["BODY=8BITMIME"],
+            sender_str, [recipient_str], message_str, mail_options=["BODY=8BITMIME"]
         )
 
         assert not errors
@@ -67,7 +74,9 @@ async def test_sendmail_without_size_option(
     smtpd_class,
     smtpd_response_handler_factory,
     monkeypatch,
-    message,
+    sender_str,
+    recipient_str,
+    message_str,
     received_commands,
 ):
     response_handler = smtpd_response_handler_factory(
@@ -77,33 +86,37 @@ async def test_sendmail_without_size_option(
 
     async with smtp_client:
         errors, response = await smtp_client.sendmail(
-            message["From"], [message["To"]], str(message)
+            sender_str, [recipient_str], message_str
         )
 
         assert not errors
         assert response != ""
 
 
-async def test_sendmail_with_invalid_mail_option(smtp_client, smtpd_server, message):
+async def test_sendmail_with_invalid_mail_option(
+    smtp_client, smtpd_server, sender_str, recipient_str, message_str
+):
     async with smtp_client:
         with pytest.raises(SMTPResponseException) as excinfo:
             await smtp_client.sendmail(
-                message["From"],
-                [message["To"]],
-                str(message),
+                sender_str,
+                [recipient_str],
+                message_str,
                 mail_options=["BADDATA=0x00000000"],
             )
 
         assert excinfo.value.code == SMTPStatus.syntax_error
 
 
-async def test_sendmail_with_rcpt_option(smtp_client, smtpd_server, message):
+async def test_sendmail_with_rcpt_option(
+    smtp_client, smtpd_server, sender_str, recipient_str, message_str
+):
     async with smtp_client:
         with pytest.raises(SMTPRecipientsRefused) as excinfo:
             await smtp_client.sendmail(
-                message["From"],
-                [message["To"]],
-                str(message),
+                sender_str,
+                [recipient_str],
+                message_str,
                 rcpt_options=["NOTIFY=FAILURE,DELAY"],
             )
 
@@ -128,7 +141,9 @@ async def test_sendmail_error_silent_rset_handles_disconnect(
     smtpd_class,
     smtpd_response_handler_factory,
     monkeypatch,
-    message,
+    sender_str,
+    recipient_str,
+    message_str,
 ):
     response_handler = smtpd_response_handler_factory(
         "{} error".format(SMTPStatus.unrecognized_parameters), close_after=True
@@ -137,7 +152,7 @@ async def test_sendmail_error_silent_rset_handles_disconnect(
 
     async with smtp_client:
         with pytest.raises(SMTPResponseException):
-            await smtp_client.sendmail(message["From"], [message["To"]], str(message))
+            await smtp_client.sendmail(sender_str, [recipient_str], message_str)
 
 
 async def test_rset_after_sendmail_error_response_to_mail(
@@ -185,7 +200,9 @@ async def test_rset_after_sendmail_error_response_to_data(
     smtpd_response_handler_factory,
     monkeypatch,
     error_code,
-    message,
+    sender_str,
+    recipient_str,
+    message_str,
     received_commands,
 ):
     """
@@ -200,7 +217,7 @@ async def test_rset_after_sendmail_error_response_to_data(
         assert response.code == SMTPStatus.completed
 
         with pytest.raises(SMTPResponseException) as excinfo:
-            await smtp_client.sendmail(message["From"], [message["To"]], str(message))
+            await smtp_client.sendmail(sender_str, [recipient_str], message_str)
 
         assert excinfo.value.code == error_code
         assert received_commands[-1][0] == "RSET"
@@ -289,32 +306,60 @@ async def test_send_message_smtputf8_sender(
 
     assert received_commands[1][0] == "MAIL"
     assert received_commands[1][1] == message["From"]
-    assert received_commands[1][2] == ["SIZE=372", "SMTPUTF8", "BODY=8BITMIME"]
+    # Size varies depending on the message type
+    assert received_commands[1][2][0].startswith("SIZE=")
+    assert received_commands[1][2][1:] == ["SMTPUTF8", "BODY=8BITMIME"]
 
     assert len(received_messages) == 1
     assert received_messages[0]["X-MailFrom"] == message["From"]
 
 
-async def test_send_message_smtputf8_recipient(
+async def test_send_mime_message_smtputf8_recipient(
     smtp_client_smtputf8,
     smtpd_server_smtputf8,
-    message,
+    mime_message,
     received_commands,
     received_messages,
 ):
-    message["To"] = "reçipïént@exåmple.com"
+    mime_message["To"] = "reçipïént@exåmple.com"
 
     async with smtp_client_smtputf8:
-        errors, response = await smtp_client_smtputf8.send_message(message)
+        errors, response = await smtp_client_smtputf8.send_message(mime_message)
 
     assert not errors
     assert response != ""
 
     assert received_commands[2][0] == "RCPT"
-    assert received_commands[2][1] == message["To"]
+    assert received_commands[2][1] == mime_message["To"]
 
     assert len(received_messages) == 1
-    assert received_messages[0]["X-RcptTo"] == ", ".join(message.get_all("To"))
+    assert received_messages[0]["X-RcptTo"] == ", ".join(mime_message.get_all("To"))
+
+
+async def test_send_compat32_message_smtputf8_recipient(
+    smtp_client_smtputf8,
+    smtpd_server_smtputf8,
+    compat32_message,
+    received_commands,
+    received_messages,
+):
+    recipient_bytes = bytes("reçipïént@exåmple.com", "utf-8")
+    compat32_message["To"] = email.header.Header(recipient_bytes, "utf-8")
+
+    async with smtp_client_smtputf8:
+        errors, response = await smtp_client_smtputf8.send_message(compat32_message)
+
+    assert not errors
+    assert response != ""
+
+    assert received_commands[2][0] == "RCPT"
+    assert received_commands[2][1] == compat32_message["To"]
+
+    assert len(received_messages) == 1
+    assert (
+        received_messages[0]["X-RcptTo"]
+        == 'recipient@example.com, "reçipïént@exåmple.com"'
+    )
 
 
 async def test_send_message_smtputf8_not_supported(smtp_client, smtpd_server, message):
