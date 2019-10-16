@@ -220,18 +220,18 @@ class SMTP(SMTPAuth):
         timeout: Optional[Union[float, Default]] = _default,
     ) -> Tuple[Dict[str, SMTPResponse], str]:
         r"""
-        Sends an :py:class:`email.message.Message` object.
+        Sends an :py:class:`email.message.EmailMessage` object.
 
         Arguments are as for :meth:`.sendmail`, except that message is an
-        :py:class:`email.message.Message` object.  If sender is None or recipients
-        is None, these arguments are taken from the headers of the Message as
-        described in RFC 2822.  Regardless of the values of sender and
-        recipients, any Bcc field (or Resent-Bcc field, when the Message is a
-        resent) of the Message object will not be transmitted.  The Message
+        :py:class:`email.message.EmailMessage` object.  If sender is None or
+        recipients is None, these arguments are taken from the headers of the
+        EmailMessage as described in RFC 2822.  Regardless of the values of sender
+        and recipients, any Bcc field (or Resent-Bcc field, when the message is a
+        resent) of the EmailMessage object will not be transmitted.  The EmailMessage
         object is then serialized using :py:class:`email.generator.Generator` and
         :meth:`.sendmail` is called to transmit the message.
 
-        'Resent-Date' is a mandatory field if the Message is resent (RFC 2822
+        'Resent-Date' is a mandatory field if the message is resent (RFC 2822
         Section 3.6.6). In such a case, we use the 'Resent-\*' fields.
         However, if there is more than one 'Resent-' block there's no way to
         unambiguously determine which one is the most recent in all cases,

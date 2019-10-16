@@ -343,14 +343,16 @@ async def send(message, sender=None, recipients=None, **kwargs):  # noqa: F811
     Send an email message. On await, connects to the SMTP server using the details
     provided, sends the message, then disconnects.
 
-    :param message:  Message text. Either an :py:class:`email.message.Message`
-        object, ``str`` or ``bytes``. If an :py:class:`email.message.Message` object is
-        provided, sender and recipients set in the message headers will be used, unless
-        overridden by the respective keyword arguments.
+    :param message:  Message text. Either an :py:class:`email.message.EmailMessage`
+        object, ``str`` or ``bytes``. If an :py:class:`email.message.EmailMessage`
+        object is provided, sender and recipients set in the message headers will be
+        used, unless overridden by the respective keyword arguments.
     :keyword sender:  From email address. Not required if an
-        :py:class:`email.message.Message` object is provided for the `message` argument.
+        :py:class:`email.message.EmailMessage` object is provided for the `message`
+        argument.
     :keyword recipients: Recipient email addresses. Not required if an
-        :py:class:`email.message.Message` object is provided for the `message` argument.
+        :py:class:`email.message.EmailMessage` object is provided for the `message`
+        argument.
     :keyword hostname:  Server name (or IP) to connect to. Defaults to "localhost".
     :keyword port: Server port. Defaults ``465`` if ``use_tls`` is ``True``,
         ``587`` if ``start_tls`` is ``True``, or ``25`` otherwise.

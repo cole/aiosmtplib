@@ -10,27 +10,34 @@ Sending Messages
 Sending Message Objects
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-To send a message, create an :py:class:`email.message.Message` object, set
-approprate headers ("From" and one of "To", "Cc" or "Bcc", at minimum), then
+To send a message, create an :py:class:`email.message.EmailMessage` object, set
+appropriate headers ("From" and one of "To", "Cc" or "Bcc", at minimum), then
 pass it to :func:`send` with the hostname and port of an SMTP server.
 
-For details on creating :py:class:`email.message.Message` objects, see `the
-stdlib documentation examples
+For details on creating :py:class:`email.message.EmailMessage` objects, see
+`the stdlib documentation examples
 <https://docs.python.org/3.7/library/email.examples.html>`_.
 
+.. note:: Confusingly, :py:class:`email.message.Message` objects are part of the
+    legacy email API (prior to Python 3.3), while :py:class:`email.message.EmailMessage`
+    objects support email policies other than the older :py:class:`email.policy.Compat32`.
+
+    Use :py:class:`email.message.EmailMessage` where possible; it makes headers easier to
+    work with.
 
 .. testcode::
 
     import asyncio
-    from email.mime.text import MIMEText
+    from email.message import EmailMessage
 
     import aiosmtplib
 
     async def send_hello_world():
-        message = MIMEText("Sent via aiosmtplib")
+        message = EmailMessage()
         message["From"] = "root@localhost"
         message["To"] = "somebody@example.com"
         message["Subject"] = "Hello World!"
+        message.set_content("Sent via aiosmtplib")
 
         await aiosmtplib.send(message, hostname="127.0.0.1", port=1025)
 

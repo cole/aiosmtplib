@@ -64,16 +64,17 @@ manager, which will automatically connect/disconnect on entry/exit.
 .. testcode::
 
     import asyncio
-    from email.mime.text import MIMEText
+    from email.message import EmailMessage
 
     from aiosmtplib import SMTP
 
 
     async def say_hello():
-        message = MIMEText("Sent via aiosmtplib")
+        message = EmailMessage()
         message["From"] = "root@localhost"
         message["To"] = "somebody@example.com"
         message["Subject"] = "Hello World!"
+        message.set_content("Sent via aiosmtplib")
 
         smtp_client = SMTP(hostname="127.0.0.1", port=1025)
         async with smtp_client:
@@ -90,7 +91,7 @@ Sending Messages
 :meth:`SMTP.send_message`
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Use this method to send :py:class:`email.message.Message` objects, including
+Use this method to send :py:class:`email.message.EmailMessage` objects, including
 :py:mod:`email.mime` subclasses such as :py:class:`email.mime.text.MIMEText`.
 
 For details on creating :py:class:`email.message.Message` objects, see `the
@@ -127,7 +128,7 @@ alternatives.
 .. testcode::
 
     from email.mime.multipart import MIMEMultipart
-
+    from email.mime.text import MIMEText
 
     message = MIMEMultipart("alternative")
     message["From"] = "root@localhost"
