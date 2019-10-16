@@ -16,17 +16,18 @@ Quickstart
 .. code-block:: python
 
     import asyncio
-    from email.mime.text import MIMEText
+    from email.message import EmailMessage
 
     import aiosmtplib
 
-    message = MIMEText("Sent via aiosmtplib")
+    message = EmailMessage()
     message["From"] = "root@localhost"
     message["To"] = "somebody@example.com"
     message["Subject"] = "Hello World!"
+    message.set_content("Sent via aiosmtplib")
 
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(aiosmtplib.send(message, hostname="127.0.0.1", port=1025))
+    loop.run_until_complete(aiosmtplib.send(message, hostname="127.0.0.1", port=25))
 
 
 Requirements
