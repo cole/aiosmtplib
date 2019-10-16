@@ -176,14 +176,14 @@ jobs:
       - install_and_run_toxenvs:
           toxenvs: clean,pypy3-71-asyncio,coverage
 
-  py38:
-    docker:
-      - image: python:3.8-rc-buster
-    steps:
-      - checkout
-      # uvloop on py38 is broken :(
-      - install_and_run_toxenvs:
-          toxenvs: clean,py38-asyncio,coverage
+  # py38:
+  #   docker:
+  #     - image: python:3.8-rc-buster
+  #   steps:
+  #     - checkout
+  #     # uvloop on py38 is broken :(
+  #     - install_and_run_toxenvs:
+  #         toxenvs: clean,py38-asyncio,coverage
 
   deploy_to_pypi:
     docker:
@@ -252,12 +252,12 @@ workflows:
           filters:
             tags:
               only: /.*/
-      - py38:
-          requires:
-            - lint
-          filters:
-            tags:
-              only: /.*/
+      # - py38:
+      #     requires:
+      #       - lint
+      #     filters:
+      #       tags:
+      #         only: /.*/
       - deploy_to_pypi:
           requires:
             - lint
@@ -266,7 +266,7 @@ workflows:
             - py35
             - py36
             - py37
-            - py38
+            # - py38
             - pypy35
             - pypy36
           filters:
