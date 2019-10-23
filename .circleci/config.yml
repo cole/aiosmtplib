@@ -106,7 +106,7 @@ jobs:
 
   lint:
     docker:
-      - image: python:3.7
+      - image: python:3.7-slim-buster
     steps:
       - checkout
       - with_cachedirs:
@@ -118,7 +118,7 @@ jobs:
 
   docs:
     docker:
-      - image: python:3.7
+      - image: python:3.7-slim-buster
     steps:
       - checkout
       - with_cachedirs:
@@ -138,7 +138,7 @@ jobs:
 
   py35:
     docker:
-      - image: python:3.5-stretch
+      - image: python:3.5-slim-buster
     steps:
       - checkout
       - install_and_run_toxenvs:
@@ -146,7 +146,7 @@ jobs:
 
   py36:
     docker:
-      - image: python:3.6-stretch
+      - image: python:3.6-slim-buster
     steps:
       - checkout
       - install_and_run_toxenvs:
@@ -154,7 +154,7 @@ jobs:
 
   py37:
     docker:
-      - image: python:3.7-stretch
+      - image: python:3.7-slim-buster
     steps:
       - checkout
       - install_and_run_toxenvs:
@@ -162,7 +162,7 @@ jobs:
 
   py38:
     docker:
-      - image: python:3.8-buster
+      - image: python:3.8-slim-buster
     steps:
       - checkout
       # uvloop on py38 is broken :(
@@ -187,7 +187,7 @@ jobs:
 
   deploy_to_pypi:
     docker:
-      - image: python:3.7
+      - image: python:3.7-slim-buster
     steps:
       - checkout
       - upgrade_pip
