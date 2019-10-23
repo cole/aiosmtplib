@@ -252,12 +252,12 @@ workflows:
           filters:
             tags:
               only: /.*/
-      # - py38:
-      #     requires:
-      #       - lint
-      #     filters:
-      #       tags:
-      #         only: /.*/
+      - py38:
+          requires:
+            - lint
+          filters:
+            tags:
+              only: /.*/
       - deploy_to_pypi:
           requires:
             - lint
@@ -266,7 +266,7 @@ workflows:
             - py35
             - py36
             - py37
-            # - py38
+            - py38
             - pypy35
             - pypy36
           filters:
