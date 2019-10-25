@@ -41,7 +41,9 @@ commands:
           name: "Clone uvloop"
       - run:
           working_directory: ~/uvloop-dev
-          command: pip install -r requirements.dev.txt
+          command: |
+            ls
+            pip install -r requirements.dev.txt
           name: "Install uvloop dev requirements"
       - run:
           working_directory: ~/uvloop-dev
