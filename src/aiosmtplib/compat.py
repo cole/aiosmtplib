@@ -70,7 +70,7 @@ async def start_tls(
 
     # Use set_protocol if we can
     if hasattr(transport, "set_protocol"):
-        transport.set_protocol(ssl_protocol)  # type: ignore
+        transport.set_protocol(ssl_protocol)
     else:
         transport._protocol = ssl_protocol  # type: ignore
 

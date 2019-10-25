@@ -90,9 +90,7 @@ def flatten_message(
         )
 
     with io.BytesIO() as messageio:
-        generator = email.generator.BytesGenerator(  # type: ignore
-            messageio, policy=policy
-        )
+        generator = email.generator.BytesGenerator(messageio, policy=policy)
         generator.flatten(message_copy)
         flat_message = messageio.getvalue()
 
