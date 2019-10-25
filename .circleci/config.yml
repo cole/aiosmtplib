@@ -36,8 +36,7 @@ commands:
     description: "Build uvloop from source"
     steps:
       - run:
-          working_directory: ~
-          command: git clone --recursive https://github.com/MagicStack/uvloop.git uvloop-dev
+          command: git clone --recursive https://github.com/MagicStack/uvloop.git ~/uvloop-dev
           name: "Clone uvloop"
       - run:
           working_directory: ~/uvloop-dev
