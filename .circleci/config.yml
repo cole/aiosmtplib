@@ -42,6 +42,9 @@ commands:
       - run:
           working_directory: ~/uvloop-dev
           command: |
+            cd ~/uvloop-dev
+            ls ~/
+            ls ~/uvloop-dev
             ls
             pip install -r requirements.dev.txt
           name: "Install uvloop dev requirements"
