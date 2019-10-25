@@ -164,20 +164,20 @@ def sender_str(request):
 
 @pytest.fixture(scope="session")
 def message_str(request, recipient_str, sender_str):
-    return """Content-Type: multipart/mixed; boundary="===============6842273139637972052=="
-MIME-Version: 1.0
-To: recipient@example.com
-From: sender@example.com
-Subject: A message
-
---===============6842273139637972052==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-
-Hello World
---===============6842273139637972052==--
-"""
+    return (
+        "Content-Type: multipart/mixed; "
+        'boundary="===============6842273139637972052=="\n'
+        "MIME-Version: 1.0\n"
+        "To: recipient@example.com\n"
+        "From: sender@example.com\n"
+        "Subject: A message\n\n"
+        "--===============6842273139637972052==\n"
+        'Content-Type: text/plain; charset="us-ascii"\n'
+        "MIME-Version: 1.0\n"
+        "Content-Transfer-Encoding: 7bit\n\n"
+        "Hello World\n"
+        "--===============6842273139637972052==--\n"
+    )
 
 
 @pytest.fixture(scope="function")
