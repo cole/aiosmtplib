@@ -183,9 +183,10 @@ jobs:
       - image: python:3.8-buster
     steps:
       - checkout
-      - build_uvloop_from_source
+      # uvloop still not working from source
+      # - build_uvloop_from_source
       - install_and_run_toxenvs:
-          toxenvs: clean,py38-asyncio,py38-uvloop,coverage
+          toxenvs: clean,py38-asyncio,coverage
 
   pypy3:
     docker:
