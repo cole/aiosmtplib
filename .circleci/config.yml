@@ -40,12 +40,7 @@ commands:
           name: "Clone uvloop"
       - run:
           working_directory: ~/uvloop-dev
-          command: |
-            cd ~/uvloop-dev
-            ls ~/
-            ls ~/uvloop-dev
-            ls
-            pip install -r requirements.dev.txt
+          command: pip install -r requirements.dev.txt
           name: "Install uvloop dev requirements"
       - run:
           working_directory: ~/uvloop-dev
@@ -190,7 +185,7 @@ jobs:
       - checkout
       - build_uvloop_from_source
       - install_and_run_toxenvs:
-          toxenvs: clean,py38-asyncio, py38-uvloop,coverage
+          toxenvs: clean,py38-asyncio,py38-uvloop,coverage
 
   pypy3:
     docker:
