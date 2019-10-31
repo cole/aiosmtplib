@@ -61,8 +61,8 @@ commands:
     steps:
       - restore_cache:
           keys:
-            - v1-cache-<< parameters.cache_key >>-{{ checksum "poetry.lock" }}-{{ .Branch }}
-            - v1-cache-<< parameters.cache_key >>-{{ checksum "poetry.lock" }}-
+            - v2-cache-<< parameters.cache_key >>-{{ checksum "poetry.lock" }}-{{ .Branch }}
+            - v2-cache-<< parameters.cache_key >>-{{ checksum "poetry.lock" }}-
           name: "Restoring cache dir: << parameters.cache_key >>"
       - run:
           command: mkdir -p ~/.cache/pip
@@ -76,13 +76,17 @@ commands:
       - run:
           command: mkdir -p ~/.tox
           name: "Creating tox work dir"
+      - run:
+          command: mkdir -p ~/project/.hypothesis
+          name: "Creating hypothesis test dir"
       - steps: << parameters.commands >>
       - save_cache:
           paths:
             - ~/.cache
             - ~/.poetry
             - ~/.tox
-          key: v1-cache-<< parameters.cache_key >>-{{ checksum "poetry.lock" }}-{{ .Branch }}
+            - ~/project/.hypothesis
+          key: v2-cache-<< parameters.cache_key >>-{{ checksum "poetry.lock" }}-{{ .Branch }}
           name: "Saving cache dirs: << parameters.cache_key >>"
 
   run_tox:
