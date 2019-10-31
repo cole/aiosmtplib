@@ -11,6 +11,7 @@ import ssl
 import sys
 from pathlib import Path
 
+import hypothesis
 import pytest
 
 from aiosmtplib import SMTP, SMTPStatus
@@ -26,6 +27,17 @@ except ImportError:
 else:
     HAS_UVLOOP = True
 BASE_CERT_PATH = Path("tests/certs/")
+IS_PYPY = hasattr(sys, "pypy_version_info")
+
+# pypy can take a while to generate data, so don't fail the test due to health checks.
+if IS_PYPY:
+    base_settings = hypothesis.settings(
+        suppress_health_check=(hypothesis.HealthCheck.too_slow,)
+    )
+else:
+    base_settings = hypothesis.settings()
+hypothesis.settings.register_profile("dev", parent=base_settings, max_examples=10)
+hypothesis.settings.register_profile("ci", parent=base_settings, max_examples=1000)
 
 
 def pytest_addoption(parser):
