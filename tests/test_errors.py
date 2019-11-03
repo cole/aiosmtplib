@@ -114,7 +114,7 @@ def test_raise_smtp_recipients_refused(addresses):
 
 
 @given(message=text())
-def test_smtp_not_supported(message):
+def test_raise_smtp_not_supported(message):
     with pytest.raises(SMTPNotSupported) as excinfo:
         raise SMTPNotSupported(message)
 
