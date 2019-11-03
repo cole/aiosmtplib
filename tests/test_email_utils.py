@@ -6,6 +6,8 @@ from email.headerregistry import Address
 from email.message import EmailMessage, Message
 
 import pytest
+from hypothesis import example, given
+from hypothesis.strategies import emails
 
 from aiosmtplib.email import (
     extract_recipients,
@@ -22,15 +24,20 @@ from aiosmtplib.email import (
         ('"A.Smith" <asmith+foo@example.com>', "asmith+foo@example.com"),
         ("Pepé Le Pew <pépe@example.com>", "pépe@example.com"),
         ("<a@new.topleveldomain>", "a@new.topleveldomain"),
-        ("email@[123.123.123.123]", "email@[123.123.123.123]"),
-        ("_______@example.com", "_______@example.com"),
         ("B. Smith <b@example.com", "b@example.com"),
     ),
-    ids=("quotes", "nonascii", "newtld", "ipaddr", "underscores", "missing_end_<"),
+    ids=("quotes", "nonascii", "newtld", "missing_end_<"),
 )
-def test_parse_address(address, expected_address):
+def test_parse_address_with_display_names(address, expected_address):
     parsed_address = parse_address(address)
     assert parsed_address == expected_address
+
+
+@given(emails())
+@example("email@[123.123.123.123]")
+@example("_______@example.com")
+def test_parse_address(email):
+    assert parse_address(email) == email
 
 
 @pytest.mark.parametrize(
@@ -45,9 +52,16 @@ def test_parse_address(address, expected_address):
     ),
     ids=("quotes", "nonascii", "newtld", "ipaddr", "underscores", "missing_end_quote"),
 )
-def test_quote_address(address, expected_address):
+def test_quote_address_with_display_names(address, expected_address):
     quoted_address = quote_address(address)
     assert quoted_address == expected_address
+
+
+@given(emails())
+@example("email@[123.123.123.123]")
+@example("_______@example.com")
+def test_quote_address(email):
+    assert quote_address(email) == "<{}>".format(email)
 
 
 def test_flatten_message():
