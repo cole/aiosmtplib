@@ -6,6 +6,8 @@ Changelog
 
 - Bugfix: Fix handling of sending legacy email API (Message) objects.
 
+- Bugfix: Fix SMTPNotSupported error with UTF8 sender/recipient names
+  on servers that don't support SMTPUTF8.
 
 1.1.0
 -----
