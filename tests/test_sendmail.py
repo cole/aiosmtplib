@@ -358,7 +358,7 @@ async def test_send_compat32_message_smtputf8_recipient(
     assert len(received_messages) == 1
     assert (
         received_messages[0]["X-RcptTo"]
-        == 'recipient@example.com, "reçipïént@exåmple.com"'
+        == "recipient@example.com, reçipïént@exåmple.com"
     )
 
 
@@ -368,3 +368,57 @@ async def test_send_message_smtputf8_not_supported(smtp_client, smtpd_server, me
     async with smtp_client:
         with pytest.raises(SMTPNotSupported):
             await smtp_client.send_message(message)
+
+
+async def test_send_compat32_message_utf8_text_without_smtputf8(
+    smtp_client, smtpd_server, compat32_message, received_commands, received_messages
+):
+    compat32_message["To"] = email.header.Header(
+        "reçipïént <recipient2@example.com>", "utf-8"
+    )
+
+    async with smtp_client:
+        errors, response = await smtp_client.send_message(compat32_message)
+
+    assert not errors
+    assert response != ""
+
+    assert received_commands[2][0] == "RCPT"
+    assert received_commands[2][1] == compat32_message["To"].encode()
+
+    assert len(received_messages) == 1
+    assert (
+        received_messages[0]["X-RcptTo"]
+        == "recipient@example.com, recipient2@example.com"
+    )
+    # Name should be encoded
+    assert received_messages[0].get_all("To") == [
+        "recipient@example.com",
+        "=?utf-8?b?cmXDp2lww6/DqW50IDxyZWNpcGllbnQyQGV4YW1wbGUuY29tPg==?=",
+    ]
+
+
+async def test_send_mime_message_utf8_text_without_smtputf8(
+    smtp_client, smtpd_server, mime_message, received_commands, received_messages
+):
+    mime_message["To"] = "reçipïént <recipient2@example.com>"
+
+    async with smtp_client:
+        errors, response = await smtp_client.send_message(mime_message)
+
+    assert not errors
+    assert response != ""
+
+    assert received_commands[2][0] == "RCPT"
+    assert received_commands[2][1] == mime_message["To"]
+
+    assert len(received_messages) == 1
+    assert (
+        received_messages[0]["X-RcptTo"]
+        == "recipient@example.com, recipient2@example.com"
+    )
+    # Name should be encoded
+    assert received_messages[0].get_all("To") == [
+        "recipient@example.com",
+        "=?utf-8?b?cmXDp2lww6/DqW50IDxyZWNpcGllbnQyQGV4YW1wbGUuY29tPg==?=",
+    ]

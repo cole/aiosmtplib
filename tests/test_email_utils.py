@@ -1,8 +1,9 @@
 """
 Test message and address parsing/formatting functions.
 """
+from email.header import Header
 from email.headerregistry import Address
-from email.message import EmailMessage
+from email.message import EmailMessage, Message
 
 import pytest
 
@@ -51,9 +52,9 @@ def test_quote_address(address, expected_address):
 
 def test_flatten_message():
     message = EmailMessage()
-    message["To"] = Address(username="bob", domain="example.com")
+    message["To"] = "bob@example.com"
     message["Subject"] = "Hello, World."
-    message["From"] = Address(username="alice", domain="example.com")
+    message["From"] = "alice@example.com"
     message.set_content("This is a test")
 
     flat_message = flatten_message(message)
@@ -82,7 +83,7 @@ This is a test\r
 )
 def test_flatten_message_utf8_options(utf8, cte_type, expected_chunk):
     message = EmailMessage()
-    message["From"] = Address(username="ålice", domain="example.com")
+    message["From"] = "ålice@example.com"
 
     flat_message = flatten_message(message, utf8=utf8, cte_type=cte_type)
 
@@ -91,7 +92,7 @@ def test_flatten_message_utf8_options(utf8, cte_type, expected_chunk):
 
 def test_flatten_message_removes_bcc_from_message_text():
     message = EmailMessage()
-    message["Bcc"] = Address(username="alice", domain="example.com")
+    message["Bcc"] = "alice@example.com"
 
     flat_message = flatten_message(message)
 
@@ -100,20 +101,20 @@ def test_flatten_message_removes_bcc_from_message_text():
 
 def test_flatten_resent_message():
     message = EmailMessage()
-    message["To"] = Address(username="bob", domain="example.com")
-    message["Cc"] = Address(username="claire", domain="example.com")
-    message["Bcc"] = Address(username="dustin", domain="example.com")
+    message["To"] = "bob@example.com"
+    message["Cc"] = "claire@example.com"
+    message["Bcc"] = "dustin@example.com"
 
     message["Subject"] = "Hello, World."
-    message["From"] = Address(username="alice", domain="example.com")
+    message["From"] = "alice@example.com"
     message.set_content("This is a test")
 
     message["Resent-Date"] = "Mon, 20 Nov 2017 21:04:27 -0000"
-    message["Resent-To"] = Address(username="eliza", domain="example.com")
-    message["Resent-Cc"] = Address(username="fred", domain="example.com")
-    message["Resent-Bcc"] = Address(username="gina", domain="example.com")
+    message["Resent-To"] = "eliza@example.com"
+    message["Resent-Cc"] = "fred@example.com"
+    message["Resent-Bcc"] = "gina@example.com"
     message["Resent-Subject"] = "Fwd: Hello, World."
-    message["Resent-From"] = Address(username="hubert", domain="example.com")
+    message["Resent-From"] = "hubert@example.com"
 
     flat_message = flatten_message(message)
 
@@ -135,19 +136,68 @@ This is a test\r
     assert flat_message == expected_message
 
 
-def test_extract_recipients():
-    message = EmailMessage()
-    message["To"] = Address(username="bob", domain="example.com")
-    message["Cc"] = Address(username="alice", domain="example.com")
+@pytest.mark.parametrize(
+    "mime_to_header,mime_cc_header,compat32_to_header,"
+    "compat32_cc_header,expected_recipients",
+    (
+        (
+            "Alice Smith <alice@example.com>",
+            "Bob <Bob@example.com>",
+            "Alice Smith <alice@example.com>",
+            "Bob <Bob@example.com>",
+            ["alice@example.com", "Bob@example.com"],
+        ),
+        (
+            Address(display_name="Alice Smith", username="alice", domain="example.com"),
+            Address(display_name="Bob", username="Bob", domain="example.com"),
+            Header("Alice Smith <alice@example.com>"),
+            Header("Bob <Bob@example.com>"),
+            ["alice@example.com", "Bob@example.com"],
+        ),
+        (
+            Address(display_name="ålice Smith", username="ålice", domain="example.com"),
+            Address(display_name="Bøb", username="Bøb", domain="example.com"),
+            Header("ålice Smith <ålice@example.com>"),
+            Header("Bøb <Bøb@example.com>"),
+            ["ålice@example.com", "Bøb@example.com"],
+        ),
+        (
+            Address(display_name="ålice Smith", username="alice", domain="example.com"),
+            Address(display_name="Bøb", username="Bob", domain="example.com"),
+            Header("ålice Smith <alice@example.com>"),
+            Header("Bøb <Bob@example.com>"),
+            ["alice@example.com", "Bob@example.com"],
+        ),
+    ),
+    ids=("str", "ascii", "utf8_address", "utf8_display_name"),
+)
+def test_extract_recipients(
+    mime_to_header,
+    mime_cc_header,
+    compat32_to_header,
+    compat32_cc_header,
+    expected_recipients,
+):
+    mime_message = EmailMessage()
+    mime_message["To"] = mime_to_header
+    mime_message["Cc"] = mime_cc_header
 
-    recipients = extract_recipients(message)
+    mime_recipients = extract_recipients(mime_message)
 
-    assert recipients == [message["To"], message["Cc"]]
+    assert mime_recipients == expected_recipients
+
+    compat32_message = Message()
+    compat32_message["To"] = compat32_to_header
+    compat32_message["Cc"] = compat32_cc_header
+
+    compat32_recipients = extract_recipients(compat32_message)
+
+    assert compat32_recipients == expected_recipients
 
 
 def test_extract_recipients_includes_bcc():
     message = EmailMessage()
-    message["Bcc"] = Address(username="alice", domain="example.com")
+    message["Bcc"] = "alice@example.com"
 
     recipients = extract_recipients(message)
 
@@ -156,14 +206,14 @@ def test_extract_recipients_includes_bcc():
 
 def test_extract_recipients_resent_message():
     message = EmailMessage()
-    message["To"] = Address(username="bob", domain="example.com")
-    message["Cc"] = Address(username="claire", domain="example.com")
-    message["Bcc"] = Address(username="dustin", domain="example.com")
+    message["To"] = "bob@example.com"
+    message["Cc"] = "claire@example.com"
+    message["Bcc"] = "dustin@example.com"
 
     message["Resent-Date"] = "Mon, 20 Nov 2017 21:04:27 -0000"
-    message["Resent-To"] = Address(username="eliza", domain="example.com")
-    message["Resent-Cc"] = Address(username="fred", domain="example.com")
-    message["Resent-Bcc"] = Address(username="gina", domain="example.com")
+    message["Resent-To"] = "eliza@example.com"
+    message["Resent-Cc"] = "fred@example.com"
+    message["Resent-Bcc"] = "gina@example.com"
 
     recipients = extract_recipients(message)
 
@@ -184,19 +234,52 @@ def test_extract_recipients_valueerror_on_multiple_resent_message():
         extract_recipients(message)
 
 
-def test_extract_sender():
-    message = EmailMessage()
-    message["From"] = Address(username="alice", domain="example.com")
+@pytest.mark.parametrize(
+    "mime_header,compat32_header,expected_sender",
+    (
+        (
+            "Alice Smith <alice@example.com>",
+            "Alice Smith <alice@example.com>",
+            "alice@example.com",
+        ),
+        (
+            Address(display_name="Alice Smith", username="alice", domain="example.com"),
+            Header("Alice Smith <alice@example.com>"),
+            "alice@example.com",
+        ),
+        (
+            Address(display_name="ålice Smith", username="ålice", domain="example.com"),
+            Header("ålice Smith <ålice@example.com>", "utf-8"),
+            "ålice@example.com",
+        ),
+        (
+            Address(display_name="ålice Smith", username="alice", domain="example.com"),
+            Header("ålice Smith <alice@example.com>", "utf-8"),
+            "alice@example.com",
+        ),
+    ),
+    ids=("str", "ascii", "utf8_address", "utf8_display_name"),
+)
+def test_extract_sender(mime_header, compat32_header, expected_sender):
+    mime_message = EmailMessage()
+    mime_message["From"] = mime_header
 
-    sender = extract_sender(message)
+    mime_sender = extract_sender(mime_message)
 
-    assert sender == message["From"]
+    assert mime_sender == expected_sender
+
+    compat32_message = Message()
+    compat32_message["From"] = compat32_header
+
+    compat32_sender = extract_sender(compat32_message)
+
+    assert compat32_sender == expected_sender
 
 
 def test_extract_sender_prefers_sender_header():
     message = EmailMessage()
-    message["From"] = Address(username="bob", domain="example.com")
-    message["Sender"] = Address(username="alice", domain="example.com")
+    message["From"] = "bob@example.com"
+    message["Sender"] = "alice@example.com"
 
     sender = extract_sender(message)
 
@@ -206,10 +289,10 @@ def test_extract_sender_prefers_sender_header():
 
 def test_extract_sender_resent_message():
     message = EmailMessage()
-    message["From"] = Address(username="alice", domain="example.com")
+    message["From"] = "alice@example.com"
 
     message["Resent-Date"] = "Mon, 20 Nov 2017 21:04:27 -0000"
-    message["Resent-From"] = Address(username="hubert", domain="example.com")
+    message["Resent-From"] = "hubert@example.com"
 
     sender = extract_sender(message)
 

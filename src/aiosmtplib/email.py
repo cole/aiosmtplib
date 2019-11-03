@@ -98,18 +98,21 @@ def flatten_message(
 
 
 def extract_addresses(
-    header: Union[str, email.headerregistry.AddressHeader, email.header.Header]
+    header: Union[str, email.headerregistry.AddressHeader, email.header.Header],
 ) -> List[str]:
     """
-    Convert address headers into email addresses.
+    Convert address headers into raw email addresses, suitable for use in
+    low level SMTP commands.
     """
     if isinstance(header, email.headerregistry.AddressHeader):
-        return [str(address) for address in header.addresses]
+        return [address.addr_spec for address in header.addresses]
     elif isinstance(header, email.header.Header):
-        encoded = header.encode(linesep=LINE_SEP, maxlinelen=None)
-        return [formataddr(email.utils.parseaddr(encoded))]
+        return [
+            parse_address(str(address_bytes, encoding=charset or "ascii"))
+            for address_bytes, charset in email.header.decode_header(header)
+        ]
     else:
-        return [formataddr(email.utils.parseaddr(header))]
+        return [parse_address(header)]
 
 
 def extract_sender(message: email.message.Message) -> Optional[str]:
