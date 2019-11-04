@@ -294,7 +294,7 @@ class SMTPConnection:
         if self.loop is None:
             self.loop = get_running_loop()
         if self._connect_lock is None:
-            self._connect_lock = asyncio.Lock(loop=self.loop)
+            self._connect_lock = asyncio.Lock()
         await self._connect_lock.acquire()
 
         # Set default port last in case use_tls or start_tls is provided,

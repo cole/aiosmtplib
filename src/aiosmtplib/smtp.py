@@ -144,7 +144,7 @@ class SMTP(SMTPAuth):
             mailbox_encoding = "ascii"
 
         if self._sendmail_lock is None:
-            self._sendmail_lock = asyncio.Lock(loop=self.loop)
+            self._sendmail_lock = asyncio.Lock()
 
         async with self._sendmail_lock:
             # Make sure we've done an EHLO for extension checks

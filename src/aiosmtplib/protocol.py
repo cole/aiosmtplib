@@ -60,7 +60,7 @@ class SMTPProtocol(asyncio.Protocol):
         self.transport = cast(asyncio.Transport, transport)
         self._over_ssl = transport.get_extra_info("sslcontext") is not None
         self._response_waiter = self._loop.create_future()
-        self._command_lock = asyncio.Lock(loop=self._loop)
+        self._command_lock = asyncio.Lock()
 
         if self._connection_lost_callback is not None:
             self._connection_lost_waiter = self._loop.create_future()
