@@ -62,9 +62,9 @@ send messages with both HTML text and plain text alternatives.
     message["To"] = "somebody@example.com"
     message["Subject"] = "Hello World!"
 
-    plain_text_message = MIMEText("hello", "plain", "utf-8")
+    plain_text_message = MIMEText("Sent via aiosmtplib", "plain", "utf-8")
     html_message = MIMEText(
-        "<html><body><h1>Hello</h1></body></html>", "html", "utf-8"
+        "<html><body><h1>Sent via aiosmtplib</h1></body></html>", "html", "utf-8"
     )
     message.attach(plain_text_message)
     message.attach(html_message)
@@ -114,7 +114,7 @@ To authenticate, pass the ``username`` and ``password`` keyword arguments to
         message,
         hostname="127.0.0.1",
         port=1025,
-        username="test"
+        username="test",
         password="test"
     )
 
