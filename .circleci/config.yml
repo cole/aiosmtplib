@@ -68,8 +68,8 @@ commands:
             - restore_cache:
                 name: "Restoring pre-commit env cache"
                 keys:
-                  - v1-pre-commit-cache-{{ checksum ".pre-commit.config.yaml" }}-{{ .Branch }}
-                  - v1-pre-commit-cache-{{ checksum ".pre-commit.config.yaml" }}-
+                  - v1-pre-commit-cache-{{ checksum ".pre-commit-config.yaml" }}-{{ .Branch }}
+                  - v1-pre-commit-cache-{{ checksum ".pre-commit-config.yaml" }}-
                   - v1-pre-commit-cache-
       - run:
           command: mkdir -p ~/.cache/pip
@@ -111,7 +111,7 @@ commands:
                 name: "Caching pre-commit env"
                 paths:
                   - ~/.cache/pre-commit
-                key: v1-pre-commit-cache-{{ checksum ".pre-commit.config.yaml" }}-{{ .Branch }}
+                key: v1-pre-commit-cache-{{ checksum ".pre-commit-config.yaml" }}-{{ .Branch }}
 
   run_tox:
     description: "Run tox"
