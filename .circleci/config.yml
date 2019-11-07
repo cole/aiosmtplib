@@ -32,24 +32,6 @@ commands:
           command: poetry config settings.virtualenvs.path ~/.cache/poetry
           name: "Setting poetry venv dir"
 
-  build_uvloop_from_source:
-    description: "Build uvloop from source"
-    steps:
-      - run:
-          command: git clone --recursive https://github.com/MagicStack/uvloop.git ~/uvloop-dev
-          name: "Clone uvloop"
-      - run:
-          working_directory: ~/uvloop-dev
-          command: pip install -r requirements.dev.txt
-          name: "Install uvloop dev requirements"
-      - run:
-          working_directory: ~/uvloop-dev
-          command: make
-          name: "Compile uvloop"
-      - run:
-          command: pip install ~/uvloop-dev
-          name: "Install dev uvloop"
-
   with_cachedirs:
     description: "Create/restore cache dirs"
     parameters:
@@ -187,10 +169,8 @@ jobs:
       - image: python:3.8-buster
     steps:
       - checkout
-      # uvloop still not working from source
-      # - build_uvloop_from_source
       - install_and_run_toxenvs:
-          toxenvs: clean,py38-asyncio,coverage
+          toxenvs: clean,py38-asyncio,py38-uvloop,coverage
 
   pypy3:
     docker:
