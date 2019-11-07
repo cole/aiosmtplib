@@ -4,7 +4,6 @@ orbs:
   codecov: codecov/codecov@1.0.5
 
 commands:
-
   upgrade_pip:
     description: "Upgrade pip"
     steps:
@@ -88,8 +87,8 @@ commands:
           condition: << parameters.include_precommit >>
           steps:
             - run:
-              command: mkdir -p ~/.cache/pre-commit
-              name: "Creating pre-commit cache dir"
+                command: mkdir -p ~/.cache/pre-commit
+                name: "Creating pre-commit cache dir"
       - steps: << parameters.commands >>
       - save_cache:
           paths:
@@ -151,7 +150,6 @@ commands:
           file: coverage.xml
 
 jobs:
-
   lint:
     docker:
       - image: python:3.7-buster
