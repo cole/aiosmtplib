@@ -7,7 +7,7 @@ An asyncio SMTP client.
 Originally based on smtplib from the Python 3 standard library by:
 The Dragon De Monsyne <dragondm@integral.org>
 
-Author: Cole Maclean <hi@cole.io>
+Author: Cole Maclean <hi@colemaclean.dev>
 """
 from .api import send
 from .errors import (
