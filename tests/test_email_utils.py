@@ -218,6 +218,24 @@ def test_extract_recipients_includes_bcc():
     assert recipients == [message["Bcc"]]
 
 
+def test_extract_recipients_invalid_email():
+    message = EmailMessage()
+    message["Cc"] = "me"
+
+    recipients = extract_recipients(message)
+
+    assert recipients == ["me"]
+
+
+def test_extract_recipients_with_iterable_of_strings():
+    message = EmailMessage()
+    message["To"] = ("me@example.com", "you")
+
+    recipients = extract_recipients(message)
+
+    assert recipients == ["me@example.com", "you"]
+
+
 def test_extract_recipients_resent_message():
     message = EmailMessage()
     message["To"] = "bob@example.com"

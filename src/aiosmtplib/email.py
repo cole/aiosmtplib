@@ -104,15 +104,24 @@ def extract_addresses(
     Convert address headers into raw email addresses, suitable for use in
     low level SMTP commands.
     """
+    addresses = []
     if isinstance(header, email.headerregistry.AddressHeader):
-        return [address.addr_spec for address in header.addresses]
+        for address in header.addresses:
+            # If the object has been assigned an iterable, it's possible to get
+            # a string here
+            if isinstance(address, email.headerregistry.Address):
+                addresses.append(address.addr_spec)
+            else:
+                addresses.append(parse_address(address))
     elif isinstance(header, email.header.Header):
-        return [
-            parse_address(str(address_bytes, encoding=charset or "ascii"))
-            for address_bytes, charset in email.header.decode_header(header)
-        ]
+        for address_bytes, charset in email.header.decode_header(header):
+            if charset is None:
+                charset = "ascii"
+            addresses.append(parse_address(str(address_bytes, encoding=charset)))
     else:
-        return [parse_address(header)]
+        addresses.append(parse_address(header))
+
+    return addresses
 
 
 def extract_sender(message: email.message.Message) -> Optional[str]:
