@@ -33,43 +33,86 @@ commands:
           name: "Setting poetry venv dir"
 
   with_cachedirs:
-    description: "Create/restore cache dirs"
+    description: "Create/restore tox cache dirs"
     parameters:
       cache_key:
         type: string
+      include_hypothesis:
+        description: Cache the hypothesis database
+        type: boolean
+        default: false
+      include_precommit:
+        description: Cache the pre-commit environment
+        type: boolean
+        default: false
       commands:
         type: steps
         default: []
     steps:
       - restore_cache:
           keys:
-            - v2-cache-<< parameters.cache_key >>-{{ checksum "poetry.lock" }}-{{ .Branch }}
-            - v2-cache-<< parameters.cache_key >>-{{ checksum "poetry.lock" }}-
-          name: "Restoring cache dir: << parameters.cache_key >>"
+            - v1-tox-cache-<< parameters.cache_key >>-{{ checksum "poetry.lock" }}-{{ .Branch }}
+            - v1-tox-cache-<< parameters.cache_key >>-{{ checksum "poetry.lock" }}-
+            - v1-tox-cache-<< parameters.cache_key >>-
+          name: "Restoring tox workdir cache: << parameters.cache_key >>"
+      - when:
+          condition: << parameters.include_hypothesis >>
+          steps:
+            - restore_cache:
+                name: "Restoring hypothesis db cache"
+                keys:
+                  - v1-hypothesis-cache-{{ .Branch }}
+                  - v1-hypothesis-cache-
+      - when:
+          condition: << parameters.include_precommit >>
+          steps:
+            - restore_cache:
+                name: "Restoring pre-commit env cache"
+                keys:
+                  - v1-pre-commit-cache-{{ checksum ".pre-commit.config.yaml" }}-{{ .Branch }}
+                  - v1-pre-commit-cache-{{ checksum ".pre-commit.config.yaml" }}-
+                  - v1-pre-commit-cache-
       - run:
           command: mkdir -p ~/.cache/pip
           name: "Creating pip cache dir"
       - run:
-          command: mkdir -p ~/.cache/pre-commit
-          name: "Creating pre-commit cache dir"
-      - run:
-          command: mkdir -p ~/.poetry
-          name: "Creating poetry venv dir"
-      - run:
           command: mkdir -p ~/.tox
           name: "Creating tox work dir"
-      - run:
-          command: mkdir -p ~/project/.hypothesis
-          name: "Creating hypothesis test dir"
+      - when:
+          condition: << parameters.include_hypothesis >>
+          steps:
+            - run:
+                command: mkdir -p ~/project/.hypothesis
+                name: "Creating hypothesis test db dir"
+      - when:
+          condition: << parameters.include_precommit >>
+          steps:
+            - run:
+              command: mkdir -p ~/.cache/pre-commit
+              name: "Creating pre-commit cache dir"
       - steps: << parameters.commands >>
       - save_cache:
           paths:
-            - ~/.cache
-            - ~/.poetry
+            - ~/.cache/pip
             - ~/.tox
-            - ~/project/.hypothesis
-          key: v2-cache-<< parameters.cache_key >>-{{ checksum "poetry.lock" }}-{{ .Branch }}
-          name: "Saving cache dirs: << parameters.cache_key >>"
+          key: v1-tox-cache-<< parameters.cache_key >>-{{ checksum "poetry.lock" }}-{{ .Branch }}
+          name: "Caching tox workdirs: << parameters.cache_key >>"
+      - when:
+          condition: << parameters.include_hypothesis >>
+          steps:
+            - save_cache:
+                paths:
+                  - ~/project/.hypothesis
+                key: v1-hypothesis-cache-{{ .Branch }}
+                name: "Caching hypothesis test db"
+      - when:
+          condition: << parameters.include_precommit >>
+          steps:
+            - save_cache:
+                name: "Caching pre-commit env"
+                paths:
+                  - ~/.cache/pre-commit
+                key: v1-pre-commit-cache-{{ checksum ".pre-commit.config.yaml" }}-{{ .Branch }}
 
   run_tox:
     description: "Run tox"
@@ -91,6 +134,7 @@ commands:
     steps:
       - with_cachedirs:
           cache_key: << parameters.toxenvs >>
+          include_hypothesis: true
           commands:
             - install_tox
             - run_tox:
@@ -115,6 +159,7 @@ jobs:
       - checkout
       - with_cachedirs:
           cache_key: lint
+          include_precommit: true
           commands:
             - install_tox
             - run_tox:
