@@ -1,8 +1,8 @@
 Changelog
 =========
 
-1.1.1 (unreleased)
-------------------
+1.1.1
+-----
 
 - Bugfix: Fix handling of sending legacy email API (Message) objects.
 
