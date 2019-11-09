@@ -37,7 +37,7 @@ if IS_PYPY:
 else:
     base_settings = hypothesis.settings()
 hypothesis.settings.register_profile("dev", parent=base_settings, max_examples=10)
-hypothesis.settings.register_profile("ci", parent=base_settings, max_examples=1000)
+hypothesis.settings.register_profile("ci", parent=base_settings, max_examples=100)
 
 
 def pytest_addoption(parser):
