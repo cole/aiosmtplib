@@ -240,7 +240,7 @@ jobs:
             poetry publish --repository testpypi --username $TESTPYPI_USERNAME --password $TESTPYPI_PASSWORD
       - run:
           name: Uploading to PyPI
-          command: poetry publish --repository pypi --username $PYPI_USERNAME --password $PYPI_PASSWORD
+          command: poetry publish --username $PYPI_USERNAME --password $PYPI_PASSWORD
 
 workflows:
   version: 2
