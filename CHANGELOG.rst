@@ -52,7 +52,7 @@ Changelog
 1.0.5
 -----
 
-- Bugfix: Connection is now closed if an error response is recieved
+- Bugfix: Connection is now closed if an error response is received
   immediately after connecting.
 
 
@@ -71,7 +71,7 @@ Changelog
 
 - Bugfix: Removed buggy close connection on __del__
 
-- Bugfix: Fixed old style auth method parsing in ESMPT response.
+- Bugfix: Fixed old style auth method parsing in ESMTP response.
 
 - Bugfix: Cleanup transport on exception in connect method.
 
