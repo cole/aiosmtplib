@@ -51,7 +51,7 @@ pytest = "^5.2.2"
 pytest-asyncio = "^0.10.0"
 pytest-cov = "^2.8.1"
 coverage = "^4.5.4"
-hypothesis = "^4.43.6"
+hypothesis = "^4.43.8"
 aiosmtpd = "1.2"
 
 [tool.poetry.extras]
