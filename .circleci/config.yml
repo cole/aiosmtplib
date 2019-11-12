@@ -121,7 +121,7 @@ commands:
         default: "ALL"
     steps:
       - run:
-          command: tox --workdir ~/.tox -e << parameters.toxenv >>
+          command: tox --workdir ~/.tox --installpkg dist/aiosmtplib-*.whl -e << parameters.toxenv >>
           name: "Running tox: << parameters.toxenv >>"
 
   install_and_run_toxenvs:
@@ -131,6 +131,8 @@ commands:
         type: string
         default: "ALL"
     steps:
+      - attach_workspace:
+          at: dist
       - with_cachedirs:
           cache_key: << parameters.toxenvs >>
           include_hypothesis: true
@@ -174,6 +176,25 @@ jobs:
             - install_tox
             - run_tox:
                 toxenv: docs
+
+  build:
+    docker:
+      - image: python:3.7-buster
+    steps:
+      - checkout
+      - with_cachedirs:
+          cache_key: poetry
+          commands:
+            - upgrade_pip
+            - install_poetry
+      - run:
+          name: Building packages
+          command: poetry build -vv
+      - persist_to_workspace:
+          root: dist
+          paths:
+            - aiosmtplib-*.tar.gz
+            - aiosmtplib-*.whl
 
   py352:
     docker:
@@ -227,12 +248,13 @@ jobs:
     docker:
       - image: python:3.7-buster
     steps:
-      - checkout
-      - upgrade_pip
-      - install_poetry
-      - run:
-          name: Building packages
-          command: poetry build -vv
+      - with_cachedirs:
+          cache_key: poetry
+          commands:
+            - upgrade_pip
+            - install_poetry
+      - attach_workspace:
+          at: dist
       - run:
           name: Uploading to Test PyPI
           command: |
@@ -254,44 +276,57 @@ workflows:
           filters:
             tags:
               only: /.*/
+      - build:
+          requires:
+            - lint
+          filters:
+            tags:
+              only: /.*/
       - py352:
           requires:
             - lint
+            - build
           filters:
             tags:
               only: /.*/
       - py35:
           requires:
             - lint
+            - build
           filters:
             tags:
               only: /.*/
       - py36:
           requires:
             - lint
+            - build
           filters:
             tags:
               only: /.*/
       - py37:
           requires:
             - lint
+            - build
           filters:
             tags:
               only: /.*/
       - pypy3:
           requires:
             - lint
+            - build
           filters:
             tags:
               only: /.*/
       - py38:
           requires:
             - lint
+            - build
           filters:
             tags:
               only: /.*/
       - deploy_to_pypi:
           requires:
+            - build
             - lint
             - docs
             - py352
