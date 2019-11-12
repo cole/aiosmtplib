@@ -1,6 +1,12 @@
 Changelog
 =========
 
+1.1.2
+-----
+
+- Bugfix: removed ``docs`` and ``tests`` from wheel, they should only be
+  in the source distribution.
+
 1.1.1
 -----
 
