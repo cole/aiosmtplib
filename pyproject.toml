@@ -1,5 +1,5 @@
 [build-system]
-requires = ["poetry>=0.12"]
+requires = ["poetry>=1.0.0b4"]
 build-backend = "poetry.masonry.api"
 
 [tool.poetry]
@@ -9,7 +9,9 @@ description = "asyncio SMTP client"
 authors = ["Cole Maclean <hi@colemaclean.dev>"]
 license = "MIT"
 packages = [
-    { include = "aiosmtplib", from = "src" }
+    { include = "aiosmtplib" },
+    { include = "tests", format = "sdist" },
+    { include = "docs", format = "sdist" },
 ]
 readme = "README.rst"
 repository = "https://github.com/cole/aiosmtplib"
@@ -32,11 +34,8 @@ exclude = [
     "docs/requirements.txt",
 ]
 include = [
-    "CHANGELOG.rst",
-    "LICENSE.txt",
-    "README.rst",
-    "docs/*",
-    "tests/*",
+    # We should include the changelog, but that also puts it in the wheel.
+    # "CHANGELOG.rst"
 ]
 
 [tool.poetry.dependencies]
