@@ -232,15 +232,15 @@ jobs:
       - install_poetry
       - run:
           name: Building packages
-          command: poetry build
+          command: poetry build -vv
       - run:
           name: Uploading to Test PyPI
           command: |
             poetry config repositories.testpypi https://test.pypi.org/simple
-            poetry publish --repository testpypi --username $TESTPYPI_USERNAME --password $TESTPYPI_PASSWORD
+            poetry publish -vv --repository testpypi --username $TESTPYPI_USERNAME --password $TESTPYPI_PASSWORD
       - run:
           name: Uploading to PyPI
-          command: poetry publish --username $PYPI_USERNAME --password $PYPI_PASSWORD
+          command: poetry publish -vv --username $PYPI_USERNAME --password $PYPI_PASSWORD
 
 workflows:
   version: 2
