@@ -172,7 +172,7 @@ class SMTPProtocol(asyncio.Protocol):
 
     async def read_response(self, timeout: Optional[float] = None) -> SMTPResponse:
         """
-        Get a status reponse from the server.
+        Get a status response from the server.
 
         This method must be awaited once per command sent; if multiple commands
         are written to the transport without awaiting, response data will be lost.
@@ -186,7 +186,9 @@ class SMTPProtocol(asyncio.Protocol):
             raise SMTPServerDisconnected("Connection lost")
 
         try:
-            result = await asyncio.wait_for(self._response_waiter, timeout)
+            result = await asyncio.wait_for(
+                self._response_waiter, timeout
+            )  # type: SMTPResponse
         except asyncio.TimeoutError as exc:
             raise SMTPReadTimeoutError("Timed out waiting for server response") from exc
         finally:
