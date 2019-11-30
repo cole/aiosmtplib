@@ -7,7 +7,7 @@ import socket
 import ssl
 import sys
 import warnings
-from typing import Any, Optional, Type, Union, cast
+from typing import Any, Optional, Type, Union
 
 from .compat import create_connection, create_unix_connection, get_running_loop
 from .default import Default, _default
@@ -194,7 +194,7 @@ class SMTPConnection:
         This method can be called multiple times.
         """
         if hostname is not _default:
-            self.hostname = cast(Optional[str], hostname)
+            self.hostname = hostname
         if loop is not _default:
             if loop is not None:
                 warnings.warn(
@@ -203,7 +203,7 @@ class SMTPConnection:
                     DeprecationWarning,
                     stacklevel=3,
                 )
-            self.loop = cast(Optional[asyncio.AbstractEventLoop], loop)
+            self.loop = loop
         if use_tls is not None:
             self.use_tls = use_tls
         if start_tls is not None:
@@ -211,28 +211,28 @@ class SMTPConnection:
         if validate_certs is not None:
             self.validate_certs = validate_certs
         if port is not _default:
-            self.port = cast(Optional[int], port)
+            self.port = port
         if username is not _default:
-            self._login_username = cast(Optional[str], username)
+            self._login_username = username
         if password is not _default:
-            self._login_password = cast(Optional[str], password)
+            self._login_password = password
 
         if timeout is not _default:
-            self.timeout = cast(Optional[float], timeout)
+            self.timeout = timeout
         if source_address is not _default:
-            self._source_address = cast(Optional[str], source_address)
+            self._source_address = source_address
         if client_cert is not _default:
-            self.client_cert = cast(Optional[str], client_cert)
+            self.client_cert = client_cert
         if client_key is not _default:
-            self.client_key = cast(Optional[str], client_key)
+            self.client_key = client_key
         if tls_context is not _default:
-            self.tls_context = cast(Optional[ssl.SSLContext], tls_context)
+            self.tls_context = tls_context
         if cert_bundle is not _default:
-            self.cert_bundle = cast(Optional[str], cert_bundle)
+            self.cert_bundle = cert_bundle
         if socket_path is not _default:
-            self.socket_path = cast(Optional[SocketPathType], socket_path)
+            self.socket_path = socket_path
         if sock is not _default:
-            self.sock = cast(Optional[socket.socket], sock)
+            self.sock = sock
 
     def _validate_config(self) -> None:
         if self._start_tls_on_connect and self.use_tls:
@@ -416,7 +416,6 @@ class SMTPConnection:
 
         if timeout is _default:
             timeout = self.timeout
-        timeout = cast(Optional[float], timeout)
 
         response = await self.protocol.execute_command(*args, timeout=timeout)
 

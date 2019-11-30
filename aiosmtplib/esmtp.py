@@ -3,7 +3,7 @@ Low level ESMTP command API.
 """
 import re
 import ssl
-from typing import Dict, Iterable, List, Optional, Tuple, Union, cast
+from typing import Dict, Iterable, List, Optional, Tuple, Union
 
 from .connection import SMTPConnection
 from .default import Default, _default
@@ -324,7 +324,6 @@ class ESMTP(SMTPConnection):
 
         if timeout is _default:
             timeout = self.timeout
-        timeout = cast(Optional[float], timeout)
 
         if isinstance(message, str):
             message = message.encode("ascii")
