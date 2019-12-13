@@ -27,7 +27,7 @@ LINE_ENDINGS_REGEX = re.compile(rb"(?:\r\n|\n|\r(?!\n))")
 PERIOD_REGEX = re.compile(rb"(?m)^\.")
 
 
-class SMTPProtocol(asyncio.Protocol, FlowControlMixin):
+class SMTPProtocol(FlowControlMixin, asyncio.Protocol):
     def __init__(
         self,
         loop: Optional[asyncio.AbstractEventLoop] = None,
@@ -70,8 +70,10 @@ class SMTPProtocol(asyncio.Protocol, FlowControlMixin):
             self._connection_lost_waiter.add_done_callback(
                 self._connection_lost_callback
             )
-
+            
     def connection_lost(self, exc: Optional[Exception]) -> None:
+        super().connection_lost(exc)
+        
         if exc:
             smtp_exc = SMTPServerDisconnected("Connection lost")
             smtp_exc.__cause__ = exc
@@ -87,7 +89,7 @@ class SMTPProtocol(asyncio.Protocol, FlowControlMixin):
                 self._connection_lost_waiter.set_exception(smtp_exc)
             else:
                 self._connection_lost_waiter.set_result(None)
-
+        
         self.transport = None
         self._command_lock = None
 
