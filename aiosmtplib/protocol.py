@@ -27,13 +27,15 @@ LINE_ENDINGS_REGEX = re.compile(rb"(?:\r\n|\n|\r(?!\n))")
 PERIOD_REGEX = re.compile(rb"(?m)^\.")
 
 
-class SMTPProtocol(FlowControlMixin, asyncio.Protocol):
+class SMTPProtocol(asyncio.Protocol, FlowControlMixin):
     def __init__(
         self,
         loop: Optional[asyncio.AbstractEventLoop] = None,
         connection_lost_callback: Optional[Callable] = None,
     ) -> None:
         self._loop = loop or asyncio.get_event_loop()
+        super().__init__(self._loop)
+        
         self._over_ssl = False
         self._buffer = bytearray()
         self._response_waiter = None  # type: Optional[asyncio.Future[SMTPResponse]]
