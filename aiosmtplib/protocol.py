@@ -34,7 +34,7 @@ class SMTPProtocol(FlowControlMixin, asyncio.Protocol):
         connection_lost_callback: Optional[Callable] = None,
     ) -> None:
         self._loop = loop or asyncio.get_event_loop()
-        super().__init__(self._loop)
+        super().__init__()
         self._over_ssl = False
         self._buffer = bytearray()
         self._response_waiter = None  # type: Optional[asyncio.Future[SMTPResponse]]
@@ -69,7 +69,7 @@ class SMTPProtocol(FlowControlMixin, asyncio.Protocol):
             self._connection_lost_waiter.add_done_callback(
                 self._connection_lost_callback
             )
- 
+
     def connection_lost(self, exc: Optional[Exception]) -> None:
         super().connection_lost(exc)
 
@@ -88,7 +88,7 @@ class SMTPProtocol(FlowControlMixin, asyncio.Protocol):
                 self._connection_lost_waiter.set_exception(smtp_exc)
             else:
                 self._connection_lost_waiter.set_result(None)
- 
+
         self.transport = None
         self._command_lock = None
 
