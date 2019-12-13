@@ -4,6 +4,7 @@ An ``asyncio.Protocol`` subclass for lower level IO handling.
 import asyncio
 import re
 import ssl
+from asyncio.streams import FlowControlMixin
 from typing import Callable, Optional, cast
 
 from .compat import start_tls
@@ -26,7 +27,7 @@ LINE_ENDINGS_REGEX = re.compile(rb"(?:\r\n|\n|\r(?!\n))")
 PERIOD_REGEX = re.compile(rb"(?m)^\.")
 
 
-class SMTPProtocol(asyncio.Protocol):
+class SMTPProtocol(FlowControlMixin, asyncio.Protocol):
     def __init__(
         self,
         loop: Optional[asyncio.AbstractEventLoop] = None,
