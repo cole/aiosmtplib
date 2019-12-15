@@ -50,9 +50,9 @@ commands:
     steps:
       - restore_cache:
           keys:
-            - v1-tox-cache-<< parameters.cache_key >>-{{ checksum "poetry.lock" }}-{{ .Branch }}
-            - v1-tox-cache-<< parameters.cache_key >>-{{ checksum "poetry.lock" }}-
-            - v1-tox-cache-<< parameters.cache_key >>-
+            - v2-tox-cache-<< parameters.cache_key >>-{{ checksum "poetry.lock" }}-{{ .Branch }}
+            - v2-tox-cache-<< parameters.cache_key >>-{{ checksum "poetry.lock" }}-
+            - v2-tox-cache-<< parameters.cache_key >>-
           name: "Restoring tox workdir cache: << parameters.cache_key >>"
       - when:
           condition: << parameters.include_hypothesis >>
@@ -94,7 +94,7 @@ commands:
           paths:
             - ~/.cache/pip
             - ~/.tox
-          key: v1-tox-cache-<< parameters.cache_key >>-{{ checksum "poetry.lock" }}-{{ .Branch }}
+          key: v2-tox-cache-<< parameters.cache_key >>-{{ checksum "poetry.lock" }}-{{ .Branch }}
           name: "Caching tox workdirs: << parameters.cache_key >>"
       - when:
           condition: << parameters.include_hypothesis >>
