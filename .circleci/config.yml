@@ -8,6 +8,9 @@ commands:
     description: "Upgrade pip"
     steps:
       - run:
+          command: pip --cache-dir ~/.cache/pip install --upgrade setuptools
+          name: "Upgrading setuptools"
+      - run:
           command: pip --cache-dir ~/.cache/pip install --upgrade pip
           name: "Upgrading pip"
 
