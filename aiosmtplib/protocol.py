@@ -4,6 +4,7 @@ An ``asyncio.Protocol`` subclass for lower level IO handling.
 import asyncio
 import re
 import ssl
+from asyncio.streams import FlowControlMixin
 from typing import Callable, Optional, cast
 
 from .compat import start_tls
@@ -26,13 +27,14 @@ LINE_ENDINGS_REGEX = re.compile(rb"(?:\r\n|\n|\r(?!\n))")
 PERIOD_REGEX = re.compile(rb"(?m)^\.")
 
 
-class SMTPProtocol(asyncio.Protocol):
+class SMTPProtocol(FlowControlMixin, asyncio.Protocol):
     def __init__(
         self,
         loop: Optional[asyncio.AbstractEventLoop] = None,
         connection_lost_callback: Optional[Callable] = None,
     ) -> None:
         self._loop = loop or asyncio.get_event_loop()
+        super().__init__()
         self._over_ssl = False
         self._buffer = bytearray()
         self._response_waiter = None  # type: Optional[asyncio.Future[SMTPResponse]]
@@ -69,6 +71,8 @@ class SMTPProtocol(asyncio.Protocol):
             )
 
     def connection_lost(self, exc: Optional[Exception]) -> None:
+        super().connection_lost(exc)
+
         if exc:
             smtp_exc = SMTPServerDisconnected("Connection lost")
             smtp_exc.__cause__ = exc
