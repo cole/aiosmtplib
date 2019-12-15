@@ -137,6 +137,7 @@ commands:
           cache_key: << parameters.toxenvs >>
           include_hypothesis: true
           commands:
+            - upgrade_pip
             - install_tox
             - run_tox:
                 toxenv: << parameters.toxenvs >>
