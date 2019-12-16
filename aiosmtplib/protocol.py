@@ -4,7 +4,6 @@ An ``asyncio.Protocol`` subclass for lower level IO handling.
 import asyncio
 import re
 import ssl
-from asyncio.streams import FlowControlMixin
 from typing import Callable, Optional, cast
 
 from .compat import start_tls
@@ -27,14 +26,76 @@ LINE_ENDINGS_REGEX = re.compile(rb"(?:\r\n|\n|\r(?!\n))")
 PERIOD_REGEX = re.compile(rb"(?m)^\.")
 
 
+class FlowControlMixin(asyncio.Protocol):
+    """
+    Reusable flow control logic for StreamWriter.drain().
+    This implements the protocol methods pause_writing(),
+    resume_writing() and connection_lost().  If the subclass overrides
+    these it must call the super methods.
+    StreamWriter.drain() must wait for _drain_helper() coroutine.
+
+    Copied from stdlib as per recommendation: https://bugs.python.org/msg343685.
+    Logging and asserts removed, type annotations added.
+    """
+
+    def __init__(self, loop: Optional[asyncio.AbstractEventLoop] = None):
+        if loop is None:
+            self._loop = asyncio.get_event_loop()
+        else:
+            self._loop = loop
+        self._paused = False
+        self._drain_waiter = None  # type: Optional[asyncio.Future[None]]
+        self._connection_lost = False
+
+    def pause_writing(self) -> None:
+        self._paused = True
+
+    def resume_writing(self) -> None:
+        self._paused = False
+
+        waiter = self._drain_waiter
+        if waiter is not None:
+            self._drain_waiter = None
+            if not waiter.done():
+                waiter.set_result(None)
+
+    def connection_lost(self, exc) -> None:
+        self._connection_lost = True
+        # Wake up the writer if currently paused.
+        if not self._paused:
+            return
+        waiter = self._drain_waiter
+        if waiter is None:
+            return
+        self._drain_waiter = None
+        if waiter.done():
+            return
+        if exc is None:
+            waiter.set_result(None)
+        else:
+            waiter.set_exception(exc)
+
+    async def _drain_helper(self) -> None:
+        if self._connection_lost:
+            raise ConnectionResetError("Connection lost")
+        if not self._paused:
+            return
+        waiter = self._drain_waiter
+        waiter = self._loop.create_future()
+        self._drain_waiter = waiter
+        await waiter
+
+    def _get_close_waiter(self, stream: asyncio.StreamWriter) -> asyncio.Future:
+        raise NotImplementedError
+
+
 class SMTPProtocol(FlowControlMixin, asyncio.Protocol):
     def __init__(
         self,
         loop: Optional[asyncio.AbstractEventLoop] = None,
         connection_lost_callback: Optional[Callable] = None,
     ) -> None:
-        self._loop = loop or asyncio.get_event_loop()
-        super().__init__()
+        super().__init__(loop=loop)
         self._over_ssl = False
         self._buffer = bytearray()
         self._response_waiter = None  # type: Optional[asyncio.Future[SMTPResponse]]
@@ -43,6 +104,7 @@ class SMTPProtocol(FlowControlMixin, asyncio.Protocol):
 
         self.transport = None  # type: Optional[asyncio.Transport]
         self._command_lock = None  # type: Optional[asyncio.Lock]
+        self._closed = self._loop.create_future()  # type: asyncio.Future[None]
 
     def __del__(self):
         waiters = (self._response_waiter, self._connection_lost_waiter)
@@ -50,6 +112,9 @@ class SMTPProtocol(FlowControlMixin, asyncio.Protocol):
             if waiter.done() and not waiter.cancelled():
                 # Avoid 'Future exception was never retrieved' warnings
                 waiter.exception()
+
+    def _get_close_waiter(self, stream: asyncio.StreamWriter) -> asyncio.Future:
+        return self._closed
 
     @property
     def is_connected(self) -> bool:
