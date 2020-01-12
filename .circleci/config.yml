@@ -28,7 +28,7 @@ commands:
     description: "Install poetry"
     steps:
       - run:
-          command: pip --cache-dir ~/.cache/pip install --upgrade poetry==1.0.0b4
+          command: pip --cache-dir ~/.cache/pip install --upgrade poetry
           name: "Installing poetry"
       - run:
           command: poetry config virtualenvs.path ~/.cache/poetry
