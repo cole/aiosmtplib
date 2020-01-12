@@ -182,7 +182,7 @@ texinfo_documents = [
     )
 ]
 
-intersphinx_mapping = {"python": ("https://docs.python.org/3.7", None)}
+intersphinx_mapping = {"python": ("https://docs.python.org/3.8", None)}
 
 html_sidebars = {
     "**": ["globaltoc.html", "relations.html", "sourcelink.html", "searchbox.html"]
