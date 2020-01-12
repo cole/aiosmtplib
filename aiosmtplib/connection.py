@@ -364,7 +364,7 @@ class SMTPConnection:
 
         try:
             transport, _ = await asyncio.wait_for(connect_coro, timeout=self.timeout)
-        except (ConnectionRefusedError, OSError) as exc:
+        except OSError as exc:
             raise SMTPConnectError(
                 "Error connecting to {host} on port {port}: {err}".format(
                     host=self.hostname, port=self.port, err=exc
