@@ -4,10 +4,11 @@ Tests run against live mail providers.
 These aren't generally run as part of the test suite.
 """
 import os
+from email.message import EmailMessage
 
 import pytest
 
-from aiosmtplib import SMTP, SMTPAuthenticationError, SMTPStatus
+from aiosmtplib import SMTP, SMTPAuthenticationError, SMTPStatus, send
 
 
 pytestmark = [
@@ -28,6 +29,8 @@ async def test_starttls_gmail():
 
     assert response.code == SMTPStatus.completed
     assert "smtp.gmail.com at your service" in response.message
+    assert client.server_auth_methods
+
     with pytest.raises(SMTPAuthenticationError):
         await client.login("test", "test")
 
@@ -41,3 +44,21 @@ async def test_qq_login():
 
     with pytest.raises(SMTPAuthenticationError):
         await client.login("test", "test")
+
+
+async def test_office365_auth_send():
+    message = EmailMessage()
+    message["From"] = "user@mydomain.com"
+    message["To"] = "somebody@example.com"
+    message["Subject"] = "Hello World!"
+    message.set_content("Sent via aiosmtplib")
+
+    with pytest.raises(SMTPAuthenticationError):
+        await send(
+            message,
+            hostname="smtp.office365.com",
+            port=587,
+            start_tls=True,
+            password="test",
+            username="test",
+        )
