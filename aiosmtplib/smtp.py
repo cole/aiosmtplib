@@ -251,7 +251,7 @@ class SMTP(SMTPAuth):
 
         if sender is None:
             sender = extract_sender(message)
-        if not sender:
+        if sender is None:
             raise ValueError("No From header provided in message")
 
         if isinstance(recipients, str):
