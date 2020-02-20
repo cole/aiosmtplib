@@ -48,8 +48,10 @@ def mock_auth(request):
 async def test_login_without_extension_raises_error(mock_auth):
     mock_auth.esmtp_extensions = {}
 
-    with pytest.raises(SMTPException):
+    with pytest.raises(SMTPException) as excinfo:
         await mock_auth.login("username", "bogus")
+
+    assert "Try connecting via TLS" not in excinfo.value.args[0]
 
 
 async def test_login_unknown_method_raises_error(mock_auth):
@@ -179,3 +181,11 @@ async def test_auth_crammd5_continue_error(mock_auth):
 
     with pytest.raises(SMTPAuthenticationError):
         await mock_auth.auth_crammd5("username", "bogus")
+
+
+async def test_login_without_starttls_exception(smtp_client, smtpd_server):
+    async with smtp_client:
+        with pytest.raises(SMTPException) as excinfo:
+            await smtp_client.login("test", "test")
+
+        assert "Try connecting via TLS" in excinfo.value.args[0]
