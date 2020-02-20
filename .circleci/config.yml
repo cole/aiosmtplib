@@ -158,7 +158,7 @@ commands:
 jobs:
   lint:
     docker:
-      - image: python:3.7-buster
+      - image: python:3.8-buster
     steps:
       - checkout
       - with_cachedirs:
@@ -171,7 +171,7 @@ jobs:
 
   docs:
     docker:
-      - image: python:3.7-buster
+      - image: python:3.8-buster
     steps:
       - checkout
       - with_cachedirs:
@@ -183,7 +183,7 @@ jobs:
 
   build:
     docker:
-      - image: python:3.7-buster
+      - image: python:3.8-buster
     steps:
       - checkout
       - with_cachedirs:
@@ -250,7 +250,7 @@ jobs:
 
   deploy_to_pypi:
     docker:
-      - image: python:3.7-buster
+      - image: python:3.8-buster
     steps:
       - with_cachedirs:
           cache_key: poetry
