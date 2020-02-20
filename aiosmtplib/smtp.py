@@ -35,7 +35,7 @@ class SMTP(SMTPAuth):
     Basic usage:
 
         >>> loop = asyncio.get_event_loop()
-        >>> smtp = aiosmtplib.SMTP(hostname="127.0.0.1", port=1025, loop=loop)
+        >>> smtp = aiosmtplib.SMTP(hostname="127.0.0.1", port=1025)
         >>> loop.run_until_complete(smtp.connect())
         (220, ...)
         >>> sender = "root@localhost"
