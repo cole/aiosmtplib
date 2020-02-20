@@ -38,7 +38,10 @@ class RecordingHandler(MessageHandler):
     async def handle_EHLO(self, server, session, envelope, hostname):
         """Advertise auth login support."""
         session.host_name = hostname
-        return "250-AUTH LOGIN\r\n250 HELP"
+        if server._tls_protocol:
+            return "250-AUTH LOGIN\r\n250 HELP"
+        else:
+            return "250 HELP"
 
 
 class TestSMTPD(SMTPD):
