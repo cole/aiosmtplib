@@ -191,6 +191,7 @@ html_sidebars = {
 nitpick_ignore = [
     ("py:class", "typing.Tuple"),
     ("py:class", "concurrent.futures._base.TimeoutError"),
+    ("py:class", "asyncio.exceptions.TimeoutError"),
 ]
 
 doctest_global_setup = """
