@@ -19,12 +19,12 @@ repos:
     -   id: python-bandit-vulnerability-check
         args: [-n, '10', '--ini', 'tox.ini']
 -   repo: https://github.com/asottile/pyupgrade
-    rev: v1.25.3
+    rev: v1.26.2
     hooks:
     -   id: pyupgrade
         args: [--py3-plus]
 -   repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v2.4.0
+    rev: v2.5.0
     hooks:
     -   id: check-ast
     -   id: check-added-large-files
