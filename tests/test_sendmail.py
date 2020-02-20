@@ -422,3 +422,14 @@ async def test_send_mime_message_utf8_text_without_smtputf8(
         "recipient@example.com",
         "=?utf-8?b?cmXDp2lww6/DqW50IDxyZWNpcGllbnQyQGV4YW1wbGUuY29tPg==?=",
     ]
+
+
+async def test_sendmail_empty_sender(
+    smtp_client, smtpd_server, recipient_str, message_str
+):
+    async with smtp_client:
+        errors, response = await smtp_client.sendmail("", [recipient_str], message_str)
+
+        assert not errors
+        assert isinstance(errors, dict)
+        assert response != ""
