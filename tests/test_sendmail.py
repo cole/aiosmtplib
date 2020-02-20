@@ -13,7 +13,7 @@ from aiosmtplib import (
     SMTPResponseException,
     SMTPStatus,
 )
-
+from aiosmtplib.email import formataddr
 
 pytestmark = pytest.mark.asyncio()
 
@@ -368,6 +368,16 @@ async def test_send_message_smtputf8_not_supported(smtp_client, smtpd_server, me
     async with smtp_client:
         with pytest.raises(SMTPNotSupported):
             await smtp_client.send_message(message)
+
+
+async def test_send_message_with_formataddr(smtp_client, smtpd_server, message):
+    message["To"] = formataddr(("æøå", "someotheruser@example.com"))
+
+    async with smtp_client:
+        errors, response = await smtp_client.send_message(message)
+
+    assert not errors
+    assert response != ""
 
 
 async def test_send_compat32_message_utf8_text_without_smtputf8(
