@@ -20,13 +20,15 @@ if sys.version_info >= (3, 7):
 else:
     SocketPathType = Union[str, bytes]
 
+# flake8: noqa F811
+
 # overloaded matrix is split by:
 # * message type (Message, str/bytes)
 # * connection type (hostname/socket/socket path)
 # * cert info (client_cert/tls_context)
 
 
-@overload  # noqa: F811
+@overload
 async def send(
     message: Message,
     sender: Optional[str] = ...,
@@ -52,7 +54,7 @@ async def send(
     ...
 
 
-@overload  # noqa: F811
+@overload
 async def send(
     message: Union[str, bytes],
     sender: str = ...,
@@ -78,7 +80,7 @@ async def send(
     ...
 
 
-@overload  # noqa: F811
+@overload
 async def send(
     message: Message,
     sender: Optional[str] = ...,
@@ -104,7 +106,7 @@ async def send(
     ...
 
 
-@overload  # noqa: F811
+@overload
 async def send(
     message: Union[str, bytes],
     sender: str = ...,
@@ -130,7 +132,7 @@ async def send(
     ...
 
 
-@overload  # noqa: F811
+@overload
 async def send(
     message: Message,
     sender: Optional[str] = ...,
@@ -156,7 +158,7 @@ async def send(
     ...
 
 
-@overload  # noqa: F811
+@overload
 async def send(
     message: Union[str, bytes],
     sender: str = ...,
@@ -182,7 +184,7 @@ async def send(
     ...
 
 
-@overload  # noqa: F811
+@overload
 async def send(
     message: Message,
     sender: Optional[str] = ...,
@@ -208,7 +210,7 @@ async def send(
     ...
 
 
-@overload  # noqa: F811
+@overload
 async def send(
     message: Union[str, bytes],
     sender: str = ...,
@@ -234,7 +236,7 @@ async def send(
     ...
 
 
-@overload  # noqa: F811
+@overload
 async def send(
     message: Message,
     sender: Optional[str] = ...,
@@ -260,7 +262,7 @@ async def send(
     ...
 
 
-@overload  # noqa: F811
+@overload
 async def send(
     message: Union[str, bytes],
     sender: str = ...,
@@ -286,7 +288,7 @@ async def send(
     ...
 
 
-@overload  # noqa: F811
+@overload
 async def send(
     message: Message,
     sender: Optional[str] = ...,
@@ -312,7 +314,7 @@ async def send(
     ...
 
 
-@overload  # noqa: F811
+@overload
 async def send(
     message: Union[str, bytes],
     sender: str = ...,
@@ -338,7 +340,7 @@ async def send(
     ...
 
 
-async def send(message, sender=None, recipients=None, **kwargs):  # noqa: F811
+async def send(message, sender=None, recipients=None, **kwargs):
     """
     Send an email message. On await, connects to the SMTP server using the details
     provided, sends the message, then disconnects.
