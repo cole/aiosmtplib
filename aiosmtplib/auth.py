@@ -56,7 +56,14 @@ class SMTPAuth(ESMTP):
         await self._ehlo_or_helo_if_needed()
 
         if not self.supports_extension("auth"):
-            raise SMTPException("SMTP AUTH extension not supported by server.")
+            if self.is_connected and self.get_transport_info("sslcontext") is None:
+                raise SMTPException(
+                    "The SMTP AUTH extension is not supported by this server. Try "
+                    "connecting via TLS (or STARTTLS)."
+                )
+            raise SMTPException(
+                "The SMTP AUTH extension is not supported by this server."
+            )
 
         response = None  # type: Optional[SMTPResponse]
         exception = None  # type: Optional[SMTPAuthenticationError]
