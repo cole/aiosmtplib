@@ -1,13 +1,13 @@
 Changelog
 =========
 
-1.1.3 (unreleased)
+1.1.3
 ------------------
 
 - Feature: add pause and resume writing methods to ``SMTPProcotol``, via
   ``asyncio.streams.FlowControlMixin`` (thanks ikrivosheev).
 
-- Bugfix: allow an empty (credit ikrivosheev)
+- Bugfix: allow an empty sender (credit ikrivosheev)
 
 - Cleanup: more useful error message when login called without TLS
 
