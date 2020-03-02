@@ -159,6 +159,7 @@ jobs:
   lint:
     docker:
       - image: python:3.8-buster
+    resource_class: small
     steps:
       - checkout
       - with_cachedirs:
@@ -172,6 +173,7 @@ jobs:
   docs:
     docker:
       - image: python:3.8-buster
+    resource_class: small
     steps:
       - checkout
       - with_cachedirs:
@@ -184,6 +186,7 @@ jobs:
   build:
     docker:
       - image: python:3.8-buster
+    resource_class: small
     steps:
       - checkout
       - with_cachedirs:
@@ -203,6 +206,7 @@ jobs:
   py352:
     docker:
       - image: python:3.5.2
+    resource_class: small
     steps:
       - checkout
       - install_and_run_toxenvs:
@@ -211,6 +215,7 @@ jobs:
   py35:
     docker:
       - image: python:3.5-buster
+    resource_class: small
     steps:
       - checkout
       - install_and_run_toxenvs:
@@ -219,6 +224,7 @@ jobs:
   py36:
     docker:
       - image: python:3.6-buster
+    resource_class: small
     steps:
       - checkout
       - install_and_run_toxenvs:
@@ -227,6 +233,7 @@ jobs:
   py37:
     docker:
       - image: python:3.7-buster
+    resource_class: small
     steps:
       - checkout
       - install_and_run_toxenvs:
@@ -235,6 +242,7 @@ jobs:
   py38:
     docker:
       - image: python:3.8-buster
+    resource_class: small
     steps:
       - checkout
       - install_and_run_toxenvs:
@@ -243,6 +251,7 @@ jobs:
   pypy3:
     docker:
       - image: pypy:3-stretch
+    resource_class: small
     steps:
       - checkout
       - install_and_run_toxenvs:
@@ -251,6 +260,7 @@ jobs:
   deploy_to_pypi:
     docker:
       - image: python:3.8-buster
+    resource_class: small
     steps:
       - with_cachedirs:
           cache_key: poetry
