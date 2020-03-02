@@ -4,6 +4,13 @@ orbs:
   codecov: codecov/codecov@1.0.5
 
 commands:
+  python_version:
+    description: "Output Python version"
+    steps:
+      - run:
+          command: python -V
+          name: "Checking python version"
+
   upgrade_pip:
     description: "Upgrade pip"
     steps:
@@ -161,6 +168,7 @@ jobs:
       - image: python:3.8-buster
     resource_class: small
     steps:
+      - python_version
       - checkout
       - with_cachedirs:
           cache_key: lint
@@ -175,6 +183,7 @@ jobs:
       - image: python:3.8-buster
     resource_class: small
     steps:
+      - python_version
       - checkout
       - with_cachedirs:
           cache_key: docs
@@ -188,6 +197,7 @@ jobs:
       - image: python:3.8-buster
     resource_class: small
     steps:
+      - python_version
       - checkout
       - with_cachedirs:
           cache_key: poetry
@@ -208,6 +218,7 @@ jobs:
       - image: python:3.5.2
     resource_class: small
     steps:
+      - python_version
       - checkout
       - install_and_run_toxenvs:
           toxenvs: clean,py35-asyncio,py35-uvloop,coverage
@@ -217,6 +228,7 @@ jobs:
       - image: python:3.5-buster
     resource_class: small
     steps:
+      - python_version
       - checkout
       - install_and_run_toxenvs:
           toxenvs: clean,py35-asyncio,py35-uvloop,coverage
@@ -226,6 +238,7 @@ jobs:
       - image: python:3.6-buster
     resource_class: small
     steps:
+      - python_version
       - checkout
       - install_and_run_toxenvs:
           toxenvs: clean,py36-asyncio,py36-uvloop,coverage
@@ -235,6 +248,7 @@ jobs:
       - image: python:3.7-buster
     resource_class: small
     steps:
+      - python_version
       - checkout
       - install_and_run_toxenvs:
           toxenvs: clean,py37-asyncio,py37-uvloop,coverage
@@ -244,6 +258,7 @@ jobs:
       - image: python:3.8-buster
     resource_class: small
     steps:
+      - python_version
       - checkout
       - install_and_run_toxenvs:
           toxenvs: clean,py38-asyncio,py38-uvloop,coverage
@@ -253,6 +268,7 @@ jobs:
       - image: pypy:3-stretch
     resource_class: small
     steps:
+      - python_version
       - checkout
       - install_and_run_toxenvs:
           toxenvs: clean,pypy3-asyncio,coverage
@@ -262,6 +278,7 @@ jobs:
       - image: python:3.8-buster
     resource_class: small
     steps:
+      - python_version
       - with_cachedirs:
           cache_key: poetry
           commands:
