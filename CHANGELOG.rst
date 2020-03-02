@@ -1,8 +1,12 @@
 Changelog
 =========
 
-1.1.3
+1.1.4 (unreleased)
 ------------------
+
+
+1.1.3
+-----
 
 - Feature: add pause and resume writing methods to ``SMTPProcotol``, via
   ``asyncio.streams.FlowControlMixin`` (thanks ikrivosheev).
