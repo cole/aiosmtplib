@@ -35,7 +35,7 @@ __title__ = "aiosmtplib"
 __version__ = "1.1.3dev0"
 __author__ = "Cole Maclean"
 __license__ = "MIT"
-__copyright__ = "Copyright 2019 Cole Maclean"
+__copyright__ = "Copyright 2020 Cole Maclean"
 __all__ = (
     "send",
     "SMTP",
