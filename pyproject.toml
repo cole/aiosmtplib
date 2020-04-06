@@ -50,7 +50,7 @@ pytest = "^5.2.2"
 pytest-asyncio = "^0.10.0"
 pytest-cov = "^2.8.1"
 coverage = "^5.0.4"
-hypothesis = "^4.43.8"
+hypothesis = "^5.8.0"
 aiosmtpd = "1.2"
 pytest-xdist = "^1.31.0"
 
