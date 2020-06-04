@@ -179,7 +179,7 @@ async def test_protocol_eof_response(event_loop, bind_address, hostname, monkeyp
     connect_future = event_loop.create_connection(
         SMTPProtocol, host=hostname, port=server_port
     )
-    transport, _ = await asyncio.wait_for(connect_future, timeout=1.0)
+    _, _ = await asyncio.wait_for(connect_future, timeout=1.0)
 
     server.close()
     await server.wait_closed()

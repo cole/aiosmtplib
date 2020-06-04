@@ -10,7 +10,7 @@ pytestmark = pytest.mark.asyncio()
 
 
 async def test_send(hostname, smtpd_server_port, message, received_messages):
-    errors, response = await send(message, hostname=hostname, port=smtpd_server_port)
+    errors, _ = await send(message, hostname=hostname, port=smtpd_server_port)
 
     assert not errors
     assert len(received_messages) == 1
@@ -24,7 +24,7 @@ async def test_send_with_str(
     message_str,
     received_messages,
 ):
-    errors, response = await send(
+    errors, _ = await send(
         message_str,
         hostname=hostname,
         port=smtpd_server_port,
@@ -44,7 +44,7 @@ async def test_send_with_bytes(
     message_str,
     received_messages,
 ):
-    errors, response = await send(
+    errors, _ = await send(
         bytes(message_str, "ascii"),
         hostname=hostname,
         port=smtpd_server_port,
@@ -60,7 +60,7 @@ async def test_send_without_sender(
     hostname, smtpd_server_port, recipient_str, message_str, received_messages
 ):
     with pytest.raises(ValueError):
-        errors, response = await send(
+        _, _ = await send(
             message_str,
             hostname=hostname,
             port=smtpd_server_port,
@@ -73,7 +73,7 @@ async def test_send_without_recipients(
     hostname, smtpd_server_port, sender_str, message_str, received_messages
 ):
     with pytest.raises(ValueError):
-        errors, response = await send(
+        _, _ = await send(
             message_str,
             hostname=hostname,
             port=smtpd_server_port,
@@ -85,7 +85,7 @@ async def test_send_without_recipients(
 async def test_send_with_start_tls(
     hostname, smtpd_server_port, message, received_messages, received_commands
 ):
-    errors, response = await send(
+    errors, _ = await send(
         message,
         hostname=hostname,
         port=smtpd_server_port,
@@ -101,7 +101,7 @@ async def test_send_with_start_tls(
 async def test_send_with_login(
     hostname, smtpd_server_port, message, received_messages, received_commands
 ):
-    errors, response = await send(  # nosec
+    errors, _ = await send(  # nosec
         message,
         hostname=hostname,
         port=smtpd_server_port,

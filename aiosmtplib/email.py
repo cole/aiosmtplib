@@ -33,7 +33,7 @@ def parse_address(address: str) -> str:
     """
     Parse an email address, falling back to the raw string given.
     """
-    display_name, parsed_address = email.utils.parseaddr(address)
+    _, parsed_address = email.utils.parseaddr(address)
 
     return parsed_address or address.strip()
 
