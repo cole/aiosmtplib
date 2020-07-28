@@ -119,7 +119,7 @@ def extract_addresses(
                 charset = "ascii"
             addresses.append(parse_address(str(address_bytes, encoding=charset)))
     else:
-        addresses.append(parse_address(header))
+        addresses.extend(addr for _, addr in email.utils.getaddresses([header]))
 
     return addresses
 
