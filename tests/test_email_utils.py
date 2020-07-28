@@ -155,11 +155,11 @@ This is a test\r
     "compat32_cc_header,expected_recipients",
     (
         (
-            "Alice Smith <alice@example.com>",
+            "Alice Smith <alice@example.com>, hackerman@email.com",
             "Bob <Bob@example.com>",
-            "Alice Smith <alice@example.com>",
+            "Alice Smith <alice@example.com>, hackerman@email.com",
             "Bob <Bob@example.com>",
-            ["alice@example.com", "Bob@example.com"],
+            ["alice@example.com", "hackerman@email.com", "Bob@example.com"],
         ),
         (
             Address(display_name="Alice Smith", username="alice", domain="example.com"),
