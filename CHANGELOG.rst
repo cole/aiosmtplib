@@ -4,6 +4,7 @@ Changelog
 1.1.4 (unreleased)
 ------------------
 
+- Bugfix: parsing comma separated addresses in to header (credit gjcarneiro)
 
 1.1.3
 -----
