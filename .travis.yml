@@ -11,11 +11,15 @@ matrix:
       env: TOXENV=py37-asyncio,py37-uvloop
     - python: 3.8-dev
       env: TOXENV=py38-asyncio,py38-uvloop
+    - python: 3.9-dev
+      env: TOXENV=py39-asyncio,py39-uvloop
   allow_failures:
     - python: 3.5-dev
     - python: 3.6-dev
     - python: 3.7-dev
     - python: 3.8-dev
+    - python: 3.9-dev
+
 script: tox
 install:
   - 'pip install --upgrade pip'
