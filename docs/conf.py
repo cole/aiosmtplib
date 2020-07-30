@@ -17,15 +17,9 @@
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 
 import datetime
-import os
 import pathlib
 import re
-import sys
 from typing import Dict, List
-
-
-sys.path.insert(0, os.path.abspath("../src"))
-sys.path.insert(0, os.path.abspath("."))
 
 
 VERSION_REGEX = r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]'
