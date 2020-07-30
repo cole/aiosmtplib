@@ -1,11 +1,11 @@
 """
 Main public API.
 """
+import email.message
 import os
 import socket
 import ssl
 import sys
-from email.message import Message
 from typing import Dict, List, Optional, Sequence, Tuple, Union, overload
 
 from .response import SMTPResponse
@@ -30,7 +30,7 @@ else:
 
 @overload
 async def send(
-    message: Message,
+    message: Union[email.message.EmailMessage, email.message.Message],
     sender: Optional[str] = ...,
     recipients: Optional[Union[str, Sequence[str]]] = ...,
     hostname: str = ...,
@@ -82,7 +82,7 @@ async def send(
 
 @overload
 async def send(
-    message: Message,
+    message: Union[email.message.EmailMessage, email.message.Message],
     sender: Optional[str] = ...,
     recipients: Optional[Union[str, Sequence[str]]] = ...,
     hostname: str = ...,
@@ -134,7 +134,7 @@ async def send(
 
 @overload
 async def send(
-    message: Message,
+    message: Union[email.message.EmailMessage, email.message.Message],
     sender: Optional[str] = ...,
     recipients: Optional[Union[str, Sequence[str]]] = ...,
     hostname: None = ...,
@@ -186,7 +186,7 @@ async def send(
 
 @overload
 async def send(
-    message: Message,
+    message: Union[email.message.EmailMessage, email.message.Message],
     sender: Optional[str] = ...,
     recipients: Optional[Union[str, Sequence[str]]] = ...,
     hostname: None = ...,
@@ -238,7 +238,7 @@ async def send(
 
 @overload
 async def send(
-    message: Message,
+    message: Union[email.message.EmailMessage, email.message.Message],
     sender: Optional[str] = ...,
     recipients: Optional[Union[str, Sequence[str]]] = ...,
     hostname: None = ...,
@@ -290,7 +290,7 @@ async def send(
 
 @overload
 async def send(
-    message: Message,
+    message: Union[email.message.EmailMessage, email.message.Message],
     sender: Optional[str] = ...,
     recipients: Optional[Union[str, Sequence[str]]] = ...,
     hostname: None = ...,
@@ -385,7 +385,7 @@ async def send(message, sender=None, recipients=None, **kwargs):
     :raises ValueError: required arguments missing or mutually exclusive options
         provided
     """
-    if not isinstance(message, Message):
+    if not isinstance(message, (email.message.EmailMessage, email.message.Message)):
         if not recipients:
             raise ValueError("Recipients must be provided with raw messages.")
         if not sender:
@@ -394,7 +394,7 @@ async def send(message, sender=None, recipients=None, **kwargs):
     client = SMTP(**kwargs)
 
     async with client:
-        if isinstance(message, Message):
+        if isinstance(message, (email.message.EmailMessage, email.message.Message)):
             result = await client.send_message(
                 message, sender=sender, recipients=recipients
             )

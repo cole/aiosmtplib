@@ -72,7 +72,9 @@ def formataddr(pair: Tuple[str, str]) -> str:
 
 
 def flatten_message(
-    message: email.message.Message, utf8: bool = False, cte_type: str = "8bit"
+    message: Union[email.message.EmailMessage, email.message.Message],
+    utf8: bool = False,
+    cte_type: str = "8bit",
 ) -> bytes:
     # Make a local copy so we can delete the bcc headers.
     message_copy = copy.copy(message)
@@ -124,7 +126,9 @@ def extract_addresses(
     return addresses
 
 
-def extract_sender(message: email.message.Message) -> Optional[str]:
+def extract_sender(
+    message: Union[email.message.EmailMessage, email.message.Message]
+) -> Optional[str]:
     """
     Extract the sender from the message object given.
     """
@@ -151,7 +155,9 @@ def extract_sender(message: email.message.Message) -> Optional[str]:
     return extract_addresses(sender_header)[0]
 
 
-def extract_recipients(message: email.message.Message) -> List[str]:
+def extract_recipients(
+    message: Union[email.message.EmailMessage, email.message.Message]
+) -> List[str]:
     """
     Extract the recipients from the message object given.
     """

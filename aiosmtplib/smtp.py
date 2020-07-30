@@ -8,7 +8,7 @@ Implementation is split into the following parent classes:
     * :class:`.connection.SMTPConnection` - connection handling
 """
 import asyncio
-from email.message import Message
+import email.message
 from typing import Dict, Iterable, Optional, Sequence, Tuple, Union
 
 from .auth import SMTPAuth
@@ -212,7 +212,7 @@ class SMTP(SMTPAuth):
 
     async def send_message(
         self,
-        message: Message,
+        message: Union[email.message.EmailMessage, email.message.Message],
         sender: Optional[str] = None,
         recipients: Optional[Union[str, Sequence[str]]] = None,
         mail_options: Optional[Iterable[str]] = None,
