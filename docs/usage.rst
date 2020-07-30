@@ -16,7 +16,7 @@ pass it to :func:`send` with the hostname and port of an SMTP server.
 
 For details on creating :py:class:`email.message.EmailMessage` objects, see
 `the stdlib documentation examples
-<https://docs.python.org/3.7/library/email.examples.html>`_.
+<https://docs.python.org/3.8/library/email.examples.html>`_.
 
 .. note:: Confusingly, :py:class:`email.message.Message` objects are part of the
     legacy email API (prior to Python 3.3), while :py:class:`email.message.EmailMessage`
