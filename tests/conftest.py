@@ -9,6 +9,7 @@ import email.mime.text
 import socket
 import ssl
 import sys
+import traceback
 from pathlib import Path
 
 import hypothesis
@@ -38,6 +39,10 @@ else:
     base_settings = hypothesis.settings()
 hypothesis.settings.register_profile("dev", parent=base_settings, max_examples=10)
 hypothesis.settings.register_profile("ci", parent=base_settings, max_examples=100)
+
+
+class AsyncPytestWarning(pytest.PytestWarning):
+    pass
 
 
 def pytest_addoption(parser):
@@ -72,13 +77,20 @@ def event_loop_policy(request):
 
 @pytest.fixture(scope="function")
 def event_loop(request, event_loop_policy):
+    verbosity = request.config.getoption("verbose", default=0)
     old_loop = event_loop_policy.get_event_loop()
     loop = event_loop_policy.new_event_loop()
     event_loop_policy.set_event_loop(loop)
 
     def handle_async_exception(loop, context):
-        """Fail on exceptions by default"""
-        pytest.fail("{}: {}".format(context["message"], repr(context["exception"])))
+        message = "{}: {}".format(context["message"], repr(context["exception"]))
+        if verbosity > 1:
+            message += "\n"
+            message += "Future: {}".format(repr(context["future"]))
+            message += "\nTraceback:\n"
+            message += "".join(traceback.format_list(context["source_traceback"]))
+
+        request.node.warn(AsyncPytestWarning(message))
 
     loop.set_exception_handler(handle_async_exception)
 
