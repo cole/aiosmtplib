@@ -4,23 +4,27 @@ Changelog
 1.1.4 (unreleased)
 ------------------
 
-- Bugfix: parsing comma separated addresses in to header (credit gjcarneiro)
+- Bugfix: parsing comma separated addresses in to header (credit @gjcarneiro)
+- Feature: add py.typed file (PEP 561, credit @retnikt)
+
 
 1.1.3
 -----
 
 - Feature: add pause and resume writing methods to ``SMTPProcotol``, via
-  ``asyncio.streams.FlowControlMixin`` (thanks ikrivosheev).
+  ``asyncio.streams.FlowControlMixin`` (thanks @ikrivosheev).
 
-- Bugfix: allow an empty sender (credit ikrivosheev)
+- Bugfix: allow an empty sender (credit @ikrivosheev)
 
 - Cleanup: more useful error message when login called without TLS
+
 
 1.1.2
 -----
 
 - Bugfix: removed ``docs`` and ``tests`` from wheel, they should only be
   in the source distribution.
+
 
 1.1.1
 -----
@@ -29,6 +33,7 @@ Changelog
 
 - Bugfix: Fix SMTPNotSupported error with UTF8 sender/recipient names
   on servers that don't support SMTPUTF8.
+
 
 1.1.0
 -----
