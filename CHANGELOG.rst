@@ -1,8 +1,8 @@
 Changelog
 =========
 
-1.1.4 (unreleased)
-------------------
+1.1.4
+-----
 
 - Bugfix: parsing comma separated addresses in to header (credit @gjcarneiro)
 - Feature: add py.typed file (PEP 561, credit @retnikt)
