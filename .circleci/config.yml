@@ -154,8 +154,6 @@ commands:
       - store_test_results:
           path: test-results
       - store_artifacts:
-          path: test-results
-      - store_artifacts:
           path: coverage.xml
       - store_artifacts:
           path: htmlcov
@@ -212,6 +210,11 @@ jobs:
           paths:
             - aiosmtplib-*.tar.gz
             - aiosmtplib-*.whl
+      - store_artifacts:
+          path: aiosmtplib-*.tar.gz
+      - store_artifacts:
+          path: aiosmtplib-*.whl
+
 
   py36:
     docker:
