@@ -1,6 +1,12 @@
 Changelog
 =========
 
+2.0.0 (unreleased)
+------------------
+
+- BREAKING CHANGE: Drop Python 3.5 support
+
+
 1.1.4
 -----
 
