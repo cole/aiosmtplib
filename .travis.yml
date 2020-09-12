@@ -14,7 +14,7 @@ matrix:
     - python: 3.10-dev
       env: TOXENV=py310-asyncio,py310-uvloop
 
-      allow_failures:
+  allow_failures:
     - python: 3.6-dev
     - python: 3.7-dev
     - python: 3.8-dev
