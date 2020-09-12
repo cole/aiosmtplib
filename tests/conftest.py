@@ -110,8 +110,7 @@ def hostname(request):
 
 @pytest.fixture(scope="session")
 def bind_address(request):
-    """Server side address for socket binding
-    """
+    """Server side address for socket binding"""
     return request.config.getoption("--bind-addr")
 
 

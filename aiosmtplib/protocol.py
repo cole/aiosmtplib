@@ -195,8 +195,7 @@ class SMTPProtocol(FlowControlMixin, asyncio.Protocol):
         return False
 
     def _read_response_from_buffer(self) -> Optional[SMTPResponse]:
-        """Parse the actual response (if any) from the data buffer
-        """
+        """Parse the actual response (if any) from the data buffer"""
         code = -1
         message = bytearray()
         offset = 0
