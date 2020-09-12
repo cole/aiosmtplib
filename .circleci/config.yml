@@ -319,19 +319,19 @@ workflows:
             tags:
               only: /.*/
       - py38:
-        requires:
-          - lint
-          - build
-        filters:
-          tags:
-            only: /.*/
+          requires:
+            - lint
+            - build
+          filters:
+            tags:
+              only: /.*/
       - py39:
-        requires:
-          - lint
-          - build
-        filters:
-          tags:
-            only: /.*/
+          requires:
+            - lint
+            - build
+          filters:
+            tags:
+              only: /.*/
       - pypy3:
           requires:
             - lint
