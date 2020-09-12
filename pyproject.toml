@@ -57,3 +57,11 @@ pytest-xdist = "^2.1.0"
 [tool.poetry.extras]
 docs = ["sphinx", "sphinx_autodoc_typehints"]
 uvloop = ["uvloop"]
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+junit_family = "xunit2"
+addopts = "--strict"
+testpaths = [
+    "tests"
+]
