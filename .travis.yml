@@ -3,8 +3,6 @@ dist: xenial
 cache: pip
 matrix:
   include:
-    - python: 3.5-dev
-      env: TOXENV=py35-asyncio,py35-uvloop
     - python: 3.6-dev
       env: TOXENV=py36-asyncio,py36-uvloop
     - python: 3.7-dev
@@ -13,12 +11,15 @@ matrix:
       env: TOXENV=py38-asyncio,py38-uvloop
     - python: 3.9-dev
       env: TOXENV=py39-asyncio,py39-uvloop
-  allow_failures:
-    - python: 3.5-dev
+    - python: 3.10-dev
+      env: TOXENV=py310-asyncio,py310-uvloop
+
+      allow_failures:
     - python: 3.6-dev
     - python: 3.7-dev
     - python: 3.8-dev
     - python: 3.9-dev
+    - python: 3.10-dev
 
 script: tox
 install:

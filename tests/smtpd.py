@@ -99,10 +99,7 @@ class TestSMTPD(SMTPD):
             self.loop, self, self.tls_context, None, server_side=True
         )
         self._original_transport = self.transport
-        if hasattr(self._original_transport, "set_protocol"):
-            self._original_transport.set_protocol(self._tls_protocol)
-        else:
-            self._original_transport._protocol = self._tls_protocol
+        self._original_transport.set_protocol(self._tls_protocol)
 
         self.transport = self._tls_protocol._app_transport
         self._tls_protocol.connection_made(self._original_transport)

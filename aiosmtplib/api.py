@@ -8,6 +8,7 @@ import ssl
 import sys
 from typing import Dict, List, Optional, Sequence, Tuple, Union, overload
 
+from .compat import PY37_OR_LATER
 from .response import SMTPResponse
 from .smtp import SMTP
 

@@ -4,7 +4,7 @@ Synchronous execution helpers.
 import asyncio
 from typing import Any, Awaitable, Optional
 
-from .compat import PY36_OR_LATER, all_tasks
+from .compat import all_tasks
 
 
 __all__ = ("async_to_sync", "shutdown_loop")
@@ -52,9 +52,7 @@ def shutdown_loop(loop: asyncio.AbstractEventLoop, timeout: float = 1.0) -> None
             pass
 
     if not loop.is_closed():
-        if PY36_OR_LATER:
-            loop.run_until_complete(loop.shutdown_asyncgens())
-
+        loop.run_until_complete(loop.shutdown_asyncgens())
         loop.call_soon(loop.stop)
         loop.run_forever()
         loop.close()

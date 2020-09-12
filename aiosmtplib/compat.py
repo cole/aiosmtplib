@@ -9,7 +9,6 @@ from typing import Optional, Union
 
 
 __all__ = (
-    "PY36_OR_LATER",
     "PY37_OR_LATER",
     "all_tasks",
     "get_running_loop",
@@ -17,7 +16,6 @@ __all__ = (
 )
 
 
-PY36_OR_LATER = sys.version_info[:2] >= (3, 6)
 PY37_OR_LATER = sys.version_info[:2] >= (3, 7)
 
 
@@ -68,11 +66,7 @@ async def start_tls(
     # have a chance to get called before "ssl_protocol.connection_made()".
     transport.pause_reading()
 
-    # Use set_protocol if we can
-    if hasattr(transport, "set_protocol"):
-        transport.set_protocol(ssl_protocol)
-    else:
-        transport._protocol = ssl_protocol  # type: ignore
+    transport.set_protocol(ssl_protocol)
 
     conmade_cb = loop.call_soon(ssl_protocol.connection_made, transport)
     resume_cb = loop.call_soon(transport.resume_reading)
