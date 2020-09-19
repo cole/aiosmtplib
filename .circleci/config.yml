@@ -1,5 +1,25 @@
 version: 2.1
 
+parameters:
+  hypothesis_dir:
+    type: string
+    default: ~/project/.hypothesis
+  pip_cache_dir:
+    type: string
+    default: ~/.cache/pip
+  precommit_cache_dir:
+    type: string
+    default: ~/.cache/pre-commit
+  poetry_cache_dir:
+    type: string
+    default: ~/.cache/pypoetry
+  poetry_venv_dir:
+    type: string
+    default: ~/project/.poetry
+  tox_venv_dir:
+    type: string
+    default: ~/.tox
+
 orbs:
   codecov: codecov/codecov@1.0.5
 
@@ -37,30 +57,30 @@ commands:
     description: "Upgrade pip"
     steps:
       - run:
-          command: pip --cache-dir ~/.cache/pip install --upgrade setuptools
+          command: pip --cache-dir << pipeline.parameters.pip_cache_dir >> install --upgrade setuptools
           name: "Upgrading setuptools"
       - run:
-          command: pip --cache-dir ~/.cache/pip install --upgrade pip
+          command: pip --cache-dir << pipeline.parameters.pip_cache_dir >> install --upgrade pip
           name: "Upgrading pip"
 
   install_tox:
     description: "Install tox"
     steps:
       - run:
-          command: pip --cache-dir ~/.cache/pip install --upgrade tox
+          command: pip --cache-dir << pipeline.parameters.pip_cache_dir >> install --upgrade tox
           name: "Installing tox"
       - run:
-          command: pip --cache-dir ~/.cache/pip install --upgrade tox-venv
+          command: pip --cache-dir << pipeline.parameters.pip_cache_dir >> install --upgrade tox-venv
           name: "Installing tox plugins"
 
   install_poetry:
     description: "Install poetry"
     steps:
       - run:
-          command: pip --cache-dir ~/.cache/pip install --upgrade poetry
+          command: pip --cache-dir << pipeline.parameters.pip_cache_dir >> install --upgrade poetry
           name: "Installing poetry"
       - run:
-          command: poetry config virtualenvs.path ~/.cache/poetry
+          command: poetry config virtualenvs.path << pipeline.parameters.poetry_venv_dir >>
           name: "Setting poetry venv dir"
 
   with_cachedirs:
@@ -104,28 +124,28 @@ commands:
                   - v1-pre-commit-cache-{{ checksum ".pre-commit-config.yaml" }}-
                   - v1-pre-commit-cache-
       - run:
-          command: mkdir -p ~/.cache/pip
+          command: mkdir -p << pipeline.parameters.pip_cache_dir >>
           name: "Creating pip cache dir"
       - run:
-          command: mkdir -p ~/.tox
+          command: mkdir -p << pipeline.parameters.tox_venv_dir >>
           name: "Creating tox work dir"
       - when:
           condition: << parameters.include_hypothesis >>
           steps:
             - run:
-                command: mkdir -p ~/project/.hypothesis
+                command: mkdir -p << pipeline.parameters.hypothesis_dir >>
                 name: "Creating hypothesis test db dir"
       - when:
           condition: << parameters.include_precommit >>
           steps:
             - run:
-                command: mkdir -p ~/.cache/pre-commit
+                command: mkdir -p << pipeline.parameters.precommit_cache_dir >>
                 name: "Creating pre-commit cache dir"
       - steps: << parameters.commands >>
       - save_cache:
           paths:
-            - ~/.cache/pip
-            - ~/.tox
+            - << pipeline.parameters.pip_cache_dir >>
+            - << pipeline.parameters.tox_venv_dir >>
           key: v4-tox-cache-<< parameters.cache_key >>-{{ checksum "poetry.lock" }}-{{ .Branch }}
           name: "Caching tox workdirs: << parameters.cache_key >>"
       - when:
@@ -133,7 +153,7 @@ commands:
           steps:
             - save_cache:
                 paths:
-                  - ~/project/.hypothesis
+                  - << pipeline.parameters.hypothesis_dir >>
                 key: v1-hypothesis-cache-{{ .Branch }}
                 name: "Caching hypothesis test db"
       - when:
@@ -142,7 +162,7 @@ commands:
             - save_cache:
                 name: "Caching pre-commit env"
                 paths:
-                  - ~/.cache/pre-commit
+                  - << pipeline.parameters.precommit_cache_dir >>
                 key: v1-pre-commit-cache-{{ checksum ".pre-commit-config.yaml" }}-{{ .Branch }}
 
   run_tox:
@@ -153,32 +173,8 @@ commands:
         default: "ALL"
     steps:
       - run:
-          command: tox --workdir ~/.tox --installpkg dist/aiosmtplib-*.whl -e << parameters.toxenv >>
+          command: tox --workdir << pipeline.parameters.tox_venv_dir >> --installpkg dist/aiosmtplib-*.whl -e << parameters.toxenv >>
           name: "Running tox: << parameters.toxenv >>"
-
-  install_and_run_toxenvs:
-    description: "Install and run tox with multiple envs"
-    parameters:
-      toxenvs:
-        type: string
-        default: "ALL"
-    steps:
-      - attach_workspace:
-          at: dist
-      - with_cachedirs:
-          cache_key: << parameters.toxenvs >>
-          include_hypothesis: true
-          commands:
-            - upgrade_pip
-            - install_tox
-            - run_tox:
-                toxenv: << parameters.toxenvs >>
-      - store_test_results:
-          path: test-results
-      - persist_to_workspace:
-          root: coverage-results
-          paths:
-            - .coverage.*
 
 jobs:
   lint:
@@ -231,6 +227,8 @@ jobs:
 
   test:
     executor: <<parameters.executor_name>>
+    environment:
+      COVERAGE_FILE: "coverage-results/.coverage.<<parameters.executor_name>>-<<parameters.event_loop>>"
     parameters:
       executor_name:
         type: string
@@ -245,8 +243,22 @@ jobs:
     steps:
       - python_version
       - checkout
-      - install_and_run_toxenvs:
-          toxenvs: <<parameters.executor_name>>-<<parameters.event_loop>>
+      - attach_workspace:
+          at: dist
+      - with_cachedirs:
+          cache_key: <<parameters.executor_name>>-<<parameters.event_loop>>
+          include_hypothesis: true
+          commands:
+            - upgrade_pip
+            - install_tox
+            - run_tox:
+                toxenv: <<parameters.executor_name>>-<<parameters.event_loop>>
+      - store_test_results:
+          path: test-results
+      - persist_to_workspace:
+          root: coverage-results
+          paths:
+            - .coverage.*
 
   coverage:
     executor: py38
@@ -261,6 +273,8 @@ jobs:
                 toxenv: coverage
       - attach_workspace:
           at: coverage-results
+      - run:
+          command: cp coverage-results/.coverage.* ./
       - store_artifacts:
           path: coverage.xml
       - store_artifacts:
