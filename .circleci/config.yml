@@ -265,16 +265,16 @@ jobs:
     steps:
       - python_version
       - checkout
-      - with_cachedirs:
-          cache_key: coverage
-          commands:
-            - install_tox
-            - run_tox:
-                toxenv: coverage
       - attach_workspace:
           at: coverage-results
       - run:
           command: cp coverage-results/.coverage.* ./
+      - with_cachedirs:
+        cache_key: coverage
+        commands:
+          - install_tox
+          - run_tox:
+              toxenv: coverage
       - store_artifacts:
           path: coverage.xml
       - store_artifacts:
