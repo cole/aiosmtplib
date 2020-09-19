@@ -18,7 +18,7 @@ executors:
     resource_class: small
   py39:
     docker:
-      - image: "python:36-buster"
+      - image: "python:3.9-buster"
     resource_class: small
   pypy3:
     docker:
@@ -232,10 +232,11 @@ jobs:
           path: aiosmtplib-*.whl
 
   test:
-    executor: <<parameters.executor>>
+    executor: <<parameters.executor_name>>
     parameters:
-      executor:
-        type: executor
+      executor_name:
+        type: string
+        description: "executor name"
       event_loop:
         description: "event loop type (asyncio or uvloop)"
         default: "asyncio"
@@ -247,7 +248,7 @@ jobs:
       - python_version
       - checkout
       - install_and_run_toxenvs:
-          toxenvs: clean,<<parameters.executor>>-<<parameters.event_loop>>,coverage
+          toxenvs: clean,<<parameters.executor_name>>-<<parameters.event_loop>>,coverage
 
   deploy_to_pypi:
     executor: py38
@@ -291,7 +292,7 @@ workflows:
             tags:
               only: /.*/
       - test:
-          name: "test-<< matrix.executor >>-<<matrix.event_loop>>"
+          name: "test-<< matrix.executor_name >>-<<matrix.event_loop>>"
           requires:
             - build
           matrix:
@@ -299,14 +300,14 @@ workflows:
               event_loop:
                 - asyncio
                 - uvloop
-              executor:
+              executor_name:
                 - py36
                 - py37
                 - py38
                 - py39
                 - pypy3
             exclude:
-              - executor: pypy3
+              - executor_name: pypy3
                 event_loop: uvloop
           filters:
             tags:
