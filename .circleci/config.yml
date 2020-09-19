@@ -28,22 +28,33 @@ executors:
     docker:
       - image: "python:3.6-buster"
     resource_class: small
+    environment: &default_env
+      PIP_CACHE_DIR: << pipeline.parameters.pip_cache_dir >>
+      HYPOTHESIS_PROFILE: "ci"
+      POETRY_CACHE_DIR: << pipeline.parameters.poetry_cache_dir >>
+      POETRY_VIRTUALENVS_PATH: << pipeline.parameters.poetry_venv_dir >>
+      PRE_COMMIT_HOME: << pipeline.parameters.precommit_cache_dir >>
+
   py37:
     docker:
       - image: "python:3.7-buster"
     resource_class: small
+    environment: *default_env
   py38:
     docker:
       - image: "python:3.8-buster"
     resource_class: small
+    environment: *default_env
   py39:
     docker:
       - image: "python:3.9-rc-buster"
     resource_class: small
+    environment: *default_env
   pypy3:
     docker:
       - image: "pypy:3-buster"
     resource_class: small
+    environment: *default_env
 
 commands:
   python_version:
@@ -57,31 +68,28 @@ commands:
     description: "Upgrade pip"
     steps:
       - run:
-          command: pip --cache-dir << pipeline.parameters.pip_cache_dir >> install --upgrade setuptools
+          command: pip install --upgrade setuptools
           name: "Upgrading setuptools"
       - run:
-          command: pip --cache-dir << pipeline.parameters.pip_cache_dir >> install --upgrade pip
+          command: pip install --upgrade pip
           name: "Upgrading pip"
 
   install_tox:
     description: "Install tox"
     steps:
       - run:
-          command: pip --cache-dir << pipeline.parameters.pip_cache_dir >> install --upgrade tox
+          command: pip install --upgrade tox
           name: "Installing tox"
       - run:
-          command: pip --cache-dir << pipeline.parameters.pip_cache_dir >> install --upgrade tox-venv
+          command: pip install --upgrade tox-venv
           name: "Installing tox plugins"
 
   install_poetry:
     description: "Install poetry"
     steps:
       - run:
-          command: pip --cache-dir << pipeline.parameters.pip_cache_dir >> install --upgrade poetry
+          command: pip install --upgrade poetry
           name: "Installing poetry"
-      - run:
-          command: poetry config virtualenvs.path << pipeline.parameters.poetry_venv_dir >>
-          name: "Setting poetry venv dir"
 
   with_cachedirs:
     description: "Create/restore tox cache dirs"
@@ -123,24 +131,6 @@ commands:
                   - v1-pre-commit-cache-{{ checksum ".pre-commit-config.yaml" }}-{{ .Branch }}
                   - v1-pre-commit-cache-{{ checksum ".pre-commit-config.yaml" }}-
                   - v1-pre-commit-cache-
-      - run:
-          command: mkdir -p << pipeline.parameters.pip_cache_dir >>
-          name: "Creating pip cache dir"
-      - run:
-          command: mkdir -p << pipeline.parameters.tox_venv_dir >>
-          name: "Creating tox work dir"
-      - when:
-          condition: << parameters.include_hypothesis >>
-          steps:
-            - run:
-                command: mkdir -p << pipeline.parameters.hypothesis_dir >>
-                name: "Creating hypothesis test db dir"
-      - when:
-          condition: << parameters.include_precommit >>
-          steps:
-            - run:
-                command: mkdir -p << pipeline.parameters.precommit_cache_dir >>
-                name: "Creating pre-commit cache dir"
       - steps: << parameters.commands >>
       - save_cache:
           paths:
