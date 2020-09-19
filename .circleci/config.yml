@@ -3,6 +3,28 @@ version: 2.1
 orbs:
   codecov: codecov/codecov@1.0.5
 
+executors:
+  py36:
+    docker:
+      - image: "python:3.6-buster"
+    resource_class: small
+  py37:
+    docker:
+      - image: "python:3.7-buster"
+    resource_class: small
+  py38:
+    docker:
+      - image: "python:3.8-buster"
+    resource_class: small
+  py39:
+    docker:
+      - image: "python:36-buster"
+    resource_class: small
+  pypy3:
+    docker:
+      - image: "pypy:3-buster"
+    resource_class: small
+
 commands:
   python_version:
     description: "Output Python version"
@@ -162,9 +184,7 @@ commands:
 
 jobs:
   lint:
-    docker:
-      - image: python:3.8-buster
-    resource_class: small
+    executor: py38
     steps:
       - python_version
       - checkout
@@ -177,9 +197,7 @@ jobs:
                 toxenv: lint
 
   docs:
-    docker:
-      - image: python:3.8-buster
-    resource_class: small
+    executor: py38
     steps:
       - python_version
       - checkout
@@ -191,9 +209,7 @@ jobs:
                 toxenv: docs
 
   build:
-    docker:
-      - image: python:3.8-buster
-    resource_class: small
+    executor: py38
     steps:
       - python_version
       - checkout
@@ -215,61 +231,26 @@ jobs:
       - store_artifacts:
           path: aiosmtplib-*.whl
 
-
-  py36:
-    docker:
-      - image: python:3.6-buster
-    resource_class: small
+  test:
+    executor: <<parameters.executor>>
+    parameters:
+      executor:
+        type: executor
+      event_loop:
+        description: "event loop type (asyncio or uvloop)"
+        default: "asyncio"
+        type: enum
+        enum:
+          - asyncio
+          - uvloop
     steps:
       - python_version
       - checkout
       - install_and_run_toxenvs:
-          toxenvs: clean,py36-asyncio,py36-uvloop,coverage
-
-  py37:
-    docker:
-      - image: python:3.7-buster
-    resource_class: small
-    steps:
-      - python_version
-      - checkout
-      - install_and_run_toxenvs:
-          toxenvs: clean,py37-asyncio,py37-uvloop,coverage
-
-  py38:
-    docker:
-      - image: python:3.8-buster
-    resource_class: small
-    steps:
-      - python_version
-      - checkout
-      - install_and_run_toxenvs:
-          toxenvs: clean,py38-asyncio,py38-uvloop,coverage
-
-  py39:
-    docker:
-      - image: python:3.9-rc-buster
-    resource_class: small
-    steps:
-      - python_version
-      - checkout
-      - install_and_run_toxenvs:
-          toxenvs: clean,py39-asyncio,py39-uvloop,coverage
-
-  pypy3:
-    docker:
-      - image: pypy:3-buster
-    resource_class: small
-    steps:
-      - python_version
-      - checkout
-      - install_and_run_toxenvs:
-          toxenvs: clean,pypy3-asyncio,coverage
+          toxenvs: clean,<<parameters.executor>>-<<parameters.event_loop>>,coverage
 
   deploy_to_pypi:
-    docker:
-      - image: python:3.8-buster
-    resource_class: small
+    executor: py38
     steps:
       - python_version
       - checkout
@@ -298,6 +279,8 @@ workflows:
             tags:
               only: /.*/
       - docs:
+          requires:
+            - lint
           filters:
             tags:
               only: /.*/
@@ -307,51 +290,34 @@ workflows:
           filters:
             tags:
               only: /.*/
-      - py36:
+      - test:
+          name: "test-<< matrix.executor >>-<<matrix.event_loop>>"
           requires:
-            - lint
             - build
+          matrix:
+            parameters:
+              event_loop:
+                - asyncio
+                - uvloop
+              executor:
+                - py36
+                - py37
+                - py38
+                - py39
+                - pypy3
+            exclude:
+              - executor: pypy3
+                event_loop: uvloop
           filters:
             tags:
               only: /.*/
-      - py37:
-          requires:
-            - lint
-            - build
-          filters:
-            tags:
-              only: /.*/
-      - py38:
-          requires:
-            - lint
-            - build
-          filters:
-            tags:
-              only: /.*/
-      - py39:
-          requires:
-            - lint
-            - build
-          filters:
-            tags:
-              only: /.*/
-      - pypy3:
-          requires:
-            - lint
-            - build
-          filters:
-            tags:
-              only: /.*/
+
       - deploy_to_pypi:
           requires:
             - build
             - lint
             - docs
-            - py36
-            - py37
-            - py38
-            - py39
-            - pypy3
+            - test
           filters:
             branches:
               ignore: /.*/
