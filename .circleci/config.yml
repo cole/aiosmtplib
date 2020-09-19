@@ -246,7 +246,7 @@ jobs:
       - python_version
       - checkout
       - install_and_run_toxenvs:
-          toxenvs: clean,<<parameters.executor_name>>-<<parameters.event_loop>>,coverage
+          toxenvs: <<parameters.executor_name>>-<<parameters.event_loop>>
 
   coverage:
     executor: py38
