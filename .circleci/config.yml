@@ -175,12 +175,10 @@ commands:
                 toxenv: << parameters.toxenvs >>
       - store_test_results:
           path: test-results
-      - store_artifacts:
-          path: coverage.xml
-      - store_artifacts:
-          path: htmlcov
-      - codecov/upload:
-          file: coverage.xml
+      - persist_to_workspace:
+          root: coverage-results
+          paths:
+            - .coverage.*
 
 jobs:
   lint:
@@ -250,6 +248,26 @@ jobs:
       - install_and_run_toxenvs:
           toxenvs: clean,<<parameters.executor_name>>-<<parameters.event_loop>>,coverage
 
+  coverage:
+    executor: py38
+    steps:
+      - python_version
+      - checkout
+      - with_cachedirs:
+          cache_key: coverage
+          commands:
+            - install_tox
+            - run_tox:
+                toxenv: coverage
+      - attach_workspace:
+          at: coverage-results
+      - store_artifacts:
+          path: coverage.xml
+      - store_artifacts:
+          path: htmlcov
+      - codecov/upload:
+          file: coverage.xml
+
   deploy_to_pypi:
     executor: py38
     steps:
@@ -312,7 +330,12 @@ workflows:
           filters:
             tags:
               only: /.*/
-
+      - coverage:
+          requires:
+            - test
+          filters:
+            tags:
+              only: /.*/
       - deploy_to_pypi:
           requires:
             - build
