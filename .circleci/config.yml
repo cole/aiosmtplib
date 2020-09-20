@@ -43,16 +43,16 @@ commands:
       - restore_cache:
           name: "Restoring pip cache"
           keys:
-            - pip-v1
+            - pip-v2
 
   save_pip_cache:
     description: "Update pip cache"
     steps:
       - save_cache:
           name: "Updating pip cache"
-          key: pip-v1
+          key: pip-v2
           paths:
-            - ~/.cache/pip
+            - /tmp/cache/pip
 
   restore_tox_cache:
     description: "Restore tox cache"
@@ -60,35 +60,36 @@ commands:
       - restore_cache:
           name: "Restoring tox cache"
           keys:
-            - tox-v1-{{ .Environment.CIRCLE_JOB }}-{{ checksum "poetry.lock" }}
-            - tox-v1-{{ .Environment.CIRCLE_JOB }}-
-            - tox-v1-
+            - tox-v2-{{ .Environment.CIRCLE_JOB }}-{{ checksum "poetry.lock" }}
+            - tox-v2-{{ .Environment.CIRCLE_JOB }}-
+            - tox-v2-
 
   save_tox_cache:
     description: "Update tox cache"
     steps:
       - save_cache:
           name: "Updating tox cache"
-          key: tox-v1-{{ .Environment.CIRCLE_JOB }}-{{ checksum "poetry.lock" }}
+          key: tox-v2-{{ .Environment.CIRCLE_JOB }}-{{ checksum "poetry.lock" }}
           paths:
-            - ~/.tox
+            - /tmp/toxworkdir
 
   install_tox:
     description: "Install tox"
     steps:
       - run:
-          command: pip install --upgrade tox
-          name: "Installing tox"
-      - run:
-          command: pip install --upgrade tox-venv
-          name: "Installing tox plugins"
+          command: pip install --upgrade tox tox-venv
+          name: "Installing tox & tox-venv"
+          environment:
+            XDG_CACHE_HOME: "/tmp/cache"
 
   run_tox:
     description: "Run tox"
     steps:
       - run:
-          command: tox --workdir ~/.tox --installpkg dist/aiosmtplib-*.whl
+          command: tox --workdir /tmp/toxworkdir --installpkg dist/aiosmtplib-*.whl
           name: "Running tox"
+          environment:
+            XDG_CACHE_HOME: "/tmp/cache"
 
 jobs:
   lint:
@@ -101,19 +102,20 @@ jobs:
       - restore_cache:
           name: "Restoring pre-commit cache"
           keys:
-            - pre-commit-v1-{{ checksum ".pre-commit-config.yaml" }}
-            - pre-commit-v1-
+            - pre-commit-v2-{{ checksum ".pre-commit-config.yaml" }}
+            - pre-commit-v2-
       - install_tox
       - run_tox
       - save_pip_cache
       - save_tox_cache
       - save_cache:
           name: "Updating pre-commit cache"
-          key: pre-commit-v1-{{ checksum ".pre-commit-config.yaml" }}
+          key: pre-commit-v2-{{ checksum ".pre-commit-config.yaml" }}
           paths:
-            - ~/.cache/pre-commit
+            - /tmp/cache/pre-commit
     environment:
       TOXENV: lint
+      XDG_CACHE_HOME: "/tmp/cache"
 
   docs:
     executor: py38
@@ -202,6 +204,7 @@ jobs:
       - attach_workspace:
           at: coverage-results
       - run:
+          name: "Copy coverage results from workspace"
           command: cp coverage-results/.coverage.* ./
       - restore_pip_cache
       - restore_tox_cache
