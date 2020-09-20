@@ -6,15 +6,15 @@ orbs:
 executors:
   py36:
     docker:
-      - image: "python:3.6-buster"
+      - image: "cimg/python:3.6"
     resource_class: small
   py37:
     docker:
-      - image: "python:3.7-buster"
+      - image: "cimg/python:3.7"
     resource_class: small
   py38:
     docker:
-      - image: "python:3.8-buster"
+      - image: "cimg/python:3.8"
     resource_class: small
   py39:
     docker:
