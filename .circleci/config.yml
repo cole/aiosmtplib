@@ -37,59 +37,31 @@ commands:
           command: python -V
           name: "Checking python version"
 
-  restore_pip_cache:
-    description: "Restore pip cache"
-    steps:
-      - restore_cache:
-          name: "Restoring pip cache"
-          keys:
-            - pip-v2
-
-  save_pip_cache:
-    description: "Update pip cache"
-    steps:
-      - save_cache:
-          name: "Updating pip cache"
-          key: pip-v2
-          paths:
-            - /tmp/cache/pip
-
-  restore_tox_cache:
-    description: "Restore tox cache"
-    steps:
-      - restore_cache:
-          name: "Restoring tox cache"
-          keys:
-            - tox-v2-{{ .Environment.CIRCLE_JOB }}-{{ checksum "poetry.lock" }}
-            - tox-v2-{{ .Environment.CIRCLE_JOB }}-
-            - tox-v2-
-
-  save_tox_cache:
-    description: "Update tox cache"
-    steps:
-      - save_cache:
-          name: "Updating tox cache"
-          key: tox-v2-{{ .Environment.CIRCLE_JOB }}-{{ checksum "poetry.lock" }}
-          paths:
-            - /tmp/toxworkdir
-
-  install_tox:
-    description: "Install tox"
-    steps:
-      - run:
-          command: pip install --upgrade tox tox-venv
-          name: "Installing tox & tox-venv"
-          environment:
-            XDG_CACHE_HOME: "/tmp/cache"
-
-  run_tox:
+  tox:
     description: "Run tox"
     steps:
+      - restore_cache:
+        name: "Restoring cache"
+        keys:
+          - v1-{{ .Environment.CIRCLE_JOB }}-{{ checksum "poetry.lock" }}
+          - v1-{{ .Environment.CIRCLE_JOB }}-
+          - v1-
+      - run:
+        command: pip install --upgrade tox tox-venv
+        name: "Installing tox & tox-venv"
+        environment:
+          XDG_CACHE_HOME: "/tmp/cache"
       - run:
           command: tox --workdir /tmp/toxworkdir --installpkg dist/aiosmtplib-*.whl
           name: "Running tox"
           environment:
             XDG_CACHE_HOME: "/tmp/cache"
+      - save_cache:
+          name: "Updating cache"
+          key: v1-{{ .Environment.CIRCLE_JOB }}-{{ checksum "poetry.lock" }}
+          paths:
+            - /tmp/toxworkdir
+            - /tmp/cache/pip
 
 jobs:
   lint:
@@ -97,17 +69,12 @@ jobs:
     steps:
       - python_version
       - checkout
-      - restore_pip_cache
-      - restore_tox_cache
       - restore_cache:
           name: "Restoring pre-commit cache"
           keys:
             - pre-commit-v2-{{ checksum ".pre-commit-config.yaml" }}
             - pre-commit-v2-
-      - install_tox
-      - run_tox
-      - save_pip_cache
-      - save_tox_cache
+      - tox
       - save_cache:
           name: "Updating pre-commit cache"
           key: pre-commit-v2-{{ checksum ".pre-commit-config.yaml" }}
@@ -115,7 +82,6 @@ jobs:
             - /tmp/cache/pre-commit
     environment:
       TOXENV: lint
-      XDG_CACHE_HOME: "/tmp/cache"
 
   docs:
     executor: py38
@@ -124,12 +90,7 @@ jobs:
     steps:
       - python_version
       - checkout
-      - restore_pip_cache
-      - restore_tox_cache
-      - install_tox
-      - run_tox
-      - save_pip_cache
-      - save_tox_cache
+      - tox
 
   build:
     executor: circleci_py38
@@ -172,16 +133,11 @@ jobs:
       - checkout
       - attach_workspace:
           at: dist
-      - restore_pip_cache
-      - restore_tox_cache
       - restore_cache:
           name: "Restoring hypothesis database"
           keys:
             - hypothesis-v1
-      - install_tox
-      - run_tox
-      - save_pip_cache
-      - save_tox_cache
+      - tox
       - save_cache:
           name: "Updating hypothesis database"
           key: hypothesis-v1
@@ -206,12 +162,7 @@ jobs:
       - run:
           name: "Copy coverage results from workspace"
           command: cp coverage-results/.coverage.* ./
-      - restore_pip_cache
-      - restore_tox_cache
-      - install_tox
-      - run_tox
-      - save_pip_cache
-      - save_tox_cache
+      - tox
       - store_artifacts:
           path: coverage.xml
       - store_artifacts:
