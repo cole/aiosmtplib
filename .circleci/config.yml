@@ -73,16 +73,6 @@ commands:
           paths:
             - ~/.tox
 
-  upgrade_pip:
-    description: "Upgrade pip"
-    steps:
-      - run:
-          command: pip install --upgrade setuptools
-          name: "Upgrading setuptools"
-      - run:
-          command: pip install --upgrade pip
-          name: "Upgrading pip"
-
   install_tox:
     description: "Install tox"
     steps:
