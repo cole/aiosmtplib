@@ -10,15 +10,15 @@ executors:
     resource_class: small
   py36:
     docker:
-      - image: "cimg/python:3.6"
+      - image: "python:3.6-buster"
     resource_class: small
   py37:
     docker:
-      - image: "cimg/python:3.7"
+      - image: "python:3.7-buster"
     resource_class: small
   py38:
     docker:
-      - image: "cimg/python:3.8"
+      - image: "python:3.8-buster"
     resource_class: small
   py39:
     docker:
@@ -43,8 +43,8 @@ commands:
       - restore_cache:
           name: "Restoring cache"
           keys:
-            - tox-v3-{{ .Environment.CIRCLE_JOB }}-{{ checksum "poetry.lock" }}
-            - tox-v3-{{ .Environment.CIRCLE_JOB }}-
+            - tox-v4-{{ .Environment.CIRCLE_JOB }}-{{ checksum "poetry.lock" }}
+            - tox-v4-{{ .Environment.CIRCLE_JOB }}-
       - run:
           command: pip install --upgrade tox tox-venv
           name: "Installing tox & tox-venv"
@@ -57,7 +57,7 @@ commands:
             XDG_CACHE_HOME: "/tmp/cache"
       - save_cache:
           name: "Updating cache"
-          key: tox-v3-{{ .Environment.CIRCLE_JOB }}-{{ checksum "poetry.lock" }}
+          key: tox-v4-{{ .Environment.CIRCLE_JOB }}-{{ checksum "poetry.lock" }}
           paths:
             - /tmp/toxworkdir
             - /tmp/cache/pip
@@ -71,12 +71,12 @@ jobs:
       - restore_cache:
           name: "Restoring pre-commit cache"
           keys:
-            - pre-commit-v3-{{ checksum ".pre-commit-config.yaml" }}
-            - pre-commit-v3-
+            - pre-commit-v4-{{ checksum ".pre-commit-config.yaml" }}
+            - pre-commit-v4-
       - tox
       - save_cache:
           name: "Updating pre-commit cache"
-          key: pre-commit-v3-{{ checksum ".pre-commit-config.yaml" }}
+          key: pre-commit-v4-{{ checksum ".pre-commit-config.yaml" }}
           paths:
             - /tmp/cache/pre-commit
     environment:
@@ -135,11 +135,11 @@ jobs:
       - restore_cache:
           name: "Restoring hypothesis database"
           keys:
-            - hypothesis-v2-{{ .Environment.CIRCLE_JOB }}
+            - "hypothesis-v3-<<parameters.executor_name>>"
       - tox
       - save_cache:
           name: "Updating hypothesis database"
-          key: hypothesis-v2-{{ .Environment.CIRCLE_JOB }}
+          key: "hypothesis-v3-<<parameters.executor_name>>"
           paths:
             - ~/project/.hypothesis
       - store_test_results:
