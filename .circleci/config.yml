@@ -43,9 +43,9 @@ commands:
       - restore_cache:
           name: "Restoring cache"
           keys:
-            - v1-{{ .Environment.CIRCLE_JOB }}-{{ checksum "poetry.lock" }}
-            - v1-{{ .Environment.CIRCLE_JOB }}-
-            - v1-
+            - tox-v3-{{ .Environment.CIRCLE_JOB }}-{{ checksum "poetry.lock" }}
+            - tox-v3-{{ .Environment.CIRCLE_JOB }}-
+            - tox-v3-
       - run:
           command: pip install --upgrade tox tox-venv
           name: "Installing tox & tox-venv"
@@ -58,7 +58,7 @@ commands:
             XDG_CACHE_HOME: "/tmp/cache"
       - save_cache:
           name: "Updating cache"
-          key: v1-{{ .Environment.CIRCLE_JOB }}-{{ checksum "poetry.lock" }}
+          key: tox-v3-{{ .Environment.CIRCLE_JOB }}-{{ checksum "poetry.lock" }}
           paths:
             - /tmp/toxworkdir
             - /tmp/cache/pip
