@@ -72,12 +72,12 @@ jobs:
       - restore_cache:
           name: "Restoring pre-commit cache"
           keys:
-            - pre-commit-v2-{{ checksum ".pre-commit-config.yaml" }}
-            - pre-commit-v2-
+            - pre-commit-v3-{{ checksum ".pre-commit-config.yaml" }}
+            - pre-commit-v3-
       - tox
       - save_cache:
           name: "Updating pre-commit cache"
-          key: pre-commit-v2-{{ checksum ".pre-commit-config.yaml" }}
+          key: pre-commit-v3-{{ checksum ".pre-commit-config.yaml" }}
           paths:
             - /tmp/cache/pre-commit
     environment:
@@ -136,11 +136,11 @@ jobs:
       - restore_cache:
           name: "Restoring hypothesis database"
           keys:
-            - hypothesis-v1
+            - hypothesis-v2-{{ .Environment.CIRCLE_JOB }}
       - tox
       - save_cache:
           name: "Updating hypothesis database"
-          key: hypothesis-v1
+          key: hypothesis-v2-{{ .Environment.CIRCLE_JOB }}
           paths:
             - ~/project/.hypothesis
       - store_test_results:
