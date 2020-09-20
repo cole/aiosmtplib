@@ -56,7 +56,7 @@ commands:
       - restore_cache:
           name: "Restoring tox cache"
           keys:
-            - tox-v1-{{ .Environment.CIRCLE_JOB }}-{{ checksum "poetry.lock "}}
+            - tox-v1-{{ .Environment.CIRCLE_JOB }}-{{ checksum "poetry.lock" }}
             - tox-v1-{{ .Environment.CIRCLE_JOB }}-
             - tox-v1-
 
@@ -65,7 +65,7 @@ commands:
     steps:
       - save_cache:
           name: "Updating tox cache"
-          key: tox-v1-{{ .Environment.CIRCLE_JOB }}-{{ checksum "poetry.lock "}}
+          key: tox-v1-{{ .Environment.CIRCLE_JOB }}-{{ checksum "poetry.lock" }}
           paths:
             - ~/.tox
 
@@ -75,7 +75,7 @@ commands:
       - restore_cache:
           name: "Restoring poetry cache"
           keys:
-            - poetry-v1-{{ checksum "poetry.lock "}}
+            - poetry-v1-{{ checksum "poetry.lock" }}
             - poetry-v1-
 
   save_poetry_cache:
@@ -83,7 +83,7 @@ commands:
     steps:
       - save_cache:
           name: "Updating poetry cache"
-          key: poetry-v1-{{ checksum "poetry.lock "}}
+          key: poetry-v1-{{ checksum "poetry.lock" }}
           paths:
             - ~/project/.poetry
             - ~/.cache/pypoetry
