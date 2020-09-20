@@ -73,25 +73,6 @@ commands:
           paths:
             - ~/.tox
 
-  restore_poetry_cache:
-    description: "Restore poetry cache"
-    steps:
-      - restore_cache:
-          name: "Restoring poetry cache"
-          keys:
-            - poetry-v1-{{ checksum "poetry.lock" }}
-            - poetry-v1-
-
-  save_poetry_cache:
-    description: "Update poetry cache"
-    steps:
-      - save_cache:
-          name: "Updating poetry cache"
-          key: poetry-v1-{{ checksum "poetry.lock" }}
-          paths:
-            - ~/project/.poetry
-            - ~/.cache/pypoetry
-
   upgrade_pip:
     description: "Upgrade pip"
     steps:
@@ -126,7 +107,6 @@ jobs:
       - python_version
       - checkout
       - restore_pip_cache
-      - restore_poetry_cache
       - restore_tox_cache
       - restore_cache:
           name: "Restoring pre-commit cache"
@@ -136,7 +116,6 @@ jobs:
       - install_tox
       - run_tox
       - save_pip_cache
-      - save_poetry_cache
       - save_tox_cache
       - save_cache:
           name: "Updating pre-commit cache"
@@ -154,12 +133,10 @@ jobs:
       - python_version
       - checkout
       - restore_pip_cache
-      - restore_poetry_cache
       - restore_tox_cache
       - install_tox
       - run_tox
       - save_pip_cache
-      - save_poetry_cache
       - save_tox_cache
 
   build:
@@ -204,7 +181,6 @@ jobs:
       - attach_workspace:
           at: dist
       - restore_pip_cache
-      - restore_poetry_cache
       - restore_tox_cache
       - restore_cache:
           name: "Restoring hypothesis database"
@@ -213,7 +189,6 @@ jobs:
       - install_tox
       - run_tox
       - save_pip_cache
-      - save_poetry_cache
       - save_tox_cache
       - save_cache:
           name: "Updating hypothesis database"
@@ -239,12 +214,10 @@ jobs:
       - run:
           command: cp coverage-results/.coverage.* ./
       - restore_pip_cache
-      - restore_poetry_cache
       - restore_tox_cache
       - install_tox
       - run_tox
       - save_pip_cache
-      - save_poetry_cache
       - save_tox_cache
       - store_artifacts:
           path: coverage.xml
