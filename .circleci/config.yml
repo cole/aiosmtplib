@@ -1,25 +1,5 @@
 version: 2.1
 
-parameters:
-  hypothesis_dir:
-    type: string
-    default: ~/project/.hypothesis
-  pip_cache_dir:
-    type: string
-    default: ~/.cache/pip
-  precommit_cache_dir:
-    type: string
-    default: ~/.cache/pre-commit
-  poetry_cache_dir:
-    type: string
-    default: ~/.cache/pypoetry
-  poetry_venv_dir:
-    type: string
-    default: ~/project/.poetry
-  tox_venv_dir:
-    type: string
-    default: ~/.tox
-
 orbs:
   codecov: codecov/codecov@1.0.5
 
@@ -28,33 +8,22 @@ executors:
     docker:
       - image: "python:3.6-buster"
     resource_class: small
-    environment: &default_env
-      PIP_CACHE_DIR: << pipeline.parameters.pip_cache_dir >>
-      HYPOTHESIS_PROFILE: "ci"
-      POETRY_CACHE_DIR: << pipeline.parameters.poetry_cache_dir >>
-      POETRY_VIRTUALENVS_PATH: << pipeline.parameters.poetry_venv_dir >>
-      PRE_COMMIT_HOME: << pipeline.parameters.precommit_cache_dir >>
-
   py37:
     docker:
       - image: "python:3.7-buster"
     resource_class: small
-    environment: *default_env
   py38:
     docker:
       - image: "python:3.8-buster"
     resource_class: small
-    environment: *default_env
   py39:
     docker:
       - image: "python:3.9-rc-buster"
     resource_class: small
-    environment: *default_env
   pypy3:
     docker:
       - image: "pypy:3-buster"
     resource_class: small
-    environment: *default_env
 
 commands:
   python_version:
@@ -63,6 +32,61 @@ commands:
       - run:
           command: python -V
           name: "Checking python version"
+
+  restore_pip_cache:
+    description: "Restore pip cache"
+    steps:
+      - restore_cache:
+          name: "Restoring pip cache"
+          keys:
+            - pip-v1
+
+  save_pip_cache:
+    description: "Update pip cache"
+    steps:
+      - save_cache:
+          name: "Updating pip cache"
+          key: pip-v1
+          paths:
+            - ~/.cache/pip
+
+  restore_tox_cache:
+    description: "Restore tox cache"
+    steps:
+      - restore_cache:
+          name: "Restoring tox cache"
+          keys:
+            - tox-v1-{{ .Environment.CIRCLE_JOB }}-{{ checksum "poetry.lock "}}
+            - tox-v1-{{ .Environment.CIRCLE_JOB }}-
+            - tox-v1-
+
+  save_tox_cache:
+    description: "Update tox cache"
+    steps:
+      - save_cache:
+          name: "Updating tox cache"
+          key: tox-v1-{{ .Environment.CIRCLE_JOB }}-{{ checksum "poetry.lock "}}
+          paths:
+            - ~/.tox
+
+  restore_poetry_cache:
+    description: "Restore poetry cache"
+    steps:
+      - restore_cache:
+          name: "Restoring poetry cache"
+          keys:
+            - poetry-v1-{{ checksum "poetry.lock "}}
+            - poetry-v1-
+
+  save_poetry_cache:
+    description: "Update poetry cache"
+    steps:
+      - save_cache:
+          name: "Updating poetry cache"
+          key: poetry-v1-{{ checksum "poetry.lock "}}
+          paths:
+            - ~/project/.poetry
+            - ~/.cache/pypoetry
 
   upgrade_pip:
     description: "Upgrade pip"
@@ -91,80 +115,12 @@ commands:
           command: pip install --upgrade poetry
           name: "Installing poetry"
 
-  with_cachedirs:
-    description: "Create/restore tox cache dirs"
-    parameters:
-      cache_key:
-        type: string
-      include_hypothesis:
-        description: Cache the hypothesis database
-        type: boolean
-        default: false
-      include_precommit:
-        description: Cache the pre-commit environment
-        type: boolean
-        default: false
-      commands:
-        type: steps
-        default: []
-    steps:
-      - restore_cache:
-          keys:
-            - v4-tox-cache-<< parameters.cache_key >>-{{ checksum "poetry.lock" }}-{{ .Branch }}
-            - v4-tox-cache-<< parameters.cache_key >>-{{ checksum "poetry.lock" }}-
-            - v4-tox-cache-<< parameters.cache_key >>-
-          name: "Restoring tox workdir cache: << parameters.cache_key >>"
-      - when:
-          condition: << parameters.include_hypothesis >>
-          steps:
-            - restore_cache:
-                name: "Restoring hypothesis db cache"
-                keys:
-                  - v1-hypothesis-cache-{{ .Branch }}
-                  - v1-hypothesis-cache-
-      - when:
-          condition: << parameters.include_precommit >>
-          steps:
-            - restore_cache:
-                name: "Restoring pre-commit env cache"
-                keys:
-                  - v1-pre-commit-cache-{{ checksum ".pre-commit-config.yaml" }}-{{ .Branch }}
-                  - v1-pre-commit-cache-{{ checksum ".pre-commit-config.yaml" }}-
-                  - v1-pre-commit-cache-
-      - steps: << parameters.commands >>
-      - save_cache:
-          paths:
-            - << pipeline.parameters.pip_cache_dir >>
-            - << pipeline.parameters.tox_venv_dir >>
-          key: v4-tox-cache-<< parameters.cache_key >>-{{ checksum "poetry.lock" }}-{{ .Branch }}
-          name: "Caching tox workdirs: << parameters.cache_key >>"
-      - when:
-          condition: << parameters.include_hypothesis >>
-          steps:
-            - save_cache:
-                paths:
-                  - << pipeline.parameters.hypothesis_dir >>
-                key: v1-hypothesis-cache-{{ .Branch }}
-                name: "Caching hypothesis test db"
-      - when:
-          condition: << parameters.include_precommit >>
-          steps:
-            - save_cache:
-                name: "Caching pre-commit env"
-                paths:
-                  - << pipeline.parameters.precommit_cache_dir >>
-                key: v1-pre-commit-cache-{{ checksum ".pre-commit-config.yaml" }}-{{ .Branch }}
-
   run_tox:
     description: "Run tox"
-    parameters:
-      toxenv:
-        type: string
-        default: "ALL"
     steps:
       - run:
-          command: tox --workdir << pipeline.parameters.tox_venv_dir >> --installpkg dist/aiosmtplib-*.whl -e << parameters.toxenv >>
-          name: "Running tox: << parameters.toxenv >>"
+          command: tox --workdir ~/.tox --installpkg dist/aiosmtplib-*.whl
+          name: "Running tox"
 
 jobs:
   lint:
@@ -172,36 +128,53 @@ jobs:
     steps:
       - python_version
       - checkout
-      - with_cachedirs:
-          cache_key: lint
-          include_precommit: true
-          commands:
-            - install_tox
-            - run_tox:
-                toxenv: lint
+      - restore_pip_cache
+      - restore_poetry_cache
+      - restore_tox_cache
+      - restore_cache:
+          name: "Restoring pre-commit cache"
+          keys:
+            - pre-commit-v1-{{ checksum ".pre-commit-config.yaml" }}
+            - pre-commit-v1-
+      - install_poetry
+      - install_tox
+      - run_tox
+      - save_pip_cache
+      - save_poetry_cache
+      - save_tox_cache
+      - save_cache:
+          name: "Updating pre-commit cache"
+          key: pre-commit-v1-{{ checksum ".pre-commit-config.yaml" }}
+          paths:
+            - ~/.cache/pre-commit
+    environment:
+      TOXENV: lint
 
   docs:
     executor: py38
+    environment:
+      TOXENV: docs
     steps:
       - python_version
       - checkout
-      - with_cachedirs:
-          cache_key: docs
-          commands:
-            - install_tox
-            - run_tox:
-                toxenv: docs
+      - restore_pip_cache
+      - restore_poetry_cache
+      - restore_tox_cache
+      - install_tox
+      - run_tox
+      - save_pip_cache
+      - save_poetry_cache
+      - save_tox_cache
 
   build:
     executor: py38
+    environment:
     steps:
       - python_version
       - checkout
-      - with_cachedirs:
-          cache_key: poetry
-          commands:
-            - upgrade_pip
-            - install_poetry
+      - restore_pip_cache
+      - restore_poetry_cache
+      - install_poetry
       - run:
           name: Building packages
           command: poetry build -vv
@@ -214,11 +187,15 @@ jobs:
           path: aiosmtplib-*.tar.gz
       - store_artifacts:
           path: aiosmtplib-*.whl
+      - save_pip_cache
+      - save_poetry_cache
 
   test:
     executor: <<parameters.executor_name>>
     environment:
       COVERAGE_FILE: "coverage-results/.coverage.<<parameters.executor_name>>-<<parameters.event_loop>>"
+      HYPOTHESIS_PROFILE: "ci"
+      TOXENV: "<<parameters.executor_name>>-<<parameters.event_loop>>"
     parameters:
       executor_name:
         type: string
@@ -235,14 +212,23 @@ jobs:
       - checkout
       - attach_workspace:
           at: dist
-      - with_cachedirs:
-          cache_key: <<parameters.executor_name>>-<<parameters.event_loop>>
-          include_hypothesis: true
-          commands:
-            - upgrade_pip
-            - install_tox
-            - run_tox:
-                toxenv: <<parameters.executor_name>>-<<parameters.event_loop>>
+      - restore_pip_cache
+      - restore_poetry_cache
+      - restore_tox_cache
+      - restore_cache:
+          name: "Restoring hypothesis database"
+          keys:
+            - hypothesis-v1
+      - install_tox
+      - run_tox
+      - save_pip_cache
+      - save_poetry_cache
+      - save_tox_cache
+      - save_cache:
+          name: "Updating hypothesis database"
+          key: hypothesis-v1
+          paths:
+            - ~/project/.hypothesis
       - store_test_results:
           path: test-results
       - persist_to_workspace:
@@ -252,6 +238,8 @@ jobs:
 
   coverage:
     executor: py38
+    environment:
+      TOXENV: coverage
     steps:
       - python_version
       - checkout
@@ -259,12 +247,14 @@ jobs:
           at: coverage-results
       - run:
           command: cp coverage-results/.coverage.* ./
-      - with_cachedirs:
-          cache_key: coverage
-          commands:
-            - install_tox
-            - run_tox:
-                toxenv: coverage
+      - restore_pip_cache
+      - restore_poetry_cache
+      - restore_tox_cache
+      - install_tox
+      - run_tox
+      - save_pip_cache
+      - save_poetry_cache
+      - save_tox_cache
       - store_artifacts:
           path: coverage.xml
       - store_artifacts:
@@ -277,11 +267,9 @@ jobs:
     steps:
       - python_version
       - checkout
-      - with_cachedirs:
-          cache_key: poetry
-          commands:
-            - upgrade_pip
-            - install_poetry
+      - restore_pip_cache
+      - restore_poetry_cache
+      - install_poetry
       - attach_workspace:
           at: dist
       - run:
@@ -292,6 +280,8 @@ jobs:
       - run:
           name: Uploading to PyPI
           command: poetry publish -vv --username $PYPI_USERNAME --password $PYPI_PASSWORD
+      - save_pip_cache
+      - save_poetry_cache
 
 workflows:
   version: 2
