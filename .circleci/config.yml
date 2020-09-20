@@ -4,6 +4,10 @@ orbs:
   codecov: codecov/codecov@1.0.5
 
 executors:
+  circleci_py38:
+    docker:
+      - image: "cimg/python:3.8"
+    resource_class: small
   py36:
     docker:
       - image: "python:3.6"
@@ -167,14 +171,11 @@ jobs:
       - save_tox_cache
 
   build:
-    executor: py38
+    executor: circleci_py38
     environment:
     steps:
       - python_version
       - checkout
-      - restore_pip_cache
-      - restore_poetry_cache
-      - install_poetry
       - run:
           name: Building packages
           command: poetry build -vv
@@ -187,8 +188,6 @@ jobs:
           path: aiosmtplib-*.tar.gz
       - store_artifacts:
           path: aiosmtplib-*.whl
-      - save_pip_cache
-      - save_poetry_cache
 
   test:
     executor: <<parameters.executor_name>>
@@ -263,13 +262,10 @@ jobs:
           file: coverage.xml
 
   deploy_to_pypi:
-    executor: py38
+    executor: circleci_py38
     steps:
       - python_version
       - checkout
-      - restore_pip_cache
-      - restore_poetry_cache
-      - install_poetry
       - attach_workspace:
           at: dist
       - run:
@@ -280,8 +276,6 @@ jobs:
       - run:
           name: Uploading to PyPI
           command: poetry publish -vv --username $PYPI_USERNAME --password $PYPI_PASSWORD
-      - save_pip_cache
-      - save_poetry_cache
 
 workflows:
   version: 2
