@@ -41,16 +41,16 @@ commands:
     description: "Run tox"
     steps:
       - restore_cache:
-        name: "Restoring cache"
-        keys:
-          - v1-{{ .Environment.CIRCLE_JOB }}-{{ checksum "poetry.lock" }}
-          - v1-{{ .Environment.CIRCLE_JOB }}-
-          - v1-
+          name: "Restoring cache"
+          keys:
+            - v1-{{ .Environment.CIRCLE_JOB }}-{{ checksum "poetry.lock" }}
+            - v1-{{ .Environment.CIRCLE_JOB }}-
+            - v1-
       - run:
-        command: pip install --upgrade tox tox-venv
-        name: "Installing tox & tox-venv"
-        environment:
-          XDG_CACHE_HOME: "/tmp/cache"
+          command: pip install --upgrade tox tox-venv
+          name: "Installing tox & tox-venv"
+          environment:
+            XDG_CACHE_HOME: "/tmp/cache"
       - run:
           command: tox --workdir /tmp/toxworkdir --installpkg dist/aiosmtplib-*.whl
           name: "Running tox"
