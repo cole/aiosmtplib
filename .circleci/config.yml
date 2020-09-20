@@ -6,15 +6,15 @@ orbs:
 executors:
   py36:
     docker:
-      - image: "cimg/python:3.6"
+      - image: "python:3.6"
     resource_class: small
   py37:
     docker:
-      - image: "cimg/python:3.7"
+      - image: "python:3.7"
     resource_class: small
   py38:
     docker:
-      - image: "cimg/python:3.8"
+      - image: "python:3.8"
     resource_class: small
   py39:
     docker:
@@ -36,9 +36,6 @@ commands:
   restore_pip_cache:
     description: "Restore pip cache"
     steps:
-      - run:
-          command: sudo chown -R `whoami`:`whoami` ~/.cache/pip
-          name: "Set pip cache permissions"
       - restore_cache:
           name: "Restoring pip cache"
           keys:
@@ -75,9 +72,6 @@ commands:
   restore_poetry_cache:
     description: "Restore poetry cache"
     steps:
-      - run:
-          command: sudo chown -R `whoami`:`whoami` ~/.cache/pypoetry
-          name: "Set poetry cache permissions"
       - restore_cache:
           name: "Restoring poetry cache"
           keys:
