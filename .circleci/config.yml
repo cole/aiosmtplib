@@ -112,13 +112,6 @@ commands:
           command: pip install --upgrade tox-venv
           name: "Installing tox plugins"
 
-  install_poetry:
-    description: "Install poetry"
-    steps:
-      - run:
-          command: pip install --upgrade poetry
-          name: "Installing poetry"
-
   run_tox:
     description: "Run tox"
     steps:
@@ -140,7 +133,6 @@ jobs:
           keys:
             - pre-commit-v1-{{ checksum ".pre-commit-config.yaml" }}
             - pre-commit-v1-
-      - install_poetry
       - install_tox
       - run_tox
       - save_pip_cache
