@@ -45,7 +45,6 @@ commands:
           keys:
             - tox-v3-{{ .Environment.CIRCLE_JOB }}-{{ checksum "poetry.lock" }}
             - tox-v3-{{ .Environment.CIRCLE_JOB }}-
-            - tox-v3-
       - run:
           command: pip install --upgrade tox tox-venv
           name: "Installing tox & tox-venv"
