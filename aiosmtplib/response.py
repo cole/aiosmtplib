@@ -7,10 +7,7 @@ from typing import NamedTuple
 __all__ = ("SMTPResponse",)
 
 
-BaseResponse = NamedTuple("SMTPResponse", [("code", int), ("message", str)])
-
-
-class SMTPResponse(BaseResponse):
+class SMTPResponse(NamedTuple):
     """
     NamedTuple of server response code and server response message.
 
@@ -26,7 +23,8 @@ class SMTPResponse(BaseResponse):
 
     """
 
-    __slots__ = ()
+    code: int
+    message: str
 
     def __repr__(self) -> str:
         return f"({self.code}, {self.message})"
