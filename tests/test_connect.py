@@ -21,9 +21,7 @@ pytestmark = pytest.mark.asyncio()
 def close_during_read_response_handler(request):
     async def close_during_read_response(smtpd, *args, **kwargs):
         # Read one line of data, then cut the connection.
-        await smtpd.push(
-            "{} End data with <CR><LF>.<CR><LF>".format(SMTPStatus.start_input)
-        )
+        await smtpd.push(f"{SMTPStatus.start_input} End data with <CR><LF>.<CR><LF>")
 
         await smtpd._reader.readline()
         smtpd.transport.close()
@@ -62,7 +60,7 @@ async def test_bad_connect_response_raises_error(
     smtp_client, smtpd_server, smtpd_class, smtpd_response_handler_factory, monkeypatch
 ):
     response_handler = smtpd_response_handler_factory(
-        "{} retry in 5 minutes".format(SMTPStatus.domain_unavailable), close_after=True
+        f"{SMTPStatus.domain_unavailable} retry in 5 minutes", close_after=True
     )
     monkeypatch.setattr(smtpd_class, "_handle_client", response_handler)
 
@@ -103,7 +101,7 @@ async def test_421_closes_connection(
     smtp_client, smtpd_server, smtpd_class, smtpd_response_handler_factory, monkeypatch
 ):
     response_handler = smtpd_response_handler_factory(
-        "{} Please come back in 15 seconds.".format(SMTPStatus.domain_unavailable)
+        f"{SMTPStatus.domain_unavailable} Please come back in 15 seconds."
     )
 
     monkeypatch.setattr(smtpd_class, "smtp_NOOP", response_handler)
@@ -315,8 +313,8 @@ async def test_server_unexpected_disconnect(
     smtp_client, smtpd_server, smtpd_class, smtpd_response_handler_factory, monkeypatch
 ):
     response_handler = smtpd_response_handler_factory(
-        "{} OK".format(SMTPStatus.completed),
-        second_response_text="{} Bye now!".format(SMTPStatus.closing),
+        f"{SMTPStatus.completed} OK",
+        second_response_text=f"{SMTPStatus.closing} Bye now!",
         close_after=True,
     )
 

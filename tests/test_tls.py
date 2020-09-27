@@ -82,9 +82,7 @@ async def test_starttls_with_explicit_server_hostname(
 async def test_starttls_not_supported(
     smtp_client, smtpd_server, smtpd_class, smtpd_response_handler_factory, monkeypatch
 ):
-    response_handler = smtpd_response_handler_factory(
-        "{} HELP".format(SMTPStatus.completed)
-    )
+    response_handler = smtpd_response_handler_factory(f"{SMTPStatus.completed} HELP")
     monkeypatch.setattr(smtpd_class, "smtp_EHLO", response_handler)
 
     async with smtp_client:
@@ -98,7 +96,7 @@ async def test_starttls_advertised_but_not_supported(
     smtp_client, smtpd_server, smtpd_class, smtpd_response_handler_factory, monkeypatch
 ):
     response_handler = smtpd_response_handler_factory(
-        "{} please login".format(SMTPStatus.tls_not_available)
+        f"{SMTPStatus.tls_not_available} please login"
     )
     monkeypatch.setattr(smtpd_class, "smtp_STARTTLS", response_handler)
 
@@ -113,7 +111,7 @@ async def test_starttls_disconnect_before_upgrade(
     smtp_client, smtpd_server, smtpd_class, smtpd_response_handler_factory, monkeypatch
 ):
     response_handler = smtpd_response_handler_factory(
-        "{} Go for it".format(SMTPStatus.ready), close_after=True
+        f"{SMTPStatus.ready} Go for it", close_after=True
     )
     monkeypatch.setattr(smtpd_class, "smtp_STARTTLS", response_handler)
 
@@ -131,7 +129,7 @@ async def test_starttls_invalid_responses(
     monkeypatch,
     error_code,
 ):
-    response_handler = smtpd_response_handler_factory("{} error".format(error_code))
+    response_handler = smtpd_response_handler_factory(f"{error_code} error")
     monkeypatch.setattr(smtpd_class, "smtp_STARTTLS", response_handler)
 
     async with smtp_client:

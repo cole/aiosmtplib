@@ -43,7 +43,7 @@ def quote_address(address: str) -> str:
     Quote a subset of the email addresses defined by RFC 821.
     """
     parsed_address = parse_address(address)
-    return "<{}>".format(parsed_address)
+    return f"<{parsed_address}>"
 
 
 def formataddr(pair: Tuple[str, str]) -> str:
@@ -60,13 +60,13 @@ def formataddr(pair: Tuple[str, str]) -> str:
     name, address = pair
     if name:
         encoded_name = UTF8_CHARSET.header_encode(name)
-        return "{} <{}>".format(encoded_name, address)
+        return f"{encoded_name} <{address}>"
     else:
         quotes = ""
         if SPECIALS_REGEX.search(name):
             quotes = '"'
             name = ESCAPES_REGEX.sub(r"\\\g<0>", name)
-            return "{}{}{} <{}>".format(quotes, name, quotes, address)
+            return f"{quotes}{name}{quotes} <{address}>"
 
     return address
 

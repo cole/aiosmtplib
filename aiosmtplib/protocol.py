@@ -160,7 +160,7 @@ class SMTPProtocol(FlowControlMixin, asyncio.Protocol):
     def data_received(self, data: bytes) -> None:
         if self._response_waiter is None:
             raise RuntimeError(
-                "data_received called without a response waiter set: {!r}".format(data)
+                f"data_received called without a response waiter set: {data!r}"
             )
         elif self._response_waiter.done():
             # We got a response without issuing a command; ignore it.
@@ -218,7 +218,7 @@ class SMTPProtocol(FlowControlMixin, asyncio.Protocol):
             except ValueError:
                 raise SMTPResponseException(
                     SMTPStatus.invalid_response.value,
-                    "Malformed SMTP response line: {!r}".format(line),
+                    f"Malformed SMTP response line: {line!r}",
                 ) from None
 
             offset += len(line)

@@ -115,7 +115,7 @@ async def test_many_commands_with_gather(
     Tests that appropriate locks are in place to prevent commands confusing each other.
     """
     response_handler = smtpd_response_handler_factory(
-        "{}  Alice Smith <asmith@example.com>".format(SMTPStatus.completed)
+        f"{SMTPStatus.completed}  Alice Smith <asmith@example.com>"
     )
     monkeypatch.setattr(smtpd_class, "smtp_EXPN", response_handler)
 

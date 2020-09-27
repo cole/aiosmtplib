@@ -23,7 +23,7 @@ pytestmark = pytest.mark.asyncio()
 def delayed_ok_response_handler(request):
     async def delayed_ok_response(smtpd, *args, **kwargs):
         await asyncio.sleep(1.0)
-        await smtpd.push("{} all done".format(SMTPStatus.completed))
+        await smtpd.push(f"{SMTPStatus.completed} all done")
 
     return delayed_ok_response
 
@@ -31,7 +31,7 @@ def delayed_ok_response_handler(request):
 @pytest.fixture(scope="session")
 def delayed_read_response_handler(request):
     async def delayed_read_response(smtpd, *args, **kwargs):
-        await smtpd.push("{}-hi".format(SMTPStatus.ready))
+        await smtpd.push(f"{SMTPStatus.ready}-hi")
         await asyncio.sleep(1.0)
 
     return delayed_read_response
@@ -118,9 +118,7 @@ async def test_connect_timeout_error(hostname, unused_tcp_port):
     with pytest.raises(SMTPConnectTimeoutError) as exc:
         await client.connect()
 
-    expected_message = "Timed out connecting to {host} on port {port}".format(
-        host=hostname, port=unused_tcp_port
-    )
+    expected_message = f"Timed out connecting to {hostname} on port {unused_tcp_port}"
     assert str(exc.value) == expected_message
 
 

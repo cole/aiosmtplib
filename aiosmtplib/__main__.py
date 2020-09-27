@@ -3,7 +3,7 @@ from aiosmtplib.smtp import SMTP
 
 
 raw_hostname = input("SMTP server hostname [localhost]: ")  # nosec
-raw_port = input("SMTP server port [{}]: ".format(SMTP_PORT))  # nosec
+raw_port = input(f"SMTP server port [{SMTP_PORT}]: ")  # nosec
 raw_sender = input("From: ")  # nosec
 raw_recipients = input("To: ")  # nosec
 
@@ -20,12 +20,12 @@ while True:
         break
 
 message = "\n".join(lines)
-
-print("Message length (bytes): {}".format(len(message.encode("utf-8"))))
+message_len = len(message.encode("utf-8"))
+print(f"Message length (bytes): {message_len}")
 
 smtp_client = SMTP(hostname=hostname or "localhost", port=port)
 sendmail_errors, sendmail_response = smtp_client.sendmail_sync(
     raw_sender, recipients, message
 )
 
-print("Server response: {}".format(sendmail_response))
+print(f"Server response: {sendmail_response}")

@@ -46,7 +46,7 @@ async def test_helo_error(
     monkeypatch,
     error_code,
 ):
-    response_handler = smtpd_response_handler_factory("{} error".format(error_code))
+    response_handler = smtpd_response_handler_factory(f"{error_code} error")
     monkeypatch.setattr(smtpd_class, "smtp_HELO", response_handler)
 
     async with smtp_client:
@@ -77,7 +77,7 @@ async def test_ehlo_error(
     monkeypatch,
     error_code,
 ):
-    response_handler = smtpd_response_handler_factory("{} error".format(error_code))
+    response_handler = smtpd_response_handler_factory(f"{error_code} error")
     monkeypatch.setattr(smtpd_class, "smtp_EHLO", response_handler)
 
     async with smtp_client:
@@ -123,7 +123,7 @@ async def test_ehlo_with_no_extensions(
     smtp_client, smtpd_server, smtpd_class, smtpd_response_handler_factory, monkeypatch
 ):
     response_handler = smtpd_response_handler_factory(
-        "{} all done".format(SMTPStatus.completed)
+        f"{SMTPStatus.completed} all done"
     )
     monkeypatch.setattr(smtpd_class, "smtp_EHLO", response_handler)
 
@@ -150,7 +150,7 @@ async def test_ehlo_or_helo_if_needed_helo_success(
     monkeypatch,
     error_code,
 ):
-    response_handler = smtpd_response_handler_factory("{} error".format(error_code))
+    response_handler = smtpd_response_handler_factory(f"{error_code} error")
     monkeypatch.setattr(smtpd_class, "smtp_EHLO", response_handler)
 
     async with smtp_client:
@@ -185,14 +185,10 @@ async def test_ehlo_or_helo_if_needed_neither_succeeds(
     error_code,
     ehlo_error_code,
 ):
-    helo_response_handler = smtpd_response_handler_factory(
-        "{} error".format(error_code)
-    )
+    helo_response_handler = smtpd_response_handler_factory(f"{error_code} error")
     monkeypatch.setattr(smtpd_class, "smtp_HELO", helo_response_handler)
 
-    ehlo_response_handler = smtpd_response_handler_factory(
-        "{} error".format(ehlo_error_code)
-    )
+    ehlo_response_handler = smtpd_response_handler_factory(f"{ehlo_error_code} error")
     monkeypatch.setattr(smtpd_class, "smtp_EHLO", ehlo_response_handler)
 
     async with smtp_client:
@@ -207,7 +203,7 @@ async def test_ehlo_or_helo_if_needed_disconnect_after_ehlo(
     smtp_client, smtpd_server, smtpd_class, smtpd_response_handler_factory, monkeypatch
 ):
     response_handler = smtpd_response_handler_factory(
-        "{} retry in 5 minutes".format(SMTPStatus.domain_unavailable), close_after=True
+        f"{SMTPStatus.domain_unavailable} retry in 5 minutes", close_after=True
     )
     monkeypatch.setattr(smtpd_class, "smtp_EHLO", response_handler)
 
@@ -232,7 +228,7 @@ async def test_rset_error(
     monkeypatch,
     error_code,
 ):
-    response_handler = smtpd_response_handler_factory("{} error".format(error_code))
+    response_handler = smtpd_response_handler_factory(f"{error_code} error")
     monkeypatch.setattr(smtpd_class, "smtp_RSET", response_handler)
 
     async with smtp_client:
@@ -257,7 +253,7 @@ async def test_noop_error(
     monkeypatch,
     error_code,
 ):
-    response_handler = smtpd_response_handler_factory("{} error".format(error_code))
+    response_handler = smtpd_response_handler_factory(f"{error_code} error")
     monkeypatch.setattr(smtpd_class, "smtp_NOOP", response_handler)
 
     async with smtp_client:
@@ -361,7 +357,7 @@ async def test_help_error(
     monkeypatch,
     error_code,
 ):
-    response_handler = smtpd_response_handler_factory("{} error".format(error_code))
+    response_handler = smtpd_response_handler_factory(f"{error_code} error")
     monkeypatch.setattr(smtpd_class, "smtp_HELP", response_handler)
 
     async with smtp_client:
@@ -378,7 +374,7 @@ async def test_quit_error(
     monkeypatch,
     error_code,
 ):
-    response_handler = smtpd_response_handler_factory("{} error".format(error_code))
+    response_handler = smtpd_response_handler_factory(f"{error_code} error")
     monkeypatch.setattr(smtpd_class, "smtp_QUIT", response_handler)
 
     async with smtp_client:
@@ -413,7 +409,7 @@ async def test_mail_error(
     monkeypatch,
     error_code,
 ):
-    response_handler = smtpd_response_handler_factory("{} error".format(error_code))
+    response_handler = smtpd_response_handler_factory(f"{error_code} error")
     monkeypatch.setattr(smtpd_class, "smtp_MAIL", response_handler)
 
     async with smtp_client:
@@ -458,7 +454,7 @@ async def test_rcpt_options_ok(
 ):
     # RCPT options are not implemented in aiosmtpd, so force success response
     response_handler = smtpd_response_handler_factory(
-        "{} all done".format(SMTPStatus.completed)
+        f"{SMTPStatus.completed} all done"
     )
     monkeypatch.setattr(smtpd_class, "smtp_RCPT", response_handler)
 
@@ -490,7 +486,7 @@ async def test_rcpt_error(
     monkeypatch,
     error_code,
 ):
-    response_handler = smtpd_response_handler_factory("{} error".format(error_code))
+    response_handler = smtpd_response_handler_factory(f"{error_code} error")
     monkeypatch.setattr(smtpd_class, "smtp_RCPT", response_handler)
 
     async with smtp_client:
@@ -535,7 +531,7 @@ async def test_data_error_on_start_input(
     monkeypatch,
     error_code,
 ):
-    response_handler = smtpd_response_handler_factory("{} error".format(error_code))
+    response_handler = smtpd_response_handler_factory(f"{error_code} error")
     monkeypatch.setattr(smtpd_class, "smtp_DATA", response_handler)
 
     async with smtp_client:
@@ -554,7 +550,7 @@ async def test_data_complete_error(
     monkeypatch,
     error_code,
 ):
-    response_handler = smtpd_response_handler_factory("{} error".format(error_code))
+    response_handler = smtpd_response_handler_factory(f"{error_code} error")
     monkeypatch.setattr(smtpd_handler, "handle_DATA", response_handler)
 
     async with smtp_client:

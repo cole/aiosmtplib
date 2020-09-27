@@ -154,7 +154,8 @@ class SMTP(SMTPAuth):
                 raise SMTPNotSupported("SMTPUTF8 is not supported by this server")
 
             if self.supports_extension("size"):
-                size_option = "size={}".format(len(message))
+                message_len = len(message)
+                size_option = f"size={message_len}"
                 mail_options.insert(0, size_option)
 
             try:

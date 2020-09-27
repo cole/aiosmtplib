@@ -366,15 +366,11 @@ class SMTPConnection:
             transport, _ = await asyncio.wait_for(connect_coro, timeout=self.timeout)
         except OSError as exc:
             raise SMTPConnectError(
-                "Error connecting to {host} on port {port}: {err}".format(
-                    host=self.hostname, port=self.port, err=exc
-                )
+                f"Error connecting to {self.hostname} on port {self.port}: {exc}"
             ) from exc
         except asyncio.TimeoutError as exc:
             raise SMTPConnectTimeoutError(
-                "Timed out connecting to {host} on port {port}".format(
-                    host=self.hostname, port=self.port
-                )
+                f"Timed out connecting to {self.hostname} on port {self.port}"
             ) from exc
 
         self.protocol = protocol
@@ -384,9 +380,7 @@ class SMTPConnection:
             response = await protocol.read_response(timeout=self.timeout)
         except SMTPServerDisconnected as exc:
             raise SMTPConnectError(
-                "Error connecting to {host} on port {port}: {err}".format(
-                    host=self.hostname, port=self.port, err=exc
-                )
+                f"Error connecting to {self.hostname} on port {self.port}: {exc}"
             ) from exc
         except SMTPTimeoutError as exc:
             raise SMTPConnectTimeoutError(

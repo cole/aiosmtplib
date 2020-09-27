@@ -61,7 +61,7 @@ def test_quote_address_with_display_names(address, expected_address):
 @example("email@[123.123.123.123]")
 @example("_______@example.com")
 def test_quote_address(email):
-    assert quote_address(email) == "<{}>".format(email)
+    assert quote_address(email) == f"<{email}>"
 
 
 def test_flatten_message():

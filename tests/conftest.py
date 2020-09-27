@@ -83,10 +83,10 @@ def event_loop(request, event_loop_policy):
     event_loop_policy.set_event_loop(loop)
 
     def handle_async_exception(loop, context):
-        message = "{}: {}".format(context["message"], repr(context["exception"]))
+        message = f'{context["message"]}: {context["exception"]!r}'
         if verbosity > 1:
             message += "\n"
-            message += "Future: {}".format(repr(context["future"]))
+            message += f"Future: {context['future']!r}"
             message += "\nTraceback:\n"
             message += "".join(traceback.format_list(context["source_traceback"]))
 
@@ -137,10 +137,10 @@ def socket_path(request, tmp_path):
         tmp_dir = tmp_path
 
     index = 0
-    socket_path = tmp_dir / "aiosmtplib-test{}".format(index)
+    socket_path = tmp_dir / f"aiosmtplib-test{index}"
     while socket_path.exists():
         index += 1
-        socket_path = tmp_dir / "aiosmtplib-test{}".format(index)
+        socket_path = tmp_dir / f"aiosmtplib-test{index}"
 
     return request.param(socket_path)
 
