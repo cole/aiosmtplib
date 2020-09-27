@@ -81,15 +81,17 @@ def flatten_message(
     del message_copy["Bcc"]
     del message_copy["Resent-Bcc"]
 
-    if isinstance(message.policy, email.policy.Compat32):  # type: ignore
-        # Compat32 cannot use UTF8
-        policy = message.policy.clone(  # type: ignore
-            linesep=LINE_SEP, cte_type=cte_type
+    if isinstance(message, email.message.EmailMessage):
+        # New message class, default policy
+        policy = email.policy.default.clone(
+            linesep=LINE_SEP,
+            utf8=utf8,
+            cte_type=cte_type,
         )
     else:
-        policy = message.policy.clone(  # type: ignore
-            linesep=LINE_SEP, utf8=utf8, cte_type=cte_type
-        )
+        # Old message class, Compat32 policy.
+        # Compat32 cannot use UTF8
+        policy = email.policy.compat32.clone(linesep=LINE_SEP, cte_type=cte_type)
 
     with io.BytesIO() as messageio:
         generator = email.generator.BytesGenerator(messageio, policy=policy)
@@ -161,7 +163,7 @@ def extract_recipients(
     """
     Extract the recipients from the message object given.
     """
-    recipients = []  # type: List[str]
+    recipients: List[str] = []
 
     resent_dates = message.get_all("Resent-Date")
 

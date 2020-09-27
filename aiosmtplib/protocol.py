@@ -44,7 +44,7 @@ class FlowControlMixin(asyncio.Protocol):
         else:
             self._loop = loop
         self._paused = False
-        self._drain_waiter = None  # type: Optional[asyncio.Future[None]]
+        self._drain_waiter: Optional[asyncio.Future[None]] = None
         self._connection_lost = False
 
     def pause_writing(self) -> None:
@@ -98,13 +98,13 @@ class SMTPProtocol(FlowControlMixin, asyncio.Protocol):
         super().__init__(loop=loop)
         self._over_ssl = False
         self._buffer = bytearray()
-        self._response_waiter = None  # type: Optional[asyncio.Future[SMTPResponse]]
+        self._response_waiter: Optional[asyncio.Future[SMTPResponse]] = None
         self._connection_lost_callback = connection_lost_callback
-        self._connection_lost_waiter = None  # type: Optional[asyncio.Future[None]]
+        self._connection_lost_waiter: Optional[asyncio.Future[None]] = None
 
-        self.transport = None  # type: Optional[asyncio.Transport]
-        self._command_lock = None  # type: Optional[asyncio.Lock]
-        self._closed = self._loop.create_future()  # type: asyncio.Future[None]
+        self.transport: Optional[asyncio.BaseTransport] = None
+        self._command_lock: Optional[asyncio.Lock] = None
+        self._closed: asyncio.Future[None] = self._loop.create_future()
 
     def __del__(self):
         waiters = (self._response_waiter, self._connection_lost_waiter)
@@ -254,9 +254,7 @@ class SMTPProtocol(FlowControlMixin, asyncio.Protocol):
             raise SMTPServerDisconnected("Connection lost")
 
         try:
-            result = await asyncio.wait_for(
-                self._response_waiter, timeout
-            )  # type: SMTPResponse
+            result = await asyncio.wait_for(self._response_waiter, timeout)
         except asyncio.TimeoutError as exc:
             raise SMTPReadTimeoutError("Timed out waiting for server response") from exc
         finally:
@@ -271,8 +269,12 @@ class SMTPProtocol(FlowControlMixin, asyncio.Protocol):
     def write(self, data: bytes) -> None:
         if self.transport is None or self.transport.is_closing():
             raise SMTPServerDisconnected("Connection lost")
+        if not hasattr(self.transport, "write"):
+            raise RuntimeError(
+                f"Transport {self.transport!r} does not support writing."
+            )
 
-        self.transport.write(data)
+        self.transport.write(data)  # type: ignore
 
     async def execute_command(
         self, *args: bytes, timeout: Optional[float] = None

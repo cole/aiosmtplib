@@ -102,8 +102,8 @@ class SMTPConnection:
 
         :raises ValueError: mutually exclusive options provided
         """
-        self.protocol = None  # type: Optional[SMTPProtocol]
-        self.transport = None  # type: Optional[asyncio.BaseTransport]
+        self.protocol: Optional[SMTPProtocol] = None
+        self.transport: Optional[asyncio.BaseTransport] = None
 
         # Kwarg defaults are provided here, and saved for connect.
         self.hostname = hostname
@@ -130,7 +130,7 @@ class SMTPConnection:
                 stacklevel=4,
             )
         self.loop = loop
-        self._connect_lock = None  # type: Optional[asyncio.Lock]
+        self._connect_lock: Optional[asyncio.Lock] = None
 
         self._validate_config()
 
@@ -330,8 +330,8 @@ class SMTPConnection:
             loop=self.loop, connection_lost_callback=self._connection_lost
         )
 
-        tls_context = None  # type: Optional[ssl.SSLContext]
-        ssl_handshake_timeout = None  # type: Optional[float]
+        tls_context: Optional[ssl.SSLContext] = None
+        ssl_handshake_timeout: Optional[float] = None
         if self.use_tls:
             tls_context = self._get_tls_context()
             ssl_handshake_timeout = self.timeout

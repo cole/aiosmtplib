@@ -36,11 +36,11 @@ class ESMTP(SMTPConnection):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
-        self.last_helo_response = None  # type: Optional[SMTPResponse]
-        self._last_ehlo_response = None  # type: Optional[SMTPResponse]
-        self.esmtp_extensions = {}  # type: Dict[str, str]
+        self.last_helo_response: Optional[SMTPResponse] = None
+        self._last_ehlo_response: Optional[SMTPResponse] = None
+        self.esmtp_extensions: Dict[str, str] = {}
         self.supports_esmtp = False
-        self.server_auth_methods = []  # type: List[str]
+        self.server_auth_methods: List[str] = []
 
     @property
     def last_ehlo_response(self) -> Union[SMTPResponse, None]:
@@ -483,7 +483,7 @@ def parse_esmtp_extensions(message: str) -> Tuple[Dict[str, str], List[str]]:
          250 SIZE 51200000
     """
     esmtp_extensions = {}
-    auth_types = []  # type: List[str]
+    auth_types: List[str] = []
 
     response_lines = message.split("\n")
 

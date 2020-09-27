@@ -65,8 +65,8 @@ class SMTPAuth(ESMTP):
                 "The SMTP AUTH extension is not supported by this server."
             )
 
-        response = None  # type: Optional[SMTPResponse]
-        exception = None  # type: Optional[SMTPAuthenticationError]
+        response: Optional[SMTPResponse] = None
+        exception: Optional[SMTPAuthenticationError] = None
         for auth_name in self.supported_auth_methods:
             method_name = f'auth_{auth_name.replace("-", "")}'
             try:

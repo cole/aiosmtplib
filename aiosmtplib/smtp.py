@@ -49,7 +49,7 @@ class SMTP(SMTPAuth):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
-        self._sendmail_lock = None  # type: Optional[asyncio.Lock]
+        self._sendmail_lock: Optional[asyncio.Lock] = None
 
     # Hack to make Sphinx find the SMTPConnection docstring
     __init__.__doc__ = SMTPConnection.__init__.__doc__

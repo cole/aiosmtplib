@@ -5,6 +5,8 @@ Changelog
 ------------------
 
 - BREAKING CHANGE: Drop Python 3.5 support
+- Cleanup: Don't use private email.message.Message policy attribute (instead,
+  set an appropriate policy based on message class)
 
 
 1.1.4

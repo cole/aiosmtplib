@@ -39,16 +39,16 @@ def all_tasks(loop: asyncio.AbstractEventLoop = None):
 
 async def start_tls(
     loop: asyncio.AbstractEventLoop,
-    transport: asyncio.Transport,
+    transport: asyncio.BaseTransport,
     protocol: asyncio.Protocol,
     sslcontext: ssl.SSLContext,
     server_side: bool = False,
     server_hostname: Optional[str] = None,
     ssl_handshake_timeout: Optional[Union[float, int]] = None,
-) -> asyncio.Transport:
+) -> asyncio.BaseTransport:
     # We use hasattr here, as uvloop also supports start_tls.
     if hasattr(loop, "start_tls"):
-        return await loop.start_tls(  # type: ignore
+        return await loop.start_tls(
             transport,
             protocol,
             sslcontext,
@@ -56,6 +56,9 @@ async def start_tls(
             server_hostname=server_hostname,
             ssl_handshake_timeout=ssl_handshake_timeout,
         )
+
+    if not isinstance(transport, asyncio.Transport):
+        raise RuntimeError("start_tls requires a transport with pause/resume")
 
     waiter = loop.create_future()
     ssl_protocol = SSLProtocol(
