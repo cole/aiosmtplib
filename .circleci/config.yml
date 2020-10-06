@@ -7,26 +7,44 @@ executors:
   circleci_py38:
     docker:
       - image: "cimg/python:3.8"
+        auth:
+          username: $DOCKERHUB_USERNAME
+          password: $DOCKERHUB_PASSWORD
     resource_class: small
   py36:
     docker:
       - image: "python:3.6-buster"
+        auth:
+          username: $DOCKERHUB_USERNAME
+          password: $DOCKERHUB_PASSWORD
     resource_class: small
   py37:
     docker:
       - image: "python:3.7-buster"
+        auth:
+          username: $DOCKERHUB_USERNAME
+          password: $DOCKERHUB_PASSWORD
     resource_class: small
   py38:
     docker:
       - image: "python:3.8-buster"
+        auth:
+          username: $DOCKERHUB_USERNAME
+          password: $DOCKERHUB_PASSWORD
     resource_class: small
   py39:
     docker:
       - image: "python:3.9-rc-buster"
+        auth:
+          username: $DOCKERHUB_USERNAME
+          password: $DOCKERHUB_PASSWORD
     resource_class: small
   pypy3:
     docker:
       - image: "pypy:3-buster"
+        auth:
+          username: $DOCKERHUB_USERNAME
+          password: $DOCKERHUB_PASSWORD
     resource_class: small
 
 commands:
@@ -190,18 +208,24 @@ workflows:
   lint_and_test:
     jobs:
       - lint:
+          context:
+            - docker-hub-credentials
           filters:
             tags:
               only: /.*/
       - docs:
           requires:
             - lint
+          context:
+            - docker-hub-credentials
           filters:
             tags:
               only: /.*/
       - build:
           requires:
             - lint
+          context:
+            - docker-hub-credentials
           filters:
             tags:
               only: /.*/
@@ -209,6 +233,8 @@ workflows:
           name: "test-<< matrix.executor_name >>-<<matrix.event_loop>>"
           requires:
             - build
+          context:
+            - docker-hub-credentials
           matrix:
             parameters:
               event_loop:
@@ -229,6 +255,8 @@ workflows:
       - coverage:
           requires:
             - test
+          context:
+            - docker-hub-credentials
           filters:
             tags:
               only: /.*/
@@ -238,6 +266,8 @@ workflows:
             - lint
             - docs
             - test
+          context:
+            - docker-hub-credentials
           filters:
             branches:
               ignore: /.*/
