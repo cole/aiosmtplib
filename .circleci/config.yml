@@ -107,6 +107,8 @@ jobs:
     steps:
       - python_version
       - checkout
+      - attach_workspace:
+          at: dist
       - tox
 
   build:
