@@ -120,7 +120,7 @@ jobs:
           command: poetry build -vv
       - run:
           name: Twine check
-          command: poetry run twine check dist/*
+          command: poetry run twine check $CIRCLE_WORKING_DIRECTORY/dist/*
       - persist_to_workspace:
           root: dist
           paths:
