@@ -120,14 +120,16 @@ jobs:
           command: poetry build -vv
       - run:
           name: Twine check
-          command: poetry run twine check dist/*
+          command: poetry run twine check aiosmtplib-*.tar.gz aiosmtplib-*.whl
       - persist_to_workspace:
           root: dist
           paths:
             - aiosmtplib-*.tar.gz
             - aiosmtplib-*.whl
       - store_artifacts:
-          path: dist/
+          path: aiosmtplib-*.tar.gz
+      - store_artifacts:
+          path: aiosmtplib-*.whl
 
   test:
     executor: <<parameters.executor_name>>
