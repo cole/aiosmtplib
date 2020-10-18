@@ -218,14 +218,14 @@ workflows:
             tags:
               only: /.*/
       - docs:
-        requires:
-          - lint
-          - build
-        context:
-          - docker-hub-credentials
-        filters:
-          tags:
-            only: /.*/
+          requires:
+            - lint
+            - build
+          context:
+            - docker-hub-credentials
+          filters:
+            tags:
+              only: /.*/
       - test:
           name: "test-<< matrix.executor_name >>-<<matrix.event_loop>>"
           requires:
