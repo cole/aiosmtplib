@@ -120,6 +120,12 @@ jobs:
       - run:
           name: Building packages
           command: poetry build -vv
+      - run:
+          name: Install Twine
+          commmand: poetry add --dev twine
+      - run:
+          name: Twine check
+          command: poetry run twine check dist/*
       - persist_to_workspace:
           root: dist
           paths:
