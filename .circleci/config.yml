@@ -136,21 +136,17 @@ jobs:
 
   test:
     executor: <<parameters.executor_name>>
-    environment:
-      COVERAGE_FILE: "coverage-results/.coverage.<<parameters.executor_name>>-<<parameters.event_loop>>"
-      HYPOTHESIS_PROFILE: "ci"
-      TOXENV: "<<parameters.executor_name>>-<<parameters.event_loop>>"
     parameters:
       executor_name:
         type: string
         description: "executor name"
-      event_loop:
-        description: "event loop type (asyncio or uvloop)"
-        default: "asyncio"
-        type: enum
-        enum:
-          - asyncio
-          - uvloop
+      toxenv:
+        type: string
+        description: "tox env name"
+    environment:
+      COVERAGE_FILE: "coverage-results/.coverage.<<parameters.executor_name>>"
+      HYPOTHESIS_PROFILE: "ci"
+      TOXENV: "<<parameters.toxenv>>"
     steps:
       - python_version
       - checkout
@@ -235,32 +231,72 @@ workflows:
             tags:
               only: /.*/
       - test:
-          name: "test-<< matrix.executor_name >>-<<matrix.event_loop>>"
+          name: "test-py36"
+          executor_name: py36
+          toxenv: "py36-asyncio,py36-uvloop"
           requires:
             - lint
             - build
           context:
             - docker-hub-credentials
-          matrix:
-            parameters:
-              event_loop:
-                - asyncio
-                - uvloop
-              executor_name:
-                - py36
-                - py37
-                - py38
-                - py39
-                - pypy3
-            exclude:
-              - executor_name: pypy3
-                event_loop: uvloop
+          filters:
+            tags:
+              only: /.*/
+      - test:
+          name: "test-py37"
+          executor_name: py37
+          toxenv: "py37-asyncio,py37-uvloop"
+          requires:
+            - lint
+            - build
+          context:
+            - docker-hub-credentials
+          filters:
+            tags:
+              only: /.*/
+      - test:
+          name: "test-py38"
+          executor_name: py38
+          toxenv: "py38-asyncio,py38-uvloop"
+          requires:
+            - lint
+            - build
+          context:
+            - docker-hub-credentials
+          filters:
+            tags:
+              only: /.*/
+      - test:
+          name: "test-py39"
+          executor_name: py39
+          toxenv: "py39-asyncio,py39-uvloop"
+          requires:
+            - lint
+            - build
+          context:
+            - docker-hub-credentials
+          filters:
+            tags:
+              only: /.*/
+      - test:
+          name: "test-pypy3"
+          executor_name: pypy3
+          toxenv: "pypy3-asyncio"
+          requires:
+            - lint
+            - build
+          context:
+            - docker-hub-credentials
           filters:
             tags:
               only: /.*/
       - coverage:
           requires:
-            - test
+            - test-py36
+            - test-py37
+            - test-py38
+            - test-py39
+            - test-pypy3
           context:
             - docker-hub-credentials
           filters:
@@ -271,7 +307,11 @@ workflows:
             - build
             - lint
             - docs
-            - test
+            - test-py36
+            - test-py37
+            - test-py38
+            - test-py39
+            - test-pypy3
           context:
             - docker-hub-credentials
           filters:
