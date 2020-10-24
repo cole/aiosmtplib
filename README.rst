@@ -41,8 +41,8 @@ Bug reports (and feature requests) are welcome via Github issues.
 
 
 
-.. |circleci| image:: https://circleci.com/gh/cole/aiosmtplib/tree/master.svg?style=shield
-           :target: https://circleci.com/gh/cole/aiosmtplib/tree/master
+.. |circleci| image:: https://circleci.com/gh/cole/aiosmtplib/tree/main.svg?style=shield
+           :target: https://circleci.com/gh/cole/aiosmtplib/tree/mmain
            :alt: "aiosmtplib CircleCI build status"
 .. |pypi-version| image:: https://img.shields.io/pypi/v/aiosmtplib.svg
                  :target: https://pypi.python.org/pypi/aiosmtplib
@@ -50,7 +50,7 @@ Bug reports (and feature requests) are welcome via Github issues.
 .. |pypi-python-versions| image:: https://img.shields.io/pypi/pyversions/aiosmtplib.svg
 .. |pypi-status| image:: https://img.shields.io/pypi/status/aiosmtplib.svg
 .. |pypi-license| image:: https://img.shields.io/pypi/l/aiosmtplib.svg
-.. |codecov| image:: https://codecov.io/gh/cole/aiosmtplib/branch/master/graph/badge.svg
+.. |codecov| image:: https://codecov.io/gh/cole/aiosmtplib/branch/main/graph/badge.svg
              :target: https://codecov.io/gh/cole/aiosmtplib
 .. |black| image:: https://img.shields.io/badge/code%20style-black-000000.svg
            :target: https://github.com/ambv/black
