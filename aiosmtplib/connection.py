@@ -166,7 +166,8 @@ class SMTPConnection:
         Simply caches the result of :func:`socket.getfqdn`.
         """
         if self._source_address is None:
-            self._source_address = socket.getfqdn()
+            # self._source_address = socket.getfqdn()
+            self._source_address = socket.gethostname()
 
         return self._source_address
 
@@ -360,6 +361,7 @@ class SMTPConnection:
                 port=self.port,
                 ssl=tls_context,
                 ssl_handshake_timeout=ssl_handshake_timeout,
+                local_addr = (self.source_address, 0),
             )
 
         try:
