@@ -361,7 +361,7 @@ class SMTPConnection:
                 port=self.port,
                 ssl=tls_context,
                 ssl_handshake_timeout=ssl_handshake_timeout,
-                local_addr = (self.source_address, 0),
+                local_addr=(self.source_address, 0),
             )
 
         try:
