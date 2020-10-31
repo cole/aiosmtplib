@@ -67,6 +67,7 @@ class SMTPConnection:
         cert_bundle: Optional[str] = None,
         socket_path: Optional[SocketPathType] = None,
         sock: Optional[socket.socket] = None,
+        local_addr: Optional[tuple] = None
     ) -> None:
         """
         :keyword hostname:  Server name (or IP) to connect to. Defaults to "localhost".
@@ -99,6 +100,7 @@ class SMTPConnection:
             hostname or port. Accepts str or bytes, or a pathlike object in 3.7+.
         :keyword sock: An existing, connected socket object. If given, none of
             hostname, port, or socket_path should be provided.
+        :keyword local_addr: if given, is a (local_host, local_port) tuple used to bind the socket to locally.
 
         :raises ValueError: mutually exclusive options provided
         """
@@ -121,6 +123,7 @@ class SMTPConnection:
         self.cert_bundle = cert_bundle
         self.socket_path = socket_path
         self.sock = sock
+        self.local_addr = local_addr
 
         if loop:
             warnings.warn(
@@ -189,6 +192,7 @@ class SMTPConnection:
         cert_bundle: Optional[Union[str, Default]] = _default,
         socket_path: Optional[Union[SocketPathType, Default]] = _default,
         sock: Optional[Union[socket.socket, Default]] = _default,
+        local_addr: Optional[Union[tuple, Default]] =  _default
     ) -> None:
         """Update our configuration from the kwargs provided.
 
@@ -234,6 +238,8 @@ class SMTPConnection:
             self.socket_path = socket_path
         if sock is not _default:
             self.sock = sock
+        if local_addr is not _default:
+            self.local_addr = local_addr
 
     def _validate_config(self) -> None:
         if self._start_tls_on_connect and self.use_tls:
@@ -286,6 +292,7 @@ class SMTPConnection:
             hostname or port. Accepts str or bytes, or a pathlike object in 3.7+.
         :keyword sock: An existing, connected socket object. If given, none of
             hostname, port, or socket_path should be provided.
+        :keyword local_addr: if given, is a (local_host, local_port) tuple used to bind the socket to locally.    
 
         :raises ValueError: mutually exclusive options provided
         """
@@ -353,7 +360,7 @@ class SMTPConnection:
                 ssl=tls_context,
                 ssl_handshake_timeout=ssl_handshake_timeout,
             )
-        else:
+        elif self.local_addr:
             connect_coro = create_connection(
                 self.loop,
                 lambda: protocol,
@@ -361,7 +368,16 @@ class SMTPConnection:
                 port=self.port,
                 ssl=tls_context,
                 ssl_handshake_timeout=ssl_handshake_timeout,
-                local_addr=(self.source_address, 0),
+                local_addr=self.local_addr,
+            )
+        else:
+            connect_coro = create_connection(
+                self.loop,
+                lambda: protocol,
+                host=self.hostname,
+                port=self.port,
+                ssl=tls_context,
+                ssl_handshake_timeout=ssl_handshake_timeout
             )
 
         try:
