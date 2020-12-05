@@ -251,6 +251,9 @@ workflows:
             - run:
                 name: Updating pip
                 command: pip install --upgrade pip
+            - run:
+                name: Updating setuptools
+                command: pip install --upgrade setuptools
           filters:
             tags:
               only: /.*/
