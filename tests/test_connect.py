@@ -328,11 +328,20 @@ async def test_server_unexpected_disconnect(
 
 
 async def test_connect_with_login(
-    smtp_client, smtpd_server, message, received_messages, received_commands
+    smtp_client,
+    smtpd_server,
+    message,
+    received_messages,
+    received_commands,
+    auth_username,
+    auth_password,
 ):
     # STARTTLS is required for login
-    await smtp_client.connect(  # nosec
-        start_tls=True, validate_certs=False, username="test", password="test"
+    await smtp_client.connect(
+        start_tls=True,
+        validate_certs=False,
+        username=auth_username,
+        password=auth_password,
     )
 
     assert "AUTH" in [command[0] for command in received_commands]

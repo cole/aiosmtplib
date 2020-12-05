@@ -183,9 +183,11 @@ async def test_auth_crammd5_continue_error(mock_auth):
         await mock_auth.auth_crammd5("username", "bogus")
 
 
-async def test_login_without_starttls_exception(smtp_client, smtpd_server):
+async def test_login_without_starttls_exception(
+    smtp_client, smtpd_server, auth_username, auth_password
+):
     async with smtp_client:
         with pytest.raises(SMTPException) as excinfo:
-            await smtp_client.login("test", "test")
+            await smtp_client.login(auth_username, auth_password)
 
         assert "Try connecting via TLS" in excinfo.value.args[0]

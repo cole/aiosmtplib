@@ -14,11 +14,12 @@ from pathlib import Path
 
 import hypothesis
 import pytest
+from aiosmtpd.controller import Controller as SMTPDController
 
 from aiosmtplib import SMTP, SMTPStatus
 from aiosmtplib.sync import shutdown_loop
 
-from .smtpd import RecordingHandler, SMTPDController, TestSMTPD
+from .smtpd import RecordingHandler, TestSMTPD
 
 
 try:
@@ -265,6 +266,27 @@ def server_tls_context(request, valid_cert_path, valid_key_path):
     return tls_context
 
 
+@pytest.fixture(scope="session")
+def auth_username(request):
+    return "test"
+
+
+@pytest.fixture(scope="session")
+def auth_password(request):
+    return "test"
+
+
+@pytest.fixture(scope="session")
+def smtpd_auth_callback(request, auth_username, auth_password):
+    def auth_callback(mechanism: str, username: bytes, password: bytes):
+        return bool(
+            username.decode("utf-8") == auth_username
+            and password.decode("utf-8") == auth_password
+        )
+
+    return auth_callback
+
+
 @pytest.fixture(scope="function")
 def smtpd_server(
     request,
@@ -274,6 +296,7 @@ def smtpd_server(
     smtpd_class,
     smtpd_handler,
     server_tls_context,
+    smtpd_auth_callback,
 ):
     def factory():
         return smtpd_class(
@@ -281,6 +304,7 @@ def smtpd_server(
             hostname=hostname,
             enable_SMTPUTF8=False,
             tls_context=server_tls_context,
+            auth_callback=smtpd_auth_callback,
         )
 
     server = event_loop.run_until_complete(
@@ -312,6 +336,7 @@ def smtpd_server_smtputf8(
     smtpd_class,
     smtpd_handler,
     server_tls_context,
+    smtpd_auth_callback,
 ):
     def factory():
         return smtpd_class(
@@ -319,6 +344,7 @@ def smtpd_server_smtputf8(
             hostname=hostname,
             enable_SMTPUTF8=True,
             tls_context=server_tls_context,
+            auth_callback=smtpd_auth_callback,
         )
 
     server = event_loop.run_until_complete(
@@ -343,7 +369,13 @@ def smtpd_server_smtputf8_port(request, smtpd_server_smtputf8):
 
 @pytest.fixture(scope="function")
 def smtpd_server_socket_path(
-    request, socket_path, event_loop, smtpd_class, smtpd_handler, server_tls_context
+    request,
+    socket_path,
+    event_loop,
+    smtpd_class,
+    smtpd_handler,
+    server_tls_context,
+    smtpd_auth_callback,
 ):
     def factory():
         return smtpd_class(
@@ -351,6 +383,7 @@ def smtpd_server_socket_path(
             hostname=hostname,
             enable_SMTPUTF8=False,
             tls_context=server_tls_context,
+            auth_callback=smtpd_auth_callback,
         )
 
     server = event_loop.run_until_complete(

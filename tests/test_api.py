@@ -99,7 +99,13 @@ async def test_send_with_start_tls(
 
 
 async def test_send_with_login(
-    hostname, smtpd_server_port, message, received_messages, received_commands
+    hostname,
+    smtpd_server_port,
+    message,
+    received_messages,
+    received_commands,
+    auth_username,
+    auth_password,
 ):
     errors, response = await send(  # nosec
         message,
@@ -107,8 +113,8 @@ async def test_send_with_login(
         port=smtpd_server_port,
         start_tls=True,
         validate_certs=False,
-        username="test",
-        password="test",
+        username=auth_username,
+        password=auth_password,
     )
 
     assert not errors
