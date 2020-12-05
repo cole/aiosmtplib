@@ -247,6 +247,10 @@ workflows:
             - build
           context:
             - docker-hub-credentials
+          pre-steps:
+            - run:
+                name: Updating pip
+                command: pip install --upgrade pip
           filters:
             tags:
               only: /.*/
