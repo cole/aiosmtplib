@@ -53,6 +53,7 @@ coverage = "^5.2"
 hypothesis = "^5.35"
 aiosmtpd = "^1.2.2"
 pytest-xdist = "^2.1.0"
+mypy = "^0.790"
 
 [tool.poetry.extras]
 docs = ["sphinx", "sphinx_autodoc_typehints"]

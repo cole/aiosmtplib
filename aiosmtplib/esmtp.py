@@ -3,7 +3,7 @@ Low level ESMTP command API.
 """
 import re
 import ssl
-from typing import Dict, Iterable, List, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 from .connection import SMTPConnection
 from .default import Default, _default
@@ -33,7 +33,7 @@ class ESMTP(SMTPConnection):
     Handles individual SMTP and ESMTP commands.
     """
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
 
         self.last_helo_response: Optional[SMTPResponse] = None
@@ -75,7 +75,9 @@ class ESMTP(SMTPConnection):
     # Base SMTP commands #
 
     async def helo(
-        self, hostname: str = None, timeout: Optional[Union[float, Default]] = _default
+        self,
+        hostname: Optional[str] = None,
+        timeout: Optional[Union[float, Default]] = _default,
     ) -> SMTPResponse:
         """
         Send the SMTP HELO command.

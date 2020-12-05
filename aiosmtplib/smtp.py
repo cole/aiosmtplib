@@ -9,7 +9,7 @@ Implementation is split into the following parent classes:
 """
 import asyncio
 import email.message
-from typing import Dict, Iterable, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, Iterable, Optional, Sequence, Tuple, Union
 
 from .auth import SMTPAuth
 from .connection import SMTPConnection
@@ -46,7 +46,7 @@ class SMTP(SMTPAuth):
         ({}, 'OK')
     """
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
 
         self._sendmail_lock: Optional[asyncio.Lock] = None
@@ -300,30 +300,30 @@ class SMTP(SMTPAuth):
             timeout=timeout,
         )
 
-    def sendmail_sync(self, *args, **kwargs) -> Tuple[Dict[str, SMTPResponse], str]:
+    def sendmail_sync(
+        self, *args: Any, **kwargs: Any
+    ) -> Tuple[Dict[str, SMTPResponse], str]:
         """
         Synchronous version of :meth:`.sendmail`. This method starts
         the event loop to connect, send the message, and disconnect.
         """
 
-        async def sendmail_coroutine():
+        async def sendmail_coroutine() -> Tuple[Dict[str, SMTPResponse], str]:
             async with self:
-                result = await self.sendmail(*args, **kwargs)
-
-            return result
+                return await self.sendmail(*args, **kwargs)
 
         return async_to_sync(sendmail_coroutine(), loop=self.loop)
 
-    def send_message_sync(self, *args, **kwargs) -> Tuple[Dict[str, SMTPResponse], str]:
+    def send_message_sync(
+        self, *args: Any, **kwargs: Any
+    ) -> Tuple[Dict[str, SMTPResponse], str]:
         """
         Synchronous version of :meth:`.send_message`. This method
         starts the event loop to connect, send the message, and disconnect.
         """
 
-        async def send_message_coroutine():
+        async def send_message_coroutine() -> Tuple[Dict[str, SMTPResponse], str]:
             async with self:
-                result = await self.send_message(*args, **kwargs)
-
-            return result
+                return await self.send_message(*args, **kwargs)
 
         return async_to_sync(send_message_coroutine(), loop=self.loop)

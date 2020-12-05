@@ -44,7 +44,7 @@ class FlowControlMixin(asyncio.Protocol):
         else:
             self._loop = loop
         self._paused = False
-        self._drain_waiter: Optional[asyncio.Future[None]] = None
+        self._drain_waiter: Optional["asyncio.Future[None]"] = None
         self._connection_lost = False
 
     def pause_writing(self) -> None:
@@ -59,7 +59,7 @@ class FlowControlMixin(asyncio.Protocol):
             if not waiter.done():
                 waiter.set_result(None)
 
-    def connection_lost(self, exc) -> None:
+    def connection_lost(self, exc: Optional[Exception]) -> None:
         self._connection_lost = True
         # Wake up the writer if currently paused.
         if not self._paused:
@@ -85,7 +85,7 @@ class FlowControlMixin(asyncio.Protocol):
         self._drain_waiter = waiter
         await waiter
 
-    def _get_close_waiter(self, stream: asyncio.StreamWriter) -> asyncio.Future:
+    def _get_close_waiter(self, stream: asyncio.StreamWriter) -> "asyncio.Future[None]":
         raise NotImplementedError
 
 
@@ -93,27 +93,37 @@ class SMTPProtocol(FlowControlMixin, asyncio.Protocol):
     def __init__(
         self,
         loop: Optional[asyncio.AbstractEventLoop] = None,
-        connection_lost_callback: Optional[Callable] = None,
+        connection_lost_callback: Optional[
+            Callable[["asyncio.Future[None]"], None]
+        ] = None,
     ) -> None:
         super().__init__(loop=loop)
         self._over_ssl = False
         self._buffer = bytearray()
         self._response_waiter: Optional[asyncio.Future[SMTPResponse]] = None
         self._connection_lost_callback = connection_lost_callback
-        self._connection_lost_waiter: Optional[asyncio.Future[None]] = None
+        self._connection_lost_waiter: Optional["asyncio.Future[None]"] = None
 
         self.transport: Optional[asyncio.BaseTransport] = None
         self._command_lock: Optional[asyncio.Lock] = None
-        self._closed: asyncio.Future[None] = self._loop.create_future()
+        self._closed: "asyncio.Future[None]" = self._loop.create_future()
 
-    def __del__(self):
-        waiters = (self._response_waiter, self._connection_lost_waiter)
-        for waiter in filter(None, waiters):
-            if waiter.done() and not waiter.cancelled():
-                # Avoid 'Future exception was never retrieved' warnings
-                waiter.exception()
+    def __del__(self) -> None:
+        # Avoid 'Future exception was never retrieved' warnings
+        if (
+            self._response_waiter
+            and self._response_waiter.done()
+            and not self._response_waiter.cancelled()
+        ):
+            self._response_waiter.exception()
+        if (
+            self._connection_lost_waiter
+            and self._connection_lost_waiter.done()
+            and not self._connection_lost_waiter.cancelled()
+        ):
+            self._connection_lost_waiter.exception()
 
-    def _get_close_waiter(self, stream: asyncio.StreamWriter) -> asyncio.Future:
+    def _get_close_waiter(self, stream: asyncio.StreamWriter) -> "asyncio.Future[None]":
         return self._closed
 
     @property

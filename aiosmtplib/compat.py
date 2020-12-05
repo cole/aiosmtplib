@@ -4,23 +4,19 @@ asyncio compatibility shims.
 import asyncio
 import ssl
 import sys
-from asyncio.sslproto import SSLProtocol  # type: ignore
-from typing import Optional, Union
+from asyncio.sslproto import SSLProtocol
+from typing import Any, Coroutine, Optional, Set, Tuple, Union
 
 
 __all__ = (
-    "PY37_OR_LATER",
     "all_tasks",
     "get_running_loop",
     "start_tls",
 )
 
 
-PY37_OR_LATER = sys.version_info[:2] >= (3, 7)
-
-
 def get_running_loop() -> asyncio.AbstractEventLoop:
-    if PY37_OR_LATER:
+    if sys.version_info[:2] >= (3, 7):
         return asyncio.get_running_loop()
 
     loop = asyncio.get_event_loop()
@@ -30,8 +26,10 @@ def get_running_loop() -> asyncio.AbstractEventLoop:
     return loop
 
 
-def all_tasks(loop: asyncio.AbstractEventLoop = None):
-    if PY37_OR_LATER:
+def all_tasks(
+    loop: Optional[asyncio.AbstractEventLoop] = None,
+) -> Set["asyncio.Task[Any]"]:
+    if sys.version_info[:2] >= (3, 7):
         return asyncio.all_tasks(loop=loop)
 
     return asyncio.Task.all_tasks(loop=loop)
@@ -48,7 +46,7 @@ async def start_tls(
 ) -> asyncio.BaseTransport:
     # We use hasattr here, as uvloop also supports start_tls.
     if hasattr(loop, "start_tls"):
-        return await loop.start_tls(
+        return await loop.start_tls(  # type: ignore
             transport,
             protocol,
             sslcontext,
@@ -85,15 +83,19 @@ async def start_tls(
     return ssl_protocol._app_transport
 
 
-def create_connection(loop: asyncio.AbstractEventLoop, *args, **kwargs):
-    if not PY37_OR_LATER:
+def create_connection(
+    loop: asyncio.AbstractEventLoop, *args: Any, **kwargs: Any
+) -> Coroutine[Any, Any, Tuple[asyncio.BaseTransport, asyncio.BaseProtocol]]:
+    if sys.version_info[:2] < (3, 7):
         kwargs.pop("ssl_handshake_timeout")
 
     return loop.create_connection(*args, **kwargs)
 
 
-def create_unix_connection(loop: asyncio.AbstractEventLoop, *args, **kwargs):
-    if not PY37_OR_LATER:
+def create_unix_connection(
+    loop: asyncio.AbstractEventLoop, *args: Any, **kwargs: Any
+) -> Coroutine[Any, Any, Tuple[asyncio.BaseTransport, asyncio.BaseProtocol]]:
+    if sys.version_info[:2] < (3, 7):
         kwargs.pop("ssl_handshake_timeout")
 
     return loop.create_unix_connection(*args, **kwargs)

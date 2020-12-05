@@ -8,7 +8,6 @@ import ssl
 import sys
 from typing import Dict, List, Optional, Sequence, Tuple, Union, overload
 
-from .compat import PY37_OR_LATER
 from .response import SMTPResponse
 from .smtp import SMTP
 
@@ -341,7 +340,7 @@ async def send(
     ...
 
 
-async def send(message, sender=None, recipients=None, **kwargs):
+async def send(message, sender=None, recipients=None, **kwargs):  # type: ignore
     """
     Send an email message. On await, connects to the SMTP server using the details
     provided, sends the message, then disconnects.

@@ -253,7 +253,7 @@ class SMTPConnection:
                 "The socket_path option is not compatible with hostname/port"
             )
 
-    async def connect(self, **kwargs) -> SMTPResponse:
+    async def connect(self, **kwargs: Any) -> SMTPResponse:
         """
         Initialize a connection to the server. Options provided to
         :meth:`.connect` take precedence over those used to initialize the
@@ -392,7 +392,7 @@ class SMTPConnection:
 
         return response
 
-    def _connection_lost(self, waiter: asyncio.Future) -> None:
+    def _connection_lost(self, waiter: "asyncio.Future[None]") -> None:
         if waiter.cancelled() or waiter.exception() is not None:
             self.close()
 
