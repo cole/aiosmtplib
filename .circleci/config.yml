@@ -254,6 +254,9 @@ workflows:
             - run:
                 name: Updating setuptools
                 command: pip install --upgrade setuptools
+            - run:
+                name: Installing importlib-metadata
+                command: pip install importlib-metadata
           filters:
             tags:
               only: /.*/
