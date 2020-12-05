@@ -23,7 +23,6 @@ repos:
     rev: v0.790
     hooks:
     -   id: mypy
-        args: [--strict]
 -   repo: https://github.com/Lucas-C/pre-commit-hooks-bandit
     rev: v1.0.4
     hooks:
