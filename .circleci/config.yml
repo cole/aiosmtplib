@@ -78,8 +78,8 @@ commands:
             - tox-v6-{{ .Environment.CIRCLE_JOB }}-{{ checksum "tox.ini" }}
             - tox-v6-{{ .Environment.CIRCLE_JOB }}-
       - run:
-          command: pip install --upgrade tox tox-venv
-          name: "Installing tox & tox-venv"
+          command: pip install --upgrade tox
+          name: "Installing tox"
           environment:
             XDG_CACHE_HOME: "/tmp/cache"
       - run:
