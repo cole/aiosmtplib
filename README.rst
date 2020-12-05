@@ -1,7 +1,7 @@
 aiosmtplib
 ==========
 
-|circleci| |codecov| |pypi-version| |pypi-python-versions| |pypi-status|
+|circleci| |codecov| |pypi-version| |pypi-python-versions| |pypi-status| |downloads|
 |pypi-license| |black|
 
 ------------
