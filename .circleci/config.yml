@@ -3,6 +3,64 @@ version: 2.1
 orbs:
   codecov: codecov/codecov@1.0.5
 
+executors:
+  circleci_py38:
+    docker:
+      - image: "cimg/python:3.8"
+        auth:
+          username: $DOCKERHUB_USERNAME
+          password: $DOCKERHUB_PASSWORD
+    resource_class: small
+  py352:
+    docker:
+      - image: "python:3.5.2"
+        auth:
+          username: $DOCKERHUB_USERNAME
+          password: $DOCKERHUB_PASSWORD
+    resource_class: small
+  py35:
+    docker:
+      - image: "python:3.5-buster"
+        auth:
+          username: $DOCKERHUB_USERNAME
+          password: $DOCKERHUB_PASSWORD
+    resource_class: small
+  py36:
+    docker:
+      - image: "python:3.6-buster"
+        auth:
+          username: $DOCKERHUB_USERNAME
+          password: $DOCKERHUB_PASSWORD
+    resource_class: small
+  py37:
+    docker:
+      - image: "python:3.7-buster"
+        auth:
+          username: $DOCKERHUB_USERNAME
+          password: $DOCKERHUB_PASSWORD
+    resource_class: small
+  py38:
+    docker:
+      - image: "python:3.8-buster"
+        auth:
+          username: $DOCKERHUB_USERNAME
+          password: $DOCKERHUB_PASSWORD
+    resource_class: small
+  py39:
+    docker:
+      - image: "python:3.9-rc-buster"
+        auth:
+          username: $DOCKERHUB_USERNAME
+          password: $DOCKERHUB_PASSWORD
+    resource_class: small
+  pypy3:
+    docker:
+      - image: "pypy:3-buster"
+        auth:
+          username: $DOCKERHUB_USERNAME
+          password: $DOCKERHUB_PASSWORD
+    resource_class: small
+
 commands:
   python_version:
     description: "Output Python version"
@@ -11,150 +69,133 @@ commands:
           command: python -V
           name: "Checking python version"
 
-  upgrade_pip:
-    description: "Upgrade pip"
-    steps:
-      - run:
-          command: pip --cache-dir ~/.cache/pip install --upgrade setuptools
-          name: "Upgrading setuptools"
-      - run:
-          command: pip --cache-dir ~/.cache/pip install --upgrade pip
-          name: "Upgrading pip"
-
-  install_tox:
-    description: "Install tox"
-    steps:
-      - run:
-          command: pip --cache-dir ~/.cache/pip install --upgrade tox
-          name: "Installing tox"
-      - run:
-          command: pip --cache-dir ~/.cache/pip install --upgrade tox-venv
-          name: "Installing tox plugins"
-
-  install_poetry:
-    description: "Install poetry"
-    steps:
-      - run:
-          command: pip --cache-dir ~/.cache/pip install --upgrade poetry
-          name: "Installing poetry"
-      - run:
-          command: poetry config virtualenvs.path ~/.cache/poetry
-          name: "Setting poetry venv dir"
-
-  with_cachedirs:
-    description: "Create/restore tox cache dirs"
-    parameters:
-      cache_key:
-        type: string
-      include_hypothesis:
-        description: Cache the hypothesis database
-        type: boolean
-        default: false
-      include_precommit:
-        description: Cache the pre-commit environment
-        type: boolean
-        default: false
-      commands:
-        type: steps
-        default: []
+  tox:
+    description: "Run tox"
     steps:
       - restore_cache:
+          name: "Restoring cache"
           keys:
-            - v4-tox-cache-<< parameters.cache_key >>-{{ checksum "poetry.lock" }}-{{ .Branch }}
-            - v4-tox-cache-<< parameters.cache_key >>-{{ checksum "poetry.lock" }}-
-            - v4-tox-cache-<< parameters.cache_key >>-
-          name: "Restoring tox workdir cache: << parameters.cache_key >>"
-      - when:
-          condition: << parameters.include_hypothesis >>
-          steps:
-            - restore_cache:
-                name: "Restoring hypothesis db cache"
-                keys:
-                  - v1-hypothesis-cache-{{ .Branch }}
-                  - v1-hypothesis-cache-
-      - when:
-          condition: << parameters.include_precommit >>
-          steps:
-            - restore_cache:
-                name: "Restoring pre-commit env cache"
-                keys:
-                  - v1-pre-commit-cache-{{ checksum ".pre-commit-config.yaml" }}-{{ .Branch }}
-                  - v1-pre-commit-cache-{{ checksum ".pre-commit-config.yaml" }}-
-                  - v1-pre-commit-cache-
+            - tox-v6-{{ .Environment.CIRCLE_JOB }}-{{ checksum "tox.ini" }}
+            - tox-v6-{{ .Environment.CIRCLE_JOB }}-
       - run:
-          command: mkdir -p ~/.cache/pip
-          name: "Creating pip cache dir"
+          command: pip install --upgrade tox tox-venv
+          name: "Installing tox & tox-venv"
+          environment:
+            XDG_CACHE_HOME: "/tmp/cache"
       - run:
-          command: mkdir -p ~/.tox
-          name: "Creating tox work dir"
-      - when:
-          condition: << parameters.include_hypothesis >>
-          steps:
-            - run:
-                command: mkdir -p ~/project/.hypothesis
-                name: "Creating hypothesis test db dir"
-      - when:
-          condition: << parameters.include_precommit >>
-          steps:
-            - run:
-                command: mkdir -p ~/.cache/pre-commit
-                name: "Creating pre-commit cache dir"
-      - steps: << parameters.commands >>
+          command: tox --workdir /tmp/toxworkdir --installpkg dist/aiosmtplib-*.whl
+          name: "Running tox"
+          environment:
+            XDG_CACHE_HOME: "/tmp/cache"
       - save_cache:
+          name: "Updating cache"
+          key: tox-v6-{{ .Environment.CIRCLE_JOB }}-{{ checksum "tox.ini" }}
           paths:
-            - ~/.cache/pip
-            - ~/.tox
-          key: v4-tox-cache-<< parameters.cache_key >>-{{ checksum "poetry.lock" }}-{{ .Branch }}
-          name: "Caching tox workdirs: << parameters.cache_key >>"
-      - when:
-          condition: << parameters.include_hypothesis >>
-          steps:
-            - save_cache:
-                paths:
-                  - ~/project/.hypothesis
-                key: v1-hypothesis-cache-{{ .Branch }}
-                name: "Caching hypothesis test db"
-      - when:
-          condition: << parameters.include_precommit >>
-          steps:
-            - save_cache:
-                name: "Caching pre-commit env"
-                paths:
-                  - ~/.cache/pre-commit
-                key: v1-pre-commit-cache-{{ checksum ".pre-commit-config.yaml" }}-{{ .Branch }}
+            - /tmp/toxworkdir
+            - /tmp/cache/pip
 
-  run_tox:
-    description: "Run tox"
-    parameters:
-      toxenv:
-        type: string
-        default: "ALL"
+jobs:
+  lint:
+    executor: py38
     steps:
-      - run:
-          command: tox --workdir ~/.tox --installpkg dist/aiosmtplib-*.whl -e << parameters.toxenv >>
-          name: "Running tox: << parameters.toxenv >>"
+      - python_version
+      - checkout
+      - restore_cache:
+          name: "Restoring pre-commit cache"
+          keys:
+            - pre-commit-v4-{{ checksum ".pre-commit-config.yaml" }}
+            - pre-commit-v4-
+      - tox
+      - save_cache:
+          name: "Updating pre-commit cache"
+          key: pre-commit-v4-{{ checksum ".pre-commit-config.yaml" }}
+          paths:
+            - /tmp/cache/pre-commit
+    environment:
+      TOXENV: lint
 
-  install_and_run_toxenvs:
-    description: "Install and run tox with multiple envs"
-    parameters:
-      toxenvs:
-        type: string
-        default: "ALL"
+  docs:
+    executor: py38
+    environment:
+      TOXENV: docs
     steps:
+      - python_version
+      - checkout
       - attach_workspace:
           at: dist
-      - with_cachedirs:
-          cache_key: << parameters.toxenvs >>
-          include_hypothesis: true
-          commands:
-            - upgrade_pip
-            - install_tox
-            - run_tox:
-                toxenv: << parameters.toxenvs >>
+      - tox
+
+  build:
+    executor: circleci_py38
+    environment:
+    steps:
+      - python_version
+      - checkout
+      - run:
+          name: Building packages
+          command: poetry build -vv
+      - run:
+          name: Install Twine
+          command: poetry add --dev twine
+      - run:
+          name: Twine check
+          command: poetry run twine check dist/*
+      - persist_to_workspace:
+          root: dist
+          paths:
+            - aiosmtplib-*.tar.gz
+            - aiosmtplib-*.whl
+      - store_artifacts:
+          path: dist/
+
+  test:
+    executor: <<parameters.executor_name>>
+    parameters:
+      executor_name:
+        type: string
+        description: "executor name"
+      toxenv:
+        type: string
+        description: "tox env name"
+    environment:
+      COVERAGE_FILE: "coverage-results/.coverage.<<parameters.executor_name>>"
+      HYPOTHESIS_PROFILE: "ci"
+      TOXENV: "<<parameters.toxenv>>"
+    steps:
+      - python_version
+      - checkout
+      - attach_workspace:
+          at: dist
+      - restore_cache:
+          name: "Restoring hypothesis database"
+          keys:
+            - "hypothesis-v3-<<parameters.executor_name>>"
+      - tox
+      - save_cache:
+          name: "Updating hypothesis database"
+          key: "hypothesis-v3-<<parameters.executor_name>>"
+          paths:
+            - ~/project/.hypothesis
       - store_test_results:
           path: test-results
-      - store_artifacts:
-          path: test-results
+      - persist_to_workspace:
+          root: coverage-results
+          paths:
+            - .coverage.*
+
+  coverage:
+    executor: py38
+    environment:
+      TOXENV: coverage
+    steps:
+      - python_version
+      - checkout
+      - attach_workspace:
+          at: coverage-results
+      - run:
+          name: "Copy coverage results from workspace"
+          command: cp coverage-results/.coverage.* ./
+      - tox
       - store_artifacts:
           path: coverage.xml
       - store_artifacts:
@@ -162,129 +203,11 @@ commands:
       - codecov/upload:
           file: coverage.xml
 
-jobs:
-  lint:
-    docker:
-      - image: python:3.8-buster
-    resource_class: small
-    steps:
-      - python_version
-      - checkout
-      - with_cachedirs:
-          cache_key: lint
-          include_precommit: true
-          commands:
-            - install_tox
-            - run_tox:
-                toxenv: lint
-
-  docs:
-    docker:
-      - image: python:3.8-buster
-    resource_class: small
-    steps:
-      - python_version
-      - checkout
-      - with_cachedirs:
-          cache_key: docs
-          commands:
-            - install_tox
-            - run_tox:
-                toxenv: docs
-
-  build:
-    docker:
-      - image: python:3.8-buster
-    resource_class: small
-    steps:
-      - python_version
-      - checkout
-      - with_cachedirs:
-          cache_key: poetry
-          commands:
-            - upgrade_pip
-            - install_poetry
-      - run:
-          name: Building packages
-          command: poetry build -vv
-      - persist_to_workspace:
-          root: dist
-          paths:
-            - aiosmtplib-*.tar.gz
-            - aiosmtplib-*.whl
-
-  py352:
-    docker:
-      - image: python:3.5.2
-    resource_class: small
-    steps:
-      - python_version
-      - checkout
-      - install_and_run_toxenvs:
-          toxenvs: clean,py35-asyncio,py35-uvloop,coverage
-
-  py35:
-    docker:
-      - image: python:3.5-buster
-    resource_class: small
-    steps:
-      - python_version
-      - checkout
-      - install_and_run_toxenvs:
-          toxenvs: clean,py35-asyncio,py35-uvloop,coverage
-
-  py36:
-    docker:
-      - image: python:3.6-buster
-    resource_class: small
-    steps:
-      - python_version
-      - checkout
-      - install_and_run_toxenvs:
-          toxenvs: clean,py36-asyncio,py36-uvloop,coverage
-
-  py37:
-    docker:
-      - image: python:3.7-buster
-    resource_class: small
-    steps:
-      - python_version
-      - checkout
-      - install_and_run_toxenvs:
-          toxenvs: clean,py37-asyncio,py37-uvloop,coverage
-
-  py38:
-    docker:
-      - image: python:3.8-buster
-    resource_class: small
-    steps:
-      - python_version
-      - checkout
-      - install_and_run_toxenvs:
-          toxenvs: clean,py38-asyncio,py38-uvloop,coverage
-
-  pypy3:
-    docker:
-      - image: pypy:3-stretch
-    resource_class: small
-    steps:
-      - python_version
-      - checkout
-      - install_and_run_toxenvs:
-          toxenvs: clean,pypy3-asyncio,coverage
-
   deploy_to_pypi:
-    docker:
-      - image: python:3.8-buster
-    resource_class: small
+    executor: circleci_py38
     steps:
       - python_version
       - checkout
-      - with_cachedirs:
-          cache_key: poetry
-          commands:
-            - upgrade_pip
-            - install_poetry
       - attach_workspace:
           at: dist
       - run:
@@ -301,58 +224,121 @@ workflows:
   lint_and_test:
     jobs:
       - lint:
-          filters:
-            tags:
-              only: /.*/
-      - docs:
+          context:
+            - docker-hub-credentials
           filters:
             tags:
               only: /.*/
       - build:
-          requires:
-            - lint
+          context:
+            - docker-hub-credentials
           filters:
             tags:
               only: /.*/
-      - py352:
+      - docs:
           requires:
             - lint
             - build
+          context:
+            - docker-hub-credentials
           filters:
             tags:
               only: /.*/
-      - py35:
+      - test:
+          name: "test-py352"
+          executor_name: py352
+          toxenv: "py35-asyncio,py35-uvloop"
           requires:
             - lint
             - build
+          context:
+            - docker-hub-credentials
           filters:
             tags:
               only: /.*/
-      - py36:
+      - test:
+          name: "test-py35"
+          executor_name: py35
+          toxenv: "py35-asyncio,py35-uvloop"
           requires:
             - lint
             - build
+          context:
+            - docker-hub-credentials
           filters:
             tags:
               only: /.*/
-      - py37:
+      - test:
+          name: "test-py36"
+          executor_name: py36
+          toxenv: "py36-asyncio,py36-uvloop"
           requires:
             - lint
             - build
+          context:
+            - docker-hub-credentials
           filters:
             tags:
               only: /.*/
-      - pypy3:
+      - test:
+          name: "test-py37"
+          executor_name: py37
+          toxenv: "py37-asyncio,py37-uvloop"
           requires:
             - lint
             - build
+          context:
+            - docker-hub-credentials
           filters:
             tags:
               only: /.*/
-      - py38:
+      - test:
+          name: "test-py38"
+          executor_name: py38
+          toxenv: "py38-asyncio,py38-uvloop"
           requires:
             - lint
             - build
+          context:
+            - docker-hub-credentials
+          filters:
+            tags:
+              only: /.*/
+      - test:
+          name: "test-py39"
+          executor_name: py39
+          toxenv: "py39-asyncio,py39-uvloop"
+          requires:
+            - lint
+            - build
+          context:
+            - docker-hub-credentials
+          filters:
+            tags:
+              only: /.*/
+      - test:
+          name: "test-pypy3"
+          executor_name: pypy3
+          toxenv: "pypy3-asyncio"
+          requires:
+            - lint
+            - build
+          context:
+            - docker-hub-credentials
+          filters:
+            tags:
+              only: /.*/
+      - coverage:
+          requires:
+            - test-py352
+            - test-py35
+            - test-py36
+            - test-py37
+            - test-py38
+            - test-py39
+            - test-pypy3
+          context:
+            - docker-hub-credentials
           filters:
             tags:
               only: /.*/
@@ -361,12 +347,15 @@ workflows:
             - build
             - lint
             - docs
-            - py352
-            - py35
-            - py36
-            - py37
-            - py38
-            - pypy3
+            - test-py352
+            - test-py35
+            - test-py36
+            - test-py37
+            - test-py38
+            - test-py39
+            - test-pypy3
+          context:
+            - docker-hub-credentials
           filters:
             branches:
               ignore: /.*/
