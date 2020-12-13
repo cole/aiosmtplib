@@ -5,9 +5,10 @@ import asyncio
 import logging
 from email.errors import HeaderParseError
 from email.message import Message
+from typing import Any, List, Optional, Tuple, Union
 
 from aiosmtpd.handlers import Message as MessageHandler
-from aiosmtpd.smtp import MISSING
+from aiosmtpd.smtp import MISSING, Envelope, Session
 from aiosmtpd.smtp import SMTP as SMTPD
 
 
@@ -15,22 +16,29 @@ log = logging.getLogger("mail.log")
 
 
 class RecordingHandler(MessageHandler):
-    def __init__(self, messages_list, commands_list, responses_list):
+    def __init__(
+        self,
+        messages_list: List[str],
+        commands_list: List[Tuple[str, ...]],
+        responses_list: List[str],
+    ):
         self.messages = messages_list
         self.commands = commands_list
         self.responses = responses_list
         super().__init__(message_class=Message)
 
-    def record_command(self, command, *args):
+    def record_command(self, command: str, *args: Any) -> None:
         self.commands.append((command, *args))
 
-    def record_server_response(self, status):
+    def record_server_response(self, status: str) -> None:
         self.responses.append(status)
 
-    def handle_message(self, message):
+    def handle_message(self, message: str) -> None:
         self.messages.append(message)
 
-    async def handle_EHLO(self, server, session, envelope, hostname):
+    async def handle_EHLO(
+        self, server: SMTPD, session: Session, envelope: Envelope, hostname: str
+    ) -> str:
         """Advertise auth login support."""
         session.host_name = hostname
         if server._tls_protocol:
@@ -40,33 +48,37 @@ class RecordingHandler(MessageHandler):
 
 
 class TestSMTPD(SMTPD):
-    def _getaddr(self, arg):
+    transport: Optional[asyncio.BaseTransport]
+
+    def _getaddr(self, arg: str) -> Tuple[Optional[str], str]:
         """
         Don't raise an exception on unparsable email address
         """
+        address: Optional[str] = None
+        rest: str = ""
         try:
-            return super()._getaddr(arg)
+            address, rest = super()._getaddr(arg)
         except HeaderParseError:
-            return None, ""
+            pass
 
-    async def _call_handler_hook(self, command, *args):
+        return address, rest
+
+    async def _call_handler_hook(self, command: str, *args: Any) -> Union[str, MISSING]:
         self.event_handler.record_command(command, *args)
         return await super()._call_handler_hook(command, *args)
 
-    async def push(self, status):
-        result = await super().push(status)
+    async def push(self, status: str) -> None:
+        await super().push(status)
         self.event_handler.record_server_response(status)
 
-        return result
-
-    async def smtp_EXPN(self, arg):
+    async def smtp_EXPN(self, arg: str) -> None:
         """
         Pass EXPN to handler hook.
         """
         status = await self._call_handler_hook("EXPN")
         await self.push("502 EXPN not implemented" if status is MISSING else status)
 
-    async def smtp_HELP(self, arg):
+    async def smtp_HELP(self, arg: str) -> None:
         """
         Override help to pass to handler hook.
         """
@@ -76,10 +88,12 @@ class TestSMTPD(SMTPD):
         else:
             await self.push(status)
 
-    async def smtp_STARTTLS(self, arg):
+    async def smtp_STARTTLS(self, arg: str) -> None:
         """
         Override for uvloop compatibility (we use ``set_protocol`` on the transport).
         """
+        assert self.transport is not None
+
         self.event_handler.record_command("STARTTLS", arg)
 
         log.info("%s STARTTLS", self.session.peer)
@@ -93,7 +107,7 @@ class TestSMTPD(SMTPD):
 
         # Create SSL layer.
         self._tls_protocol = asyncio.sslproto.SSLProtocol(
-            self.loop, self, self.tls_context, None, server_side=True
+            self.loop, self, self.tls_context, None, server_side=True  # type: ignore
         )
         self._original_transport = self.transport
         self._original_transport.set_protocol(self._tls_protocol)
