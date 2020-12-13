@@ -54,6 +54,12 @@ class SMTP(SMTPAuth):
     # Hack to make Sphinx find the SMTPConnection docstring
     __init__.__doc__ = SMTPConnection.__init__.__doc__
 
+    # Make sure the correct type is returned
+    async def __aenter__(self) -> "SMTP":
+        await super().__aenter__()
+
+        return self
+
     async def sendmail(
         self,
         sender: str,

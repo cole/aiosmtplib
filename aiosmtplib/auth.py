@@ -3,7 +3,7 @@ Authentication methods.
 """
 import base64
 import hmac
-from typing import List, Optional, Union
+from typing import List, Optional, Tuple, Union
 
 from .default import Default, _default
 from .errors import SMTPAuthenticationError, SMTPException
@@ -31,7 +31,11 @@ class SMTPAuth(ESMTP):
     CRAM-MD5, PLAIN, and LOGIN auth methods are supported.
     """
 
-    AUTH_METHODS = ("cram-md5", "plain", "login")  # Preferred methods first
+    AUTH_METHODS: Tuple[str, ...] = (
+        "cram-md5",
+        "plain",
+        "login",
+    )  # Preferred methods first
 
     @property
     def supported_auth_methods(self) -> List[str]:
