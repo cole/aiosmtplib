@@ -62,7 +62,7 @@ uvloop = ["uvloop"]
 [tool.pytest.ini_options]
 minversion = "6.0"
 junit_family = "xunit2"
-addopts = "--strict"
+addopts = "--strict-markers"
 testpaths = [
     "tests"
 ]
