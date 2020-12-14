@@ -12,7 +12,17 @@ import ssl
 import sys
 import traceback
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
+from typing import (
+    Any,
+    Callable,
+    Coroutine,
+    Dict,
+    List,
+    Optional,
+    Tuple,
+    Type,
+    Union,
+)
 
 import hypothesis
 import pytest
@@ -66,7 +76,9 @@ def pytest_addoption(parser) -> None:
 
 
 @pytest.fixture(scope="session")
-def event_loop_policy(request) -> asyncio.AbstractEventLoopPolicy:
+def event_loop_policy(
+    request: pytest.FixtureRequest,
+) -> asyncio.AbstractEventLoopPolicy:
     loop_type = request.config.getoption("--event-loop")
     if loop_type == "uvloop":
         if not HAS_UVLOOP:
@@ -80,7 +92,9 @@ def event_loop_policy(request) -> asyncio.AbstractEventLoopPolicy:
 
 
 @pytest.fixture(scope="function")
-def event_loop(request, event_loop_policy: asyncio.AbstractEventLoopPolicy):
+def event_loop(
+    request: pytest.FixtureRequest, event_loop_policy: asyncio.AbstractEventLoopPolicy
+) -> asyncio.AbstractEventLoop:
     verbosity = request.config.getoption("verbose", default=0)
     old_loop = event_loop_policy.get_event_loop()
     loop = event_loop_policy.new_event_loop()
@@ -115,7 +129,7 @@ def hostname() -> str:
 
 
 @pytest.fixture(scope="session")
-def bind_address(request) -> str:
+def bind_address(request: pytest.FixtureRequest) -> str:
     """Server side address for socket binding"""
     address: str = request.config.getoption("--bind-addr")
     return address
@@ -136,7 +150,9 @@ def bind_address(request) -> str:
     ),
     ids=("str", "bytes", "pathlike"),
 )
-def socket_path(request, tmp_path: Path) -> Union[str, bytes, Path]:
+def socket_path(
+    request: pytest.FixtureRequest, tmp_path: Path
+) -> Union[str, bytes, Path]:
     if sys.platform.startswith("darwin"):
         # Work around OSError: AF_UNIX path too long
         tmp_dir = Path("/tmp")  # nosec
@@ -178,7 +194,7 @@ def mime_message() -> email.mime.multipart.MIMEMultipart:
 
 @pytest.fixture(scope="function", params=["mime_multipart", "compat32"])
 def message(
-    request,
+    request: pytest.FixtureRequest,
     compat32_message: email.message.Message,
     mime_message: email.message.EmailMessage,
 ) -> Union[email.message.Message, email.message.EmailMessage]:
@@ -217,7 +233,7 @@ def message_str(recipient_str: str, sender_str: str) -> str:
 
 
 @pytest.fixture(scope="function")
-def received_messages() -> List[str]:
+def received_messages() -> List[email.message.EmailMessage]:
     return []
 
 
@@ -233,7 +249,7 @@ def smtpd_responses() -> List[str]:
 
 @pytest.fixture(scope="function")
 def smtpd_handler(
-    received_messages: List[str],
+    received_messages: List[email.message.EmailMessage],
     received_commands: List[Tuple[str, ...]],
     smtpd_responses: List[str],
 ) -> RecordingHandler:
@@ -246,22 +262,22 @@ def smtpd_class() -> Type[SMTPD]:
 
 
 @pytest.fixture(scope="session")
-def valid_cert_path(request) -> str:
+def valid_cert_path() -> str:
     return str(BASE_CERT_PATH.joinpath("selfsigned.crt"))
 
 
 @pytest.fixture(scope="session")
-def valid_key_path(request) -> str:
+def valid_key_path() -> str:
     return str(BASE_CERT_PATH.joinpath("selfsigned.key"))
 
 
 @pytest.fixture(scope="session")
-def invalid_cert_path(request) -> str:
+def invalid_cert_path() -> str:
     return str(BASE_CERT_PATH.joinpath("invalid.crt"))
 
 
 @pytest.fixture(scope="session")
-def invalid_key_path(request) -> str:
+def invalid_key_path() -> str:
     return str(BASE_CERT_PATH.joinpath("invalid.key"))
 
 
@@ -308,7 +324,7 @@ def smtpd_auth_callback(
 
 @pytest.fixture(scope="function")
 def smtpd_server(
-    request,
+    request: pytest.FixtureRequest,
     event_loop: asyncio.AbstractEventLoop,
     bind_address: str,
     hostname: str,
@@ -332,7 +348,7 @@ def smtpd_server(
         )
     )
 
-    def close_server():
+    def close_server() -> None:
         server.close()
         event_loop.run_until_complete(server.wait_closed())
 
@@ -351,7 +367,7 @@ def smtpd_server_port(smtpd_server: asyncio.AbstractServer) -> Optional[int]:
 
 @pytest.fixture(scope="function")
 def smtpd_server_smtputf8(
-    request,
+    request: pytest.FixtureRequest,
     event_loop: asyncio.AbstractEventLoop,
     bind_address: str,
     hostname: str,
@@ -360,7 +376,7 @@ def smtpd_server_smtputf8(
     server_tls_context: ssl.SSLContext,
     smtpd_auth_callback: Callable[[str, bytes, bytes], bool],
 ) -> asyncio.AbstractServer:
-    def factory():
+    def factory() -> SMTPD:
         return smtpd_class(
             smtpd_handler,
             hostname=hostname,
@@ -395,7 +411,7 @@ def smtpd_server_smtputf8_port(
 
 @pytest.fixture(scope="function")
 def smtpd_server_socket_path(
-    request,
+    request: pytest.FixtureRequest,
     event_loop: asyncio.AbstractEventLoop,
     hostname: str,
     socket_path: Union[str, bytes, Path],
@@ -413,9 +429,11 @@ def smtpd_server_socket_path(
             auth_callback=smtpd_auth_callback,
         )
 
-    server = event_loop.run_until_complete(
-        event_loop.create_unix_server(factory, path=str(socket_path))
+    create_server_coro = event_loop.create_unix_server(
+        factory,
+        path=socket_path,  # type: ignore
     )
+    server = event_loop.run_until_complete(create_server_coro)
 
     def close_server() -> None:
         server.close()
@@ -427,11 +445,17 @@ def smtpd_server_socket_path(
 
 
 @pytest.fixture(scope="session")
-def smtpd_response_handler_factory():
+def smtpd_response_handler_factory() -> Callable[
+    [Optional[str], Optional[str], bool, bool],
+    Callable[[SMTPD], Coroutine[Any, Any, None]],
+]:
     def smtpd_response(
-        response_text, second_response_text=None, write_eof=False, close_after=False
-    ):
-        async def response_handler(smtpd, *args, **kwargs):
+        response_text: Optional[str],
+        second_response_text: Optional[str],
+        write_eof: bool,
+        close_after: bool,
+    ) -> Callable[[SMTPD], Coroutine[Any, Any, None]]:
+        async def response_handler(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
             if args and args[0]:
                 smtpd.session.host_name = args[0]
             if response_text is not None:
@@ -472,7 +496,9 @@ class EchoServerProtocol(asyncio.Protocol):
 
 @pytest.fixture(scope="function")
 def echo_server(
-    request, bind_address: str, event_loop: asyncio.AbstractEventLoop
+    request: pytest.FixtureRequest,
+    bind_address: str,
+    event_loop: asyncio.AbstractEventLoop,
 ) -> asyncio.AbstractServer:
     server = event_loop.run_until_complete(
         event_loop.create_server(
@@ -510,13 +536,14 @@ def echo_server_port(echo_server: asyncio.AbstractServer) -> Optional[int]:
         SMTPStatus.syntax_error.name,
     ],
 )
-def error_code(request) -> int:
-    return int(request.param)
+def error_code(request: pytest.FixtureRequest) -> int:
+    param = request.param
+    return int(param)
 
 
 @pytest.fixture(scope="function")
 def tls_smtpd_server(
-    request,
+    request: pytest.FixtureRequest,
     event_loop: asyncio.AbstractEventLoop,
     bind_address: str,
     smtpd_class: Type[SMTPD],
@@ -541,7 +568,7 @@ def tls_smtpd_server(
         )
     )
 
-    def close_server():
+    def close_server() -> None:
         server.close()
         event_loop.run_until_complete(server.wait_closed())
 
@@ -571,7 +598,7 @@ def tls_smtp_client(hostname: str, tls_smtpd_server_port: int) -> SMTP:
 
 @pytest.fixture(scope="function")
 def threaded_smtpd_server(
-    request, bind_address: str, smtpd_handler: Handler
+    request: pytest.FixtureRequest, bind_address: str, smtpd_handler: Handler
 ) -> asyncio.AbstractServer:
     controller = SMTPDController(smtpd_handler, hostname=bind_address, port=0)
     controller.start()
@@ -592,7 +619,7 @@ def threaded_smtpd_server_port(
 
 
 @pytest.fixture(scope="function")
-def smtp_client_threaded(hostname: str, threaded_smtpd_server_port) -> SMTP:
+def smtp_client_threaded(hostname: str, threaded_smtpd_server_port: int) -> SMTP:
     client = SMTP(hostname=hostname, port=threaded_smtpd_server_port, timeout=1.0)
 
     return client

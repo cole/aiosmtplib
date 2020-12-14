@@ -20,7 +20,7 @@ pytestmark = [
 ]
 
 
-async def test_starttls_gmail():
+async def test_starttls_gmail() -> None:
     client = SMTP(hostname="smtp.gmail.com", port=587, use_tls=False)
     await client.connect(timeout=1.0)
     await client.ehlo()
@@ -36,7 +36,7 @@ async def test_starttls_gmail():
 
 
 @pytest.mark.asyncio()
-async def test_qq_login():
+async def test_qq_login() -> None:
     client = SMTP(hostname="smtp.qq.com", port=587, use_tls=False)
     await client.connect(timeout=2.0)
     await client.ehlo()
@@ -46,7 +46,7 @@ async def test_qq_login():
         await client.login("test", "test")
 
 
-async def test_office365_auth_send():
+async def test_office365_auth_send() -> None:
     message = EmailMessage()
     message["From"] = "user@mydomain.com"
     message["To"] = "somebody@example.com"

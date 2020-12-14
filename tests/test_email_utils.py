@@ -36,7 +36,7 @@ def test_parse_address_with_display_names(address, expected_address):
 @given(emails())
 @example("email@[123.123.123.123]")
 @example("_______@example.com")
-def test_parse_address(email):
+def test_parse_address(email) -> None:
     assert parse_address(email) == email
 
 
@@ -60,11 +60,11 @@ def test_quote_address_with_display_names(address, expected_address):
 @given(emails())
 @example("email@[123.123.123.123]")
 @example("_______@example.com")
-def test_quote_address(email):
+def test_quote_address(email) -> None:
     assert quote_address(email) == f"<{email}>"
 
 
-def test_flatten_message():
+def test_flatten_message() -> None:
     message = EmailMessage()
     message["To"] = "bob@example.com"
     message["Subject"] = "Hello, World."
@@ -104,7 +104,7 @@ def test_flatten_message_utf8_options(utf8, cte_type, expected_chunk):
     assert expected_chunk in flat_message
 
 
-def test_flatten_message_removes_bcc_from_message_text():
+def test_flatten_message_removes_bcc_from_message_text() -> None:
     message = EmailMessage()
     message["Bcc"] = "alice@example.com"
 
@@ -113,7 +113,7 @@ def test_flatten_message_removes_bcc_from_message_text():
     assert flat_message == b"\r\n"  # empty message
 
 
-def test_flatten_resent_message():
+def test_flatten_resent_message() -> None:
     message = EmailMessage()
     message["To"] = "bob@example.com"
     message["Cc"] = "claire@example.com"
@@ -209,7 +209,7 @@ def test_extract_recipients(
     assert compat32_recipients == expected_recipients
 
 
-def test_extract_recipients_includes_bcc():
+def test_extract_recipients_includes_bcc() -> None:
     message = EmailMessage()
     message["Bcc"] = "alice@example.com"
 
@@ -218,7 +218,7 @@ def test_extract_recipients_includes_bcc():
     assert recipients == [message["Bcc"]]
 
 
-def test_extract_recipients_invalid_email():
+def test_extract_recipients_invalid_email() -> None:
     message = EmailMessage()
     message["Cc"] = "me"
 
@@ -227,7 +227,7 @@ def test_extract_recipients_invalid_email():
     assert recipients == ["me"]
 
 
-def test_extract_recipients_with_iterable_of_strings():
+def test_extract_recipients_with_iterable_of_strings() -> None:
     message = EmailMessage()
     message["To"] = ("me@example.com", "you")
 
@@ -236,7 +236,7 @@ def test_extract_recipients_with_iterable_of_strings():
     assert recipients == ["me@example.com", "you"]
 
 
-def test_extract_recipients_resent_message():
+def test_extract_recipients_resent_message() -> None:
     message = EmailMessage()
     message["To"] = "bob@example.com"
     message["Cc"] = "claire@example.com"
@@ -257,7 +257,7 @@ def test_extract_recipients_resent_message():
     assert message["Bcc"] not in recipients
 
 
-def test_extract_recipients_valueerror_on_multiple_resent_message():
+def test_extract_recipients_valueerror_on_multiple_resent_message() -> None:
     message = EmailMessage()
     message["Resent-Date"] = "Mon, 20 Nov 2016 21:04:27 -0000"
     message["Resent-Date"] = "Mon, 20 Nov 2017 21:04:27 -0000"
@@ -308,7 +308,7 @@ def test_extract_sender(mime_header, compat32_header, expected_sender):
     assert compat32_sender == expected_sender
 
 
-def test_extract_sender_prefers_sender_header():
+def test_extract_sender_prefers_sender_header() -> None:
     message = EmailMessage()
     message["From"] = "bob@example.com"
     message["Sender"] = "alice@example.com"
@@ -319,7 +319,7 @@ def test_extract_sender_prefers_sender_header():
     assert sender == message["Sender"]
 
 
-def test_extract_sender_resent_message():
+def test_extract_sender_resent_message() -> None:
     message = EmailMessage()
     message["From"] = "alice@example.com"
 
@@ -332,7 +332,7 @@ def test_extract_sender_resent_message():
     assert sender != message["From"]
 
 
-def test_extract_sender_valueerror_on_multiple_resent_message():
+def test_extract_sender_valueerror_on_multiple_resent_message() -> None:
     message = EmailMessage()
     message["Resent-Date"] = "Mon, 20 Nov 2016 21:04:27 -0000"
     message["Resent-Date"] = "Mon, 20 Nov 2017 21:04:27 -0000"

@@ -4,11 +4,11 @@ Implements handlers required on top of aiosmtpd for testing.
 import asyncio
 import logging
 from email.errors import HeaderParseError
-from email.message import Message
+from email.message import EmailMessage
 from typing import Any, List, Optional, Tuple, Union
 
 from aiosmtpd.handlers import Message as MessageHandler
-from aiosmtpd.smtp import MISSING, Envelope, Session
+from aiosmtpd.smtp import MISSING, Envelope, Session, _Missing
 from aiosmtpd.smtp import SMTP as SMTPD
 
 
@@ -18,14 +18,14 @@ log = logging.getLogger("mail.log")
 class RecordingHandler(MessageHandler):
     def __init__(
         self,
-        messages_list: List[str],
+        messages_list: List[EmailMessage],
         commands_list: List[Tuple[str, ...]],
         responses_list: List[str],
     ):
         self.messages = messages_list
         self.commands = commands_list
         self.responses = responses_list
-        super().__init__(message_class=Message)
+        super().__init__(message_class=EmailMessage)
 
     def record_command(self, command: str, *args: Any) -> None:
         self.commands.append((command, *args))
@@ -33,7 +33,7 @@ class RecordingHandler(MessageHandler):
     def record_server_response(self, status: str) -> None:
         self.responses.append(status)
 
-    def handle_message(self, message: str) -> None:
+    def handle_message(self, message: EmailMessage) -> None:
         self.messages.append(message)
 
     async def handle_EHLO(
@@ -63,7 +63,9 @@ class TestSMTPD(SMTPD):
 
         return address, rest
 
-    async def _call_handler_hook(self, command: str, *args: Any) -> Union[str, MISSING]:
+    async def _call_handler_hook(
+        self, command: str, *args: Any
+    ) -> Union[str, _Missing]:
         self.event_handler.record_command(command, *args)
         return await super()._call_handler_hook(command, *args)
 
@@ -76,7 +78,9 @@ class TestSMTPD(SMTPD):
         Pass EXPN to handler hook.
         """
         status = await self._call_handler_hook("EXPN")
-        await self.push("502 EXPN not implemented" if status is MISSING else status)
+        await self.push(
+            "502 EXPN not implemented" if isinstance(status, _Missing) else status
+        )
 
     async def smtp_HELP(self, arg: str) -> None:
         """

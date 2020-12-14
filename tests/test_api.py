@@ -1,6 +1,9 @@
 """
 send coroutine testing.
 """
+import email
+from typing import List, Tuple
+
 import pytest
 
 from aiosmtplib import send
@@ -9,7 +12,12 @@ from aiosmtplib import send
 pytestmark = pytest.mark.asyncio()
 
 
-async def test_send(hostname, smtpd_server_port, message, received_messages):
+async def test_send(
+    hostname: str,
+    smtpd_server_port: int,
+    message: email.message.Message,
+    received_messages: List[email.message.EmailMessage],
+) -> None:
     errors, response = await send(message, hostname=hostname, port=smtpd_server_port)
 
     assert not errors
@@ -17,13 +25,13 @@ async def test_send(hostname, smtpd_server_port, message, received_messages):
 
 
 async def test_send_with_str(
-    hostname,
-    smtpd_server_port,
-    recipient_str,
-    sender_str,
-    message_str,
-    received_messages,
-):
+    hostname: str,
+    smtpd_server_port: int,
+    recipient_str: str,
+    sender_str: str,
+    message_str: str,
+    received_messages: List[email.message.EmailMessage],
+) -> None:
     errors, response = await send(
         message_str,
         hostname=hostname,
@@ -37,13 +45,13 @@ async def test_send_with_str(
 
 
 async def test_send_with_bytes(
-    hostname,
-    smtpd_server_port,
-    recipient_str,
-    sender_str,
-    message_str,
-    received_messages,
-):
+    hostname: str,
+    smtpd_server_port: int,
+    recipient_str: str,
+    sender_str: str,
+    message_str: str,
+    received_messages: List[email.message.EmailMessage],
+) -> None:
     errors, response = await send(
         bytes(message_str, "ascii"),
         hostname=hostname,
@@ -57,10 +65,14 @@ async def test_send_with_bytes(
 
 
 async def test_send_without_sender(
-    hostname, smtpd_server_port, recipient_str, message_str, received_messages
-):
+    hostname: str,
+    smtpd_server_port: int,
+    recipient_str: str,
+    message_str: str,
+    received_messages: List[email.message.EmailMessage],
+) -> None:
     with pytest.raises(ValueError):
-        errors, response = await send(
+        errors, response = await send(  # type: ignore
             message_str,
             hostname=hostname,
             port=smtpd_server_port,
@@ -70,8 +82,12 @@ async def test_send_without_sender(
 
 
 async def test_send_without_recipients(
-    hostname, smtpd_server_port, sender_str, message_str, received_messages
-):
+    hostname: str,
+    smtpd_server_port: int,
+    sender_str: str,
+    message_str: str,
+    received_messages: List[email.message.EmailMessage],
+) -> None:
     with pytest.raises(ValueError):
         errors, response = await send(
             message_str,
@@ -83,8 +99,12 @@ async def test_send_without_recipients(
 
 
 async def test_send_with_start_tls(
-    hostname, smtpd_server_port, message, received_messages, received_commands
-):
+    hostname: str,
+    smtpd_server_port: int,
+    message: email.message.Message,
+    received_messages: List[email.message.EmailMessage],
+    received_commands: List[Tuple[str, ...]],
+) -> None:
     errors, response = await send(
         message,
         hostname=hostname,
@@ -99,15 +119,15 @@ async def test_send_with_start_tls(
 
 
 async def test_send_with_login(
-    hostname,
-    smtpd_server_port,
-    message,
-    received_messages,
-    received_commands,
-    auth_username,
-    auth_password,
-):
-    errors, response = await send(  # nosec
+    hostname: str,
+    smtpd_server_port: int,
+    message: email.message.Message,
+    received_messages: List[email.message.EmailMessage],
+    received_commands: List[Tuple[str, ...]],
+    auth_username: str,
+    auth_password: str,
+) -> None:
+    errors, response = await send(
         message,
         hostname=hostname,
         port=smtpd_server_port,

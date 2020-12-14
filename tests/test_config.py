@@ -3,6 +3,7 @@ Tests covering SMTP configuration options.
 """
 import asyncio
 import socket
+import ssl
 
 import pytest
 
@@ -12,57 +13,63 @@ from aiosmtplib import SMTP
 pytestmark = pytest.mark.asyncio()
 
 
-async def test_tls_context_and_cert_raises():
+async def test_tls_context_and_cert_raises() -> None:
     with pytest.raises(ValueError):
         SMTP(use_tls=True, client_cert="foo.crt", tls_context=True)
 
 
-async def test_tls_context_and_cert_to_connect_raises():
+async def test_tls_context_and_cert_to_connect_raises() -> None:
     client = SMTP(use_tls=True, tls_context=True)
 
     with pytest.raises(ValueError):
         await client.connect(client_cert="foo.crt")
 
 
-async def test_tls_context_and_cert_to_starttls_raises(smtp_client, smtpd_server):
+async def test_tls_context_and_cert_to_starttls_raises(
+    smtp_client: SMTP,
+    smtpd_server: asyncio.AbstractServer,
+    client_tls_context: ssl.SSLContext,
+):
     async with smtp_client:
         with pytest.raises(ValueError):
-            await smtp_client.starttls(client_cert="test.cert", tls_context=True)
+            await smtp_client.starttls(
+                client_cert="test.cert", tls_context=client_tls_context
+            )
 
 
-async def test_use_tls_and_start_tls_raises():
+async def test_use_tls_and_start_tls_raises() -> None:
     with pytest.raises(ValueError):
         SMTP(use_tls=True, start_tls=True)
 
 
-async def test_use_tls_and_start_tls_to_connect_raises():
+async def test_use_tls_and_start_tls_to_connect_raises() -> None:
     client = SMTP(use_tls=True)
 
     with pytest.raises(ValueError):
         await client.connect(start_tls=True)
 
 
-async def test_socket_and_hostname_raises():
+async def test_socket_and_hostname_raises() -> None:
     with pytest.raises(ValueError):
         SMTP(hostname="example.com", sock=socket.socket(socket.AF_INET))
 
 
-async def test_socket_and_port_raises():
+async def test_socket_and_port_raises() -> None:
     with pytest.raises(ValueError):
         SMTP(port=1, sock=socket.socket(socket.AF_INET))
 
 
-async def test_socket_and_socket_path_raises():
+async def test_socket_and_socket_path_raises() -> None:
     with pytest.raises(ValueError):
         SMTP(socket_path="/tmp/test", sock=socket.socket(socket.AF_INET))  # nosec
 
 
-async def test_hostname_and_socket_path_raises():
+async def test_hostname_and_socket_path_raises() -> None:
     with pytest.raises(ValueError):
         SMTP(hostname="example.com", socket_path="/tmp/test")  # nosec
 
 
-async def test_port_and_socket_path_raises():
+async def test_port_and_socket_path_raises() -> None:
     with pytest.raises(ValueError):
         SMTP(port=1, socket_path="/tmp/test")  # nosec
 
@@ -256,7 +263,7 @@ async def test_starttls_certificate_options_take_precedence(
     await client.quit()
 
 
-async def test_loop_kwarg_deprecation_warning_init(event_loop):
+async def test_loop_kwarg_deprecation_warning_init(event_loop) -> None:
     with pytest.warns(DeprecationWarning):
         client = SMTP(loop=event_loop)
 

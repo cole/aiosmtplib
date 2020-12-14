@@ -26,7 +26,7 @@ from aiosmtplib import (
 
 
 @given(text())
-def test_raise_smtp_exception(message):
+def test_raise_smtp_exception(message) -> None:
     with pytest.raises(SMTPException) as excinfo:
         raise SMTPException(message)
 
@@ -105,7 +105,7 @@ def test_raise_smtp_recipient_refused(code, message, recipient):
 
 
 @given(lists(elements=text()))
-def test_raise_smtp_recipients_refused(addresses):
+def test_raise_smtp_recipients_refused(addresses) -> None:
     with pytest.raises(SMTPRecipientsRefused) as excinfo:
         raise SMTPRecipientsRefused(addresses)
 
@@ -114,7 +114,7 @@ def test_raise_smtp_recipients_refused(addresses):
 
 
 @given(message=text())
-def test_raise_smtp_not_supported(message):
+def test_raise_smtp_not_supported(message) -> None:
     with pytest.raises(SMTPNotSupported) as excinfo:
         raise SMTPNotSupported(message)
 

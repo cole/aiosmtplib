@@ -60,7 +60,7 @@ async def test_protocol_read_limit_overrun(
     await server.wait_closed()
 
 
-async def test_protocol_connected_check_on_read_response(monkeypatch):
+async def test_protocol_connected_check_on_read_response(monkeypatch) -> None:
     protocol = SMTPProtocol()
     monkeypatch.setattr(protocol, "transport", None)
 
@@ -68,14 +68,14 @@ async def test_protocol_connected_check_on_read_response(monkeypatch):
         await protocol.read_response(timeout=1.0)
 
 
-async def test_protocol_reader_connected_check_on_start_tls(client_tls_context):
+async def test_protocol_reader_connected_check_on_start_tls(client_tls_context) -> None:
     smtp_protocol = SMTPProtocol()
 
     with pytest.raises(SMTPServerDisconnected):
         await smtp_protocol.start_tls(client_tls_context, timeout=1.0)
 
 
-async def test_protocol_writer_connected_check_on_start_tls(client_tls_context):
+async def test_protocol_writer_connected_check_on_start_tls(client_tls_context) -> None:
     smtp_protocol = SMTPProtocol()
 
     with pytest.raises(SMTPServerDisconnected):

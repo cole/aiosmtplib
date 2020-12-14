@@ -3,8 +3,11 @@ Timeout tests.
 """
 import asyncio
 import socket
+from typing import Any, Callable, Coroutine, Type
 
 import pytest
+from aiosmtpd.smtp import SMTP as SMTPD
+
 
 from aiosmtplib import (
     SMTP,
@@ -20,8 +23,8 @@ pytestmark = pytest.mark.asyncio()
 
 
 @pytest.fixture(scope="session")
-def delayed_ok_response_handler(request):
-    async def delayed_ok_response(smtpd, *args, **kwargs):
+def delayed_ok_response_handler() -> Callable[[SMTPD], Coroutine[Any, Any, None]]:
+    async def delayed_ok_response(smtpd: SMTPD, *args, **kwargs) -> None:
         await asyncio.sleep(1.0)
         await smtpd.push(f"{SMTPStatus.completed} all done")
 
@@ -29,8 +32,8 @@ def delayed_ok_response_handler(request):
 
 
 @pytest.fixture(scope="session")
-def delayed_read_response_handler(request):
-    async def delayed_read_response(smtpd, *args, **kwargs):
+def delayed_read_response_handler() -> Callable[[SMTPD], Coroutine[Any, Any, None]]:
+    async def delayed_read_response(smtpd: SMTPD, *args, **kwargs) -> None:
         await smtpd.push(f"{SMTPStatus.ready}-hi")
         await asyncio.sleep(1.0)
 
@@ -38,7 +41,11 @@ def delayed_read_response_handler(request):
 
 
 async def test_command_timeout_error(
-    smtp_client, smtpd_server, smtpd_class, delayed_ok_response_handler, monkeypatch
+    smtp_client: SMTP,
+    smtpd_server: asyncio.AbstractServer,
+    smtpd_class: Type[SMTPD],
+    delayed_ok_response_handler,
+    monkeypatch,
 ):
     monkeypatch.setattr(smtpd_class, "smtp_EHLO", delayed_ok_response_handler)
 
@@ -49,7 +56,11 @@ async def test_command_timeout_error(
 
 
 async def test_data_timeout_error(
-    smtp_client, smtpd_server, smtpd_class, delayed_ok_response_handler, monkeypatch
+    smtp_client: SMTP,
+    smtpd_server: asyncio.AbstractServer,
+    smtpd_class: Type[SMTPD],
+    delayed_ok_response_handler,
+    monkeypatch,
 ):
     monkeypatch.setattr(smtpd_class, "smtp_DATA", delayed_ok_response_handler)
 
@@ -62,7 +73,11 @@ async def test_data_timeout_error(
 
 
 async def test_timeout_error_on_connect(
-    smtp_client, smtpd_server, smtpd_class, delayed_ok_response_handler, monkeypatch
+    smtp_client: SMTP,
+    smtpd_server: asyncio.AbstractServer,
+    smtpd_class: Type[SMTPD],
+    delayed_ok_response_handler,
+    monkeypatch,
 ):
     monkeypatch.setattr(smtpd_class, "_handle_client", delayed_ok_response_handler)
 
@@ -74,7 +89,11 @@ async def test_timeout_error_on_connect(
 
 
 async def test_timeout_on_initial_read(
-    smtp_client, smtpd_server, smtpd_class, delayed_read_response_handler, monkeypatch
+    smtp_client: SMTP,
+    smtpd_server: asyncio.AbstractServer,
+    smtpd_class: Type[SMTPD],
+    delayed_read_response_handler,
+    monkeypatch,
 ):
     monkeypatch.setattr(smtpd_class, "_handle_client", delayed_read_response_handler)
 
@@ -84,7 +103,11 @@ async def test_timeout_on_initial_read(
 
 
 async def test_timeout_on_starttls(
-    smtp_client, smtpd_server, smtpd_class, delayed_ok_response_handler, monkeypatch
+    smtp_client: SMTP,
+    smtpd_server: asyncio.AbstractServer,
+    smtpd_class: Type[SMTPD],
+    delayed_ok_response_handler,
+    monkeypatch,
 ):
     monkeypatch.setattr(smtpd_class, "smtp_STARTTLS", delayed_ok_response_handler)
 
