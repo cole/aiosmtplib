@@ -44,11 +44,15 @@ hypothesis.settings.register_profile("dev", parent=base_settings, max_examples=1
 hypothesis.settings.register_profile("ci", parent=base_settings, max_examples=100)
 
 
+class ParamFixtureRequest(pytest.FixtureRequest):
+    param: Any
+
+
 class AsyncPytestWarning(pytest.PytestWarning):
     pass
 
 
-def pytest_addoption(parser) -> None:
+def pytest_addoption(parser: Any) -> None:
     parser.addoption(
         "--event-loop",
         action="store",
@@ -140,7 +144,7 @@ def bind_address(request: pytest.FixtureRequest) -> str:
     ids=("str", "bytes", "pathlike"),
 )
 def socket_path(
-    request: pytest.FixtureRequest, tmp_path: Path
+    request: ParamFixtureRequest, tmp_path: Path
 ) -> Union[str, bytes, Path]:
     if sys.platform.startswith("darwin"):
         # Work around OSError: AF_UNIX path too long
@@ -183,7 +187,7 @@ def mime_message() -> email.mime.multipart.MIMEMultipart:
 
 @pytest.fixture(scope="function", params=["mime_multipart", "compat32"])
 def message(
-    request: pytest.FixtureRequest,
+    request: ParamFixtureRequest,
     compat32_message: email.message.Message,
     mime_message: email.message.EmailMessage,
 ) -> Union[email.message.Message, email.message.EmailMessage]:
@@ -525,9 +529,8 @@ def echo_server_port(echo_server: asyncio.AbstractServer) -> Optional[int]:
         SMTPStatus.syntax_error.name,
     ],
 )
-def error_code(request: pytest.FixtureRequest) -> int:
-    param = request.param
-    return int(param)
+def error_code(request: ParamFixtureRequest) -> int:
+    return int(request.param.value)
 
 
 @pytest.fixture(scope="function")

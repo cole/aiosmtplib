@@ -131,7 +131,7 @@ async def test_protocol_read_response_with_timeout_times_out(
     transport, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
 
     with pytest.raises(SMTPTimeoutError) as exc:
-        await protocol.read_response(timeout=0.0)
+        await protocol.read_response(timeout=0.0)  # type: ignore
 
     transport.close()
 
@@ -178,7 +178,7 @@ async def test_protocol_timeout_on_starttls(
     server = await asyncio.start_server(
         client_connected, host=bind_address, port=0, family=socket.AF_INET
     )
-    server_port = server.sockets[0].getsockname()[1]
+    server_port = server.sockets[0].getsockname()[1] if server.sockets else 0
 
     connect_future = event_loop.create_connection(
         SMTPProtocol, host=hostname, port=server_port
@@ -188,7 +188,7 @@ async def test_protocol_timeout_on_starttls(
 
     with pytest.raises(SMTPTimeoutError):
         # STARTTLS timeout must be > 0
-        await protocol.start_tls(client_tls_context, timeout=0.00001)
+        await protocol.start_tls(client_tls_context, timeout=0.00001)  # type: ignore
 
     server.close()
     await server.wait_closed()
