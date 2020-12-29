@@ -3,6 +3,7 @@ Protocol level tests.
 """
 import asyncio
 import socket
+import ssl
 
 import pytest
 
@@ -13,7 +14,9 @@ from aiosmtplib.protocol import SMTPProtocol
 pytestmark = pytest.mark.asyncio()
 
 
-async def test_protocol_connect(event_loop, hostname, echo_server_port):
+async def test_protocol_connect(
+    event_loop: asyncio.AbstractEventLoop, hostname: str, echo_server_port: int
+) -> None:
     connect_future = event_loop.create_connection(
         SMTPProtocol, host=hostname, port=echo_server_port
     )
@@ -26,9 +29,14 @@ async def test_protocol_connect(event_loop, hostname, echo_server_port):
 
 
 async def test_protocol_read_limit_overrun(
-    event_loop, bind_address, hostname, monkeypatch
-):
-    async def client_connected(reader, writer):
+    event_loop: asyncio.AbstractEventLoop,
+    bind_address: str,
+    hostname: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def client_connected(
+        reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+    ) -> None:
         await reader.read(1000)
         long_response = (
             b"220 At vero eos et accusamus et iusto odio dignissimos ducimus qui "
@@ -60,7 +68,9 @@ async def test_protocol_read_limit_overrun(
     await server.wait_closed()
 
 
-async def test_protocol_connected_check_on_read_response(monkeypatch) -> None:
+async def test_protocol_connected_check_on_read_response(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     protocol = SMTPProtocol()
     monkeypatch.setattr(protocol, "transport", None)
 
@@ -68,24 +78,32 @@ async def test_protocol_connected_check_on_read_response(monkeypatch) -> None:
         await protocol.read_response(timeout=1.0)
 
 
-async def test_protocol_reader_connected_check_on_start_tls(client_tls_context) -> None:
+async def test_protocol_reader_connected_check_on_start_tls(
+    client_tls_context: ssl.SSLContext,
+) -> None:
     smtp_protocol = SMTPProtocol()
 
     with pytest.raises(SMTPServerDisconnected):
         await smtp_protocol.start_tls(client_tls_context, timeout=1.0)
 
 
-async def test_protocol_writer_connected_check_on_start_tls(client_tls_context) -> None:
+async def test_protocol_writer_connected_check_on_start_tls(
+    client_tls_context: ssl.SSLContext,
+) -> None:
     smtp_protocol = SMTPProtocol()
 
     with pytest.raises(SMTPServerDisconnected):
         await smtp_protocol.start_tls(client_tls_context)
 
 
-async def test_error_on_readline_with_partial_line(event_loop, bind_address, hostname):
+async def test_error_on_readline_with_partial_line(
+    event_loop: asyncio.AbstractEventLoop, bind_address: str, hostname: str
+) -> None:
     partial_response = b"499 incomplete response\\"
 
-    async def client_connected(reader, writer):
+    async def client_connected(
+        reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+    ) -> None:
         writer.write(partial_response)
         writer.write_eof()
         await writer.drain()
@@ -109,9 +127,14 @@ async def test_error_on_readline_with_partial_line(event_loop, bind_address, hos
 
 
 async def test_protocol_response_waiter_unset(
-    event_loop, bind_address, hostname, monkeypatch
-):
-    async def client_connected(reader, writer):
+    event_loop: asyncio.AbstractEventLoop,
+    bind_address: str,
+    hostname: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def client_connected(
+        reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+    ) -> None:
         await reader.read(1000)
         writer.write(b"220 Hi\r\n")
         await writer.drain()
@@ -137,9 +160,13 @@ async def test_protocol_response_waiter_unset(
 
 
 async def test_protocol_data_received_called_twice(
-    event_loop, bind_address, hostname, monkeypatch
-):
-    async def client_connected(reader, writer):
+    event_loop: asyncio.AbstractEventLoop,
+    bind_address,
+    hostname: str,
+) -> None:
+    async def client_connected(
+        reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+    ) -> None:
         await reader.read(1000)
         writer.write(b"220 Hi\r\n")
         await writer.drain()
@@ -167,8 +194,12 @@ async def test_protocol_data_received_called_twice(
     await server.wait_closed()
 
 
-async def test_protocol_eof_response(event_loop, bind_address, hostname, monkeypatch):
-    async def client_connected(reader, writer):
+async def test_protocol_eof_response(
+    event_loop: asyncio.AbstractEventLoop, bind_address: str, hostname: str
+) -> None:
+    async def client_connected(
+        reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+    ) -> None:
         writer.transport.abort()
 
     server = await asyncio.start_server(

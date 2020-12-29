@@ -2,8 +2,10 @@
 Connectivity tests.
 """
 import asyncio
+import email
+import pathlib
 import socket
-from typing import Any, Callable, Coroutine, Optional, Type
+from typing import Any, Callable, Coroutine, List, Optional, Tuple, Type, Union
 
 import pytest
 from aiosmtpd.smtp import SMTP as SMTPD
@@ -21,10 +23,12 @@ pytestmark = pytest.mark.asyncio()
 
 
 @pytest.fixture(scope="session")
-def close_during_read_response_handler(
-    request,
-) -> Callable[[SMTPD], Coroutine[Any, Any, None]]:
-    async def close_during_read_response(smtpd, *args, **kwargs):
+def close_during_read_response_handler() -> Callable[
+    [SMTPD], Coroutine[Any, Any, None]
+]:
+    async def close_during_read_response(
+        smtpd: SMTPD, *args: Any, **kwargs: Any
+    ) -> None:
         # Read one line of data, then cut the connection.
         await smtpd.push(f"{SMTPStatus.start_input} End data with <CR><LF>.<CR><LF>")
 
@@ -34,7 +38,9 @@ def close_during_read_response_handler(
     return close_during_read_response
 
 
-async def test_plain_smtp_connect(smtp_client: SMTP, smtpd_server):
+async def test_plain_smtp_connect(
+    smtp_client: SMTP, smtpd_server: asyncio.AbstractServer
+) -> None:
     """
     Use an explicit connect/quit here, as other tests use the context manager.
     """
@@ -45,7 +51,9 @@ async def test_plain_smtp_connect(smtp_client: SMTP, smtpd_server):
     assert not smtp_client.is_connected
 
 
-async def test_quit_then_connect_ok(smtp_client: SMTP, smtpd_server):
+async def test_quit_then_connect_ok(
+    smtp_client: SMTP, smtpd_server: asyncio.AbstractServer
+) -> None:
     async with smtp_client:
         response = await smtp_client.quit()
         assert response.code == SMTPStatus.closing
@@ -69,8 +77,8 @@ async def test_bad_connect_response_raises_error(
         [Optional[str], Optional[str], bool, bool],
         Coroutine[Any, Any, None],
     ],
-    monkeypatch,
-):
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     response_handler = smtpd_response_handler_factory(
         f"{SMTPStatus.domain_unavailable} retry in 5 minutes",
         None,
@@ -94,8 +102,8 @@ async def test_eof_on_connect_raises_connect_error(
         [Optional[str], Optional[str], bool, bool],
         Coroutine[Any, Any, None],
     ],
-    monkeypatch,
-):
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     response_handler = smtpd_response_handler_factory(
         None,
         None,
@@ -119,8 +127,8 @@ async def test_close_on_connect_raises_connect_error(
         [Optional[str], Optional[str], bool, bool],
         Coroutine[Any, Any, None],
     ],
-    monkeypatch,
-):
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     response_handler = smtpd_response_handler_factory(
         None,
         None,
@@ -144,8 +152,8 @@ async def test_421_closes_connection(
         [Optional[str], Optional[str], bool, bool],
         Coroutine[Any, Any, None],
     ],
-    monkeypatch,
-):
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     response_handler = smtpd_response_handler_factory(
         f"{SMTPStatus.domain_unavailable} Please come back in 15 seconds.",
         None,
@@ -163,7 +171,9 @@ async def test_421_closes_connection(
     assert not smtp_client.is_connected
 
 
-async def test_connect_error_with_no_server(hostname, unused_tcp_port):
+async def test_connect_error_with_no_server(
+    hostname: str, unused_tcp_port: int
+) -> None:
     client = SMTP(hostname=hostname, port=unused_tcp_port)
 
     with pytest.raises(SMTPConnectError):
@@ -180,8 +190,8 @@ async def test_disconnected_server_raises_on_client_read(
         [Optional[str], Optional[str], bool, bool],
         Coroutine[Any, Any, None],
     ],
-    monkeypatch,
-):
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     response_handler = smtpd_response_handler_factory(
         None,
         None,
@@ -207,8 +217,8 @@ async def test_disconnected_server_raises_on_client_write(
         [Optional[str], Optional[str], bool, bool],
         Coroutine[Any, Any, None],
     ],
-    monkeypatch,
-):
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     response_handler = smtpd_response_handler_factory(
         None,
         None,
@@ -234,8 +244,8 @@ async def test_disconnected_server_raises_on_data_read(
         [Optional[str], Optional[str], bool, bool],
         Coroutine[Any, Any, None],
     ],
-    monkeypatch,
-):
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """
     The `data` command is a special case - it accesses protocol directly,
     rather than using `execute_command`.
@@ -264,9 +274,9 @@ async def test_disconnected_server_raises_on_data_write(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
     smtpd_class: Type[SMTPD],
-    close_during_read_response_handler,
+    close_during_read_response_handler: Callable[[SMTPD], Coroutine[Any, Any, None]],
     monkeypatch: pytest.MonkeyPatch,
-):
+) -> None:
     """
     The `data` command is a special case - it accesses protocol directly,
     rather than using `execute_command`.
@@ -292,8 +302,8 @@ async def test_disconnected_server_raises_on_starttls(
         [Optional[str], Optional[str], bool, bool],
         Coroutine[Any, Any, None],
     ],
-    monkeypatch,
-):
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """
     The `starttls` command is a special case - it accesses protocol directly,
     rather than using `execute_command`.
@@ -311,7 +321,9 @@ async def test_disconnected_server_raises_on_starttls(
     assert smtp_client.transport is None
 
 
-async def test_context_manager(smtp_client: SMTP, smtpd_server):
+async def test_context_manager(
+    smtp_client: SMTP, smtpd_server: asyncio.AbstractServer
+) -> None:
     async with smtp_client:
         assert smtp_client.is_connected
 
@@ -329,8 +341,8 @@ async def test_context_manager_disconnect_handling(
         [Optional[str], Optional[str], bool, bool],
         Coroutine[Any, Any, None],
     ],
-    monkeypatch,
-):
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """
     Exceptions can be raised, but the context manager should handle
     disconnection.
@@ -350,8 +362,10 @@ async def test_context_manager_disconnect_handling(
 
 
 async def test_context_manager_exception_quits(
-    smtp_client: SMTP, smtpd_server: asyncio.AbstractServer, received_commands
-):
+    smtp_client: SMTP,
+    smtpd_server: asyncio.AbstractServer,
+    received_commands: List[Tuple[str, ...]],
+) -> None:
     with pytest.raises(ZeroDivisionError):
         async with smtp_client:
             1 / 0
@@ -360,8 +374,10 @@ async def test_context_manager_exception_quits(
 
 
 async def test_context_manager_connect_exception_closes(
-    smtp_client: SMTP, smtpd_server: asyncio.AbstractServer, received_commands
-):
+    smtp_client: SMTP,
+    smtpd_server: asyncio.AbstractServer,
+    received_commands: List[Tuple[str, ...]],
+) -> None:
     with pytest.raises(ConnectionError):
         async with smtp_client:
             raise ConnectionError("Failed!")
@@ -369,7 +385,9 @@ async def test_context_manager_connect_exception_closes(
     assert len(received_commands) == 0
 
 
-async def test_context_manager_with_manual_connection(smtp_client: SMTP, smtpd_server):
+async def test_context_manager_with_manual_connection(
+    smtp_client: SMTP, smtpd_server: asyncio.AbstractServer
+) -> None:
     await smtp_client.connect()
 
     assert smtp_client.is_connected
@@ -384,7 +402,9 @@ async def test_context_manager_with_manual_connection(smtp_client: SMTP, smtpd_s
     assert not smtp_client.is_connected
 
 
-async def test_context_manager_double_entry(smtp_client: SMTP, smtpd_server):
+async def test_context_manager_double_entry(
+    smtp_client: SMTP, smtpd_server: asyncio.AbstractServer
+) -> None:
     async with smtp_client:
         async with smtp_client:
             assert smtp_client.is_connected
@@ -396,7 +416,9 @@ async def test_context_manager_double_entry(smtp_client: SMTP, smtpd_server):
     assert not smtp_client.is_connected
 
 
-async def test_connect_error_second_attempt(hostname, unused_tcp_port):
+async def test_connect_error_second_attempt(
+    hostname: str, unused_tcp_port: int
+) -> None:
     client = SMTP(hostname=hostname, port=unused_tcp_port, timeout=1.0)
 
     with pytest.raises(SMTPConnectError):
@@ -414,8 +436,8 @@ async def test_server_unexpected_disconnect(
         [Optional[str], Optional[str], bool, bool],
         Coroutine[Any, Any, None],
     ],
-    monkeypatch,
-):
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     response_handler = smtpd_response_handler_factory(
         f"{SMTPStatus.completed} OK",
         f"{SMTPStatus.closing} Bye now!",
@@ -435,12 +457,12 @@ async def test_server_unexpected_disconnect(
 async def test_connect_with_login(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    message,
-    received_messages,
-    received_commands,
-    auth_username,
-    auth_password,
-):
+    message: email.message.Message,
+    received_messages: List[email.message.EmailMessage],
+    received_commands: List[Tuple[str, ...]],
+    auth_username: str,
+    auth_password: str,
+) -> None:
     # STARTTLS is required for login
     await smtp_client.connect(
         start_tls=True,
@@ -454,7 +476,9 @@ async def test_connect_with_login(
     await smtp_client.quit()
 
 
-async def test_connect_via_socket(smtp_client: SMTP, hostname, smtpd_server_port):
+async def test_connect_via_socket(
+    smtp_client: SMTP, hostname: str, smtpd_server_port: int
+) -> None:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.connect((hostname, smtpd_server_port))
 
@@ -465,8 +489,10 @@ async def test_connect_via_socket(smtp_client: SMTP, hostname, smtpd_server_port
 
 
 async def test_connect_via_socket_path(
-    smtp_client: SMTP, smtpd_server_socket_path, socket_path
-):
+    smtp_client: SMTP,
+    smtpd_server_socket_path: asyncio.AbstractServer,
+    socket_path: Union[pathlib.Path, str, bytes],
+) -> None:
     await smtp_client.connect(hostname=None, port=None, socket_path=socket_path)
     response = await smtp_client.ehlo()
 

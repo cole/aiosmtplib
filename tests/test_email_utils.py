@@ -4,6 +4,7 @@ Test message and address parsing/formatting functions.
 from email.header import Header
 from email.headerregistry import Address
 from email.message import EmailMessage, Message
+from typing import List, Union
 
 import pytest
 from hypothesis import example, given
@@ -28,7 +29,7 @@ from aiosmtplib.email import (
     ),
     ids=("quotes", "nonascii", "newtld", "missing_end_<"),
 )
-def test_parse_address_with_display_names(address, expected_address):
+def test_parse_address_with_display_names(address: str, expected_address: str) -> None:
     parsed_address = parse_address(address)
     assert parsed_address == expected_address
 
@@ -36,7 +37,7 @@ def test_parse_address_with_display_names(address, expected_address):
 @given(emails())
 @example("email@[123.123.123.123]")
 @example("_______@example.com")
-def test_parse_address(email) -> None:
+def test_parse_address(email: str) -> None:
     assert parse_address(email) == email
 
 
@@ -52,7 +53,7 @@ def test_parse_address(email) -> None:
     ),
     ids=("quotes", "nonascii", "newtld", "ipaddr", "underscores", "missing_end_quote"),
 )
-def test_quote_address_with_display_names(address, expected_address):
+def test_quote_address_with_display_names(address: str, expected_address: str) -> None:
     quoted_address = quote_address(address)
     assert quoted_address == expected_address
 
@@ -60,7 +61,7 @@ def test_quote_address_with_display_names(address, expected_address):
 @given(emails())
 @example("email@[123.123.123.123]")
 @example("_______@example.com")
-def test_quote_address(email) -> None:
+def test_quote_address(email: str) -> None:
     assert quote_address(email) == f"<{email}>"
 
 
@@ -95,7 +96,9 @@ This is a test\r
     ),
     ids=("ascii-7bit", "utf8-7bit", "ascii-8bit", "utf8-8bit"),
 )
-def test_flatten_message_utf8_options(utf8, cte_type, expected_chunk):
+def test_flatten_message_utf8_options(
+    utf8: bool, cte_type: str, expected_chunk: bytes
+) -> None:
     message = EmailMessage()
     message["From"] = "ålice@example.com"
 
@@ -186,12 +189,12 @@ This is a test\r
     ids=("str", "ascii", "utf8_address", "utf8_display_name"),
 )
 def test_extract_recipients(
-    mime_to_header,
-    mime_cc_header,
-    compat32_to_header,
-    compat32_cc_header,
-    expected_recipients,
-):
+    mime_to_header: Union[str, Address],
+    mime_cc_header: Union[str, Address],
+    compat32_to_header: Union[str, Header],
+    compat32_cc_header: Union[str, Header],
+    expected_recipients: List[str],
+) -> None:
     mime_message = EmailMessage()
     mime_message["To"] = mime_to_header
     mime_message["Cc"] = mime_cc_header
@@ -292,7 +295,11 @@ def test_extract_recipients_valueerror_on_multiple_resent_message() -> None:
     ),
     ids=("str", "ascii", "utf8_address", "utf8_display_name"),
 )
-def test_extract_sender(mime_header, compat32_header, expected_sender):
+def test_extract_sender(
+    mime_header: Union[str, Address],
+    compat32_header: Union[str, Header],
+    expected_sender: str,
+) -> None:
     mime_message = EmailMessage()
     mime_message["From"] = mime_header
 

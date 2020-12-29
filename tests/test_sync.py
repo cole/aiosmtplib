@@ -2,20 +2,22 @@
 Sync method tests.
 """
 import asyncio
+import email.message
 from typing import NoReturn
 
 import pytest
 
+from aiosmtplib import SMTP
 from aiosmtplib.sync import async_to_sync
 
 
 def test_sendmail_sync(
     event_loop: asyncio.AbstractEventLoop,
-    smtp_client_threaded,
-    sender_str,
-    recipient_str,
-    message_str,
-):
+    smtp_client_threaded: SMTP,
+    sender_str: str,
+    recipient_str: str,
+    message_str: str,
+) -> None:
     errors, response = smtp_client_threaded.sendmail_sync(
         sender_str, [recipient_str], message_str
     )
@@ -27,11 +29,11 @@ def test_sendmail_sync(
 
 def test_sendmail_sync_when_connected(
     event_loop: asyncio.AbstractEventLoop,
-    smtp_client_threaded,
-    sender_str,
-    recipient_str,
-    message_str,
-):
+    smtp_client_threaded: SMTP,
+    sender_str: str,
+    recipient_str: str,
+    message_str: str,
+) -> None:
     event_loop.run_until_complete(smtp_client_threaded.connect())
 
     errors, response = smtp_client_threaded.sendmail_sync(
@@ -44,8 +46,10 @@ def test_sendmail_sync_when_connected(
 
 
 def test_send_message_sync(
-    event_loop: asyncio.AbstractEventLoop, smtp_client_threaded, message
-):
+    event_loop: asyncio.AbstractEventLoop,
+    smtp_client_threaded: SMTP,
+    message: email.message.Message,
+) -> None:
     errors, response = smtp_client_threaded.send_message_sync(message)
 
     assert not errors
@@ -54,8 +58,10 @@ def test_send_message_sync(
 
 
 def test_send_message_sync_when_connected(
-    event_loop: asyncio.AbstractEventLoop, smtp_client_threaded, message
-):
+    event_loop: asyncio.AbstractEventLoop,
+    smtp_client_threaded: SMTP,
+    message: email.message.Message,
+) -> None:
     event_loop.run_until_complete(smtp_client_threaded.connect())
 
     errors, response = smtp_client_threaded.send_message_sync(message)

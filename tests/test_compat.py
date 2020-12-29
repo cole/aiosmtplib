@@ -10,18 +10,18 @@ from aiosmtplib.compat import all_tasks, get_running_loop
 
 
 @pytest.mark.asyncio
-async def test_get_running_loop(event_loop) -> None:
+async def test_get_running_loop(event_loop: asyncio.AbstractEventLoop) -> None:
     running_loop = get_running_loop()
     assert running_loop is event_loop
 
 
-def test_get_running_loop_runtime_error(event_loop) -> None:
+def test_get_running_loop_runtime_error(event_loop: asyncio.AbstractEventLoop) -> None:
     with pytest.raises(RuntimeError):
         get_running_loop()
 
 
 @pytest.mark.asyncio
-async def test_all_tasks(event_loop) -> None:
+async def test_all_tasks(event_loop: asyncio.AbstractEventLoop) -> None:
     tasks = all_tasks(event_loop)
 
     if sys.version_info[:2] >= (3, 7):

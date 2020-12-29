@@ -16,13 +16,15 @@ from aiosmtplib import (
     SMTPStatus,
 )
 
+from .smtpd import RecordingHandler
+
 
 pytestmark = pytest.mark.asyncio()
 
 
 @pytest.fixture(scope="session")
-def bad_data_response_handler(request) -> Callable[[SMTPD], Coroutine[Any, Any, None]]:
-    async def bad_data_response(smtpd, *args, **kwargs):
+def bad_data_response_handler() -> Callable[[SMTPD], Coroutine[Any, Any, None]]:
+    async def bad_data_response(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
         smtpd._writer.write(b"250 \xFF\xFF\xFF\xFF\r\n")
         await smtpd._writer.drain()
 
@@ -55,7 +57,7 @@ async def test_helo_error(
     ],
     monkeypatch: pytest.MonkeyPatch,
     error_code: int,
-):
+) -> None:
     response_handler = smtpd_response_handler_factory(
         f"{error_code} error", None, False, False
     )
@@ -93,7 +95,7 @@ async def test_ehlo_error(
     ],
     monkeypatch: pytest.MonkeyPatch,
     error_code: int,
-):
+) -> None:
     response_handler = smtpd_response_handler_factory(
         f"{error_code} error", None, False, False
     )
@@ -192,7 +194,7 @@ async def test_ehlo_or_helo_if_needed_helo_success(
     ],
     monkeypatch: pytest.MonkeyPatch,
     error_code: int,
-):
+) -> None:
     response_handler = smtpd_response_handler_factory(
         f"{error_code} error", None, False, False
     )
@@ -412,15 +414,15 @@ async def test_expn_error(
 
 
 async def test_expn_smtputf8_supported(
-    smtp_client_smtputf8,
-    smtpd_server_smtputf8,
+    smtp_client_smtputf8: SMTP,
+    smtpd_server_smtputf8: asyncio.AbstractServer,
     smtpd_class: Type[SMTPD],
     smtpd_response_handler_factory: Callable[
         [Optional[str], Optional[str], bool, bool],
         Coroutine[Any, Any, None],
     ],
     monkeypatch: pytest.MonkeyPatch,
-):
+) -> None:
     response_handler = smtpd_response_handler_factory(
         """250-Joseph Blow <jblow@example.com>
 250 Alice Smith <asmith@example.com>""",
@@ -437,14 +439,16 @@ async def test_expn_smtputf8_supported(
         assert response.code == SMTPStatus.completed
 
 
-async def test_expn_smtputf8_not_supported(smtp_client: SMTP, smtpd_server):
+async def test_expn_smtputf8_not_supported(
+    smtp_client: SMTP, smtpd_server: asyncio.AbstractServer
+) -> None:
     utf8_list = "tést-lïst"
     async with smtp_client:
         with pytest.raises(SMTPNotSupported):
             await smtp_client.expn(utf8_list, options=["SMTPUTF8"])
 
 
-async def test_help_ok(smtp_client: SMTP, smtpd_server):
+async def test_help_ok(smtp_client: SMTP, smtpd_server: asyncio.AbstractServer) -> None:
     async with smtp_client:
         help_message = await smtp_client.help()
 
@@ -461,7 +465,7 @@ async def test_help_error(
     ],
     monkeypatch: pytest.MonkeyPatch,
     error_code: int,
-):
+) -> None:
     response_handler = smtpd_response_handler_factory(
         f"{error_code} error",
         None,
@@ -486,7 +490,7 @@ async def test_quit_error(
     ],
     monkeypatch: pytest.MonkeyPatch,
     error_code: int,
-):
+) -> None:
     response_handler = smtpd_response_handler_factory(
         f"{error_code} error", None, False, False
     )
@@ -498,7 +502,9 @@ async def test_quit_error(
         assert exception_info.value.code == error_code
 
 
-async def test_supported_methods(smtp_client: SMTP, smtpd_server):
+async def test_supported_methods(
+    smtp_client: SMTP, smtpd_server: asyncio.AbstractServer
+) -> None:
     async with smtp_client:
         response = await smtp_client.ehlo()
 
@@ -508,7 +514,7 @@ async def test_supported_methods(smtp_client: SMTP, smtpd_server):
         assert not smtp_client.supports_extension("bogus")
 
 
-async def test_mail_ok(smtp_client: SMTP, smtpd_server):
+async def test_mail_ok(smtp_client: SMTP, smtpd_server: asyncio.AbstractServer) -> None:
     async with smtp_client:
         response = await smtp_client.mail("j@example.com")
 
@@ -526,7 +532,7 @@ async def test_mail_error(
     ],
     monkeypatch: pytest.MonkeyPatch,
     error_code: int,
-):
+) -> None:
     response_handler = smtpd_response_handler_factory(
         f"{error_code} error", None, False, False
     )
@@ -538,13 +544,17 @@ async def test_mail_error(
         assert exception_info.value.code == error_code
 
 
-async def test_mail_options_not_implemented(smtp_client: SMTP, smtpd_server):
+async def test_mail_options_not_implemented(
+    smtp_client: SMTP, smtpd_server: asyncio.AbstractServer
+) -> None:
     async with smtp_client:
         with pytest.raises(SMTPResponseException):
             await smtp_client.mail("j@example.com", options=["OPT=1"])
 
 
-async def test_mail_smtputf8(smtp_client_smtputf8, smtpd_server_smtputf8):
+async def test_mail_smtputf8(
+    smtp_client_smtputf8: SMTP, smtpd_server_smtputf8: asyncio.AbstractServer
+) -> None:
     async with smtp_client_smtputf8:
         response = await smtp_client_smtputf8.mail(
             "tést@exåmple.com", options=["SMTPUTF8"], encoding="utf-8"
@@ -553,13 +563,15 @@ async def test_mail_smtputf8(smtp_client_smtputf8, smtpd_server_smtputf8):
         assert response.code == SMTPStatus.completed
 
 
-async def test_mail_default_encoding_utf8_encode_error(smtp_client: SMTP, smtpd_server):
+async def test_mail_default_encoding_utf8_encode_error(
+    smtp_client: SMTP, smtpd_server: asyncio.AbstractServer
+) -> None:
     async with smtp_client:
         with pytest.raises(UnicodeEncodeError):
             await smtp_client.mail("tést@exåmple.com", options=["SMTPUTF8"])
 
 
-async def test_rcpt_ok(smtp_client: SMTP, smtpd_server):
+async def test_rcpt_ok(smtp_client: SMTP, smtpd_server: asyncio.AbstractServer) -> None:
     async with smtp_client:
         await smtp_client.mail("j@example.com")
 
@@ -577,8 +589,8 @@ async def test_rcpt_options_ok(
         [Optional[str], Optional[str], bool, bool],
         Coroutine[Any, Any, None],
     ],
-    monkeypatch,
-):
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     # RCPT options are not implemented in aiosmtpd, so force success response
     response_handler = smtpd_response_handler_factory(
         f"{SMTPStatus.completed} all done", None, False, False
@@ -595,14 +607,16 @@ async def test_rcpt_options_ok(
         assert response.code == SMTPStatus.completed
 
 
-async def test_rcpt_options_not_implemented(smtp_client: SMTP, smtpd_server):
+async def test_rcpt_options_not_implemented(
+    smtp_client: SMTP, smtpd_server: asyncio.AbstractServer
+) -> None:
     # RCPT options are not implemented in aiosmtpd, so any option will return 555
     async with smtp_client:
         await smtp_client.mail("j@example.com")
 
         with pytest.raises(SMTPResponseException) as err:
             await smtp_client.rcpt("test@example.com", options=["OPT=1"])
-            assert err.code == SMTPStatus.syntax_error
+            assert err.value.code == SMTPStatus.syntax_error
 
 
 async def test_rcpt_error(
@@ -615,7 +629,7 @@ async def test_rcpt_error(
     ],
     monkeypatch: pytest.MonkeyPatch,
     error_code: int,
-):
+) -> None:
     response_handler = smtpd_response_handler_factory(
         f"{error_code} error", None, False, False
     )
@@ -629,7 +643,9 @@ async def test_rcpt_error(
         assert exception_info.value.code == error_code
 
 
-async def test_rcpt_smtputf8(smtp_client_smtputf8, smtpd_server_smtputf8):
+async def test_rcpt_smtputf8(
+    smtp_client_smtputf8: SMTP, smtpd_server_smtputf8: asyncio.AbstractServer
+) -> None:
     async with smtp_client_smtputf8:
         await smtp_client_smtputf8.mail("j@example.com", options=["SMTPUTF8"])
         response = await smtp_client_smtputf8.rcpt("tést@exåmple.com", encoding="utf-8")
@@ -637,7 +653,9 @@ async def test_rcpt_smtputf8(smtp_client_smtputf8, smtpd_server_smtputf8):
         assert response.code == SMTPStatus.completed
 
 
-async def test_rcpt_default_encoding_utf8_encode_error(smtp_client: SMTP, smtpd_server):
+async def test_rcpt_default_encoding_utf8_encode_error(
+    smtp_client: SMTP, smtpd_server: asyncio.AbstractServer
+) -> None:
     async with smtp_client:
         await smtp_client.mail("j@example.com")
 
@@ -645,7 +663,7 @@ async def test_rcpt_default_encoding_utf8_encode_error(smtp_client: SMTP, smtpd_
             await smtp_client.rcpt("tést@exåmple.com", options=["SMTPUTF8"])
 
 
-async def test_data_ok(smtp_client: SMTP, smtpd_server):
+async def test_data_ok(smtp_client: SMTP, smtpd_server: asyncio.AbstractServer) -> None:
     async with smtp_client:
         await smtp_client.mail("j@example.com")
         await smtp_client.rcpt("test@example.com")
@@ -665,7 +683,7 @@ async def test_data_error_on_start_input(
     ],
     monkeypatch: pytest.MonkeyPatch,
     error_code: int,
-):
+) -> None:
     response_handler = smtpd_response_handler_factory(
         f"{error_code} error", None, False, False
     )
@@ -682,14 +700,14 @@ async def test_data_error_on_start_input(
 async def test_data_complete_error(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    smtpd_handler,
+    smtpd_handler: RecordingHandler,
     smtpd_response_handler_factory: Callable[
         [Optional[str], Optional[str], bool, bool],
         Coroutine[Any, Any, None],
     ],
     monkeypatch: pytest.MonkeyPatch,
     error_code: int,
-):
+) -> None:
     response_handler = smtpd_response_handler_factory(
         f"{error_code} error", None, False, False
     )
@@ -711,8 +729,8 @@ async def test_gibberish_raises_exception(
         [Optional[str], Optional[str], bool, bool],
         Coroutine[Any, Any, None],
     ],
-    monkeypatch,
-):
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     response_handler = smtpd_response_handler_factory(
         "sdfjlfwqejflqw", None, False, False
     )
@@ -727,9 +745,9 @@ async def test_badly_encoded_text_response(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
     smtpd_class: Type[SMTPD],
-    bad_data_response_handler,
-    monkeypatch,
-):
+    bad_data_response_handler: Callable[[SMTPD], Coroutine[Any, Any, None]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(smtpd_class, "smtp_NOOP", bad_data_response_handler)
 
     async with smtp_client:

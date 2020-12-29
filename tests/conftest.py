@@ -6,7 +6,6 @@ import email.header
 import email.message
 import email.mime.multipart
 import email.mime.text
-from logging import Handler
 import socket
 import ssl
 import sys
@@ -329,7 +328,7 @@ def smtpd_server(
     bind_address: str,
     hostname: str,
     smtpd_class: Type[SMTPD],
-    smtpd_handler: Handler,
+    smtpd_handler: RecordingHandler,
     server_tls_context: ssl.SSLContext,
     smtpd_auth_callback: Callable[[str, bytes, bytes], bool],
 ) -> asyncio.AbstractServer:
@@ -372,7 +371,7 @@ def smtpd_server_smtputf8(
     bind_address: str,
     hostname: str,
     smtpd_class: Type[SMTPD],
-    smtpd_handler: Handler,
+    smtpd_handler: RecordingHandler,
     server_tls_context: ssl.SSLContext,
     smtpd_auth_callback: Callable[[str, bytes, bytes], bool],
 ) -> asyncio.AbstractServer:
@@ -416,7 +415,7 @@ def smtpd_server_socket_path(
     hostname: str,
     socket_path: Union[str, bytes, Path],
     smtpd_class: Type[SMTPD],
-    smtpd_handler: Handler,
+    smtpd_handler: RecordingHandler,
     server_tls_context: ssl.SSLContext,
     smtpd_auth_callback: Callable[[str, bytes, bytes], bool],
 ) -> asyncio.AbstractServer:
@@ -547,7 +546,7 @@ def tls_smtpd_server(
     event_loop: asyncio.AbstractEventLoop,
     bind_address: str,
     smtpd_class: Type[SMTPD],
-    smtpd_handler: Handler,
+    smtpd_handler: RecordingHandler,
     server_tls_context: ssl.SSLContext,
 ) -> asyncio.AbstractServer:
     def factory() -> SMTPD:
@@ -598,7 +597,7 @@ def tls_smtp_client(hostname: str, tls_smtpd_server_port: int) -> SMTP:
 
 @pytest.fixture(scope="function")
 def threaded_smtpd_server(
-    request: pytest.FixtureRequest, bind_address: str, smtpd_handler: Handler
+    request: pytest.FixtureRequest, bind_address: str, smtpd_handler: RecordingHandler
 ) -> asyncio.AbstractServer:
     controller = SMTPDController(smtpd_handler, hostname=bind_address, port=0)
     controller.start()
