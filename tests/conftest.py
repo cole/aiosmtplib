@@ -11,17 +11,7 @@ import ssl
 import sys
 import traceback
 from pathlib import Path
-from typing import (
-    Any,
-    Callable,
-    Coroutine,
-    Dict,
-    List,
-    Optional,
-    Tuple,
-    Type,
-    Union,
-)
+from typing import Any, Callable, Coroutine, Dict, List, Optional, Tuple, Type, Union
 
 import hypothesis
 import pytest

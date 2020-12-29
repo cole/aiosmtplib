@@ -20,6 +20,7 @@ from aiosmtplib import (
 )
 from aiosmtplib.email import formataddr
 
+
 pytestmark = pytest.mark.asyncio()
 
 

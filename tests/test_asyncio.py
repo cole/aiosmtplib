@@ -2,7 +2,6 @@
 Tests that cover asyncio usage.
 """
 
-from aiosmtplib.response import SMTPResponse
 import asyncio
 from typing import (
     Any,
@@ -20,6 +19,7 @@ import pytest
 from aiosmtpd.smtp import SMTP as SMTPD
 
 from aiosmtplib import SMTP, SMTPStatus
+from aiosmtplib.response import SMTPResponse
 
 
 RECIPIENTS = [

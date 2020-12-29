@@ -9,7 +9,6 @@ from typing import Any, Callable, Coroutine, Type
 import pytest
 from aiosmtpd.smtp import SMTP as SMTPD
 
-
 from aiosmtplib import (
     SMTP,
     SMTPConnectTimeoutError,

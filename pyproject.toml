@@ -70,9 +70,7 @@ testpaths = [
 ]
 
 [tool.isort]
-line_length = 88
+profile = "black"
 lines_after_imports = 2
-multi_line_output = 3
 default_section = "THIRDPARTY"
 known_first_party = [ "aiosmtplib" ]
-include_trailing_comma = true

@@ -8,8 +8,9 @@ from email.message import EmailMessage
 from typing import Any, List, Optional, Tuple, Union
 
 from aiosmtpd.handlers import Message as MessageHandler
-from aiosmtpd.smtp import MISSING, Envelope, Session, _Missing
+from aiosmtpd.smtp import MISSING
 from aiosmtpd.smtp import SMTP as SMTPD
+from aiosmtpd.smtp import Envelope, Session, _Missing
 
 
 log = logging.getLogger("mail.log")
