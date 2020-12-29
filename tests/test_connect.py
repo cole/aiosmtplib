@@ -364,7 +364,7 @@ async def test_context_manager_disconnect_handling(
 async def test_context_manager_exception_quits(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    received_commands: List[Tuple[str, ...]],
+    received_commands: List[Tuple[str, Tuple[Any, ...]]],
 ) -> None:
     with pytest.raises(ZeroDivisionError):
         async with smtp_client:
@@ -376,7 +376,7 @@ async def test_context_manager_exception_quits(
 async def test_context_manager_connect_exception_closes(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    received_commands: List[Tuple[str, ...]],
+    received_commands: List[Tuple[str, Tuple[Any, ...]]],
 ) -> None:
     with pytest.raises(ConnectionError):
         async with smtp_client:
@@ -459,7 +459,7 @@ async def test_connect_with_login(
     smtpd_server: asyncio.AbstractServer,
     message: email.message.Message,
     received_messages: List[email.message.EmailMessage],
-    received_commands: List[Tuple[str, ...]],
+    received_commands: List[Tuple[str, Tuple[Any, ...]]],
     auth_username: str,
     auth_password: str,
 ) -> None:

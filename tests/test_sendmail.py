@@ -201,7 +201,7 @@ async def test_sendmail_error_silent_rset_handles_disconnect(
 async def test_rset_after_sendmail_error_response_to_mail(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    received_commands: List[Tuple[str, ...]],
+    received_commands: List[Tuple[str, Tuple[Any, ...]]],
 ) -> None:
     """
     If an error response is given to the MAIL command in the sendmail method,
@@ -221,7 +221,7 @@ async def test_rset_after_sendmail_error_response_to_mail(
 async def test_rset_after_sendmail_error_response_to_rcpt(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    received_commands: List[Tuple[str, ...]],
+    received_commands: List[Tuple[str, Tuple[Any, ...]]],
 ) -> None:
     """
     If an error response is given to the RCPT command in the sendmail method,
@@ -253,7 +253,7 @@ async def test_rset_after_sendmail_error_response_to_data(
     sender_str: str,
     recipient_str: str,
     message_str: str,
-    received_commands: List[Tuple[str, ...]],
+    received_commands: List[Tuple[str, Tuple[Any, ...]]],
 ) -> None:
     """
     If an error response is given to the DATA command in the sendmail method,
@@ -366,7 +366,7 @@ async def test_send_message_smtputf8_sender(
     smtp_client_smtputf8: SMTP,
     smtpd_server_smtputf8: asyncio.AbstractServer,
     message: email.message.Message,
-    received_commands: List[Tuple[str, ...]],
+    received_commands: List[Tuple[str, Tuple[Any, ...]]],
     received_messages: List[email.message.EmailMessage],
 ) -> None:
     del message["From"]
@@ -379,10 +379,10 @@ async def test_send_message_smtputf8_sender(
     assert response != ""
 
     assert received_commands[1][0] == "MAIL"
-    assert received_commands[1][1] == message["From"]
+    assert received_commands[1][1][0] == message["From"]
     # Size varies depending on the message type
-    assert received_commands[1][2][0].startswith("SIZE=")
-    assert received_commands[1][2][1:] == ["SMTPUTF8", "BODY=8BITMIME"]
+    assert received_commands[1][1][1][0].startswith("SIZE=")
+    assert received_commands[1][1][1][1:] == ["SMTPUTF8", "BODY=8BITMIME"]
 
     assert len(received_messages) == 1
     assert received_messages[0]["X-MailFrom"] == message["From"]
@@ -392,7 +392,7 @@ async def test_send_mime_message_smtputf8_recipient(
     smtp_client_smtputf8: SMTP,
     smtpd_server_smtputf8: asyncio.AbstractServer,
     mime_message: email.message.EmailMessage,
-    received_commands: List[Tuple[str, ...]],
+    received_commands: List[Tuple[str, Tuple[Any, ...]]],
     received_messages: List[email.message.EmailMessage],
 ) -> None:
     mime_message["To"] = "reçipïént@exåmple.com"
@@ -404,7 +404,7 @@ async def test_send_mime_message_smtputf8_recipient(
     assert response != ""
 
     assert received_commands[2][0] == "RCPT"
-    assert received_commands[2][1] == mime_message["To"]
+    assert received_commands[2][1][0] == mime_message["To"]
 
     assert len(received_messages) == 1
     assert received_messages[0]["X-RcptTo"] == ", ".join(mime_message.get_all("To"))
@@ -414,7 +414,7 @@ async def test_send_compat32_message_smtputf8_recipient(
     smtp_client_smtputf8: SMTP,
     smtpd_server_smtputf8: asyncio.AbstractServer,
     compat32_message: email.message.Message,
-    received_commands: List[Tuple[str, ...]],
+    received_commands: List[Tuple[str, Tuple[Any, ...]]],
     received_messages: List[email.message.EmailMessage],
 ) -> None:
     recipient_bytes = bytes("reçipïént@exåmple.com", "utf-8")
@@ -427,7 +427,7 @@ async def test_send_compat32_message_smtputf8_recipient(
     assert response != ""
 
     assert received_commands[2][0] == "RCPT"
-    assert received_commands[2][1] == compat32_message["To"]
+    assert received_commands[2][1][0] == compat32_message["To"]
 
     assert len(received_messages) == 1
     assert (
@@ -466,7 +466,7 @@ async def test_send_compat32_message_utf8_text_without_smtputf8(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
     compat32_message: email.message.Message,
-    received_commands: List[Tuple[str, ...]],
+    received_commands: List[Tuple[str, Tuple[Any, ...]]],
     received_messages: List[email.message.EmailMessage],
 ) -> None:
     compat32_message["To"] = email.header.Header(
@@ -480,7 +480,7 @@ async def test_send_compat32_message_utf8_text_without_smtputf8(
     assert response != ""
 
     assert received_commands[2][0] == "RCPT"
-    assert received_commands[2][1] == compat32_message["To"].encode()
+    assert received_commands[2][1][0] == compat32_message["To"].encode()
 
     assert len(received_messages) == 1
     assert (
@@ -498,7 +498,7 @@ async def test_send_mime_message_utf8_text_without_smtputf8(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
     mime_message: email.message.EmailMessage,
-    received_commands: List[Tuple[str, ...]],
+    received_commands: List[Tuple[str, Tuple[Any, ...]]],
     received_messages: List[email.message.EmailMessage],
 ) -> None:
     mime_message["To"] = "reçipïént <recipient2@example.com>"
@@ -510,7 +510,7 @@ async def test_send_mime_message_utf8_text_without_smtputf8(
     assert response != ""
 
     assert received_commands[2][0] == "RCPT"
-    assert received_commands[2][1] == mime_message["To"]
+    assert received_commands[2][1][0] == mime_message["To"]
 
     assert len(received_messages) == 1
     assert (

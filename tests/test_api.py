@@ -2,7 +2,7 @@
 send coroutine testing.
 """
 import email
-from typing import List, Tuple
+from typing import Any, List, Tuple
 
 import pytest
 
@@ -103,7 +103,7 @@ async def test_send_with_start_tls(
     smtpd_server_port: int,
     message: email.message.Message,
     received_messages: List[email.message.EmailMessage],
-    received_commands: List[Tuple[str, ...]],
+    received_commands: List[Tuple[str, Tuple[Any, ...]]],
 ) -> None:
     errors, response = await send(
         message,
@@ -123,7 +123,7 @@ async def test_send_with_login(
     smtpd_server_port: int,
     message: email.message.Message,
     received_messages: List[email.message.EmailMessage],
-    received_commands: List[Tuple[str, ...]],
+    received_commands: List[Tuple[str, Tuple[Any, ...]]],
     auth_username: str,
     auth_password: str,
 ) -> None:

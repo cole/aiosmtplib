@@ -20,7 +20,7 @@ class RecordingHandler(MessageHandler):
     def __init__(
         self,
         messages_list: List[EmailMessage],
-        commands_list: List[Tuple[str, ...]],
+        commands_list: List[Tuple[str, Tuple[Any, ...]]],
         responses_list: List[str],
     ):
         self.messages = messages_list
@@ -29,7 +29,7 @@ class RecordingHandler(MessageHandler):
         super().__init__(message_class=EmailMessage)
 
     def record_command(self, command: str, *args: Any) -> None:
-        self.commands.append((command, *args))
+        self.commands.append((command, tuple(args)))
 
     def record_server_response(self, status: str) -> None:
         self.responses.append(status)

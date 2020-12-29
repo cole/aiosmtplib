@@ -231,7 +231,7 @@ def received_messages() -> List[email.message.EmailMessage]:
 
 
 @pytest.fixture(scope="function")
-def received_commands() -> List[Tuple[str, ...]]:
+def received_commands() -> List[Tuple[str, Tuple[Any, ...]]]:
     return []
 
 
@@ -243,7 +243,7 @@ def smtpd_responses() -> List[str]:
 @pytest.fixture(scope="function")
 def smtpd_handler(
     received_messages: List[email.message.EmailMessage],
-    received_commands: List[Tuple[str, ...]],
+    received_commands: List[Tuple[str, Tuple[Any, ...]]],
     smtpd_responses: List[str],
 ) -> RecordingHandler:
     return RecordingHandler(received_messages, received_commands, smtpd_responses)
