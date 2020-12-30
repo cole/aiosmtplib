@@ -5,7 +5,7 @@ import asyncio
 import email
 import pathlib
 import socket
-from typing import Any, Callable, Coroutine, List, Optional, Tuple, Type, Union
+from typing import Any, Callable, List, Tuple, Type, Union
 
 import pytest
 from aiosmtpd.smtp import SMTP as SMTPD
@@ -22,20 +22,12 @@ from aiosmtplib import (
 pytestmark = pytest.mark.asyncio()
 
 
-@pytest.fixture(scope="session")
-def close_during_read_response_handler() -> Callable[
-    [SMTPD], Coroutine[Any, Any, None]
-]:
-    async def close_during_read_response(
-        smtpd: SMTPD, *args: Any, **kwargs: Any
-    ) -> None:
-        # Read one line of data, then cut the connection.
-        await smtpd.push(f"{SMTPStatus.start_input} End data with <CR><LF>.<CR><LF>")
+async def close_during_read_response(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
+    # Read one line of data, then cut the connection.
+    await smtpd.push(f"{SMTPStatus.start_input} End data with <CR><LF>.<CR><LF>")
 
-        await smtpd._reader.readline()
-        smtpd.transport.close()
-
-    return close_during_read_response
+    await smtpd._reader.readline()
+    smtpd.transport.close()
 
 
 async def test_plain_smtp_connect(
@@ -73,19 +65,10 @@ async def test_bad_connect_response_raises_error(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
     smtpd_class: Type[SMTPD],
-    smtpd_response_handler_factory: Callable[
-        [Optional[str], Optional[str], bool, bool],
-        Coroutine[Any, Any, None],
-    ],
+    smtpd_mock_response_unavailable: Callable,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    response_handler = smtpd_response_handler_factory(
-        f"{SMTPStatus.domain_unavailable} retry in 5 minutes",
-        None,
-        False,
-        True,
-    )
-    monkeypatch.setattr(smtpd_class, "_handle_client", response_handler)
+    monkeypatch.setattr(smtpd_class, "_handle_client", smtpd_mock_response_unavailable)
 
     with pytest.raises(SMTPConnectError):
         await smtp_client.connect()
@@ -98,19 +81,10 @@ async def test_eof_on_connect_raises_connect_error(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
     smtpd_class: Type[SMTPD],
-    smtpd_response_handler_factory: Callable[
-        [Optional[str], Optional[str], bool, bool],
-        Coroutine[Any, Any, None],
-    ],
+    smtpd_mock_response_eof: Callable,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    response_handler = smtpd_response_handler_factory(
-        None,
-        None,
-        True,
-        False,
-    )
-    monkeypatch.setattr(smtpd_class, "_handle_client", response_handler)
+    monkeypatch.setattr(smtpd_class, "_handle_client", smtpd_mock_response_eof)
 
     with pytest.raises(SMTPConnectError):
         await smtp_client.connect()
@@ -123,19 +97,10 @@ async def test_close_on_connect_raises_connect_error(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
     smtpd_class: Type[SMTPD],
-    smtpd_response_handler_factory: Callable[
-        [Optional[str], Optional[str], bool, bool],
-        Coroutine[Any, Any, None],
-    ],
+    smtpd_mock_response_disconnect: Callable,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    response_handler = smtpd_response_handler_factory(
-        None,
-        None,
-        False,
-        True,
-    )
-    monkeypatch.setattr(smtpd_class, "_handle_client", response_handler)
+    monkeypatch.setattr(smtpd_class, "_handle_client", smtpd_mock_response_disconnect)
 
     with pytest.raises(SMTPConnectError):
         await smtp_client.connect()
@@ -148,20 +113,10 @@ async def test_421_closes_connection(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
     smtpd_class: Type[SMTPD],
-    smtpd_response_handler_factory: Callable[
-        [Optional[str], Optional[str], bool, bool],
-        Coroutine[Any, Any, None],
-    ],
+    smtpd_mock_response_unavailable: Callable,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    response_handler = smtpd_response_handler_factory(
-        f"{SMTPStatus.domain_unavailable} Please come back in 15 seconds.",
-        None,
-        False,
-        False,
-    )
-
-    monkeypatch.setattr(smtpd_class, "smtp_NOOP", response_handler)
+    monkeypatch.setattr(smtpd_class, "smtp_NOOP", smtpd_mock_response_unavailable)
 
     await smtp_client.connect()
 
@@ -186,19 +141,10 @@ async def test_disconnected_server_raises_on_client_read(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
     smtpd_class: Type[SMTPD],
-    smtpd_response_handler_factory: Callable[
-        [Optional[str], Optional[str], bool, bool],
-        Coroutine[Any, Any, None],
-    ],
+    smtpd_mock_response_disconnect: Callable,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    response_handler = smtpd_response_handler_factory(
-        None,
-        None,
-        False,
-        True,
-    )
-    monkeypatch.setattr(smtpd_class, "smtp_NOOP", response_handler)
+    monkeypatch.setattr(smtpd_class, "smtp_NOOP", smtpd_mock_response_disconnect)
 
     await smtp_client.connect()
 
@@ -213,19 +159,10 @@ async def test_disconnected_server_raises_on_client_write(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
     smtpd_class: Type[SMTPD],
-    smtpd_response_handler_factory: Callable[
-        [Optional[str], Optional[str], bool, bool],
-        Coroutine[Any, Any, None],
-    ],
+    smtpd_mock_response_eof: Callable,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    response_handler = smtpd_response_handler_factory(
-        None,
-        None,
-        True,
-        True,
-    )
-    monkeypatch.setattr(smtpd_class, "smtp_NOOP", response_handler)
+    monkeypatch.setattr(smtpd_class, "smtp_NOOP", smtpd_mock_response_eof)
 
     await smtp_client.connect()
 
@@ -240,23 +177,10 @@ async def test_disconnected_server_raises_on_data_read(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
     smtpd_class: Type[SMTPD],
-    smtpd_response_handler_factory: Callable[
-        [Optional[str], Optional[str], bool, bool],
-        Coroutine[Any, Any, None],
-    ],
+    smtpd_mock_response_disconnect: Callable,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """
-    The `data` command is a special case - it accesses protocol directly,
-    rather than using `execute_command`.
-    """
-    response_handler = smtpd_response_handler_factory(
-        None,
-        None,
-        False,
-        True,
-    )
-    monkeypatch.setattr(smtpd_class, "smtp_DATA", response_handler)
+    monkeypatch.setattr(smtpd_class, "smtp_DATA", smtpd_mock_response_disconnect)
 
     await smtp_client.connect()
     await smtp_client.ehlo()
@@ -274,14 +198,9 @@ async def test_disconnected_server_raises_on_data_write(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
     smtpd_class: Type[SMTPD],
-    close_during_read_response_handler: Callable[[SMTPD], Coroutine[Any, Any, None]],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """
-    The `data` command is a special case - it accesses protocol directly,
-    rather than using `execute_command`.
-    """
-    monkeypatch.setattr(smtpd_class, "smtp_DATA", close_during_read_response_handler)
+    monkeypatch.setattr(smtpd_class, "smtp_DATA", close_during_read_response)
 
     await smtp_client.connect()
     await smtp_client.ehlo()
@@ -298,18 +217,10 @@ async def test_disconnected_server_raises_on_starttls(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
     smtpd_class: Type[SMTPD],
-    smtpd_response_handler_factory: Callable[
-        [Optional[str], Optional[str], bool, bool],
-        Coroutine[Any, Any, None],
-    ],
+    smtpd_mock_response_disconnect: Callable,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """
-    The `starttls` command is a special case - it accesses protocol directly,
-    rather than using `execute_command`.
-    """
-    response_handler = smtpd_response_handler_factory(None, None, False, True)
-    monkeypatch.setattr(smtpd_class, "smtp_STARTTLS", response_handler)
+    monkeypatch.setattr(smtpd_class, "smtp_STARTTLS", smtpd_mock_response_disconnect)
 
     await smtp_client.connect()
     await smtp_client.ehlo()
@@ -337,18 +248,14 @@ async def test_context_manager_disconnect_handling(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
     smtpd_class: Type[SMTPD],
-    smtpd_response_handler_factory: Callable[
-        [Optional[str], Optional[str], bool, bool],
-        Coroutine[Any, Any, None],
-    ],
+    smtpd_mock_response_disconnect: Callable,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """
     Exceptions can be raised, but the context manager should handle
     disconnection.
     """
-    response_handler = smtpd_response_handler_factory(None, None, False, True)
-    monkeypatch.setattr(smtpd_class, "smtp_NOOP", response_handler)
+    monkeypatch.setattr(smtpd_class, "smtp_NOOP", smtpd_mock_response_disconnect)
 
     async with smtp_client:
         assert smtp_client.is_connected
@@ -432,20 +339,10 @@ async def test_server_unexpected_disconnect(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
     smtpd_class: Type[SMTPD],
-    smtpd_response_handler_factory: Callable[
-        [Optional[str], Optional[str], bool, bool],
-        Coroutine[Any, Any, None],
-    ],
+    smtpd_mock_response_done_then_close: Callable,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    response_handler = smtpd_response_handler_factory(
-        f"{SMTPStatus.completed} OK",
-        f"{SMTPStatus.closing} Bye now!",
-        False,
-        True,
-    )
-
-    monkeypatch.setattr(smtpd_class, "smtp_EHLO", response_handler)
+    monkeypatch.setattr(smtpd_class, "smtp_EHLO", smtpd_mock_response_done_then_close)
 
     await smtp_client.connect()
     await smtp_client.ehlo()

@@ -1,15 +1,15 @@
 import asyncio
 import base64
-from collections import deque
-from typing import Any, Deque, List, Tuple
 
 import pytest
 
 from aiosmtplib import SMTP
-from aiosmtplib.auth import SMTPAuth, crammd5_verify
+from aiosmtplib.auth import crammd5_verify
 from aiosmtplib.errors import SMTPAuthenticationError, SMTPException
 from aiosmtplib.response import SMTPResponse
 from aiosmtplib.status import SMTPStatus
+
+from .auth import DummySMTPAuth
 
 
 pytestmark = pytest.mark.asyncio()
@@ -17,35 +17,6 @@ pytestmark = pytest.mark.asyncio()
 
 SUCCESS_RESPONSE = SMTPResponse(SMTPStatus.auth_successful, "OK")
 FAILURE_RESPONSE = SMTPResponse(SMTPStatus.auth_failed, "Nope")
-
-
-class DummySMTPAuth(SMTPAuth):
-
-    transport = None
-
-    def __init__(self, *args: Any, **kwargs: Any):
-        super().__init__(*args, **kwargs)
-
-        self.received_commands: List[bytes] = []
-        self.responses: Deque[Tuple[int, str]] = deque()
-        self.esmtp_extensions = {"auth": ""}
-        self.server_auth_methods = ["cram-md5", "login", "plain"]
-        self.supports_esmtp = True
-
-    async def execute_command(self, *args: Any, **kwargs: Any) -> SMTPResponse:
-        self.received_commands.append(b" ".join(args))
-
-        response = self.responses.popleft()
-
-        return SMTPResponse(*response)
-
-    async def _ehlo_or_helo_if_needed(self) -> None:
-        return None
-
-
-@pytest.fixture()
-def mock_auth() -> DummySMTPAuth:
-    return DummySMTPAuth()
 
 
 async def test_login_without_extension_raises_error(mock_auth: DummySMTPAuth) -> None:

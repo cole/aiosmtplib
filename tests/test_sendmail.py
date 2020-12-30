@@ -6,7 +6,7 @@ import copy
 import email.generator
 import email.header
 import email.message
-from typing import Any, Callable, Coroutine, List, Optional, Tuple, Type
+from typing import Any, Callable, Coroutine, List, Tuple, Type
 
 import pytest
 from aiosmtpd.smtp import SMTP as SMTPD
@@ -94,22 +94,13 @@ async def test_sendmail_without_size_option(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
     smtpd_class: Type[SMTPD],
-    smtpd_response_handler_factory: Callable[
-        [Optional[str], Optional[str], bool, bool],
-        Coroutine[Any, Any, None],
-    ],
+    smtpd_mock_response_done: Callable,
     monkeypatch: pytest.MonkeyPatch,
     sender_str: str,
     recipient_str: str,
     message_str: str,
 ) -> None:
-    response_handler = smtpd_response_handler_factory(
-        f"{SMTPStatus.completed} done",
-        None,
-        False,
-        False,
-    )
-    monkeypatch.setattr(smtpd_class, "smtp_EHLO", response_handler)
+    monkeypatch.setattr(smtpd_class, "smtp_EHLO", smtpd_mock_response_done)
 
     async with smtp_client:
         errors, response = await smtp_client.sendmail(
@@ -176,22 +167,13 @@ async def test_sendmail_error_silent_rset_handles_disconnect(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
     smtpd_class: Type[SMTPD],
-    smtpd_response_handler_factory: Callable[
-        [Optional[str], Optional[str], bool, bool],
-        Coroutine[Any, Any, None],
-    ],
+    smtpd_mock_response_error_disconnect: Callable,
     monkeypatch: pytest.MonkeyPatch,
     sender_str: str,
     recipient_str: str,
     message_str: str,
 ) -> None:
-    response_handler = smtpd_response_handler_factory(
-        f"{SMTPStatus.unrecognized_parameters} error",
-        None,
-        False,
-        True,
-    )
-    monkeypatch.setattr(smtpd_class, "smtp_DATA", response_handler)
+    monkeypatch.setattr(smtpd_class, "smtp_DATA", smtpd_mock_response_error_disconnect)
 
     async with smtp_client:
         with pytest.raises(SMTPResponseException):
@@ -244,28 +226,19 @@ async def test_rset_after_sendmail_error_response_to_data(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
     smtpd_class: Type[SMTPD],
-    smtpd_response_handler_factory: Callable[
-        [Optional[str], Optional[str], bool, bool],
-        Coroutine[Any, Any, None],
-    ],
     monkeypatch: pytest.MonkeyPatch,
     error_code: int,
     sender_str: str,
     recipient_str: str,
     message_str: str,
     received_commands: List[Tuple[str, Tuple[Any, ...]]],
+    smtpd_mock_response_error_with_code: Callable[[SMTPD], Coroutine[Any, Any, None]],
 ) -> None:
     """
     If an error response is given to the DATA command in the sendmail method,
     test that we reset the server session.
     """
-    response_handler = smtpd_response_handler_factory(
-        f"{error_code} error",
-        None,
-        False,
-        False,
-    )
-    monkeypatch.setattr(smtpd_class, "smtp_DATA", response_handler)
+    monkeypatch.setattr(smtpd_class, "smtp_DATA", smtpd_mock_response_error_with_code)
 
     async with smtp_client:
         response = await smtp_client.ehlo()

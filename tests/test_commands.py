@@ -2,7 +2,7 @@
 Lower level SMTP command tests.
 """
 import asyncio
-from typing import Any, Callable, Coroutine, Optional, Type
+from typing import Any, Callable, Coroutine, Type
 
 import pytest
 from aiosmtpd.smtp import SMTP as SMTPD
@@ -20,15 +20,6 @@ from .smtpd import RecordingHandler
 
 
 pytestmark = pytest.mark.asyncio()
-
-
-@pytest.fixture(scope="session")
-def bad_data_response_handler() -> Callable[[SMTPD], Coroutine[Any, Any, None]]:
-    async def bad_data_response(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
-        smtpd._writer.write(b"250 \xFF\xFF\xFF\xFF\r\n")
-        await smtpd._writer.drain()
-
-    return bad_data_response
 
 
 async def test_helo_ok(smtp_client: SMTP, smtpd_server: asyncio.AbstractServer) -> None:
@@ -51,17 +42,11 @@ async def test_helo_error(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
     smtpd_class: Type[SMTPD],
-    smtpd_response_handler_factory: Callable[
-        [Optional[str], Optional[str], bool, bool],
-        Coroutine[Any, Any, None],
-    ],
+    smtpd_mock_response_error_with_code: Callable,
     monkeypatch: pytest.MonkeyPatch,
     error_code: int,
 ) -> None:
-    response_handler = smtpd_response_handler_factory(
-        f"{error_code} error", None, False, False
-    )
-    monkeypatch.setattr(smtpd_class, "smtp_HELO", response_handler)
+    monkeypatch.setattr(smtpd_class, "smtp_HELO", smtpd_mock_response_error_with_code)
 
     async with smtp_client:
         with pytest.raises(SMTPHeloError) as exception_info:
@@ -89,17 +74,11 @@ async def test_ehlo_error(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
     smtpd_class: Type[SMTPD],
-    smtpd_response_handler_factory: Callable[
-        [Optional[str], Optional[str], bool, bool],
-        Coroutine[Any, Any, None],
-    ],
+    smtpd_mock_response_error_with_code: Callable,
     monkeypatch: pytest.MonkeyPatch,
     error_code: int,
 ) -> None:
-    response_handler = smtpd_response_handler_factory(
-        f"{error_code} error", None, False, False
-    )
-    monkeypatch.setattr(smtpd_class, "smtp_EHLO", response_handler)
+    monkeypatch.setattr(smtpd_class, "smtp_EHLO", smtpd_mock_response_error_with_code)
 
     async with smtp_client:
         with pytest.raises(SMTPHeloError) as exception_info:
@@ -111,33 +90,10 @@ async def test_ehlo_parses_esmtp_extensions(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
     smtpd_class: Type[SMTPD],
-    smtpd_response_handler_factory: Callable[
-        [Optional[str], Optional[str], bool, bool],
-        Coroutine[Any, Any, None],
-    ],
+    smtpd_mock_response_ehlo_full: Callable,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    ehlo_response = """250-localhost
-250-PIPELINING
-250-8BITMIME
-250-SIZE 512000
-250-DSN
-250-ENHANCEDSTATUSCODES
-250-EXPN
-250-HELP
-250-SAML
-250-SEND
-250-SOML
-250-TURN
-250-XADR
-250-XSTA
-250-ETRN
-250 XGEN"""
-    monkeypatch.setattr(
-        smtpd_class,
-        "smtp_EHLO",
-        smtpd_response_handler_factory(ehlo_response, None, False, False),
-    )
+    monkeypatch.setattr(smtpd_class, "smtp_EHLO", smtpd_mock_response_ehlo_full)
 
     async with smtp_client:
         await smtp_client.ehlo()
@@ -153,19 +109,10 @@ async def test_ehlo_with_no_extensions(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
     smtpd_class: Type[SMTPD],
-    smtpd_response_handler_factory: Callable[
-        [Optional[str], Optional[str], bool, bool],
-        Coroutine[Any, Any, None],
-    ],
+    smtpd_mock_response_done: Callable,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    response_handler = smtpd_response_handler_factory(
-        f"{SMTPStatus.completed} all done",
-        None,
-        False,
-        False,
-    )
-    monkeypatch.setattr(smtpd_class, "smtp_EHLO", response_handler)
+    monkeypatch.setattr(smtpd_class, "smtp_EHLO", smtpd_mock_response_done)
 
     async with smtp_client:
         await smtp_client.ehlo()
@@ -188,17 +135,11 @@ async def test_ehlo_or_helo_if_needed_helo_success(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
     smtpd_class: Type[SMTPD],
-    smtpd_response_handler_factory: Callable[
-        [Optional[str], Optional[str], bool, bool],
-        Coroutine[Any, Any, None],
-    ],
+    smtpd_mock_response_error_with_code: Callable,
     monkeypatch: pytest.MonkeyPatch,
     error_code: int,
 ) -> None:
-    response_handler = smtpd_response_handler_factory(
-        f"{error_code} error", None, False, False
-    )
-    monkeypatch.setattr(smtpd_class, "smtp_EHLO", response_handler)
+    monkeypatch.setattr(smtpd_class, "smtp_EHLO", smtpd_mock_response_error_with_code)
 
     async with smtp_client:
         assert smtp_client.is_ehlo_or_helo_needed is True
@@ -227,27 +168,18 @@ async def test_ehlo_or_helo_if_needed_neither_succeeds(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
     smtpd_class: Type[SMTPD],
-    smtpd_response_handler_factory: Callable[
-        [Optional[str], Optional[str], bool, bool],
-        Coroutine[Any, Any, None],
+    smtpd_mock_response_error_with_code: Callable,
+    smtpd_mock_response_error_with_code_factory: Callable[
+        [str], Callable[[SMTPD], Coroutine[Any, Any, None]]
     ],
     monkeypatch: pytest.MonkeyPatch,
     error_code: int,
     ehlo_error_code: int,
 ) -> None:
-    helo_response_handler = smtpd_response_handler_factory(
-        f"{error_code} error",
-        None,
-        False,
-        False,
-    )
-    monkeypatch.setattr(smtpd_class, "smtp_HELO", helo_response_handler)
+    monkeypatch.setattr(smtpd_class, "smtp_HELO", smtpd_mock_response_error_with_code)
 
-    ehlo_response_handler = smtpd_response_handler_factory(
+    ehlo_response_handler = smtpd_mock_response_error_with_code_factory(
         f"{ehlo_error_code} error",
-        None,
-        False,
-        False,
     )
     monkeypatch.setattr(smtpd_class, "smtp_EHLO", ehlo_response_handler)
 
@@ -263,19 +195,11 @@ async def test_ehlo_or_helo_if_needed_disconnect_after_ehlo(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
     smtpd_class: Type[SMTPD],
-    smtpd_response_handler_factory: Callable[
-        [Optional[str], Optional[str], bool, bool],
-        Coroutine[Any, Any, None],
-    ],
+    smtpd_mock_response_unavailable: Callable,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    response_handler = smtpd_response_handler_factory(
-        f"{SMTPStatus.domain_unavailable} retry in 5 minutes",
-        None,
-        False,
-        True,
-    )
-    monkeypatch.setattr(smtpd_class, "smtp_EHLO", response_handler)
+
+    monkeypatch.setattr(smtpd_class, "smtp_EHLO", smtpd_mock_response_unavailable)
 
     async with smtp_client:
         with pytest.raises(SMTPHeloError):
@@ -294,17 +218,11 @@ async def test_rset_error(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
     smtpd_class: Type[SMTPD],
-    smtpd_response_handler_factory: Callable[
-        [Optional[str], Optional[str], bool, bool],
-        Coroutine[Any, Any, None],
-    ],
+    smtpd_mock_response_error_with_code: Callable,
     monkeypatch: pytest.MonkeyPatch,
     error_code: int,
 ) -> None:
-    response_handler = smtpd_response_handler_factory(
-        f"{error_code} error", None, False, False
-    )
-    monkeypatch.setattr(smtpd_class, "smtp_RSET", response_handler)
+    monkeypatch.setattr(smtpd_class, "smtp_RSET", smtpd_mock_response_error_with_code)
 
     async with smtp_client:
         with pytest.raises(SMTPResponseException) as exception_info:
@@ -324,17 +242,11 @@ async def test_noop_error(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
     smtpd_class: Type[SMTPD],
-    smtpd_response_handler_factory: Callable[
-        [Optional[str], Optional[str], bool, bool],
-        Coroutine[Any, Any, None],
-    ],
+    smtpd_mock_response_error_with_code: Callable,
     monkeypatch: pytest.MonkeyPatch,
     error_code: int,
 ) -> None:
-    response_handler = smtpd_response_handler_factory(
-        f"{error_code} error", None, False, False
-    )
-    monkeypatch.setattr(smtpd_class, "smtp_NOOP", response_handler)
+    monkeypatch.setattr(smtpd_class, "smtp_NOOP", smtpd_mock_response_error_with_code)
 
     async with smtp_client:
         with pytest.raises(SMTPResponseException) as exception_info:
@@ -382,20 +294,10 @@ async def test_expn_ok(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
     smtpd_class: Type[SMTPD],
-    smtpd_response_handler_factory: Callable[
-        [Optional[str], Optional[str], bool, bool],
-        Coroutine[Any, Any, None],
-    ],
+    smtpd_mock_response_expn: Callable,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    response_handler = smtpd_response_handler_factory(
-        """250-Joseph Blow <jblow@example.com>
-250 Alice Smith <asmith@example.com>""",
-        None,
-        False,
-        False,
-    )
-    monkeypatch.setattr(smtpd_class, "smtp_EXPN", response_handler)
+    monkeypatch.setattr(smtpd_class, "smtp_EXPN", smtpd_mock_response_expn)
 
     async with smtp_client:
         response = await smtp_client.expn("listserv-members")
@@ -417,20 +319,10 @@ async def test_expn_smtputf8_supported(
     smtp_client_smtputf8: SMTP,
     smtpd_server_smtputf8: asyncio.AbstractServer,
     smtpd_class: Type[SMTPD],
-    smtpd_response_handler_factory: Callable[
-        [Optional[str], Optional[str], bool, bool],
-        Coroutine[Any, Any, None],
-    ],
+    smtpd_mock_response_expn: Callable,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    response_handler = smtpd_response_handler_factory(
-        """250-Joseph Blow <jblow@example.com>
-250 Alice Smith <asmith@example.com>""",
-        None,
-        False,
-        False,
-    )
-    monkeypatch.setattr(smtpd_class, "smtp_EXPN", response_handler)
+    monkeypatch.setattr(smtpd_class, "smtp_EXPN", smtpd_mock_response_expn)
 
     utf8_list = "tést-lïst"
     async with smtp_client_smtputf8:
@@ -459,20 +351,11 @@ async def test_help_error(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
     smtpd_class: Type[SMTPD],
-    smtpd_response_handler_factory: Callable[
-        [Optional[str], Optional[str], bool, bool],
-        Coroutine[Any, Any, None],
-    ],
+    smtpd_mock_response_error_with_code: Callable,
     monkeypatch: pytest.MonkeyPatch,
     error_code: int,
 ) -> None:
-    response_handler = smtpd_response_handler_factory(
-        f"{error_code} error",
-        None,
-        False,
-        False,
-    )
-    monkeypatch.setattr(smtpd_class, "smtp_HELP", response_handler)
+    monkeypatch.setattr(smtpd_class, "smtp_HELP", smtpd_mock_response_error_with_code)
 
     async with smtp_client:
         with pytest.raises(SMTPResponseException) as exception_info:
@@ -484,17 +367,11 @@ async def test_quit_error(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
     smtpd_class: Type[SMTPD],
-    smtpd_response_handler_factory: Callable[
-        [Optional[str], Optional[str], bool, bool],
-        Coroutine[Any, Any, None],
-    ],
+    smtpd_mock_response_error_with_code: Callable,
     monkeypatch: pytest.MonkeyPatch,
     error_code: int,
 ) -> None:
-    response_handler = smtpd_response_handler_factory(
-        f"{error_code} error", None, False, False
-    )
-    monkeypatch.setattr(smtpd_class, "smtp_QUIT", response_handler)
+    monkeypatch.setattr(smtpd_class, "smtp_QUIT", smtpd_mock_response_error_with_code)
 
     async with smtp_client:
         with pytest.raises(SMTPResponseException) as exception_info:
@@ -526,17 +403,11 @@ async def test_mail_error(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
     smtpd_class: Type[SMTPD],
-    smtpd_response_handler_factory: Callable[
-        [Optional[str], Optional[str], bool, bool],
-        Coroutine[Any, Any, None],
-    ],
+    smtpd_mock_response_error_with_code: Callable,
     monkeypatch: pytest.MonkeyPatch,
     error_code: int,
 ) -> None:
-    response_handler = smtpd_response_handler_factory(
-        f"{error_code} error", None, False, False
-    )
-    monkeypatch.setattr(smtpd_class, "smtp_MAIL", response_handler)
+    monkeypatch.setattr(smtpd_class, "smtp_MAIL", smtpd_mock_response_error_with_code)
 
     async with smtp_client:
         with pytest.raises(SMTPResponseException) as exception_info:
@@ -585,17 +456,11 @@ async def test_rcpt_options_ok(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
     smtpd_class: Type[SMTPD],
-    smtpd_response_handler_factory: Callable[
-        [Optional[str], Optional[str], bool, bool],
-        Coroutine[Any, Any, None],
-    ],
+    smtpd_mock_response_done: Callable,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     # RCPT options are not implemented in aiosmtpd, so force success response
-    response_handler = smtpd_response_handler_factory(
-        f"{SMTPStatus.completed} all done", None, False, False
-    )
-    monkeypatch.setattr(smtpd_class, "smtp_RCPT", response_handler)
+    monkeypatch.setattr(smtpd_class, "smtp_RCPT", smtpd_mock_response_done)
 
     async with smtp_client:
         await smtp_client.mail("j@example.com")
@@ -623,17 +488,11 @@ async def test_rcpt_error(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
     smtpd_class: Type[SMTPD],
-    smtpd_response_handler_factory: Callable[
-        [Optional[str], Optional[str], bool, bool],
-        Coroutine[Any, Any, None],
-    ],
+    smtpd_mock_response_error_with_code: Callable,
     monkeypatch: pytest.MonkeyPatch,
     error_code: int,
 ) -> None:
-    response_handler = smtpd_response_handler_factory(
-        f"{error_code} error", None, False, False
-    )
-    monkeypatch.setattr(smtpd_class, "smtp_RCPT", response_handler)
+    monkeypatch.setattr(smtpd_class, "smtp_RCPT", smtpd_mock_response_error_with_code)
 
     async with smtp_client:
         await smtp_client.mail("j@example.com")
@@ -677,17 +536,11 @@ async def test_data_error_on_start_input(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
     smtpd_class: Type[SMTPD],
-    smtpd_response_handler_factory: Callable[
-        [Optional[str], Optional[str], bool, bool],
-        Coroutine[Any, Any, None],
-    ],
+    smtpd_mock_response_error_with_code: Callable,
     monkeypatch: pytest.MonkeyPatch,
     error_code: int,
 ) -> None:
-    response_handler = smtpd_response_handler_factory(
-        f"{error_code} error", None, False, False
-    )
-    monkeypatch.setattr(smtpd_class, "smtp_DATA", response_handler)
+    monkeypatch.setattr(smtpd_class, "smtp_DATA", smtpd_mock_response_error_with_code)
 
     async with smtp_client:
         await smtp_client.mail("admin@example.com")
@@ -701,17 +554,13 @@ async def test_data_complete_error(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
     smtpd_handler: RecordingHandler,
-    smtpd_response_handler_factory: Callable[
-        [Optional[str], Optional[str], bool, bool],
-        Coroutine[Any, Any, None],
-    ],
+    smtpd_mock_response_error_with_code: Callable,
     monkeypatch: pytest.MonkeyPatch,
     error_code: int,
 ) -> None:
-    response_handler = smtpd_response_handler_factory(
-        f"{error_code} error", None, False, False
+    monkeypatch.setattr(
+        smtpd_handler, "handle_DATA", smtpd_mock_response_error_with_code
     )
-    monkeypatch.setattr(smtpd_handler, "handle_DATA", response_handler)
 
     async with smtp_client:
         await smtp_client.mail("admin@example.com")
@@ -725,16 +574,10 @@ async def test_gibberish_raises_exception(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
     smtpd_class: Type[SMTPD],
-    smtpd_response_handler_factory: Callable[
-        [Optional[str], Optional[str], bool, bool],
-        Coroutine[Any, Any, None],
-    ],
+    smtpd_mock_response_gibberish: Callable,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    response_handler = smtpd_response_handler_factory(
-        "sdfjlfwqejflqw", None, False, False
-    )
-    monkeypatch.setattr(smtpd_class, "smtp_NOOP", response_handler)
+    monkeypatch.setattr(smtpd_class, "smtp_NOOP", smtpd_mock_response_gibberish)
 
     async with smtp_client:
         with pytest.raises(SMTPResponseException):
@@ -745,10 +588,10 @@ async def test_badly_encoded_text_response(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
     smtpd_class: Type[SMTPD],
-    bad_data_response_handler: Callable[[SMTPD], Coroutine[Any, Any, None]],
+    smtpd_mock_response_bad_data: Callable,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(smtpd_class, "smtp_NOOP", bad_data_response_handler)
+    monkeypatch.setattr(smtpd_class, "smtp_NOOP", smtpd_mock_response_bad_data)
 
     async with smtp_client:
         response = await smtp_client.noop()

@@ -3,22 +3,12 @@ Tests that cover asyncio usage.
 """
 
 import asyncio
-from typing import (
-    Any,
-    Awaitable,
-    Callable,
-    Coroutine,
-    Dict,
-    List,
-    Optional,
-    Tuple,
-    Type,
-)
+from typing import Any, Awaitable, Callable, Dict, List, Tuple, Type
 
 import pytest
 from aiosmtpd.smtp import SMTP as SMTPD
 
-from aiosmtplib import SMTP, SMTPStatus
+from aiosmtplib import SMTP
 from aiosmtplib.response import SMTPResponse
 
 
@@ -93,6 +83,7 @@ async def test_connect_and_sendmail_multiple_times_with_gather(
 
 async def test_multiple_clients_with_gather(
     hostname: str,
+    smtpd_server: asyncio.AbstractServer,
     smtpd_server_port: int,
     sender_str: str,
     message_str: str,
@@ -145,21 +136,12 @@ async def test_many_commands_with_gather(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
     smtpd_class: Type[SMTPD],
-    smtpd_response_handler_factory: Callable[
-        [Optional[str], Optional[str], bool, bool],
-        Coroutine[Any, Any, None],
-    ],
+    smtpd_mock_response_expn: Callable,
 ) -> None:
     """
     Tests that appropriate locks are in place to prevent commands confusing each other.
     """
-    response_handler = smtpd_response_handler_factory(
-        f"{SMTPStatus.completed}  Alice Smith <asmith@example.com>",
-        None,
-        False,
-        False,
-    )
-    monkeypatch.setattr(smtpd_class, "smtp_EXPN", response_handler)
+    monkeypatch.setattr(smtpd_class, "smtp_EXPN", smtpd_mock_response_expn)
 
     async with smtp_client:
         tasks: List[Awaitable] = [
