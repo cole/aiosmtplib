@@ -5,6 +5,7 @@ Changelog
 ------------------
 
 - Bugfix: avoid raising ``asyncio.CancelledError`` on connection lost
+- Bugfix: allow UTF-8 chars in usernames and passwords
 
 
 1.1.4

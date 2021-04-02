@@ -93,8 +93,8 @@ async def test_login_all_methods_fail_raises_error(mock_auth):
 
 @pytest.mark.parametrize(
     "username,password",
-    [("test", "test"), ("admin124", "$3cr3t$")],
-    ids=["test user", "admin user"],
+    [("test", "test"), ("admin124", "$3cr3t$"), ("føø", "bär€")],
+    ids=["test user", "admin user", "utf-8 user"],
 )
 async def test_auth_plain_success(mock_auth, username, password):
     """
@@ -104,7 +104,7 @@ async def test_auth_plain_success(mock_auth, username, password):
     await mock_auth.auth_plain(username, password)
 
     b64data = base64.b64encode(
-        b"\0" + username.encode("ascii") + b"\0" + password.encode("ascii")
+        b"\0" + username.encode("utf-8") + b"\0" + password.encode("utf-8")
     )
     assert mock_auth.received_commands == [b"AUTH PLAIN " + b64data]
 
@@ -118,16 +118,16 @@ async def test_auth_plain_error(mock_auth):
 
 @pytest.mark.parametrize(
     "username,password",
-    [("test", "test"), ("admin124", "$3cr3t$")],
-    ids=["test user", "admin user"],
+    [("test", "test"), ("admin124", "$3cr3t$"), ("føø", "bär€")],
+    ids=["test user", "admin user", "utf-8 user"],
 )
 async def test_auth_login_success(mock_auth, username, password):
     continue_response = (SMTPStatus.auth_continue, "VXNlcm5hbWU6")
     mock_auth.responses.extend([continue_response, SUCCESS_RESPONSE])
     await mock_auth.auth_login(username, password)
 
-    b64username = base64.b64encode(username.encode("ascii"))
-    b64password = base64.b64encode(password.encode("ascii"))
+    b64username = base64.b64encode(username.encode("utf-8"))
+    b64password = base64.b64encode(password.encode("utf-8"))
 
     assert mock_auth.received_commands == [b"AUTH LOGIN " + b64username, b64password]
 
@@ -148,20 +148,20 @@ async def test_auth_plain_continue_error(mock_auth):
 
 @pytest.mark.parametrize(
     "username,password",
-    [("test", "test"), ("admin124", "$3cr3t$")],
-    ids=["test user", "admin user"],
+    [("test", "test"), ("admin124", "$3cr3t$"), ("føø", "bär€")],
+    ids=["test user", "admin user", "utf-8 user"],
 )
 async def test_auth_crammd5_success(mock_auth, username, password):
     continue_response = (
         SMTPStatus.auth_continue,
-        base64.b64encode(b"secretteststring").decode("ascii"),
+        base64.b64encode(b"secretteststring").decode("utf-8"),
     )
     mock_auth.responses.extend([continue_response, SUCCESS_RESPONSE])
     await mock_auth.auth_crammd5(username, password)
 
-    password_bytes = password.encode("ascii")
-    username_bytes = username.encode("ascii")
-    response_bytes = continue_response[1].encode("ascii")
+    password_bytes = password.encode("utf-8")
+    username_bytes = username.encode("utf-8")
+    response_bytes = continue_response[1].encode("utf-8")
 
     expected_command = crammd5_verify(username_bytes, password_bytes, response_bytes)
 
