@@ -7,7 +7,7 @@ from typing import NamedTuple
 __all__ = ("SMTPResponse",)
 
 
-BaseResponse = NamedTuple("SMTPResponse", [("code", int), ("message", str)])
+BaseResponse = NamedTuple("BaseResponse", [("code", int), ("message", str)])
 
 
 class SMTPResponse(BaseResponse):

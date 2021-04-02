@@ -36,7 +36,7 @@ def all_tasks(loop: asyncio.AbstractEventLoop = None):
     if PY37_OR_LATER:
         return asyncio.all_tasks(loop=loop)
 
-    return asyncio.Task.all_tasks(loop=loop)
+    return asyncio.Task.all_tasks(loop=loop)  # type: ignore
 
 
 async def start_tls(
