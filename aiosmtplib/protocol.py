@@ -138,15 +138,12 @@ class SMTPProtocol(FlowControlMixin, asyncio.Protocol):
     def connection_lost(self, exc: Optional[Exception]) -> None:
         super().connection_lost(exc)
 
+        smtp_exc = SMTPServerDisconnected("Connection lost")
         if exc:
-            smtp_exc = SMTPServerDisconnected("Connection lost")
             smtp_exc.__cause__ = exc
 
         if self._response_waiter and not self._response_waiter.done():
-            if exc:
-                self._response_waiter.set_exception(smtp_exc)
-            else:
-                self._response_waiter.cancel()
+            self._response_waiter.set_exception(smtp_exc)
 
         if self._connection_lost_waiter and not self._connection_lost_waiter.done():
             if exc:
