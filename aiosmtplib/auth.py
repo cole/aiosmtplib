@@ -42,8 +42,8 @@ class SMTPAuth(ESMTP):
 
     async def login(
         self,
-        username: str,
-        password: str,
+        username: Union[str, bytes],
+        password: Union[str, bytes],
         timeout: Optional[Union[float, Default]] = _default,
     ) -> SMTPResponse:
         """
@@ -90,8 +90,8 @@ class SMTPAuth(ESMTP):
 
     async def auth_crammd5(
         self,
-        username: str,
-        password: str,
+        username: Union[str, bytes],
+        password: Union[str, bytes],
         timeout: Optional[Union[float, Default]] = _default,
     ) -> SMTPResponse:
         """
@@ -115,8 +115,16 @@ class SMTPAuth(ESMTP):
                 initial_response.code, initial_response.message
             )
 
-        password_bytes = password.encode("utf-8")
-        username_bytes = username.encode("utf-8")
+        if isinstance(password, bytes):
+            password_bytes = password
+        else:
+            password_bytes = password.encode("utf-8")
+
+        if isinstance(username, bytes):
+            username_bytes = username
+        else:
+            username_bytes = username.encode("utf-8")
+
         response_bytes = initial_response.message.encode("utf-8")
 
         verification_bytes = crammd5_verify(
@@ -132,8 +140,8 @@ class SMTPAuth(ESMTP):
 
     async def auth_plain(
         self,
-        username: str,
-        password: str,
+        username: Union[str, bytes],
+        password: Union[str, bytes],
         timeout: Optional[Union[float, Default]] = _default,
     ) -> SMTPResponse:
         """
@@ -147,8 +155,16 @@ class SMTPAuth(ESMTP):
             235 ok, go ahead (#2.0.0)
 
         """
-        username_bytes = username.encode("utf-8")
-        password_bytes = password.encode("utf-8")
+        if isinstance(password, bytes):
+            password_bytes = password
+        else:
+            password_bytes = password.encode("utf-8")
+
+        if isinstance(username, bytes):
+            username_bytes = username
+        else:
+            username_bytes = username.encode("utf-8")
+
         username_and_password = b"\0" + username_bytes + b"\0" + password_bytes
         encoded = base64.b64encode(username_and_password)
 
@@ -163,8 +179,8 @@ class SMTPAuth(ESMTP):
 
     async def auth_login(
         self,
-        username: str,
-        password: str,
+        username: Union[str, bytes],
+        password: Union[str, bytes],
         timeout: Optional[Union[float, Default]] = _default,
     ) -> SMTPResponse:
         """
@@ -190,8 +206,18 @@ class SMTPAuth(ESMTP):
         However, since most servers seem to support both, we send the username
         with the initial request.
         """
-        encoded_username = base64.b64encode(username.encode("utf-8"))
-        encoded_password = base64.b64encode(password.encode("utf-8"))
+        if isinstance(password, bytes):
+            password_bytes = password
+        else:
+            password_bytes = password.encode("utf-8")
+
+        if isinstance(username, bytes):
+            username_bytes = username
+        else:
+            username_bytes = username.encode("utf-8")
+
+        encoded_username = base64.b64encode(username_bytes)
+        encoded_password = base64.b64encode(password_bytes)
 
         initial_response = await self.execute_command(
             b"AUTH", b"LOGIN", encoded_username, timeout=timeout
