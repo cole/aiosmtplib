@@ -8,7 +8,13 @@ from email.message import EmailMessage
 
 import pytest
 
-from aiosmtplib import SMTP, SMTPAuthenticationError, SMTPStatus, send
+from aiosmtplib import (
+    SMTP,
+    SMTPAuthenticationError,
+    SMTPSenderRefused,
+    SMTPStatus,
+    send,
+)
 
 
 pytestmark = [
@@ -62,3 +68,18 @@ async def test_office365_auth_send() -> None:
             password="test",
             username="test",
         )
+
+
+async def test_office365_skip_login() -> None:
+    message = EmailMessage()
+    message["From"] = "user@mydomain.com"
+    message["To"] = "somebody@example.com"
+    message["Subject"] = "Hello World!"
+    message.set_content("Sent via aiosmtplib")
+
+    smtp_client = SMTP("smtp.office365.com", 587)
+    await smtp_client.connect()
+    await smtp_client.starttls()
+    # skip login, which is required
+    with pytest.raises(SMTPSenderRefused):
+        await smtp_client.send_message(message)
