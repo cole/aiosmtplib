@@ -69,12 +69,6 @@ def pytest_addoption(parser: Any) -> None:
         choices=["asyncio", "uvloop"],
         help="event loop to run tests on",
     )
-    parser.addoption(
-        "--bind-addr",
-        action="store",
-        default="127.0.0.1",
-        help="server address to bind on, e.g 127.0.0.1",
-    )
 
 
 # Event loop handling #
@@ -133,14 +127,13 @@ def event_loop(
 
 @pytest.fixture(scope="session")
 def hostname() -> str:
-    return "localhost"
+    return "127.0.0.1"
 
 
 @pytest.fixture(scope="session")
-def bind_address(request: pytest.FixtureRequest) -> str:
+def bind_address() -> str:
     """Server side address for socket binding"""
-    address: str = request.config.getoption("--bind-addr")
-    return address
+    return "127.0.0.1"
 
 
 @pytest.fixture(scope="session")
@@ -745,15 +738,43 @@ def smtpd_server_tls(
 
 
 @pytest.fixture(scope="function")
-def smtpd_server_threaded(
+def smtpd_controller(
     request: pytest.FixtureRequest, bind_address: str, smtpd_handler: RecordingHandler
-) -> asyncio.AbstractServer:
-    controller = SMTPDController(smtpd_handler, hostname=bind_address, port=0)
-    controller.start()
+) -> SMTPDController:
+    # Bind to 0 doesn't work here, so just try until we get an ok port
+    started = False
+    port = 8025
+    controller: Optional[SMTPDController]
+    while not started:
+        try:
+            controller = SMTPDController(
+                smtpd_handler, hostname=bind_address, port=port
+            )
+            controller.start()
+        except OSError as exc:
+            if controller:
+                controller.stop()
+
+            if "address already in use" in str(exc):
+                port = port + 1
+            else:
+                raise exc
+        else:
+            started = True
+
+    if not controller:
+        raise RuntimeError("Unable to start controller")
+
     request.addfinalizer(controller.stop)
 
-    server: asyncio.AbstractServer = controller.server
+    return controller
 
+
+@pytest.fixture(scope="function")
+def smtpd_server_threaded(
+    request: pytest.FixtureRequest, smtpd_controller: SMTPDController
+) -> asyncio.AbstractServer:
+    server: asyncio.AbstractServer = smtpd_controller.server
     return server
 
 
@@ -792,12 +813,9 @@ def smtpd_server_tls_port(smtpd_server_tls: asyncio.AbstractServer) -> Optional[
 
 
 @pytest.fixture(scope="function")
-def smtpd_server_threaded_port(
-    smtpd_server_threaded: asyncio.AbstractServer,
-) -> Optional[int]:
-    if smtpd_server_threaded.sockets:
-        return int(smtpd_server_threaded.sockets[0].getsockname()[1])
-    return None
+def smtpd_server_threaded_port(smtpd_controller: SMTPDController) -> int:
+    port: int = smtpd_controller.port
+    return port
 
 
 # SMTP Clients #
