@@ -4,7 +4,7 @@ Changelog
 1.1.5 (unreleased)
 ------------------
 
-- Bugfix: avoid raising asyncio.CancelledError on connection lost
+- Bugfix: avoid raising ``asyncio.CancelledError`` on connection lost
 
 
 1.1.4
