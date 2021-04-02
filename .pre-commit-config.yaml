@@ -27,7 +27,7 @@ repos:
     rev: 1.7.0
     hooks:
     -   id: bandit
-        args: [-n, '10', '--ini', 'tox.ini']
+        args: [-n, '10', '--ini', 'tox.ini', '-x', 'tests']
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v3.4.0
     hooks:
