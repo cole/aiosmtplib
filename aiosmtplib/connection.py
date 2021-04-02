@@ -53,8 +53,8 @@ class SMTPConnection:
         self,
         hostname: Optional[str] = "localhost",
         port: Optional[int] = None,
-        username: Optional[str] = None,
-        password: Optional[str] = None,
+        username: Optional[Union[str, bytes]] = None,
+        password: Optional[Union[str, bytes]] = None,
         source_address: Optional[str] = None,
         timeout: Optional[float] = DEFAULT_TIMEOUT,
         loop: Optional[asyncio.AbstractEventLoop] = None,
@@ -174,8 +174,8 @@ class SMTPConnection:
         self,
         hostname: Optional[Union[str, Default]] = _default,
         port: Optional[Union[int, Default]] = _default,
-        username: Optional[Union[str, Default]] = _default,
-        password: Optional[Union[str, Default]] = _default,
+        username: Optional[Union[str, bytes, Default]] = _default,
+        password: Optional[Union[str, bytes, Default]] = _default,
         source_address: Optional[Union[str, Default]] = _default,
         timeout: Optional[Union[float, Default]] = _default,
         loop: Optional[Union[asyncio.AbstractEventLoop, Default]] = _default,
@@ -432,8 +432,8 @@ class SMTPConnection:
 
     async def login(
         self,
-        username: str,
-        password: str,
+        username: Union[str, bytes],
+        password: Union[str, bytes],
         timeout: Optional[Union[float, Default]] = _default,
     ) -> SMTPResponse:
         raise NotImplementedError
