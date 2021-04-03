@@ -6,6 +6,7 @@ import email.header
 import email.message
 import email.mime.multipart
 import email.mime.text
+import pathlib
 import socket
 import ssl
 import sys
@@ -15,6 +16,7 @@ from typing import Any, Callable, Coroutine, Dict, List, Optional, Tuple, Type, 
 
 import hypothesis
 import pytest
+import trustme
 from aiosmtpd.controller import Controller as SMTPDController
 from aiosmtpd.smtp import SMTP as SMTPD
 
@@ -170,41 +172,93 @@ def smtpd_class() -> Type[SMTPD]:
 
 
 @pytest.fixture(scope="session")
-def valid_cert_path() -> str:
-    return str(BASE_CERT_PATH.joinpath("selfsigned.crt"))
+def cert_authority() -> trustme.CA:
+    return trustme.CA()
 
 
 @pytest.fixture(scope="session")
-def valid_key_path() -> str:
-    return str(BASE_CERT_PATH.joinpath("selfsigned.key"))
+def unknown_cert_authority() -> trustme.CA:
+    return trustme.CA()
 
 
 @pytest.fixture(scope="session")
-def invalid_cert_path() -> str:
-    return str(BASE_CERT_PATH.joinpath("invalid.crt"))
+def valid_server_cert(cert_authority: trustme.CA, hostname: str) -> trustme.LeafCert:
+    return cert_authority.issue_cert(hostname)
 
 
 @pytest.fixture(scope="session")
-def invalid_key_path() -> str:
-    return str(BASE_CERT_PATH.joinpath("invalid.key"))
+def valid_client_cert(cert_authority: trustme.CA, hostname: str) -> trustme.LeafCert:
+    return cert_authority.issue_cert(f"user@{hostname}")
 
 
 @pytest.fixture(scope="session")
-def client_tls_context(valid_cert_path: str, valid_key_path: str) -> ssl.SSLContext:
-    tls_context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
-    tls_context.load_cert_chain(valid_cert_path, keyfile=valid_key_path)
-    tls_context.check_hostname = False
-    tls_context.verify_mode = ssl.CERT_NONE
+def invalid_client_cert(
+    unknown_cert_authority: trustme.CA, hostname: str
+) -> trustme.LeafCert:
+    return unknown_cert_authority.issue_cert(f"user@{hostname}")
+
+
+@pytest.fixture(scope="session")
+def client_tls_context(
+    cert_authority: trustme.CA, valid_client_cert: trustme.LeafCert
+) -> ssl.SSLContext:
+    tls_context = ssl.create_default_context()
+    cert_authority.configure_trust(tls_context)
+    valid_client_cert.configure_cert(tls_context)
 
     return tls_context
 
 
 @pytest.fixture(scope="session")
-def server_tls_context(valid_cert_path: str, valid_key_path: str) -> ssl.SSLContext:
+def server_tls_context(
+    cert_authority: trustme.CA, valid_server_cert: trustme.LeafCert
+) -> ssl.SSLContext:
     tls_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-    tls_context.load_cert_chain(valid_cert_path, keyfile=valid_key_path)
+    cert_authority.configure_trust(tls_context)
+    valid_server_cert.configure_cert(tls_context)
+    tls_context.verify_mode = ssl.CERT_OPTIONAL
 
     return tls_context
+
+
+@pytest.fixture(scope="function")
+def ca_cert_path(tmp_path: pathlib.Path, cert_authority: trustme.CA) -> str:
+    cert_authority.cert_pem.write_to_path(tmp_path / "ca.pem")
+
+    return str(tmp_path / "ca.pem")
+
+
+@pytest.fixture(scope="function")
+def valid_cert_path(tmp_path: pathlib.Path, valid_client_cert: trustme.LeafCert) -> str:
+    for pem in valid_client_cert.cert_chain_pems:
+        pem.write_to_path(tmp_path / "valid.pem", append=True)
+
+    return str(tmp_path / "valid.pem")
+
+
+@pytest.fixture(scope="function")
+def valid_key_path(tmp_path: pathlib.Path, valid_client_cert: trustme.LeafCert) -> str:
+    valid_client_cert.private_key_pem.write_to_path(tmp_path / "valid.key")
+
+    return str(tmp_path / "valid.key")
+
+
+@pytest.fixture(scope="function")
+def invalid_cert_path(
+    tmp_path: pathlib.Path, invalid_client_cert: trustme.LeafCert
+) -> str:
+    for pem in invalid_client_cert.cert_chain_pems:
+        pem.write_to_path(tmp_path / "invalid.pem", append=True)
+
+    return str(tmp_path / "invalid.pem")
+
+
+@pytest.fixture(scope="function")
+def invalid_key_path(
+    tmp_path: pathlib.Path, invalid_client_cert: trustme.LeafCert
+) -> str:
+    invalid_client_cert.private_key_pem.write_to_path(tmp_path / "invalid.key")
+    return str(tmp_path / "invalid.key")
 
 
 @pytest.fixture(scope="session")

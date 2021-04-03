@@ -172,6 +172,7 @@ async def test_starttls_invalid_responses(
 async def test_starttls_with_client_cert(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
+    ca_cert_path: str,
     valid_cert_path: str,
     valid_key_path: str,
 ) -> None:
@@ -179,14 +180,14 @@ async def test_starttls_with_client_cert(
         response = await smtp_client.starttls(
             client_cert=valid_cert_path,
             client_key=valid_key_path,
-            cert_bundle=valid_cert_path,
+            cert_bundle=ca_cert_path,
             validate_certs=True,
         )
 
         assert response.code == SMTPStatus.ready
         assert smtp_client.client_cert == valid_cert_path
         assert smtp_client.client_key == valid_key_path
-        assert smtp_client.cert_bundle == valid_cert_path
+        assert smtp_client.cert_bundle == ca_cert_path
 
 
 async def test_starttls_with_invalid_client_cert(
@@ -282,6 +283,7 @@ async def test_tls_connection_with_client_cert(
     smtp_client_tls: SMTP,
     smtpd_server_tls: asyncio.AbstractServer,
     hostname: str,
+    ca_cert_path: str,
     valid_cert_path: str,
     valid_key_path: str,
 ) -> None:
@@ -290,7 +292,7 @@ async def test_tls_connection_with_client_cert(
         validate_certs=True,
         client_cert=valid_cert_path,
         client_key=valid_key_path,
-        cert_bundle=valid_cert_path,
+        cert_bundle=ca_cert_path,
     )
     assert smtp_client_tls.is_connected
 

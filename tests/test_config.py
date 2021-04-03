@@ -266,7 +266,11 @@ async def test_connect_tls_context_option_takes_precedence(
 
 
 async def test_starttls_certificate_options_take_precedence(
-    hostname: str, smtpd_server_port: int, valid_cert_path: str, valid_key_path: str
+    hostname: str,
+    smtpd_server_port: int,
+    ca_cert_path: str,
+    valid_cert_path: str,
+    valid_key_path: str,
 ) -> None:
     client = SMTP(
         hostname=hostname,
@@ -287,13 +291,13 @@ async def test_starttls_certificate_options_take_precedence(
     await client.starttls(
         client_cert=valid_cert_path,
         client_key=valid_key_path,
-        cert_bundle=valid_cert_path,
+        cert_bundle=ca_cert_path,
         validate_certs=True,
     )
 
     assert client.client_cert == valid_cert_path
     assert client.client_key == valid_key_path
-    assert client.cert_bundle == valid_cert_path
+    assert client.cert_bundle == ca_cert_path
     assert client.validate_certs is True
 
     await client.quit()
