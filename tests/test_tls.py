@@ -269,4 +269,4 @@ async def test_tls_connection_with_cert_error(
     with pytest.raises(SMTPConnectError) as exception_info:
         await tls_smtp_client.connect(validate_certs=True)
 
-    assert "CERTIFICATE_VERIFY_FAILED" in str(exception_info.value)
+    assert "CERTIFICATE" in str(exception_info.value).upper()
