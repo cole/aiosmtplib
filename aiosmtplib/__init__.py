@@ -32,10 +32,10 @@ from .status import SMTPStatus
 
 
 __title__ = "aiosmtplib"
-__version__ = "1.1.4"
+__version__ = "1.1.5.dev0"
 __author__ = "Cole Maclean"
 __license__ = "MIT"
-__copyright__ = "Copyright 2020 Cole Maclean"
+__copyright__ = "Copyright 2021 Cole Maclean"
 __all__ = (
     "send",
     "SMTP",
