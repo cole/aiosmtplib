@@ -48,7 +48,7 @@ executors:
     resource_class: small
   py39:
     docker:
-      - image: "python:3.9-rc-buster"
+      - image: "python:3.9-buster"
         auth:
           username: $DOCKERHUB_USERNAME
           password: $DOCKERHUB_PASSWORD
