@@ -115,6 +115,8 @@ class TestSMTPD(SMTPD):
 
         if arg[:5] == "LOGIN":
             await self.smtp_AUTH_LOGIN(arg[6:])
+        else:
+            await self.push("504 Unsupported AUTH mechanism.")
 
     async def smtp_AUTH_LOGIN(self, arg):
         username = base64.b64decode(arg)
