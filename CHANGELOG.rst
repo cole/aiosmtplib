@@ -1,6 +1,12 @@
 Changelog
 =========
 
+1.1.6
+-----
+
+- Bugfix: fix authenticated test failures (credit @P-EB)
+
+
 1.1.5
 -----
 
