@@ -37,7 +37,7 @@ Python 3.5.2+, compiled with SSL support, is required.
 
 Bug reporting
 -------------
-Bug reports (and feature requests) are welcome via Github issues.
+Bug reports (and feature requests) are welcome via `Github issues`_.
 
 
 
@@ -59,3 +59,4 @@ Bug reports (and feature requests) are welcome via Github issues.
                :target: https://pepy.tech/project/aiosmtplib
                :alt: "aiosmtplib on pypy.tech"
 .. _Read The Docs: https://aiosmtplib.readthedocs.io/en/stable/overview.html
+.. _Github issues: https://github.com/cole/aiosmtplib/issues
