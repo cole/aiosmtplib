@@ -100,6 +100,12 @@ class SMTPConnection:
             hostname or port. Accepts str or bytes, or a pathlike object in 3.7+.
         :keyword sock: An existing, connected socket object. If given, none of
             hostname, port, or socket_path should be provided.
+        :keyword local_addr: If given, this is a (IPaddress, port) tuple
+            allowing choice of a specific outbound IP address and port. This
+            supports servers with multiple public IP addresses. Port may be 0,
+            which means use any available local port. If local_addr is not given,
+            then any available outbound interface will be chosen. IPaddress,
+            if given, should be a valid IPv4 or IPv6 address expressed as a string.
 
         :raises ValueError: mutually exclusive options provided
         """
@@ -291,6 +297,12 @@ class SMTPConnection:
             hostname or port. Accepts str or bytes, or a pathlike object in 3.7+.
         :keyword sock: An existing, connected socket object. If given, none of
             hostname, port, or socket_path should be provided.
+        :keyword local_addr: If given, this is a (IPaddress, port) tuple
+            allowing choice of a specific outbound IP address and port. This
+            supports servers with multiple public IP addresses. Port may be 0,
+            which means use any available local port. If local_addr is not given,
+            then any available outbound interface will be chosen. IPaddress,
+            if given, should be a valid IPv4 or IPv6 address expressed as a string.
 
         :raises ValueError: mutually exclusive options provided
         """
