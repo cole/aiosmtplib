@@ -4,6 +4,7 @@ Changelog
 1.1.7 (unreleased)
 -------------------
 
+- Bugfix: include CHANGLOG in sdist release
 
 
 1.1.6
