@@ -52,9 +52,9 @@ coverage = {extras = ["toml"], version = "^5.3.1"}
 hypothesis = "^5.35"
 aiosmtpd = "^1.4.2"
 pytest-xdist = "^2.1.0"
-mypy = "^0.790"
-flake8 = "^3.8.4"
-flake8-bugbear = "^20.11.1"
+mypy = "^0.931"
+flake8 = "^3.9.2"
+flake8-bugbear = "^22.1.11"
 trustme = "^0.7.0"
 
 [tool.poetry.extras]
