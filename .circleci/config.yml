@@ -146,6 +146,7 @@ jobs:
     environment:
       COVERAGE_FILE: "coverage-results/.coverage.<<parameters.executor_name>>"
       HYPOTHESIS_PROFILE: "ci"
+      BIND_ADDR: "127.0.0.1"
       TOXENV: "<<parameters.toxenv>>"
     steps:
       - python_version

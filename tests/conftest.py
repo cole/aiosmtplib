@@ -71,6 +71,12 @@ def pytest_addoption(parser: Any) -> None:
         choices=["asyncio", "uvloop"],
         help="event loop to run tests on",
     )
+    parser.addoption(
+        "--bind-addr",
+        action="store",
+        default="localhost",
+        help="address to bind on for network tests",
+    )
 
 
 # Event loop handling #
@@ -128,14 +134,14 @@ def event_loop(
 
 
 @pytest.fixture(scope="session")
-def hostname() -> str:
-    return "127.0.0.1"
+def bind_address(request: pytest.FixtureRequest) -> str:
+    """Server side address for socket binding"""
+    return str(request.config.getoption("--bind-addr"))
 
 
 @pytest.fixture(scope="session")
-def bind_address() -> str:
-    """Server side address for socket binding"""
-    return "127.0.0.1"
+def hostname(bind_address: str) -> str:
+    return bind_address
 
 
 @pytest.fixture(scope="session")
