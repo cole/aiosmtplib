@@ -841,35 +841,34 @@ def smtpd_server_threaded(
 # Running server ports #
 
 
-@pytest.fixture(scope="function")
-def smtpd_server_port(smtpd_server: asyncio.AbstractServer) -> Optional[int]:
-    if smtpd_server.sockets:
-        return int(smtpd_server.sockets[0].getsockname()[1])
+def _get_server_socket_port(server: asyncio.AbstractServer) -> Optional[int]:
+    sockets = getattr(server, "sockets", [])
+    if sockets:
+        return int(sockets[0].getsockname()[1])
 
     return None
+
+
+@pytest.fixture(scope="function")
+def smtpd_server_port(smtpd_server: asyncio.AbstractServer) -> Optional[int]:
+    return _get_server_socket_port(smtpd_server)
 
 
 @pytest.fixture(scope="function")
 def smtpd_server_smtputf8_port(
     smtpd_server_smtputf8: asyncio.AbstractServer,
 ) -> Optional[int]:
-    if smtpd_server_smtputf8.sockets:
-        return int(smtpd_server_smtputf8.sockets[0].getsockname()[1])
-    return None
+    return _get_server_socket_port(smtpd_server_smtputf8)
 
 
 @pytest.fixture(scope="function")
 def echo_server_port(echo_server: asyncio.AbstractServer) -> Optional[int]:
-    if echo_server.sockets:
-        return int(echo_server.sockets[0].getsockname()[1])
-    return None
+    return _get_server_socket_port(echo_server)
 
 
 @pytest.fixture(scope="function")
 def smtpd_server_tls_port(smtpd_server_tls: asyncio.AbstractServer) -> Optional[int]:
-    if smtpd_server_tls.sockets:
-        return int(smtpd_server_tls.sockets[0].getsockname()[1])
-    return None
+    return _get_server_socket_port(smtpd_server_tls)
 
 
 @pytest.fixture(scope="function")
