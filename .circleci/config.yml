@@ -34,7 +34,14 @@ executors:
     resource_class: small
   py39:
     docker:
-      - image: "python:3.9-rc-buster"
+      - image: "python:3.9-buster"
+        auth:
+          username: $DOCKERHUB_USERNAME
+          password: $DOCKERHUB_PASSWORD
+    resource_class: small
+  py310:
+    docker:
+      - image: "python:3.10-buster"
         auth:
           username: $DOCKERHUB_USERNAME
           password: $DOCKERHUB_PASSWORD
@@ -280,6 +287,18 @@ workflows:
             tags:
               only: /.*/
       - test:
+          name: "test-py310"
+          executor_name: py310
+          toxenv: "py310-asyncio,py310-uvloop"
+          requires:
+            - lint
+            - build
+          context:
+            - docker-hub-credentials
+          filters:
+            tags:
+              only: /.*/
+      - test:
           name: "test-pypy3"
           executor_name: pypy3
           toxenv: "pypy3-asyncio"
@@ -312,6 +331,7 @@ workflows:
             - test-py37
             - test-py38
             - test-py39
+            - test-py310
             - test-pypy3
           context:
             - docker-hub-credentials
