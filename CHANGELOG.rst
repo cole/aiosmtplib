@@ -10,6 +10,21 @@ Changelog
   @rafaelrds)
 - Cleanup: Don't use private email.message.Message policy attribute (instead,
   set an appropriate policy based on message class)
+- Bugfix: include CHANGLOG in sdist release
+
+
+1.1.6
+-----
+
+- Bugfix: fix authenticated test failures (credit @P-EB)
+
+
+1.1.5
+-----
+
+- Bugfix: avoid raising ``asyncio.CancelledError`` on connection lost
+- Bugfix: allow UTF-8 chars in usernames and password strings
+- Feature: allow bytes type args for login usernames and passwords
 
 
 1.1.4

@@ -34,8 +34,7 @@ exclude = [
     "docs/requirements.txt",
 ]
 include = [
-    # We should include the changelog, but that also puts it in the wheel.
-    # "CHANGELOG.rst"
+    { path = "CHANGELOG.rst", format = "sdist" },
 ]
 
 [tool.poetry.dependencies]
