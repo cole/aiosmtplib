@@ -13,35 +13,35 @@ executors:
     resource_class: small
   py37:
     docker:
-      - image: "python:3.7-buster"
+      - image: "python:3.7-slim-bullseye"
         auth:
           username: $DOCKERHUB_USERNAME
           password: $DOCKERHUB_PASSWORD
     resource_class: small
   py38:
     docker:
-      - image: "python:3.8-buster"
+      - image: "python:3.8-slim-bullseye"
         auth:
           username: $DOCKERHUB_USERNAME
           password: $DOCKERHUB_PASSWORD
     resource_class: small
   py39:
     docker:
-      - image: "python:3.9-buster"
+      - image: "python:3.9-slim-bullseye"
         auth:
           username: $DOCKERHUB_USERNAME
           password: $DOCKERHUB_PASSWORD
     resource_class: small
   py310:
     docker:
-      - image: "python:3.10-buster"
+      - image: "python:3.10-slim-bullseye"
         auth:
           username: $DOCKERHUB_USERNAME
           password: $DOCKERHUB_PASSWORD
     resource_class: small
   pypy3:
     docker:
-      - image: "pypy:3-buster"
+      - image: "pypy:3-slim-bullseye"
         auth:
           username: $DOCKERHUB_USERNAME
           password: $DOCKERHUB_PASSWORD
