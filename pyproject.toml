@@ -40,7 +40,7 @@ include = [
 [tool.poetry.dependencies]
 python = "^3.6"
 
-uvloop = { version = ">=0.13,<0.15", optional = true }
+uvloop = { version = "^0.14", optional = true }
 sphinx = { version = ">=3,<4", optional = true }
 sphinx_autodoc_typehints = { version = "^1.7.0", optional = true }
 
@@ -62,6 +62,7 @@ docs = ["sphinx", "sphinx_autodoc_typehints"]
 uvloop = ["uvloop"]
 
 [tool.pytest.ini_options]
+asyncio_mode = "strict"
 minversion = "6.0"
 junit_family = "xunit2"
 addopts = "--strict-markers"
