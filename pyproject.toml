@@ -38,7 +38,7 @@ include = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.6"
+python = "^3.7"
 
 uvloop = { version = "^0.14", optional = true }
 sphinx = { version = ">=3,<4", optional = true }

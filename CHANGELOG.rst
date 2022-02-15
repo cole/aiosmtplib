@@ -4,13 +4,13 @@ Changelog
 2.0.0 (unreleased)
 ------------------
 
-- BREAKING CHANGE: Drop Python 3.5 support
+- BREAKING CHANGE: Drop Python 3.5 and 3.6 support.
 - Change: The value of ``source_address`` is now passed as the local_addr param
   to ``asyncio.create_connection``, allowing for binding to a specific IP (credit
   @rafaelrds)
 - Cleanup: Don't use private email.message.Message policy attribute (instead,
   set an appropriate policy based on message class)
-- Bugfix: include CHANGLOG in sdist release
+- Bugfix: include CHANGELOG in sdist release
 
 
 1.1.6
