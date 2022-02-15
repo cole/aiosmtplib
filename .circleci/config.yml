@@ -11,13 +11,6 @@ executors:
           username: $DOCKERHUB_USERNAME
           password: $DOCKERHUB_PASSWORD
     resource_class: small
-  py36:
-    docker:
-      - image: "python:3.6-buster"
-        auth:
-          username: $DOCKERHUB_USERNAME
-          password: $DOCKERHUB_PASSWORD
-    resource_class: small
   py37:
     docker:
       - image: "python:3.7-buster"
@@ -239,18 +232,6 @@ workflows:
             tags:
               only: /.*/
       - test:
-          name: "test-py36"
-          executor_name: py36
-          toxenv: "py36-asyncio,py36-uvloop"
-          requires:
-            - lint
-            - build
-          context:
-            - docker-hub-credentials
-          filters:
-            tags:
-              only: /.*/
-      - test:
           name: "test-py37"
           executor_name: py37
           toxenv: "py37-asyncio,py37-uvloop"
@@ -312,10 +293,10 @@ workflows:
               only: /.*/
       - coverage:
           requires:
-            - test-py36
             - test-py37
             - test-py38
             - test-py39
+            - test-py310
             - test-pypy3
           context:
             - docker-hub-credentials
@@ -327,7 +308,6 @@ workflows:
             - build
             - lint
             - docs
-            - test-py36
             - test-py37
             - test-py38
             - test-py39
