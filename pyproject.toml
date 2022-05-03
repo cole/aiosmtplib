@@ -56,6 +56,7 @@ mypy = "^0.950"
 flake8 = "^3.9.2"
 flake8-bugbear = "^22.1.11"
 trustme = "^0.7.0"
+black = {version = "^22.3.0", allow-prereleases = true}
 
 [tool.poetry.extras]
 docs = ["sphinx", "sphinx_autodoc_typehints"]
