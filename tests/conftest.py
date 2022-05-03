@@ -792,6 +792,7 @@ def smtpd_controller(
     request: pytest.FixtureRequest, bind_address: str, smtpd_handler: RecordingHandler
 ) -> SMTPDController:
     # Bind to 0 doesn't work here, so just try until we get an ok port
+    # This is pretty ugly, but only used for sync tests
     started = False
     port = 8025
     controller: Optional[SMTPDController]
