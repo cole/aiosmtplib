@@ -116,8 +116,8 @@ class TestSMTPD(SMTPD):
         await self.push("220 Ready to start TLS")
 
         # Create SSL layer.
-        self._tls_protocol = asyncio.sslproto.SSLProtocol(
-            self.loop, self, self.tls_context, None, server_side=True  # type: ignore
+        self._tls_protocol = asyncio.sslproto.SSLProtocol(  # type: ignore
+            self.loop, self, self.tls_context, None, server_side=True
         )
         self._original_transport = self.transport
         self._original_transport.set_protocol(self._tls_protocol)
