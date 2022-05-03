@@ -345,7 +345,7 @@ class SMTPConnection:
         elif self.socket_path:
             connect_coro = self.loop.create_unix_connection(
                 lambda: protocol,
-                path=str(self.socket_path),
+                path=self.socket_path,  # type: ignore
                 ssl=tls_context,
                 ssl_handshake_timeout=ssl_handshake_timeout,
             )
