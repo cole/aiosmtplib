@@ -4,8 +4,6 @@ Synchronous execution helpers.
 import asyncio
 from typing import Coroutine, Optional, TypeVar
 
-from .compat import all_tasks
-
 
 __all__ = ("async_to_sync", "shutdown_loop")
 
@@ -17,7 +15,8 @@ def async_to_sync(
     loop: Optional[asyncio.AbstractEventLoop] = None,
 ) -> CoroutineResult:
     if loop is None:
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
 
     if loop.is_running():
         raise RuntimeError("Event loop is already running.")
@@ -36,7 +35,7 @@ def shutdown_loop(loop: asyncio.AbstractEventLoop, timeout: float = 1.0) -> None
     """
     Do the various dances to gently shutdown an event loop.
     """
-    tasks = all_tasks(loop=loop)
+    tasks = asyncio.all_tasks(loop=loop)
     if tasks:
         for task in tasks:
             task.cancel()

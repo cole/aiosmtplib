@@ -6,7 +6,6 @@ import re
 import ssl
 from typing import Callable, Optional, cast
 
-from .compat import start_tls
 from .errors import (
     SMTPDataError,
     SMTPReadTimeoutError,
@@ -89,7 +88,7 @@ class FlowControlMixin(asyncio.Protocol):
         raise NotImplementedError
 
 
-class SMTPProtocol(FlowControlMixin, asyncio.Protocol):
+class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
     def __init__(
         self,
         loop: Optional[asyncio.AbstractEventLoop] = None,
@@ -357,8 +356,7 @@ class SMTPProtocol(FlowControlMixin, asyncio.Protocol):
                 raise SMTPServerDisconnected("Connection lost")
 
             try:
-                tls_transport = await start_tls(
-                    self._loop,
+                tls_transport = await self._loop.start_tls(
                     self.transport,
                     self,
                     tls_context,

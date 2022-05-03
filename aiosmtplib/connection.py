@@ -9,7 +9,6 @@ import sys
 import warnings
 from typing import Any, Optional, Type, Union
 
-from .compat import create_connection, create_unix_connection, get_running_loop
 from .default import Default, _default
 from .errors import (
     SMTPConnectError,
@@ -292,7 +291,7 @@ class SMTPConnection:
         self._validate_config()
 
         if self.loop is None:
-            self.loop = get_running_loop()
+            self.loop = asyncio.get_running_loop()
         if self._connect_lock is None:
             self._connect_lock = asyncio.Lock()
         await self._connect_lock.acquire()
@@ -337,24 +336,26 @@ class SMTPConnection:
             ssl_handshake_timeout = self.timeout
 
         if self.sock:
-            connect_coro = create_connection(
-                self.loop,
+            connect_coro = self.loop.create_connection(
                 lambda: protocol,
                 sock=self.sock,
                 ssl=tls_context,
                 ssl_handshake_timeout=ssl_handshake_timeout,
             )
         elif self.socket_path:
-            connect_coro = create_unix_connection(
-                self.loop,
+            connect_coro = self.loop.create_unix_connection(
                 lambda: protocol,
-                path=self.socket_path,
+                path=str(self.socket_path),
                 ssl=tls_context,
                 ssl_handshake_timeout=ssl_handshake_timeout,
             )
         else:
-            connect_coro = create_connection(
-                self.loop,
+            if self.hostname is None:
+                raise RuntimeError("No hostname provided; default should have been set")
+            if self.port is None:
+                raise RuntimeError("No port provided; default should have been set")
+
+            connect_coro = self.loop.create_connection(
                 lambda: protocol,
                 host=self.hostname,
                 port=self.port,
