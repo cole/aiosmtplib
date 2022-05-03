@@ -599,17 +599,7 @@ def smtpd_mock_response_error_with_code(
 
 @pytest.fixture(
     scope="function",
-    params=(
-        str,
-        bytes,
-        pytest.param(
-            Path,
-            marks=pytest.mark.xfail(
-                sys.version_info < (3, 7),
-                reason="os.PathLike support introduced in 3.7.",
-            ),
-        ),
-    ),
+    params=(str, bytes, Path),
     ids=("str", "bytes", "pathlike"),
 )
 def socket_path(
@@ -882,32 +872,24 @@ def smtpd_server_threaded_port(smtpd_controller: SMTPDController) -> int:
 
 @pytest.fixture(scope="function")
 def smtp_client(hostname: str, smtpd_server_port: int) -> SMTP:
-    client = SMTP(hostname=hostname, port=smtpd_server_port, timeout=1.0)
-
-    return client
+    return SMTP(hostname=hostname, port=smtpd_server_port, timeout=1.0)
 
 
 @pytest.fixture(scope="function")
 def smtp_client_smtputf8(hostname: str, smtpd_server_smtputf8_port: int) -> SMTP:
-    client = SMTP(hostname=hostname, port=smtpd_server_smtputf8_port, timeout=1.0)
-
-    return client
+    return SMTP(hostname=hostname, port=smtpd_server_smtputf8_port, timeout=1.0)
 
 
 @pytest.fixture(scope="function")
 def smtp_client_tls(hostname: str, smtpd_server_tls_port: int) -> SMTP:
-    tls_client = SMTP(
+    return SMTP(
         hostname=hostname,
         port=smtpd_server_tls_port,
         use_tls=True,
         validate_certs=False,
     )
 
-    return tls_client
-
 
 @pytest.fixture(scope="function")
 def smtp_client_threaded(hostname: str, smtpd_server_threaded_port: int) -> SMTP:
-    client = SMTP(hostname=hostname, port=smtpd_server_threaded_port, timeout=1.0)
-
-    return client
+    return SMTP(hostname=hostname, port=smtpd_server_threaded_port, timeout=1.0)
