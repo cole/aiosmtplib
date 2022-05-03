@@ -1,3 +1,4 @@
 # Required by Read the Docs.
 sphinx==3.2.1
 sphinx_autodoc_typehints==1.7.0
+Jinja2<3.1
