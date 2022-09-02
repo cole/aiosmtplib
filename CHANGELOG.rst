@@ -1,8 +1,8 @@
 Changelog
 =========
 
-1.1.7 (unreleased)
--------------------
+1.1.7
+-----
 
 - Security: Fix a possible injection vulnerability (a variant of
   https://consensys.net/diligence/vulnerabilities/python-smtplib-multiple-crlf-injection/)
