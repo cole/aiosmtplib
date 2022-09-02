@@ -272,3 +272,16 @@ async def test_loop_kwarg_deprecation_warning_connect(
         await client.connect(loop=event_loop)
 
     assert client.loop == event_loop
+
+
+async def test_hostname_newline_raises_error():
+    with pytest.raises(ValueError):
+        SMTP(hostname="localhost\r\n")
+
+
+async def test_source_address_newline_raises_error():
+    with pytest.raises(ValueError):
+        SMTP(
+            hostname="localhost",
+            source_address="localhost\r\nRCPT TO: <hacker@hackers.org>",
+        )

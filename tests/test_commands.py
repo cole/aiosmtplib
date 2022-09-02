@@ -585,3 +585,13 @@ async def test_badly_encoded_text_response(
         response = await smtp_client.noop()
 
     assert response.code == SMTPStatus.completed
+
+
+async def test_header_injection(smtp_client, smtpd_server, received_commands):
+    async with smtp_client:
+        await smtp_client.mail("test@example.com\r\nX-Malicious-Header: bad stuff")
+
+    assert len(received_commands) > 0
+    for command in received_commands:
+        for arg in command:
+            assert "bad stuff" not in arg

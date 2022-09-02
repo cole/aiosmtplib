@@ -253,6 +253,20 @@ class SMTPConnection:
                 "The socket_path option is not compatible with hostname/port"
             )
 
+        if self.source_address is not None and (
+            "\r" in self.source_address or "\n" in self.source_address
+        ):
+            raise ValueError(
+                "The source_address param contains prohibited newline characters"
+            )
+
+        if self.hostname is not None and (
+            "\r" in self.hostname or "\n" in self.hostname
+        ):
+            raise ValueError(
+                "The hostname param contains prohibited newline characters"
+            )
+
     async def connect(self, **kwargs) -> SMTPResponse:
         """
         Initialize a connection to the server. Options provided to

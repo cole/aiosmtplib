@@ -4,6 +4,12 @@ Changelog
 1.1.7 (unreleased)
 -------------------
 
+- Security: Fix a possible injection vulnerability (a variant of
+  https://consensys.net/diligence/vulnerabilities/python-smtplib-multiple-crlf-injection/)
+
+  Note that in order to exploit this vulnerability in aiosmtplib, the attacker would need
+  control of the ``hostname`` or ``source_address`` parameters. Thanks Sam Sanoop @ Snyk
+  for bringing this to my attention.
 - Bugfix: include CHANGLOG in sdist release
 - Type hints: fix type hints for async context exit (credit @JelleZijlstra)
 
