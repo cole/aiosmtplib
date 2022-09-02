@@ -5,6 +5,7 @@ Changelog
 -------------------
 
 - Bugfix: include CHANGLOG in sdist release
+- Type hints: fix type hints for async context exit (credit @JelleZijlstra)
 
 
 1.1.6
