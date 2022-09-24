@@ -1,16 +1,12 @@
 import enum
 import os
-import sys
 from typing import Union
 
 
 __all__ = ("Default", "SMTPStatus", "SocketPathType", "_default")
 
 
-if sys.version_info >= (3, 7):
-    SocketPathType = Union[str, bytes, os.PathLike]
-else:
-    SocketPathType = Union[str, bytes]
+SocketPathType = Union[str, bytes, os.PathLike]
 
 
 class Default(enum.Enum):
