@@ -13,7 +13,6 @@ from typing import Any, Dict, Iterable, Optional, Sequence, Tuple, Union
 
 from .auth import SMTPAuth
 from .connection import SMTPConnection
-from .default import Default, _default
 from .email import extract_recipients, extract_sender, flatten_message
 from .errors import (
     SMTPNotSupported,
@@ -23,6 +22,7 @@ from .errors import (
 )
 from .response import SMTPResponse
 from .sync import async_to_sync
+from .typing import Default, _default
 
 
 __all__ = ("SMTP",)

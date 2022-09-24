@@ -14,7 +14,7 @@ from .errors import (
     SMTPTimeoutError,
 )
 from .response import SMTPResponse
-from .status import SMTPStatus
+from .typing import SMTPStatus
 
 
 __all__ = ("SMTPProtocol",)

@@ -6,7 +6,6 @@ import ssl
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 from .connection import SMTPConnection
-from .default import Default, _default
 from .email import parse_address, quote_address
 from .errors import (
     SMTPException,
@@ -18,7 +17,7 @@ from .errors import (
     SMTPServerDisconnected,
 )
 from .response import SMTPResponse
-from .status import SMTPStatus
+from .typing import Default, SMTPStatus, _default
 
 
 __all__ = ("ESMTP",)

@@ -2,14 +2,11 @@
 Handles client connection/disconnection.
 """
 import asyncio
-import os
 import socket
 import ssl
-import sys
 import warnings
 from typing import Any, Optional, Type, Union
 
-from .default import Default, _default
 from .errors import (
     SMTPConnectError,
     SMTPConnectTimeoutError,
@@ -19,7 +16,7 @@ from .errors import (
 )
 from .protocol import SMTPProtocol
 from .response import SMTPResponse
-from .status import SMTPStatus
+from .typing import Default, SMTPStatus, SocketPathType, _default
 
 
 __all__ = ("SMTPConnection",)
@@ -29,13 +26,6 @@ SMTP_PORT = 25
 SMTP_TLS_PORT = 465
 SMTP_STARTTLS_PORT = 587
 DEFAULT_TIMEOUT = 60
-
-
-# Mypy special cases sys.version checks
-if sys.version_info >= (3, 7):
-    SocketPathType = Union[str, bytes, os.PathLike]
-else:
-    SocketPathType = Union[str, bytes]
 
 
 class SMTPConnection:

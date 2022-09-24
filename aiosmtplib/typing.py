@@ -1,10 +1,27 @@
-"""
-SMTP status codes.
-"""
 import enum
+import os
+import sys
+from typing import Union
 
 
-__all__ = ("SMTPStatus",)
+__all__ = ("Default", "SMTPStatus", "SocketPathType", "_default")
+
+
+if sys.version_info >= (3, 7):
+    SocketPathType = Union[str, bytes, os.PathLike]
+else:
+    SocketPathType = Union[str, bytes]
+
+
+class Default(enum.Enum):
+    """
+    Used for type hinting kwarg defaults.
+    """
+
+    token = 0
+
+
+_default = Default.token
 
 
 @enum.unique

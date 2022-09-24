@@ -10,15 +10,10 @@ from typing import Dict, List, Optional, Sequence, Tuple, Union, overload
 
 from .response import SMTPResponse
 from .smtp import SMTP
+from .typing import SocketPathType
 
 
 __all__ = ("send",)
-
-
-if sys.version_info >= (3, 7):
-    SocketPathType = Union[str, bytes, os.PathLike]
-else:
-    SocketPathType = Union[str, bytes]
 
 # flake8: noqa F811
 

@@ -28,7 +28,7 @@ from .errors import (
 )
 from .response import SMTPResponse
 from .smtp import SMTP
-from .status import SMTPStatus
+from .typing import SMTPStatus
 
 
 __title__ = "aiosmtplib"

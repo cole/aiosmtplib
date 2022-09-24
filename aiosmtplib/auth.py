@@ -5,11 +5,10 @@ import base64
 import hmac
 from typing import List, Optional, Tuple, Union
 
-from .default import Default, _default
 from .errors import SMTPAuthenticationError, SMTPException
 from .esmtp import ESMTP
 from .response import SMTPResponse
-from .status import SMTPStatus
+from .typing import Default, SMTPStatus, _default
 
 
 __all__ = ("SMTPAuth", "crammd5_verify")
