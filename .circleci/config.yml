@@ -113,7 +113,6 @@ jobs:
 
   build:
     executor: circleci_py38
-    environment:
     steps:
       - python_version
       - checkout
