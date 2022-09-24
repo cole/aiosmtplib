@@ -256,7 +256,25 @@ class SMTPConnection:
                 "The hostname param contains prohibited newline characters"
             )
 
-    async def connect(self, **kwargs) -> SMTPResponse:
+    async def connect(
+        self,
+        hostname: Optional[Union[str, Default]] = _default,
+        port: Optional[Union[int, Default]] = _default,
+        username: Optional[Union[str, bytes, Default]] = _default,
+        password: Optional[Union[str, bytes, Default]] = _default,
+        source_address: Optional[Union[str, Default]] = _default,
+        timeout: Optional[Union[float, Default]] = _default,
+        loop: Optional[Union[asyncio.AbstractEventLoop, Default]] = _default,
+        use_tls: Optional[bool] = None,
+        start_tls: Optional[bool] = None,
+        validate_certs: Optional[bool] = None,
+        client_cert: Optional[Union[str, Default]] = _default,
+        client_key: Optional[Union[str, Default]] = _default,
+        tls_context: Optional[Union[ssl.SSLContext, Default]] = _default,
+        cert_bundle: Optional[Union[str, Default]] = _default,
+        socket_path: Optional[Union[SocketPathType, Default]] = _default,
+        sock: Optional[Union[socket.socket, Default]] = _default,
+    ) -> SMTPResponse:
         """
         Initialize a connection to the server. Options provided to
         :meth:`.connect` take precedence over those used to initialize the
@@ -291,7 +309,22 @@ class SMTPConnection:
 
         :raises ValueError: mutually exclusive options provided
         """
-        self._update_settings_from_kwargs(**kwargs)
+        self._update_settings_from_kwargs(
+            hostname=hostname,
+            port=port,
+            source_address=source_address,
+            timeout=timeout,
+            loop=loop,
+            use_tls=use_tls,
+            start_tls=start_tls,
+            validate_certs=validate_certs,
+            client_cert=client_cert,
+            client_key=client_key,
+            tls_context=tls_context,
+            cert_bundle=cert_bundle,
+            socket_path=socket_path,
+            sock=sock,
+        )
         self._validate_config()
 
         if self.loop is None:
