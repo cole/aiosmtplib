@@ -9,7 +9,6 @@ import sys
 import warnings
 from typing import Any, Optional, Type, Union
 
-from .compat import create_connection, create_unix_connection, get_running_loop
 from .default import Default, _default
 from .errors import (
     SMTPConnectError,
@@ -102,8 +101,8 @@ class SMTPConnection:
 
         :raises ValueError: mutually exclusive options provided
         """
-        self.protocol = None  # type: Optional[SMTPProtocol]
-        self.transport = None  # type: Optional[asyncio.BaseTransport]
+        self.protocol: Optional[SMTPProtocol] = None
+        self.transport: Optional[asyncio.BaseTransport] = None
 
         # Kwarg defaults are provided here, and saved for connect.
         self.hostname = hostname
@@ -130,7 +129,7 @@ class SMTPConnection:
                 stacklevel=4,
             )
         self.loop = loop
-        self._connect_lock = None  # type: Optional[asyncio.Lock]
+        self._connect_lock: Optional[asyncio.Lock] = None
 
         self._validate_config()
 
@@ -306,7 +305,7 @@ class SMTPConnection:
         self._validate_config()
 
         if self.loop is None:
-            self.loop = get_running_loop()
+            self.loop = asyncio.get_running_loop()
         if self._connect_lock is None:
             self._connect_lock = asyncio.Lock()
         await self._connect_lock.acquire()
@@ -344,51 +343,50 @@ class SMTPConnection:
             loop=self.loop, connection_lost_callback=self._connection_lost
         )
 
-        tls_context = None  # type: Optional[ssl.SSLContext]
-        ssl_handshake_timeout = None  # type: Optional[float]
+        tls_context: Optional[ssl.SSLContext] = None
+        ssl_handshake_timeout: Optional[float] = None
         if self.use_tls:
             tls_context = self._get_tls_context()
             ssl_handshake_timeout = self.timeout
 
         if self.sock:
-            connect_coro = create_connection(
-                self.loop,
+            connect_coro = self.loop.create_connection(
                 lambda: protocol,
                 sock=self.sock,
                 ssl=tls_context,
                 ssl_handshake_timeout=ssl_handshake_timeout,
             )
         elif self.socket_path:
-            connect_coro = create_unix_connection(
-                self.loop,
+            connect_coro = self.loop.create_unix_connection(
                 lambda: protocol,
-                path=self.socket_path,
+                path=self.socket_path,  # type: ignore
                 ssl=tls_context,
                 ssl_handshake_timeout=ssl_handshake_timeout,
             )
         else:
-            connect_coro = create_connection(
-                self.loop,
+            if self.hostname is None:
+                raise RuntimeError("No hostname provided; default should have been set")
+            if self.port is None:
+                raise RuntimeError("No port provided; default should have been set")
+
+            connect_coro = self.loop.create_connection(
                 lambda: protocol,
                 host=self.hostname,
                 port=self.port,
                 ssl=tls_context,
                 ssl_handshake_timeout=ssl_handshake_timeout,
+                local_addr=(self.source_address, 0),
             )
 
         try:
             transport, _ = await asyncio.wait_for(connect_coro, timeout=self.timeout)
         except OSError as exc:
             raise SMTPConnectError(
-                "Error connecting to {host} on port {port}: {err}".format(
-                    host=self.hostname, port=self.port, err=exc
-                )
+                f"Error connecting to {self.hostname} on port {self.port}: {exc}"
             ) from exc
         except asyncio.TimeoutError as exc:
             raise SMTPConnectTimeoutError(
-                "Timed out connecting to {host} on port {port}".format(
-                    host=self.hostname, port=self.port
-                )
+                f"Timed out connecting to {self.hostname} on port {self.port}"
             ) from exc
 
         self.protocol = protocol
@@ -398,9 +396,7 @@ class SMTPConnection:
             response = await protocol.read_response(timeout=self.timeout)
         except SMTPServerDisconnected as exc:
             raise SMTPConnectError(
-                "Error connecting to {host} on port {port}: {err}".format(
-                    host=self.hostname, port=self.port, err=exc
-                )
+                f"Error connecting to {self.hostname} on port {self.port}: {exc}"
             ) from exc
         except SMTPTimeoutError as exc:
             raise SMTPConnectTimeoutError(
@@ -412,7 +408,7 @@ class SMTPConnection:
 
         return response
 
-    def _connection_lost(self, waiter: asyncio.Future) -> None:
+    def _connection_lost(self, waiter: "asyncio.Future[None]") -> None:
         if waiter.cancelled() or waiter.exception() is not None:
             self.close()
 

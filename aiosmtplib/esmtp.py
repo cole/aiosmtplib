@@ -3,7 +3,7 @@ Low level ESMTP command API.
 """
 import re
 import ssl
-from typing import Dict, Iterable, List, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 from .connection import SMTPConnection
 from .default import Default, _default
@@ -33,14 +33,14 @@ class ESMTP(SMTPConnection):
     Handles individual SMTP and ESMTP commands.
     """
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
 
-        self.last_helo_response = None  # type: Optional[SMTPResponse]
-        self._last_ehlo_response = None  # type: Optional[SMTPResponse]
-        self.esmtp_extensions = {}  # type: Dict[str, str]
+        self.last_helo_response: Optional[SMTPResponse] = None
+        self._last_ehlo_response: Optional[SMTPResponse] = None
+        self.esmtp_extensions: Dict[str, str] = {}
         self.supports_esmtp = False
-        self.server_auth_methods = []  # type: List[str]
+        self.server_auth_methods: List[str] = []
 
     @property
     def last_ehlo_response(self) -> Union[SMTPResponse, None]:
@@ -75,7 +75,9 @@ class ESMTP(SMTPConnection):
     # Base SMTP commands #
 
     async def helo(
-        self, hostname: str = None, timeout: Optional[Union[float, Default]] = _default
+        self,
+        hostname: Optional[str] = None,
+        timeout: Optional[Union[float, Default]] = _default,
     ) -> SMTPResponse:
         """
         Send the SMTP HELO command.
@@ -483,7 +485,7 @@ def parse_esmtp_extensions(message: str) -> Tuple[Dict[str, str], List[str]]:
          250 SIZE 51200000
     """
     esmtp_extensions = {}
-    auth_types = []  # type: List[str]
+    auth_types: List[str] = []
 
     response_lines = message.split("\n")
 

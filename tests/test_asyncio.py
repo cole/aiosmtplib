@@ -3,10 +3,13 @@ Tests that cover asyncio usage.
 """
 
 import asyncio
+from typing import Any, Awaitable, Callable, Dict, List, Tuple, Type
 
 import pytest
+from aiosmtpd.smtp import SMTP as SMTPD
 
-from aiosmtplib import SMTP, SMTPStatus
+from aiosmtplib import SMTP
+from aiosmtplib.response import SMTPResponse
 
 
 RECIPIENTS = [
@@ -19,8 +22,11 @@ pytestmark = pytest.mark.asyncio()
 
 
 async def test_sendmail_multiple_times_in_sequence(
-    smtp_client, smtpd_server, sender_str, message_str
-):
+    smtp_client: SMTP,
+    smtpd_server: asyncio.AbstractServer,
+    sender_str: str,
+    message_str: str,
+) -> None:
     async with smtp_client:
         for recipient in RECIPIENTS:
             errors, response = await smtp_client.sendmail(
@@ -33,8 +39,11 @@ async def test_sendmail_multiple_times_in_sequence(
 
 
 async def test_sendmail_multiple_times_with_gather(
-    smtp_client, smtpd_server, sender_str, message_str
-):
+    smtp_client: SMTP,
+    smtpd_server: asyncio.AbstractServer,
+    sender_str: str,
+    message_str: str,
+) -> None:
     async with smtp_client:
         tasks = [
             smtp_client.sendmail(sender_str, [recipient], message_str)
@@ -48,9 +57,14 @@ async def test_sendmail_multiple_times_with_gather(
 
 
 async def test_connect_and_sendmail_multiple_times_with_gather(
-    hostname, smtpd_server_port, sender_str, message_str
-):
-    async def connect_and_send(*args, **kwargs):
+    hostname: str,
+    smtpd_server_port: int,
+    sender_str: str,
+    message_str: str,
+) -> None:
+    async def connect_and_send(
+        *args: Any, **kwargs: Any
+    ) -> Tuple[Dict[str, SMTPResponse], str]:
         async with SMTP(hostname=hostname, port=smtpd_server_port) as client:
             response = await client.sendmail(*args, **kwargs)
 
@@ -68,9 +82,15 @@ async def test_connect_and_sendmail_multiple_times_with_gather(
 
 
 async def test_multiple_clients_with_gather(
-    hostname, smtpd_server_port, sender_str, message_str
-):
-    async def connect_and_send(*args, **kwargs):
+    hostname: str,
+    smtpd_server: asyncio.AbstractServer,
+    smtpd_server_port: int,
+    sender_str: str,
+    message_str: str,
+) -> None:
+    async def connect_and_send(
+        *args: Any, **kwargs: Any
+    ) -> Tuple[Dict[str, SMTPResponse], str]:
         client = SMTP(hostname=hostname, port=smtpd_server_port)
         async with client:
             response = await client.sendmail(*args, **kwargs)
@@ -89,9 +109,12 @@ async def test_multiple_clients_with_gather(
 
 
 async def test_multiple_actions_in_context_manager_with_gather(
-    hostname, smtpd_server_port, sender_str, message_str
-):
-    async def connect_and_run_commands(*args, **kwargs):
+    hostname: str,
+    smtpd_server_port: int,
+    sender_str: str,
+    message_str: str,
+) -> None:
+    async def connect_and_run_commands(*args: Any, **kwargs: Any) -> SMTPResponse:
         async with SMTP(hostname=hostname, port=smtpd_server_port) as client:
             await client.ehlo()
             await client.help()
@@ -109,18 +132,19 @@ async def test_multiple_actions_in_context_manager_with_gather(
 
 
 async def test_many_commands_with_gather(
-    monkeypatch, smtp_client, smtpd_server, smtpd_class, smtpd_response_handler_factory
-):
+    monkeypatch: pytest.MonkeyPatch,
+    smtp_client: SMTP,
+    smtpd_server: asyncio.AbstractServer,
+    smtpd_class: Type[SMTPD],
+    smtpd_mock_response_expn: Callable,
+) -> None:
     """
     Tests that appropriate locks are in place to prevent commands confusing each other.
     """
-    response_handler = smtpd_response_handler_factory(
-        "{}  Alice Smith <asmith@example.com>".format(SMTPStatus.completed)
-    )
-    monkeypatch.setattr(smtpd_class, "smtp_EXPN", response_handler)
+    monkeypatch.setattr(smtpd_class, "smtp_EXPN", smtpd_mock_response_expn)
 
     async with smtp_client:
-        tasks = [
+        tasks: List[Awaitable] = [
             smtp_client.ehlo(),
             smtp_client.helo(),
             smtp_client.noop(),
@@ -138,7 +162,11 @@ async def test_many_commands_with_gather(
     assert "Supported commands" in results[-1]
 
 
-async def test_close_works_on_stopped_loop(event_loop, hostname, smtpd_server_port):
+async def test_close_works_on_stopped_loop(
+    event_loop: asyncio.AbstractEventLoop,
+    hostname: str,
+    smtpd_server_port: int,
+) -> None:
     client = SMTP(hostname=hostname, port=smtpd_server_port)
 
     await client.connect()
@@ -152,9 +180,14 @@ async def test_close_works_on_stopped_loop(event_loop, hostname, smtpd_server_po
 
 
 async def test_context_manager_entry_multiple_times_with_gather(
-    smtpd_server, smtp_client, sender_str, message_str
-):
-    async def connect_and_send(*args, **kwargs):
+    smtp_client: SMTP,
+    smtpd_server: asyncio.AbstractServer,
+    sender_str: str,
+    message_str: str,
+) -> None:
+    async def connect_and_send(
+        *args: Any, **kwargs: Any
+    ) -> Tuple[Dict[str, SMTPResponse], str]:
         async with smtp_client:
             response = await smtp_client.sendmail(*args, **kwargs)
 

@@ -11,51 +11,37 @@ executors:
           username: $DOCKERHUB_USERNAME
           password: $DOCKERHUB_PASSWORD
     resource_class: small
-  py352:
-    docker:
-      - image: "python:3.5.2"
-        auth:
-          username: $DOCKERHUB_USERNAME
-          password: $DOCKERHUB_PASSWORD
-    resource_class: small
-  py35:
-    docker:
-      - image: "python:3.5-buster"
-        auth:
-          username: $DOCKERHUB_USERNAME
-          password: $DOCKERHUB_PASSWORD
-    resource_class: small
-  py36:
-    docker:
-      - image: "python:3.6-buster"
-        auth:
-          username: $DOCKERHUB_USERNAME
-          password: $DOCKERHUB_PASSWORD
-    resource_class: small
   py37:
     docker:
-      - image: "python:3.7-buster"
+      - image: "python:3.7-slim-bullseye"
         auth:
           username: $DOCKERHUB_USERNAME
           password: $DOCKERHUB_PASSWORD
     resource_class: small
   py38:
     docker:
-      - image: "python:3.8-buster"
+      - image: "python:3.8-slim-bullseye"
         auth:
           username: $DOCKERHUB_USERNAME
           password: $DOCKERHUB_PASSWORD
     resource_class: small
   py39:
     docker:
-      - image: "python:3.9-buster"
+      - image: "python:3.9-slim-bullseye"
+        auth:
+          username: $DOCKERHUB_USERNAME
+          password: $DOCKERHUB_PASSWORD
+    resource_class: small
+  py310:
+    docker:
+      - image: "python:3.10-slim-bullseye"
         auth:
           username: $DOCKERHUB_USERNAME
           password: $DOCKERHUB_PASSWORD
     resource_class: small
   pypy3:
     docker:
-      - image: "pypy:3-buster"
+      - image: "pypy:3-slim-bullseye"
         auth:
           username: $DOCKERHUB_USERNAME
           password: $DOCKERHUB_PASSWORD
@@ -134,6 +120,12 @@ jobs:
       - run:
           name: Building packages
           command: poetry build -vv
+      - run:
+          name: Install Twine
+          command: poetry add --dev twine
+      - run:
+          name: Twine check
+          command: poetry run twine check dist/*
       - persist_to_workspace:
           root: dist
           paths:
@@ -154,6 +146,7 @@ jobs:
     environment:
       COVERAGE_FILE: "coverage-results/.coverage.<<parameters.executor_name>>"
       HYPOTHESIS_PROFILE: "ci"
+      BIND_ADDR: "127.0.0.1"
       TOXENV: "<<parameters.toxenv>>"
     steps:
       - python_version
@@ -239,52 +232,6 @@ workflows:
             tags:
               only: /.*/
       - test:
-          name: "test-py352"
-          executor_name: py352
-          toxenv: "py35-asyncio,py35-uvloop"
-          requires:
-            - lint
-            - build
-          context:
-            - docker-hub-credentials
-          pre-steps:
-            - run:
-                name: Updating pip
-                command: pip install --upgrade pip
-            - run:
-                name: Updating setuptools
-                command: pip install --upgrade setuptools
-            - run:
-                name: Installing importlib-metadata
-                command: pip install importlib-metadata
-          filters:
-            tags:
-              only: /.*/
-      - test:
-          name: "test-py35"
-          executor_name: py35
-          toxenv: "py35-asyncio,py35-uvloop"
-          requires:
-            - lint
-            - build
-          context:
-            - docker-hub-credentials
-          filters:
-            tags:
-              only: /.*/
-      - test:
-          name: "test-py36"
-          executor_name: py36
-          toxenv: "py36-asyncio,py36-uvloop"
-          requires:
-            - lint
-            - build
-          context:
-            - docker-hub-credentials
-          filters:
-            tags:
-              only: /.*/
-      - test:
           name: "test-py37"
           executor_name: py37
           toxenv: "py37-asyncio,py37-uvloop"
@@ -321,6 +268,18 @@ workflows:
             tags:
               only: /.*/
       - test:
+          name: "test-py310"
+          executor_name: py310
+          toxenv: "py310-asyncio,py310-uvloop"
+          requires:
+            - lint
+            - build
+          context:
+            - docker-hub-credentials
+          filters:
+            tags:
+              only: /.*/
+      - test:
           name: "test-pypy3"
           executor_name: pypy3
           toxenv: "pypy3-asyncio"
@@ -334,12 +293,10 @@ workflows:
               only: /.*/
       - coverage:
           requires:
-            - test-py352
-            - test-py35
-            - test-py36
             - test-py37
             - test-py38
             - test-py39
+            - test-py310
             - test-pypy3
           context:
             - docker-hub-credentials
@@ -351,12 +308,10 @@ workflows:
             - build
             - lint
             - docs
-            - test-py352
-            - test-py35
-            - test-py36
             - test-py37
             - test-py38
             - test-py39
+            - test-py310
             - test-pypy3
           context:
             - docker-hub-credentials

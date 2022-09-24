@@ -3,6 +3,7 @@ Tests covering SMTP configuration options.
 """
 import asyncio
 import socket
+import ssl
 
 import pytest
 
@@ -12,62 +13,68 @@ from aiosmtplib import SMTP
 pytestmark = pytest.mark.asyncio()
 
 
-async def test_tls_context_and_cert_raises():
+async def test_tls_context_and_cert_raises() -> None:
     with pytest.raises(ValueError):
         SMTP(use_tls=True, client_cert="foo.crt", tls_context=True)
 
 
-async def test_tls_context_and_cert_to_connect_raises():
+async def test_tls_context_and_cert_to_connect_raises() -> None:
     client = SMTP(use_tls=True, tls_context=True)
 
     with pytest.raises(ValueError):
         await client.connect(client_cert="foo.crt")
 
 
-async def test_tls_context_and_cert_to_starttls_raises(smtp_client, smtpd_server):
+async def test_tls_context_and_cert_to_starttls_raises(
+    smtp_client: SMTP,
+    smtpd_server: asyncio.AbstractServer,
+    client_tls_context: ssl.SSLContext,
+) -> None:
     async with smtp_client:
         with pytest.raises(ValueError):
-            await smtp_client.starttls(client_cert="test.cert", tls_context=True)
+            await smtp_client.starttls(
+                client_cert="test.cert", tls_context=client_tls_context
+            )
 
 
-async def test_use_tls_and_start_tls_raises():
+async def test_use_tls_and_start_tls_raises() -> None:
     with pytest.raises(ValueError):
         SMTP(use_tls=True, start_tls=True)
 
 
-async def test_use_tls_and_start_tls_to_connect_raises():
+async def test_use_tls_and_start_tls_to_connect_raises() -> None:
     client = SMTP(use_tls=True)
 
     with pytest.raises(ValueError):
         await client.connect(start_tls=True)
 
 
-async def test_socket_and_hostname_raises():
+async def test_socket_and_hostname_raises() -> None:
     with pytest.raises(ValueError):
         SMTP(hostname="example.com", sock=socket.socket(socket.AF_INET))
 
 
-async def test_socket_and_port_raises():
+async def test_socket_and_port_raises() -> None:
     with pytest.raises(ValueError):
         SMTP(port=1, sock=socket.socket(socket.AF_INET))
 
 
-async def test_socket_and_socket_path_raises():
+async def test_socket_and_socket_path_raises() -> None:
     with pytest.raises(ValueError):
         SMTP(socket_path="/tmp/test", sock=socket.socket(socket.AF_INET))  # nosec
 
 
-async def test_hostname_and_socket_path_raises():
+async def test_hostname_and_socket_path_raises() -> None:
     with pytest.raises(ValueError):
         SMTP(hostname="example.com", socket_path="/tmp/test")  # nosec
 
 
-async def test_port_and_socket_path_raises():
+async def test_port_and_socket_path_raises() -> None:
     with pytest.raises(ValueError):
         SMTP(port=1, socket_path="/tmp/test")  # nosec
 
 
-async def test_config_via_connect_kwargs(hostname, smtpd_server_port):
+async def test_config_via_connect_kwargs(hostname: str, smtpd_server_port: int) -> None:
     client = SMTP(
         hostname="",
         use_tls=True,
@@ -98,8 +105,12 @@ async def test_config_via_connect_kwargs(hostname, smtpd_server_port):
     ids=["plaintext", "tls", "starttls"],
 )
 async def test_default_port_on_connect(
-    event_loop, bind_address, use_tls, start_tls, expected_port
-):
+    event_loop: asyncio.AbstractEventLoop,
+    bind_address: str,
+    use_tls: bool,
+    start_tls: bool,
+    expected_port: int,
+) -> None:
     client = SMTP()
 
     try:
@@ -115,8 +126,10 @@ async def test_default_port_on_connect(
 
 
 async def test_connect_hostname_takes_precedence(
-    event_loop, hostname, smtpd_server_port
-):
+    event_loop: asyncio.AbstractEventLoop,
+    hostname: str,
+    smtpd_server_port: int,
+) -> None:
     client = SMTP(hostname="example.com", port=smtpd_server_port)
     await client.connect(hostname=hostname)
 
@@ -125,7 +138,11 @@ async def test_connect_hostname_takes_precedence(
     await client.quit()
 
 
-async def test_connect_port_takes_precedence(event_loop, hostname, smtpd_server_port):
+async def test_connect_port_takes_precedence(
+    event_loop: asyncio.AbstractEventLoop,
+    hostname: str,
+    smtpd_server_port: int,
+) -> None:
     client = SMTP(hostname=hostname, port=17)
     await client.connect(port=smtpd_server_port)
 
@@ -134,7 +151,11 @@ async def test_connect_port_takes_precedence(event_loop, hostname, smtpd_server_
     await client.quit()
 
 
-async def test_connect_timeout_takes_precedence(hostname, smtpd_server_port):
+async def test_connect_timeout_takes_precedence(
+    event_loop: asyncio.AbstractEventLoop,
+    hostname: str,
+    smtpd_server_port: int,
+) -> None:
     client = SMTP(hostname=hostname, port=smtpd_server_port, timeout=0.66)
     await client.connect(timeout=0.99)
 
@@ -143,7 +164,11 @@ async def test_connect_timeout_takes_precedence(hostname, smtpd_server_port):
     await client.quit()
 
 
-async def test_connect_source_address_takes_precedence(hostname, smtpd_server_port):
+async def test_connect_source_address_takes_precedence(
+    event_loop: asyncio.AbstractEventLoop,
+    hostname: str,
+    smtpd_server_port: int,
+) -> None:
     client = SMTP(
         hostname=hostname, port=smtpd_server_port, source_address="example.com"
     )
@@ -155,8 +180,11 @@ async def test_connect_source_address_takes_precedence(hostname, smtpd_server_po
 
 
 async def test_connect_event_loop_takes_precedence(
-    event_loop, event_loop_policy, hostname, smtpd_server_port
-):
+    event_loop: asyncio.AbstractEventLoop,
+    event_loop_policy: asyncio.AbstractEventLoopPolicy,
+    hostname: str,
+    smtpd_server_port: int,
+) -> None:
     init_loop = event_loop_policy.new_event_loop()
     with pytest.warns(DeprecationWarning):
         client = SMTP(hostname=hostname, port=smtpd_server_port, loop=init_loop)
@@ -170,7 +198,11 @@ async def test_connect_event_loop_takes_precedence(
     await client.quit()
 
 
-async def test_connect_use_tls_takes_precedence(hostname, smtpd_server_port):
+async def test_connect_use_tls_takes_precedence(
+    event_loop: asyncio.AbstractEventLoop,
+    hostname: str,
+    smtpd_server_port: int,
+) -> None:
     client = SMTP(hostname=hostname, port=smtpd_server_port, use_tls=True)
 
     await client.connect(use_tls=False)
@@ -180,7 +212,11 @@ async def test_connect_use_tls_takes_precedence(hostname, smtpd_server_port):
     await client.quit()
 
 
-async def test_connect_validate_certs_takes_precedence(hostname, smtpd_server_port):
+async def test_connect_validate_certs_takes_precedence(
+    event_loop: asyncio.AbstractEventLoop,
+    hostname: str,
+    smtpd_server_port: int,
+) -> None:
     client = SMTP(hostname=hostname, port=smtpd_server_port, validate_certs=False)
 
     await client.connect(validate_certs=True)
@@ -190,7 +226,11 @@ async def test_connect_validate_certs_takes_precedence(hostname, smtpd_server_po
     await client.quit()
 
 
-async def test_connect_certificate_options_take_precedence(hostname, smtpd_server_port):
+async def test_connect_certificate_options_take_precedence(
+    event_loop: asyncio.AbstractEventLoop,
+    hostname: str,
+    smtpd_server_port: int,
+) -> None:
     client = SMTP(
         hostname=hostname,
         port=smtpd_server_port,
@@ -209,8 +249,11 @@ async def test_connect_certificate_options_take_precedence(hostname, smtpd_serve
 
 
 async def test_connect_tls_context_option_takes_precedence(
-    hostname, smtpd_server_port, client_tls_context, server_tls_context
-):
+    hostname: str,
+    smtpd_server_port: int,
+    client_tls_context: ssl.SSLContext,
+    server_tls_context: ssl.SSLContext,
+) -> None:
     client = SMTP(
         hostname=hostname, port=smtpd_server_port, tls_context=server_tls_context
     )
@@ -223,8 +266,12 @@ async def test_connect_tls_context_option_takes_precedence(
 
 
 async def test_starttls_certificate_options_take_precedence(
-    hostname, smtpd_server_port, valid_cert_path, valid_key_path
-):
+    hostname: str,
+    smtpd_server_port: int,
+    ca_cert_path: str,
+    valid_cert_path: str,
+    valid_key_path: str,
+) -> None:
     client = SMTP(
         hostname=hostname,
         port=smtpd_server_port,
@@ -244,19 +291,21 @@ async def test_starttls_certificate_options_take_precedence(
     await client.starttls(
         client_cert=valid_cert_path,
         client_key=valid_key_path,
-        cert_bundle=valid_cert_path,
+        cert_bundle=ca_cert_path,
         validate_certs=True,
     )
 
     assert client.client_cert == valid_cert_path
     assert client.client_key == valid_key_path
-    assert client.cert_bundle == valid_cert_path
+    assert client.cert_bundle == ca_cert_path
     assert client.validate_certs is True
 
     await client.quit()
 
 
-async def test_loop_kwarg_deprecation_warning_init(event_loop):
+async def test_loop_kwarg_deprecation_warning_init(
+    event_loop: asyncio.AbstractEventLoop,
+) -> None:
     with pytest.warns(DeprecationWarning):
         client = SMTP(loop=event_loop)
 
@@ -264,8 +313,11 @@ async def test_loop_kwarg_deprecation_warning_init(event_loop):
 
 
 async def test_loop_kwarg_deprecation_warning_connect(
-    event_loop, hostname, smtpd_server_port, smtpd_server
-):
+    event_loop: asyncio.AbstractEventLoop,
+    hostname: str,
+    smtpd_server_port: int,
+    smtpd_server: asyncio.AbstractServer,
+) -> None:
     client = SMTP(hostname=hostname, port=smtpd_server_port)
 
     with pytest.warns(DeprecationWarning):
@@ -274,12 +326,12 @@ async def test_loop_kwarg_deprecation_warning_connect(
     assert client.loop == event_loop
 
 
-async def test_hostname_newline_raises_error():
+async def test_hostname_newline_raises_error() -> None:
     with pytest.raises(ValueError):
         SMTP(hostname="localhost\r\n")
 
 
-async def test_source_address_newline_raises_error():
+async def test_source_address_newline_raises_error() -> None:
     with pytest.raises(ValueError):
         SMTP(
             hostname="localhost",

@@ -60,7 +60,7 @@ master_doc = "index"
 project = "aiosmtplib"
 author = "Cole Maclean"
 year = datetime.date.today().year
-copyright = "{year}, {author}".format(year=year, author=author)
+copyright = f"{year}, {author}"
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -118,7 +118,7 @@ html_theme_options = {
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = []  # type: List[str]
+html_static_path: List[str] = []
 
 
 # -- Options for HTMLHelp output ------------------------------------------
@@ -129,7 +129,7 @@ htmlhelp_basename = "aiosmtplibdoc"
 
 # -- Options for LaTeX output ---------------------------------------------
 
-latex_elements = {
+latex_elements: Dict[str, str] = {
     # The paper size ('letterpaper' or 'a4paper').
     #
     # 'papersize': 'letterpaper',
@@ -142,7 +142,7 @@ latex_elements = {
     # Latex figure (float) alignment
     #
     # 'figure_align': 'htbp',
-}  # type: Dict[str, str]
+}
 
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title,
@@ -183,8 +183,6 @@ html_sidebars = {
 }
 
 nitpick_ignore = [
-    ("py:class", "typing.Tuple"),
-    ("py:class", "concurrent.futures._base.TimeoutError"),
     ("py:class", "asyncio.exceptions.TimeoutError"),
     ("py:class", "socket.socket"),
 ]

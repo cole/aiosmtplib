@@ -1,10 +1,13 @@
 """
 TLS and STARTTLS handling.
 """
+import asyncio
 import copy
 import ssl
+from typing import Callable, Type
 
 import pytest
+from aiosmtpd.smtp import SMTP as SMTPD
 
 from aiosmtplib import (
     SMTP,
@@ -19,18 +22,22 @@ from aiosmtplib import (
 pytestmark = pytest.mark.asyncio()
 
 
-async def test_tls_connection(tls_smtp_client, tls_smtpd_server):
+async def test_tls_connection(
+    smtp_client_tls: SMTP, smtpd_server_tls: asyncio.AbstractServer
+) -> None:
     """
     Use an explicit connect/quit here, as other tests use the context manager.
     """
-    await tls_smtp_client.connect()
-    assert tls_smtp_client.is_connected
+    await smtp_client_tls.connect()
+    assert smtp_client_tls.is_connected
 
-    await tls_smtp_client.quit()
-    assert not tls_smtp_client.is_connected
+    await smtp_client_tls.quit()
+    assert not smtp_client_tls.is_connected
 
 
-async def test_starttls(smtp_client, smtpd_server):
+async def test_starttls(
+    smtp_client: SMTP, smtpd_server: asyncio.AbstractServer
+) -> None:
     async with smtp_client:
         response = await smtp_client.starttls(validate_certs=False)
 
@@ -49,7 +56,7 @@ async def test_starttls(smtp_client, smtpd_server):
         assert response.code == SMTPStatus.completed
 
 
-async def test_starttls_init_kwarg(hostname, smtpd_server_port):
+async def test_starttls_init_kwarg(hostname: str, smtpd_server_port: int) -> None:
     smtp_client = SMTP(
         hostname=hostname, port=smtpd_server_port, start_tls=True, validate_certs=False
     )
@@ -60,7 +67,9 @@ async def test_starttls_init_kwarg(hostname, smtpd_server_port):
         assert "SSL" in type(smtp_client.transport).__name__
 
 
-async def test_starttls_connect_kwarg(smtp_client, smtpd_server):
+async def test_starttls_connect_kwarg(
+    smtp_client: SMTP, smtpd_server: asyncio.AbstractServer
+) -> None:
     await smtp_client.connect(start_tls=True, validate_certs=False)
 
     # Make sure our connection was actually upgraded. ssl protocol transport is
@@ -71,8 +80,8 @@ async def test_starttls_connect_kwarg(smtp_client, smtpd_server):
 
 
 async def test_starttls_with_explicit_server_hostname(
-    smtp_client, hostname, smtpd_server
-):
+    smtp_client: SMTP, hostname: str, smtpd_server: asyncio.AbstractServer
+) -> None:
     async with smtp_client:
         await smtp_client.ehlo()
 
@@ -80,12 +89,13 @@ async def test_starttls_with_explicit_server_hostname(
 
 
 async def test_starttls_not_supported(
-    smtp_client, smtpd_server, smtpd_class, smtpd_response_handler_factory, monkeypatch
-):
-    response_handler = smtpd_response_handler_factory(
-        "{} HELP".format(SMTPStatus.completed)
-    )
-    monkeypatch.setattr(smtpd_class, "smtp_EHLO", response_handler)
+    smtp_client: SMTP,
+    smtpd_server: asyncio.AbstractServer,
+    smtpd_class: Type[SMTPD],
+    smtpd_mock_response_ehlo_minimal: Callable,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(smtpd_class, "smtp_EHLO", smtpd_mock_response_ehlo_minimal)
 
     async with smtp_client:
         await smtp_client.ehlo()
@@ -95,12 +105,15 @@ async def test_starttls_not_supported(
 
 
 async def test_starttls_advertised_but_not_supported(
-    smtp_client, smtpd_server, smtpd_class, smtpd_response_handler_factory, monkeypatch
-):
-    response_handler = smtpd_response_handler_factory(
-        "{} please login".format(SMTPStatus.tls_not_available)
+    smtp_client: SMTP,
+    smtpd_server: asyncio.AbstractServer,
+    smtpd_class: Type[SMTPD],
+    smtpd_mock_response_tls_not_available: Callable,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        smtpd_class, "smtp_STARTTLS", smtpd_mock_response_tls_not_available
     )
-    monkeypatch.setattr(smtpd_class, "smtp_STARTTLS", response_handler)
 
     async with smtp_client:
         await smtp_client.ehlo()
@@ -110,12 +123,15 @@ async def test_starttls_advertised_but_not_supported(
 
 
 async def test_starttls_disconnect_before_upgrade(
-    smtp_client, smtpd_server, smtpd_class, smtpd_response_handler_factory, monkeypatch
-):
-    response_handler = smtpd_response_handler_factory(
-        "{} Go for it".format(SMTPStatus.ready), close_after=True
+    smtp_client: SMTP,
+    smtpd_server: asyncio.AbstractServer,
+    smtpd_class: Type[SMTPD],
+    smtpd_mock_response_tls_ready_disconnect: Callable,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        smtpd_class, "smtp_STARTTLS", smtpd_mock_response_tls_ready_disconnect
     )
-    monkeypatch.setattr(smtpd_class, "smtp_STARTTLS", response_handler)
 
     async with smtp_client:
         with pytest.raises(SMTPServerDisconnected):
@@ -123,16 +139,17 @@ async def test_starttls_disconnect_before_upgrade(
 
 
 async def test_starttls_invalid_responses(
-    smtp_client,
-    smtpd_server,
-    event_loop,
-    smtpd_class,
-    smtpd_response_handler_factory,
-    monkeypatch,
-    error_code,
-):
-    response_handler = smtpd_response_handler_factory("{} error".format(error_code))
-    monkeypatch.setattr(smtpd_class, "smtp_STARTTLS", response_handler)
+    smtp_client: SMTP,
+    smtpd_server: asyncio.AbstractServer,
+    event_loop: asyncio.AbstractEventLoop,
+    smtpd_class: Type[SMTPD],
+    smtpd_mock_response_error_with_code: Callable,
+    monkeypatch: pytest.MonkeyPatch,
+    error_code: int,
+) -> None:
+    monkeypatch.setattr(
+        smtpd_class, "smtp_STARTTLS", smtpd_mock_response_error_with_code
+    )
 
     async with smtp_client:
         await smtp_client.ehlo()
@@ -153,25 +170,32 @@ async def test_starttls_invalid_responses(
 
 
 async def test_starttls_with_client_cert(
-    smtp_client, smtpd_server, valid_cert_path, valid_key_path
-):
+    smtp_client: SMTP,
+    smtpd_server: asyncio.AbstractServer,
+    ca_cert_path: str,
+    valid_cert_path: str,
+    valid_key_path: str,
+) -> None:
     async with smtp_client:
         response = await smtp_client.starttls(
             client_cert=valid_cert_path,
             client_key=valid_key_path,
-            cert_bundle=valid_cert_path,
+            cert_bundle=ca_cert_path,
             validate_certs=True,
         )
 
         assert response.code == SMTPStatus.ready
         assert smtp_client.client_cert == valid_cert_path
         assert smtp_client.client_key == valid_key_path
-        assert smtp_client.cert_bundle == valid_cert_path
+        assert smtp_client.cert_bundle == ca_cert_path
 
 
 async def test_starttls_with_invalid_client_cert(
-    smtp_client, smtpd_server, invalid_cert_path, invalid_key_path
-):
+    smtp_client: SMTP,
+    smtpd_server: asyncio.AbstractServer,
+    invalid_cert_path: str,
+    invalid_key_path: str,
+) -> None:
     async with smtp_client:
         with pytest.raises(ssl.SSLError):
             await smtp_client.starttls(
@@ -182,7 +206,11 @@ async def test_starttls_with_invalid_client_cert(
             )
 
 
-async def test_starttls_cert_error(event_loop, smtp_client, smtpd_server):
+async def test_starttls_cert_error(
+    event_loop: asyncio.AbstractEventLoop,
+    smtp_client: SMTP,
+    smtpd_server: asyncio.AbstractServer,
+) -> None:
     # Don't fail on the expected exception
     event_loop.set_exception_handler(None)
 
@@ -192,81 +220,95 @@ async def test_starttls_cert_error(event_loop, smtp_client, smtpd_server):
 
 
 async def test_tls_get_transport_info(
-    tls_smtp_client, hostname, tls_smtpd_server_port, event_loop
-):
-    async with tls_smtp_client:
-        compression = tls_smtp_client.get_transport_info("compression")
+    smtp_client_tls: SMTP,
+    hostname: str,
+    smtpd_server_tls_port: int,
+    event_loop: asyncio.AbstractEventLoop,
+) -> None:
+    async with smtp_client_tls:
+        compression = smtp_client_tls.get_transport_info("compression")
         assert compression is None  # Compression is not used here
 
-        peername = tls_smtp_client.get_transport_info("peername")
+        peername = smtp_client_tls.get_transport_info("peername")
         assert peername[0] in ("127.0.0.1", "::1")  # IP v4 and 6
-        assert peername[1] == tls_smtpd_server_port
+        assert peername[1] == smtpd_server_tls_port
 
-        sock = tls_smtp_client.get_transport_info("socket")
+        sock = smtp_client_tls.get_transport_info("socket")
         assert sock is not None
 
-        sockname = tls_smtp_client.get_transport_info("sockname")
+        sockname = smtp_client_tls.get_transport_info("sockname")
         assert sockname is not None
 
-        cipher = tls_smtp_client.get_transport_info("cipher")
+        cipher = smtp_client_tls.get_transport_info("cipher")
         assert cipher is not None
 
-        peercert = tls_smtp_client.get_transport_info("peercert")
+        peercert = smtp_client_tls.get_transport_info("peercert")
         assert peercert is not None
 
-        sslcontext = tls_smtp_client.get_transport_info("sslcontext")
+        sslcontext = smtp_client_tls.get_transport_info("sslcontext")
         assert sslcontext is not None
 
-        sslobj = tls_smtp_client.get_transport_info("ssl_object")
+        sslobj = smtp_client_tls.get_transport_info("ssl_object")
         assert sslobj is not None
 
 
 async def test_tls_smtp_connect_to_non_tls_server(
-    event_loop, tls_smtp_client, smtpd_server_port
-):
+    event_loop: asyncio.AbstractEventLoop,
+    smtp_client_tls: SMTP,
+    smtpd_server_port: int,
+) -> None:
     # Don't fail on the expected exception
     event_loop.set_exception_handler(None)
 
     with pytest.raises(SMTPConnectError):
-        await tls_smtp_client.connect(port=smtpd_server_port)
-    assert not tls_smtp_client.is_connected
+        await smtp_client_tls.connect(port=smtpd_server_port)
+    assert not smtp_client_tls.is_connected
 
 
 async def test_tls_connection_with_existing_sslcontext(
-    tls_smtp_client, tls_smtpd_server, client_tls_context
-):
-    await tls_smtp_client.connect(tls_context=client_tls_context)
-    assert tls_smtp_client.is_connected
+    smtp_client_tls: SMTP,
+    smtpd_server_tls: asyncio.AbstractServer,
+    client_tls_context: ssl.SSLContext,
+) -> None:
+    await smtp_client_tls.connect(tls_context=client_tls_context)
+    assert smtp_client_tls.is_connected
 
-    assert tls_smtp_client.tls_context is client_tls_context
+    assert smtp_client_tls.tls_context is client_tls_context
 
-    await tls_smtp_client.quit()
-    assert not tls_smtp_client.is_connected
+    await smtp_client_tls.quit()
+    assert not smtp_client_tls.is_connected
 
 
 async def test_tls_connection_with_client_cert(
-    tls_smtp_client, tls_smtpd_server, hostname, valid_cert_path, valid_key_path
-):
-    await tls_smtp_client.connect(
+    smtp_client_tls: SMTP,
+    smtpd_server_tls: asyncio.AbstractServer,
+    hostname: str,
+    ca_cert_path: str,
+    valid_cert_path: str,
+    valid_key_path: str,
+) -> None:
+    await smtp_client_tls.connect(
         hostname=hostname,
         validate_certs=True,
         client_cert=valid_cert_path,
         client_key=valid_key_path,
-        cert_bundle=valid_cert_path,
+        cert_bundle=ca_cert_path,
     )
-    assert tls_smtp_client.is_connected
+    assert smtp_client_tls.is_connected
 
-    await tls_smtp_client.quit()
-    assert not tls_smtp_client.is_connected
+    await smtp_client_tls.quit()
+    assert not smtp_client_tls.is_connected
 
 
 async def test_tls_connection_with_cert_error(
-    event_loop, tls_smtp_client, tls_smtpd_server
-):
+    event_loop: asyncio.AbstractEventLoop,
+    smtp_client_tls: SMTP,
+    smtpd_server_tls: asyncio.AbstractServer,
+) -> None:
     # Don't fail on the expected exception
     event_loop.set_exception_handler(None)
 
     with pytest.raises(SMTPConnectError) as exception_info:
-        await tls_smtp_client.connect(validate_certs=True)
+        await smtp_client_tls.connect(validate_certs=True)
 
     assert "CERTIFICATE" in str(exception_info.value).upper()

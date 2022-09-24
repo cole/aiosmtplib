@@ -6,7 +6,6 @@ import re
 import ssl
 from typing import Callable, Optional, cast
 
-from .compat import start_tls
 from .errors import (
     SMTPDataError,
     SMTPReadTimeoutError,
@@ -44,7 +43,7 @@ class FlowControlMixin(asyncio.Protocol):
         else:
             self._loop = loop
         self._paused = False
-        self._drain_waiter = None  # type: Optional[asyncio.Future[None]]
+        self._drain_waiter: Optional["asyncio.Future[None]"] = None
         self._connection_lost = False
 
     def pause_writing(self) -> None:
@@ -59,7 +58,7 @@ class FlowControlMixin(asyncio.Protocol):
             if not waiter.done():
                 waiter.set_result(None)
 
-    def connection_lost(self, exc) -> None:
+    def connection_lost(self, exc: Optional[Exception]) -> None:
         self._connection_lost = True
         # Wake up the writer if currently paused.
         if not self._paused:
@@ -85,35 +84,45 @@ class FlowControlMixin(asyncio.Protocol):
         self._drain_waiter = waiter
         await waiter
 
-    def _get_close_waiter(self, stream: asyncio.StreamWriter) -> asyncio.Future:
+    def _get_close_waiter(self, stream: asyncio.StreamWriter) -> "asyncio.Future[None]":
         raise NotImplementedError
 
 
-class SMTPProtocol(FlowControlMixin, asyncio.Protocol):
+class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
     def __init__(
         self,
         loop: Optional[asyncio.AbstractEventLoop] = None,
-        connection_lost_callback: Optional[Callable] = None,
+        connection_lost_callback: Optional[
+            Callable[["asyncio.Future[None]"], None]
+        ] = None,
     ) -> None:
         super().__init__(loop=loop)
         self._over_ssl = False
         self._buffer = bytearray()
-        self._response_waiter = None  # type: Optional[asyncio.Future[SMTPResponse]]
+        self._response_waiter: Optional[asyncio.Future[SMTPResponse]] = None
         self._connection_lost_callback = connection_lost_callback
-        self._connection_lost_waiter = None  # type: Optional[asyncio.Future[None]]
+        self._connection_lost_waiter: Optional["asyncio.Future[None]"] = None
 
-        self.transport = None  # type: Optional[asyncio.Transport]
-        self._command_lock = None  # type: Optional[asyncio.Lock]
-        self._closed = self._loop.create_future()  # type: asyncio.Future[None]
+        self.transport: Optional[asyncio.BaseTransport] = None
+        self._command_lock: Optional[asyncio.Lock] = None
+        self._closed: "asyncio.Future[None]" = self._loop.create_future()
 
-    def __del__(self):
-        waiters = (self._response_waiter, self._connection_lost_waiter)
-        for waiter in filter(None, waiters):
-            if waiter.done() and not waiter.cancelled():
-                # Avoid 'Future exception was never retrieved' warnings
-                waiter.exception()
+    def __del__(self) -> None:
+        # Avoid 'Future exception was never retrieved' warnings
+        if (
+            self._response_waiter
+            and self._response_waiter.done()
+            and not self._response_waiter.cancelled()
+        ):
+            self._response_waiter.exception()
+        if (
+            self._connection_lost_waiter
+            and self._connection_lost_waiter.done()
+            and not self._connection_lost_waiter.cancelled()
+        ):
+            self._connection_lost_waiter.exception()
 
-    def _get_close_waiter(self, stream: asyncio.StreamWriter) -> asyncio.Future:
+    def _get_close_waiter(self, stream: asyncio.StreamWriter) -> "asyncio.Future[None]":
         return self._closed
 
     @property
@@ -157,7 +166,7 @@ class SMTPProtocol(FlowControlMixin, asyncio.Protocol):
     def data_received(self, data: bytes) -> None:
         if self._response_waiter is None:
             raise RuntimeError(
-                "data_received called without a response waiter set: {!r}".format(data)
+                f"data_received called without a response waiter set: {data!r}"
             )
         elif self._response_waiter.done():
             # We got a response without issuing a command; ignore it.
@@ -215,7 +224,7 @@ class SMTPProtocol(FlowControlMixin, asyncio.Protocol):
             except ValueError:
                 raise SMTPResponseException(
                     SMTPStatus.invalid_response.value,
-                    "Malformed SMTP response line: {!r}".format(line),
+                    f"Malformed SMTP response line: {line!r}",
                 ) from None
 
             offset += len(line)
@@ -251,9 +260,7 @@ class SMTPProtocol(FlowControlMixin, asyncio.Protocol):
             raise SMTPServerDisconnected("Connection lost")
 
         try:
-            result = await asyncio.wait_for(
-                self._response_waiter, timeout
-            )  # type: SMTPResponse
+            result = await asyncio.wait_for(self._response_waiter, timeout)
         except asyncio.TimeoutError as exc:
             raise SMTPReadTimeoutError("Timed out waiting for server response") from exc
         finally:
@@ -268,8 +275,12 @@ class SMTPProtocol(FlowControlMixin, asyncio.Protocol):
     def write(self, data: bytes) -> None:
         if self.transport is None or self.transport.is_closing():
             raise SMTPServerDisconnected("Connection lost")
+        if not hasattr(self.transport, "write"):
+            raise RuntimeError(
+                f"Transport {self.transport!r} does not support writing."
+            )
 
-        self.transport.write(data)
+        self.transport.write(data)  # type: ignore
 
     async def execute_command(
         self, *args: bytes, timeout: Optional[float] = None
@@ -345,8 +356,7 @@ class SMTPProtocol(FlowControlMixin, asyncio.Protocol):
                 raise SMTPServerDisconnected("Connection lost")
 
             try:
-                tls_transport = await start_tls(
-                    self._loop,
+                tls_transport = await self._loop.start_tls(
                     self.transport,
                     self,
                     tls_context,

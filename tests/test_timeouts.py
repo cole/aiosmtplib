@@ -3,14 +3,16 @@ Timeout tests.
 """
 import asyncio
 import socket
+import ssl
+from typing import Callable, Type
 
 import pytest
+from aiosmtpd.smtp import SMTP as SMTPD
 
 from aiosmtplib import (
     SMTP,
     SMTPConnectTimeoutError,
     SMTPServerDisconnected,
-    SMTPStatus,
     SMTPTimeoutError,
 )
 from aiosmtplib.protocol import SMTPProtocol
@@ -19,28 +21,14 @@ from aiosmtplib.protocol import SMTPProtocol
 pytestmark = pytest.mark.asyncio()
 
 
-@pytest.fixture(scope="session")
-def delayed_ok_response_handler(request):
-    async def delayed_ok_response(smtpd, *args, **kwargs):
-        await asyncio.sleep(1.0)
-        await smtpd.push("{} all done".format(SMTPStatus.completed))
-
-    return delayed_ok_response
-
-
-@pytest.fixture(scope="session")
-def delayed_read_response_handler(request):
-    async def delayed_read_response(smtpd, *args, **kwargs):
-        await smtpd.push("{}-hi".format(SMTPStatus.ready))
-        await asyncio.sleep(1.0)
-
-    return delayed_read_response
-
-
 async def test_command_timeout_error(
-    smtp_client, smtpd_server, smtpd_class, delayed_ok_response_handler, monkeypatch
-):
-    monkeypatch.setattr(smtpd_class, "smtp_EHLO", delayed_ok_response_handler)
+    smtp_client: SMTP,
+    smtpd_server: asyncio.AbstractServer,
+    smtpd_class: Type[SMTPD],
+    smtpd_mock_response_delayed_ok: Callable,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(smtpd_class, "smtp_EHLO", smtpd_mock_response_delayed_ok)
 
     await smtp_client.connect()
 
@@ -49,9 +37,13 @@ async def test_command_timeout_error(
 
 
 async def test_data_timeout_error(
-    smtp_client, smtpd_server, smtpd_class, delayed_ok_response_handler, monkeypatch
-):
-    monkeypatch.setattr(smtpd_class, "smtp_DATA", delayed_ok_response_handler)
+    smtp_client: SMTP,
+    smtpd_server: asyncio.AbstractServer,
+    smtpd_class: Type[SMTPD],
+    smtpd_mock_response_delayed_ok: Callable,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(smtpd_class, "smtp_DATA", smtpd_mock_response_delayed_ok)
 
     await smtp_client.connect()
     await smtp_client.ehlo()
@@ -62,9 +54,13 @@ async def test_data_timeout_error(
 
 
 async def test_timeout_error_on_connect(
-    smtp_client, smtpd_server, smtpd_class, delayed_ok_response_handler, monkeypatch
-):
-    monkeypatch.setattr(smtpd_class, "_handle_client", delayed_ok_response_handler)
+    smtp_client: SMTP,
+    smtpd_server: asyncio.AbstractServer,
+    smtpd_class: Type[SMTPD],
+    smtpd_mock_response_delayed_ok: Callable,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(smtpd_class, "_handle_client", smtpd_mock_response_delayed_ok)
 
     with pytest.raises(SMTPTimeoutError):
         await smtp_client.connect(timeout=0.0)
@@ -74,9 +70,13 @@ async def test_timeout_error_on_connect(
 
 
 async def test_timeout_on_initial_read(
-    smtp_client, smtpd_server, smtpd_class, delayed_read_response_handler, monkeypatch
-):
-    monkeypatch.setattr(smtpd_class, "_handle_client", delayed_read_response_handler)
+    smtp_client: SMTP,
+    smtpd_server: asyncio.AbstractServer,
+    smtpd_class: Type[SMTPD],
+    smtpd_mock_response_delayed_read: Callable,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(smtpd_class, "_handle_client", smtpd_mock_response_delayed_read)
 
     with pytest.raises(SMTPTimeoutError):
         # We need to use a timeout > 0 here to avoid timing out on connect
@@ -84,9 +84,13 @@ async def test_timeout_on_initial_read(
 
 
 async def test_timeout_on_starttls(
-    smtp_client, smtpd_server, smtpd_class, delayed_ok_response_handler, monkeypatch
-):
-    monkeypatch.setattr(smtpd_class, "smtp_STARTTLS", delayed_ok_response_handler)
+    smtp_client: SMTP,
+    smtpd_server: asyncio.AbstractServer,
+    smtpd_class: Type[SMTPD],
+    smtpd_mock_response_delayed_ok: Callable,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(smtpd_class, "smtp_STARTTLS", smtpd_mock_response_delayed_ok)
 
     await smtp_client.connect()
     await smtp_client.ehlo()
@@ -96,8 +100,11 @@ async def test_timeout_on_starttls(
 
 
 async def test_protocol_read_response_with_timeout_times_out(
-    event_loop, echo_server, hostname, echo_server_port
-):
+    event_loop: asyncio.AbstractEventLoop,
+    echo_server: asyncio.AbstractServer,
+    hostname: str,
+    echo_server_port: int,
+) -> None:
     connect_future = event_loop.create_connection(
         SMTPProtocol, host=hostname, port=echo_server_port
     )
@@ -112,21 +119,23 @@ async def test_protocol_read_response_with_timeout_times_out(
     assert str(exc.value) == "Timed out waiting for server response"
 
 
-async def test_connect_timeout_error(hostname, unused_tcp_port):
+async def test_connect_timeout_error(hostname: str, unused_tcp_port: int) -> None:
     client = SMTP(hostname=hostname, port=unused_tcp_port, timeout=0.0)
 
     with pytest.raises(SMTPConnectTimeoutError) as exc:
         await client.connect()
 
-    expected_message = "Timed out connecting to {host} on port {port}".format(
-        host=hostname, port=unused_tcp_port
-    )
+    expected_message = f"Timed out connecting to {hostname} on port {unused_tcp_port}"
     assert str(exc.value) == expected_message
 
 
 async def test_server_disconnected_error_after_connect_timeout(
-    hostname, unused_tcp_port, sender_str, recipient_str, message_str
-):
+    hostname: str,
+    unused_tcp_port: int,
+    sender_str: str,
+    recipient_str: str,
+    message_str: str,
+) -> None:
     client = SMTP(hostname=hostname, port=unused_tcp_port)
 
     with pytest.raises(SMTPConnectTimeoutError):
@@ -137,15 +146,20 @@ async def test_server_disconnected_error_after_connect_timeout(
 
 
 async def test_protocol_timeout_on_starttls(
-    event_loop, bind_address, hostname, client_tls_context
-):
-    async def client_connected(reader, writer):
+    event_loop: asyncio.AbstractEventLoop,
+    bind_address: str,
+    hostname: str,
+    client_tls_context: ssl.SSLContext,
+) -> None:
+    async def client_connected(
+        reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+    ) -> None:
         await asyncio.sleep(1.0)
 
     server = await asyncio.start_server(
         client_connected, host=bind_address, port=0, family=socket.AF_INET
     )
-    server_port = server.sockets[0].getsockname()[1]
+    server_port = server.sockets[0].getsockname()[1] if server.sockets else 0
 
     connect_future = event_loop.create_connection(
         SMTPProtocol, host=hostname, port=server_port

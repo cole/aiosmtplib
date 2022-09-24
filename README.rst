@@ -32,7 +32,7 @@ Quickstart
 
 Requirements
 ------------
-Python 3.5.2+, compiled with SSL support, is required.
+Python 3.6+, compiled with SSL support, is required.
 
 
 Bug reporting

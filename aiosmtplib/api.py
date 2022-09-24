@@ -340,7 +340,7 @@ async def send(
     ...
 
 
-async def send(message, sender=None, recipients=None, **kwargs):
+async def send(message, sender=None, recipients=None, **kwargs):  # type: ignore
     """
     Send an email message. On await, connects to the SMTP server using the details
     provided, sends the message, then disconnects.

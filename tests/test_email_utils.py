@@ -4,6 +4,7 @@ Test message and address parsing/formatting functions.
 from email.header import Header
 from email.headerregistry import Address
 from email.message import EmailMessage, Message
+from typing import List, Union
 
 import pytest
 from hypothesis import example, given
@@ -28,7 +29,7 @@ from aiosmtplib.email import (
     ),
     ids=("quotes", "nonascii", "newtld", "missing_end_<"),
 )
-def test_parse_address_with_display_names(address, expected_address):
+def test_parse_address_with_display_names(address: str, expected_address: str) -> None:
     parsed_address = parse_address(address)
     assert parsed_address == expected_address
 
@@ -36,7 +37,7 @@ def test_parse_address_with_display_names(address, expected_address):
 @given(emails())
 @example("email@[123.123.123.123]")
 @example("_______@example.com")
-def test_parse_address(email):
+def test_parse_address(email: str) -> None:
     assert parse_address(email) == email
 
 
@@ -52,7 +53,7 @@ def test_parse_address(email):
     ),
     ids=("quotes", "nonascii", "newtld", "ipaddr", "underscores", "missing_end_quote"),
 )
-def test_quote_address_with_display_names(address, expected_address):
+def test_quote_address_with_display_names(address: str, expected_address: str) -> None:
     quoted_address = quote_address(address)
     assert quoted_address == expected_address
 
@@ -60,11 +61,11 @@ def test_quote_address_with_display_names(address, expected_address):
 @given(emails())
 @example("email@[123.123.123.123]")
 @example("_______@example.com")
-def test_quote_address(email):
-    assert quote_address(email) == "<{}>".format(email)
+def test_quote_address(email: str) -> None:
+    assert quote_address(email) == f"<{email}>"
 
 
-def test_flatten_message():
+def test_flatten_message() -> None:
     message = EmailMessage()
     message["To"] = "bob@example.com"
     message["Subject"] = "Hello, World."
@@ -95,7 +96,9 @@ This is a test\r
     ),
     ids=("ascii-7bit", "utf8-7bit", "ascii-8bit", "utf8-8bit"),
 )
-def test_flatten_message_utf8_options(utf8, cte_type, expected_chunk):
+def test_flatten_message_utf8_options(
+    utf8: bool, cte_type: str, expected_chunk: bytes
+) -> None:
     message = EmailMessage()
     message["From"] = "ålice@example.com"
 
@@ -104,7 +107,7 @@ def test_flatten_message_utf8_options(utf8, cte_type, expected_chunk):
     assert expected_chunk in flat_message
 
 
-def test_flatten_message_removes_bcc_from_message_text():
+def test_flatten_message_removes_bcc_from_message_text() -> None:
     message = EmailMessage()
     message["Bcc"] = "alice@example.com"
 
@@ -113,7 +116,7 @@ def test_flatten_message_removes_bcc_from_message_text():
     assert flat_message == b"\r\n"  # empty message
 
 
-def test_flatten_resent_message():
+def test_flatten_resent_message() -> None:
     message = EmailMessage()
     message["To"] = "bob@example.com"
     message["Cc"] = "claire@example.com"
@@ -186,12 +189,12 @@ This is a test\r
     ids=("str", "ascii", "utf8_address", "utf8_display_name"),
 )
 def test_extract_recipients(
-    mime_to_header,
-    mime_cc_header,
-    compat32_to_header,
-    compat32_cc_header,
-    expected_recipients,
-):
+    mime_to_header: Union[str, Address],
+    mime_cc_header: Union[str, Address],
+    compat32_to_header: Union[str, Header],
+    compat32_cc_header: Union[str, Header],
+    expected_recipients: List[str],
+) -> None:
     mime_message = EmailMessage()
     mime_message["To"] = mime_to_header
     mime_message["Cc"] = mime_cc_header
@@ -209,7 +212,7 @@ def test_extract_recipients(
     assert compat32_recipients == expected_recipients
 
 
-def test_extract_recipients_includes_bcc():
+def test_extract_recipients_includes_bcc() -> None:
     message = EmailMessage()
     message["Bcc"] = "alice@example.com"
 
@@ -218,7 +221,7 @@ def test_extract_recipients_includes_bcc():
     assert recipients == [message["Bcc"]]
 
 
-def test_extract_recipients_invalid_email():
+def test_extract_recipients_invalid_email() -> None:
     message = EmailMessage()
     message["Cc"] = "me"
 
@@ -227,7 +230,7 @@ def test_extract_recipients_invalid_email():
     assert recipients == ["me"]
 
 
-def test_extract_recipients_with_iterable_of_strings():
+def test_extract_recipients_with_iterable_of_strings() -> None:
     message = EmailMessage()
     message["To"] = ("me@example.com", "you")
 
@@ -236,7 +239,7 @@ def test_extract_recipients_with_iterable_of_strings():
     assert recipients == ["me@example.com", "you"]
 
 
-def test_extract_recipients_resent_message():
+def test_extract_recipients_resent_message() -> None:
     message = EmailMessage()
     message["To"] = "bob@example.com"
     message["Cc"] = "claire@example.com"
@@ -257,7 +260,7 @@ def test_extract_recipients_resent_message():
     assert message["Bcc"] not in recipients
 
 
-def test_extract_recipients_valueerror_on_multiple_resent_message():
+def test_extract_recipients_valueerror_on_multiple_resent_message() -> None:
     message = EmailMessage()
     message["Resent-Date"] = "Mon, 20 Nov 2016 21:04:27 -0000"
     message["Resent-Date"] = "Mon, 20 Nov 2017 21:04:27 -0000"
@@ -292,7 +295,11 @@ def test_extract_recipients_valueerror_on_multiple_resent_message():
     ),
     ids=("str", "ascii", "utf8_address", "utf8_display_name"),
 )
-def test_extract_sender(mime_header, compat32_header, expected_sender):
+def test_extract_sender(
+    mime_header: Union[str, Address],
+    compat32_header: Union[str, Header],
+    expected_sender: str,
+) -> None:
     mime_message = EmailMessage()
     mime_message["From"] = mime_header
 
@@ -308,7 +315,7 @@ def test_extract_sender(mime_header, compat32_header, expected_sender):
     assert compat32_sender == expected_sender
 
 
-def test_extract_sender_prefers_sender_header():
+def test_extract_sender_prefers_sender_header() -> None:
     message = EmailMessage()
     message["From"] = "bob@example.com"
     message["Sender"] = "alice@example.com"
@@ -319,7 +326,7 @@ def test_extract_sender_prefers_sender_header():
     assert sender == message["Sender"]
 
 
-def test_extract_sender_resent_message():
+def test_extract_sender_resent_message() -> None:
     message = EmailMessage()
     message["From"] = "alice@example.com"
 
@@ -332,7 +339,7 @@ def test_extract_sender_resent_message():
     assert sender != message["From"]
 
 
-def test_extract_sender_valueerror_on_multiple_resent_message():
+def test_extract_sender_valueerror_on_multiple_resent_message() -> None:
     message = EmailMessage()
     message["Resent-Date"] = "Mon, 20 Nov 2016 21:04:27 -0000"
     message["Resent-Date"] = "Mon, 20 Nov 2017 21:04:27 -0000"

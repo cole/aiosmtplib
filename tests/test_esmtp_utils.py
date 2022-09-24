@@ -5,7 +5,7 @@ Tests for ESMTP extension parsing.
 from aiosmtplib.esmtp import parse_esmtp_extensions
 
 
-def test_basic_extension_parsing():
+def test_basic_extension_parsing() -> None:
     response = """size.does.matter.af.MIL offers FIFTEEN extensions:
 8BITMIME
 PIPELINING
@@ -32,7 +32,7 @@ SIZE 51200000
     assert auth_types == []
 
 
-def test_no_extension_parsing():
+def test_no_extension_parsing() -> None:
     response = """size.does.matter.af.MIL offers ZERO extensions:
     """
     extensions, auth_types = parse_esmtp_extensions(response)
@@ -41,7 +41,7 @@ def test_no_extension_parsing():
     assert auth_types == []
 
 
-def test_auth_type_parsing():
+def test_auth_type_parsing() -> None:
     response = """blah blah blah
 AUTH FOO BAR
     """
@@ -52,7 +52,7 @@ AUTH FOO BAR
     assert "bogus" not in auth_types
 
 
-def test_old_school_auth_type_parsing():
+def test_old_school_auth_type_parsing() -> None:
     response = """blah blah blah
 AUTH=PLAIN
     """
@@ -62,7 +62,7 @@ AUTH=PLAIN
     assert "cram-md5" not in auth_types
 
 
-def test_mixed_auth_type_parsing():
+def test_mixed_auth_type_parsing() -> None:
     response = """blah blah blah
 AUTH=PLAIN
 AUTH CRAM-MD5

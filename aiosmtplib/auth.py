@@ -3,7 +3,7 @@ Authentication methods.
 """
 import base64
 import hmac
-from typing import List, Optional, Union
+from typing import List, Optional, Tuple, Union
 
 from .default import Default, _default
 from .errors import SMTPAuthenticationError, SMTPException
@@ -31,7 +31,11 @@ class SMTPAuth(ESMTP):
     CRAM-MD5, PLAIN, and LOGIN auth methods are supported.
     """
 
-    AUTH_METHODS = ("cram-md5", "plain", "login")  # Preferred methods first
+    AUTH_METHODS: Tuple[str, ...] = (
+        "cram-md5",
+        "plain",
+        "login",
+    )  # Preferred methods first
 
     @property
     def supported_auth_methods(self) -> List[str]:
@@ -65,16 +69,14 @@ class SMTPAuth(ESMTP):
                 "The SMTP AUTH extension is not supported by this server."
             )
 
-        response = None  # type: Optional[SMTPResponse]
-        exception = None  # type: Optional[SMTPAuthenticationError]
+        response: Optional[SMTPResponse] = None
+        exception: Optional[SMTPAuthenticationError] = None
         for auth_name in self.supported_auth_methods:
-            method_name = "auth_{}".format(auth_name.replace("-", ""))
+            method_name = f'auth_{auth_name.replace("-", "")}'
             try:
                 auth_method = getattr(self, method_name)
             except AttributeError:
-                raise RuntimeError(
-                    "Missing handler for auth method {}".format(auth_name)
-                )
+                raise RuntimeError(f"Missing handler for auth method {auth_name}")
             try:
                 response = await auth_method(username, password, timeout=timeout)
             except SMTPAuthenticationError as exc:

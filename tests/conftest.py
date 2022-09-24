@@ -6,19 +6,25 @@ import email.header
 import email.message
 import email.mime.multipart
 import email.mime.text
+import pathlib
 import socket
 import ssl
 import sys
 import traceback
 from pathlib import Path
+from typing import Any, Callable, Coroutine, Dict, List, Optional, Tuple, Type, Union
 
 import hypothesis
 import pytest
+import trustme
+from aiosmtpd.controller import Controller as SMTPDController
+from aiosmtpd.smtp import SMTP as SMTPD
 
 from aiosmtplib import SMTP, SMTPStatus
 from aiosmtplib.sync import shutdown_loop
 
-from .smtpd import RecordingHandler, SMTPDController, TestSMTPD
+from .auth import DummySMTPAuth
+from .smtpd import RecordingHandler, TestSMTPD
 
 
 try:
@@ -41,11 +47,23 @@ hypothesis.settings.register_profile("dev", parent=base_settings, max_examples=1
 hypothesis.settings.register_profile("ci", parent=base_settings, max_examples=100)
 
 
+class ParamFixtureRequest(pytest.FixtureRequest):
+    param: Any
+
+
 class AsyncPytestWarning(pytest.PytestWarning):
     pass
 
 
-def pytest_addoption(parser):
+class EchoServerProtocol(asyncio.Protocol):
+    def connection_made(self, transport: asyncio.BaseTransport) -> None:
+        self.transport = transport
+
+    def data_received(self, data: bytes) -> None:
+        self.transport.write(data)  # type: ignore
+
+
+def pytest_addoption(parser: Any) -> None:
     parser.addoption(
         "--event-loop",
         action="store",
@@ -56,13 +74,18 @@ def pytest_addoption(parser):
     parser.addoption(
         "--bind-addr",
         action="store",
-        default="127.0.0.1",
-        help="server address to bind on, e.g 127.0.0.1",
+        default="localhost",
+        help="address to bind on for network tests",
     )
 
 
+# Event loop handling #
+
+
 @pytest.fixture(scope="session")
-def event_loop_policy(request):
+def event_loop_policy(
+    request: pytest.FixtureRequest,
+) -> asyncio.AbstractEventLoopPolicy:
     loop_type = request.config.getoption("--event-loop")
     if loop_type == "uvloop":
         if not HAS_UVLOOP:
@@ -76,17 +99,21 @@ def event_loop_policy(request):
 
 
 @pytest.fixture(scope="function")
-def event_loop(request, event_loop_policy):
+def event_loop(
+    request: pytest.FixtureRequest, event_loop_policy: asyncio.AbstractEventLoopPolicy
+) -> asyncio.AbstractEventLoop:
     verbosity = request.config.getoption("verbose", default=0)
     old_loop = event_loop_policy.get_event_loop()
     loop = event_loop_policy.new_event_loop()
     event_loop_policy.set_event_loop(loop)
 
-    def handle_async_exception(loop, context):
-        message = "{}: {}".format(context["message"], repr(context["exception"]))
+    def handle_async_exception(
+        loop: asyncio.AbstractEventLoop, context: Dict[str, Any]
+    ) -> None:
+        message = f'{context["message"]}: {context["exception"]!r}'
         if verbosity > 1:
             message += "\n"
-            message += "Future: {}".format(repr(context["future"]))
+            message += f"Future: {context['future']!r}"
             message += "\nTraceback:\n"
             message += "".join(traceback.format_list(context["source_traceback"]))
 
@@ -94,7 +121,7 @@ def event_loop(request, event_loop_policy):
 
     loop.set_exception_handler(handle_async_exception)
 
-    def cleanup():
+    def cleanup() -> None:
         shutdown_loop(loop)
         event_loop_policy.set_event_loop(old_loop)
 
@@ -103,96 +130,38 @@ def event_loop(request, event_loop_policy):
     return loop
 
 
-@pytest.fixture(scope="session")
-def hostname(request):
-    return "localhost"
+# Session scoped static values #
 
 
 @pytest.fixture(scope="session")
-def bind_address(request):
+def bind_address(request: pytest.FixtureRequest) -> str:
     """Server side address for socket binding"""
-    return request.config.getoption("--bind-addr")
-
-
-@pytest.fixture(
-    scope="function",
-    params=(
-        str,
-        bytes,
-        pytest.param(
-            lambda path: path,
-            marks=pytest.mark.xfail(
-                sys.version_info < (3, 7),
-                reason="os.PathLike support introduced in 3.7.",
-            ),
-        ),
-    ),
-    ids=("str", "bytes", "pathlike"),
-)
-def socket_path(request, tmp_path):
-    if sys.platform.startswith("darwin"):
-        # Work around OSError: AF_UNIX path too long
-        tmp_dir = Path("/tmp")  # nosec
-    else:
-        tmp_dir = tmp_path
-
-    index = 0
-    socket_path = tmp_dir / "aiosmtplib-test{}".format(index)
-    while socket_path.exists():
-        index += 1
-        socket_path = tmp_dir / "aiosmtplib-test{}".format(index)
-
-    return request.param(socket_path)
-
-
-@pytest.fixture(scope="function")
-def compat32_message(request):
-    message = email.message.Message()
-    message["To"] = email.header.Header("recipient@example.com")
-    message["From"] = email.header.Header("sender@example.com")
-    message["Subject"] = "A message"
-    message.set_payload("Hello World")
-
-    return message
-
-
-@pytest.fixture(scope="function")
-def mime_message(request):
-    message = email.mime.multipart.MIMEMultipart()
-    message["To"] = "recipient@example.com"
-    message["From"] = "sender@example.com"
-    message["Subject"] = "A message"
-    message.attach(email.mime.text.MIMEText("Hello World"))
-
-    return message
-
-
-@pytest.fixture(scope="function", params=["mime_multipart", "compat32"])
-def message(request, compat32_message, mime_message):
-    if request.param == "compat32":
-        return compat32_message
-    else:
-        return mime_message
+    return str(request.config.getoption("--bind-addr"))
 
 
 @pytest.fixture(scope="session")
-def recipient_str(request):
+def hostname(bind_address: str) -> str:
+    return bind_address
+
+
+@pytest.fixture(scope="session")
+def recipient_str() -> str:
     return "recipient@example.com"
 
 
 @pytest.fixture(scope="session")
-def sender_str(request):
+def sender_str() -> str:
     return "sender@example.com"
 
 
 @pytest.fixture(scope="session")
-def message_str(request, recipient_str, sender_str):
+def message_str(recipient_str: str, sender_str: str) -> str:
     return (
         "Content-Type: multipart/mixed; "
         'boundary="===============6842273139637972052=="\n'
         "MIME-Version: 1.0\n"
-        "To: recipient@example.com\n"
-        "From: sender@example.com\n"
+        f"To: {recipient_str}\n"
+        f"From: {sender_str}\n"
         "Subject: A message\n\n"
         "--===============6842273139637972052==\n"
         'Content-Type: text/plain; charset="us-ascii"\n'
@@ -203,236 +172,116 @@ def message_str(request, recipient_str, sender_str):
     )
 
 
-@pytest.fixture(scope="function")
-def received_messages(request):
-    return []
-
-
-@pytest.fixture(scope="function")
-def received_commands(request):
-    return []
-
-
-@pytest.fixture(scope="function")
-def smtpd_responses(request):
-    return []
-
-
-@pytest.fixture(scope="function")
-def smtpd_handler(request, received_messages, received_commands, smtpd_responses):
-    return RecordingHandler(received_messages, received_commands, smtpd_responses)
-
-
 @pytest.fixture(scope="session")
-def smtpd_class(request):
+def smtpd_class() -> Type[SMTPD]:
     return TestSMTPD
 
 
 @pytest.fixture(scope="session")
-def valid_cert_path(request):
-    return str(BASE_CERT_PATH.joinpath("selfsigned.crt"))
+def cert_authority() -> trustme.CA:
+    return trustme.CA()
 
 
 @pytest.fixture(scope="session")
-def valid_key_path(request):
-    return str(BASE_CERT_PATH.joinpath("selfsigned.key"))
+def unknown_cert_authority() -> trustme.CA:
+    return trustme.CA()
 
 
 @pytest.fixture(scope="session")
-def invalid_cert_path(request):
-    return str(BASE_CERT_PATH.joinpath("invalid.crt"))
+def valid_server_cert(cert_authority: trustme.CA, hostname: str) -> trustme.LeafCert:
+    return cert_authority.issue_cert(hostname)
 
 
 @pytest.fixture(scope="session")
-def invalid_key_path(request):
-    return str(BASE_CERT_PATH.joinpath("invalid.key"))
+def valid_client_cert(cert_authority: trustme.CA, hostname: str) -> trustme.LeafCert:
+    return cert_authority.issue_cert(f"user@{hostname}")
 
 
 @pytest.fixture(scope="session")
-def client_tls_context(request, valid_cert_path, valid_key_path):
-    tls_context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
-    tls_context.check_hostname = False
-    tls_context.verify_mode = ssl.CERT_NONE
+def invalid_client_cert(
+    unknown_cert_authority: trustme.CA, hostname: str
+) -> trustme.LeafCert:
+    return unknown_cert_authority.issue_cert(f"user@{hostname}")
+
+
+@pytest.fixture(scope="session")
+def client_tls_context(
+    cert_authority: trustme.CA, valid_client_cert: trustme.LeafCert
+) -> ssl.SSLContext:
+    tls_context = ssl.create_default_context()
+    cert_authority.configure_trust(tls_context)
+    valid_client_cert.configure_cert(tls_context)
 
     return tls_context
 
 
 @pytest.fixture(scope="session")
-def server_tls_context(request, valid_cert_path, valid_key_path):
+def server_tls_context(
+    cert_authority: trustme.CA, valid_server_cert: trustme.LeafCert
+) -> ssl.SSLContext:
     tls_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-    tls_context.load_cert_chain(valid_cert_path, keyfile=valid_key_path)
+    cert_authority.configure_trust(tls_context)
+    valid_server_cert.configure_cert(tls_context)
+    tls_context.verify_mode = ssl.CERT_OPTIONAL
 
     return tls_context
 
 
 @pytest.fixture(scope="function")
-def smtpd_server(
-    request,
-    event_loop,
-    bind_address,
-    hostname,
-    smtpd_class,
-    smtpd_handler,
-    server_tls_context,
-):
-    def factory():
-        return smtpd_class(
-            smtpd_handler,
-            hostname=hostname,
-            enable_SMTPUTF8=False,
-            tls_context=server_tls_context,
-        )
+def ca_cert_path(tmp_path: pathlib.Path, cert_authority: trustme.CA) -> str:
+    cert_authority.cert_pem.write_to_path(tmp_path / "ca.pem")
 
-    server = event_loop.run_until_complete(
-        event_loop.create_server(
-            factory, host=bind_address, port=0, family=socket.AF_INET
-        )
-    )
-
-    def close_server():
-        server.close()
-        event_loop.run_until_complete(server.wait_closed())
-
-    request.addfinalizer(close_server)
-
-    return server
+    return str(tmp_path / "ca.pem")
 
 
 @pytest.fixture(scope="function")
-def smtpd_server_port(request, smtpd_server):
-    return smtpd_server.sockets[0].getsockname()[1]
+def valid_cert_path(tmp_path: pathlib.Path, valid_client_cert: trustme.LeafCert) -> str:
+    for pem in valid_client_cert.cert_chain_pems:
+        pem.write_to_path(tmp_path / "valid.pem", append=True)
+
+    return str(tmp_path / "valid.pem")
 
 
 @pytest.fixture(scope="function")
-def smtpd_server_smtputf8(
-    request,
-    event_loop,
-    bind_address,
-    hostname,
-    smtpd_class,
-    smtpd_handler,
-    server_tls_context,
-):
-    def factory():
-        return smtpd_class(
-            smtpd_handler,
-            hostname=hostname,
-            enable_SMTPUTF8=True,
-            tls_context=server_tls_context,
-        )
+def valid_key_path(tmp_path: pathlib.Path, valid_client_cert: trustme.LeafCert) -> str:
+    valid_client_cert.private_key_pem.write_to_path(tmp_path / "valid.key")
 
-    server = event_loop.run_until_complete(
-        event_loop.create_server(
-            factory, host=bind_address, port=0, family=socket.AF_INET
-        )
-    )
-
-    def close_server():
-        server.close()
-        event_loop.run_until_complete(server.wait_closed())
-
-    request.addfinalizer(close_server)
-
-    return server
+    return str(tmp_path / "valid.key")
 
 
 @pytest.fixture(scope="function")
-def smtpd_server_smtputf8_port(request, smtpd_server_smtputf8):
-    return smtpd_server_smtputf8.sockets[0].getsockname()[1]
+def invalid_cert_path(
+    tmp_path: pathlib.Path, invalid_client_cert: trustme.LeafCert
+) -> str:
+    for pem in invalid_client_cert.cert_chain_pems:
+        pem.write_to_path(tmp_path / "invalid.pem", append=True)
+
+    return str(tmp_path / "invalid.pem")
 
 
 @pytest.fixture(scope="function")
-def smtpd_server_socket_path(
-    request, socket_path, event_loop, smtpd_class, smtpd_handler, server_tls_context
-):
-    def factory():
-        return smtpd_class(
-            smtpd_handler,
-            hostname=hostname,
-            enable_SMTPUTF8=False,
-            tls_context=server_tls_context,
-        )
-
-    server = event_loop.run_until_complete(
-        event_loop.create_unix_server(factory, path=socket_path)
-    )
-
-    def close_server():
-        server.close()
-        event_loop.run_until_complete(server.wait_closed())
-
-    request.addfinalizer(close_server)
-
-    return server
+def invalid_key_path(
+    tmp_path: pathlib.Path, invalid_client_cert: trustme.LeafCert
+) -> str:
+    invalid_client_cert.private_key_pem.write_to_path(tmp_path / "invalid.key")
+    return str(tmp_path / "invalid.key")
 
 
 @pytest.fixture(scope="session")
-def smtpd_response_handler_factory(request):
-    def smtpd_response(
-        response_text, second_response_text=None, write_eof=False, close_after=False
-    ):
-        async def response_handler(smtpd, *args, **kwargs):
-            if args and args[0]:
-                smtpd.session.host_name = args[0]
-            if response_text is not None:
-                await smtpd.push(response_text)
-            if write_eof:
-                smtpd.transport.write_eof()
-            if second_response_text is not None:
-                await smtpd.push(second_response_text)
-            if close_after:
-                smtpd.transport.close()
-
-        return response_handler
-
-    return smtpd_response
+def auth_username() -> str:
+    return "test"
 
 
-@pytest.fixture(scope="function")
-def smtp_client(request, event_loop, hostname, smtpd_server_port):
-    client = SMTP(hostname=hostname, port=smtpd_server_port, timeout=1.0)
-
-    return client
+@pytest.fixture(scope="session")
+def auth_password() -> str:
+    return "test"
 
 
-@pytest.fixture(scope="function")
-def smtp_client_smtputf8(request, event_loop, hostname, smtpd_server_smtputf8_port):
-    client = SMTP(hostname=hostname, port=smtpd_server_smtputf8_port, timeout=1.0)
-
-    return client
-
-
-class EchoServerProtocol(asyncio.Protocol):
-    def connection_made(self, transport):
-        self.transport = transport
-
-    def data_received(self, data):
-        self.transport.write(data)
-
-
-@pytest.fixture(scope="function")
-def echo_server(request, bind_address, event_loop):
-    server = event_loop.run_until_complete(
-        event_loop.create_server(
-            EchoServerProtocol, host=bind_address, port=0, family=socket.AF_INET
-        )
-    )
-
-    def close_server():
-        server.close()
-        event_loop.run_until_complete(server.wait_closed())
-
-    request.addfinalizer(close_server)
-
-    return server
-
-
-@pytest.fixture(scope="function")
-def echo_server_port(request, echo_server):
-    return echo_server.sockets[0].getsockname()[1]
+# Error code params #
 
 
 @pytest.fixture(
+    scope="function",
     params=[
         SMTPStatus.mailbox_unavailable,
         SMTPStatus.unrecognized_command,
@@ -446,15 +295,472 @@ def echo_server_port(request, echo_server):
         SMTPStatus.syntax_error.name,
     ],
 )
-def error_code(request):
-    return request.param
+def error_code(request: ParamFixtureRequest) -> int:
+    return int(request.param.value)
+
+
+# Auth #
 
 
 @pytest.fixture(scope="function")
-def tls_smtpd_server(
-    request, event_loop, bind_address, smtpd_class, smtpd_handler, server_tls_context
-):
-    def factory():
+def mock_auth() -> DummySMTPAuth:
+    return DummySMTPAuth()
+
+
+# Messages #
+
+
+@pytest.fixture(scope="function")
+def compat32_message(recipient_str: str, sender_str: str) -> email.message.Message:
+    message = email.message.Message()
+    message["To"] = email.header.Header(recipient_str)
+    message["From"] = email.header.Header(sender_str)
+    message["Subject"] = "A message"
+    message.set_payload("Hello World")
+
+    return message
+
+
+@pytest.fixture(scope="function")
+def mime_message(
+    recipient_str: str, sender_str: str
+) -> email.mime.multipart.MIMEMultipart:
+    message = email.mime.multipart.MIMEMultipart()
+    message["To"] = recipient_str
+    message["From"] = sender_str
+    message["Subject"] = "A message"
+    message.attach(email.mime.text.MIMEText("Hello World"))
+
+    return message
+
+
+@pytest.fixture(scope="function", params=["mime_multipart", "compat32"])
+def message(
+    request: ParamFixtureRequest,
+    compat32_message: email.message.Message,
+    mime_message: email.message.EmailMessage,
+) -> Union[email.message.Message, email.message.EmailMessage]:
+    if request.param == "compat32":
+        return compat32_message
+    else:
+        return mime_message
+
+
+# Server helpers and factories #
+
+
+@pytest.fixture(scope="function")
+def received_messages() -> List[email.message.EmailMessage]:
+    return []
+
+
+@pytest.fixture(scope="function")
+def received_commands() -> List[Tuple[str, Tuple[Any, ...]]]:
+    return []
+
+
+@pytest.fixture(scope="function")
+def smtpd_responses() -> List[str]:
+    return []
+
+
+@pytest.fixture(scope="function")
+def smtpd_handler(
+    received_messages: List[email.message.EmailMessage],
+    received_commands: List[Tuple[str, Tuple[Any, ...]]],
+    smtpd_responses: List[str],
+) -> RecordingHandler:
+    return RecordingHandler(received_messages, received_commands, smtpd_responses)
+
+
+@pytest.fixture(scope="session")
+def smtpd_auth_callback(
+    auth_username: str, auth_password: str
+) -> Callable[[str, bytes, bytes], bool]:
+    def auth_callback(mechanism: str, username: bytes, password: bytes) -> bool:
+        return bool(
+            username.decode("utf-8") == auth_username
+            and password.decode("utf-8") == auth_password
+        )
+
+    return auth_callback
+
+
+# Mock response #
+
+
+@pytest.fixture(scope="session")
+def smtpd_mock_response_delayed_ok() -> Callable[[SMTPD], Coroutine[Any, Any, None]]:
+    async def mock_response_delayed_ok(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
+        await asyncio.sleep(1.0)
+        await smtpd.push("250 all done")
+
+    return mock_response_delayed_ok
+
+
+@pytest.fixture(scope="session")
+def smtpd_mock_response_delayed_read() -> Callable[[SMTPD], Coroutine[Any, Any, None]]:
+    async def mock_response_delayed_read(
+        smtpd: SMTPD, *args: Any, **kwargs: Any
+    ) -> None:
+        await smtpd.push("220-hi")
+        await asyncio.sleep(1.0)
+
+    return mock_response_delayed_read
+
+
+@pytest.fixture(scope="session")
+def smtpd_mock_response_done() -> Callable[[SMTPD], Coroutine[Any, Any, None]]:
+    async def mock_response_done(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
+        if args and args[0]:
+            smtpd.session.host_name = args[0]
+        await smtpd.push("250 done")
+
+    return mock_response_done
+
+
+@pytest.fixture(scope="session")
+def smtpd_mock_response_done_then_close() -> Callable[
+    [SMTPD], Coroutine[Any, Any, None]
+]:
+    async def mock_response_done_then_close(
+        smtpd: SMTPD, *args: Any, **kwargs: Any
+    ) -> None:
+        if args and args[0]:
+            smtpd.session.host_name = args[0]
+        await smtpd.push("250 done")
+        await smtpd.push("221 bye now")
+        await smtpd.transport.close()
+
+    return mock_response_done_then_close
+
+
+@pytest.fixture(scope="session")
+def smtpd_mock_response_error() -> Callable[[SMTPD], Coroutine[Any, Any, None]]:
+    async def mock_response_error(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
+        await smtpd.push("555 error")
+
+    return mock_response_error
+
+
+@pytest.fixture(scope="session")
+def smtpd_mock_response_error_disconnect() -> Callable[
+    [SMTPD], Coroutine[Any, Any, None]
+]:
+    async def mock_response_error_disconnect(
+        smtpd: SMTPD, *args: Any, **kwargs: Any
+    ) -> None:
+        await smtpd.push("501 error")
+        await smtpd.transport.close()
+
+    return mock_response_error_disconnect
+
+
+@pytest.fixture(scope="session")
+def smtpd_mock_response_bad_data() -> Callable[[SMTPD], Coroutine[Any, Any, None]]:
+    async def mock_response_bad_data(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
+        smtpd._writer.write(b"250 \xFF\xFF\xFF\xFF\r\n")
+        await smtpd._writer.drain()
+
+    return mock_response_bad_data
+
+
+@pytest.fixture(scope="session")
+def smtpd_mock_response_gibberish() -> Callable[[SMTPD], Coroutine[Any, Any, None]]:
+    async def mock_response_gibberish(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
+        smtpd._writer.write("wefpPSwrsfa2sdfsdf")
+        await smtpd._writer.drain()
+
+    return mock_response_gibberish
+
+
+@pytest.fixture(scope="session")
+def smtpd_mock_response_expn() -> Callable[[SMTPD], Coroutine[Any, Any, None]]:
+    async def mock_response_expn(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
+        await smtpd.push(
+            """250-Joseph Blow <jblow@example.com>
+250 Alice Smith <asmith@example.com>"""
+        )
+
+    return mock_response_expn
+
+
+@pytest.fixture(scope="session")
+def smtpd_mock_response_ehlo_minimal() -> Callable[[SMTPD], Coroutine[Any, Any, None]]:
+    async def mock_response_ehlo(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
+        if args and args[0]:
+            smtpd.session.host_name = args[0]
+
+        await smtpd.push("250 HELP")
+
+    return mock_response_ehlo
+
+
+@pytest.fixture(scope="session")
+def smtpd_mock_response_ehlo_full() -> Callable[[SMTPD], Coroutine[Any, Any, None]]:
+    async def mock_response_ehlo(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
+        if args and args[0]:
+            smtpd.session.host_name = args[0]
+
+        await smtpd.push(
+            """250-localhost
+250-PIPELINING
+250-8BITMIME
+250-SIZE 512000
+250-DSN
+250-ENHANCEDSTATUSCODES
+250-EXPN
+250-HELP
+250-SAML
+250-SEND
+250-SOML
+250-TURN
+250-XADR
+250-XSTA
+250-ETRN
+250 XGEN"""
+        )
+
+    return mock_response_ehlo
+
+
+@pytest.fixture(scope="session")
+def smtpd_mock_response_unavailable() -> Callable[[SMTPD], Coroutine[Any, Any, None]]:
+    async def mock_response_unavailable(
+        smtpd: SMTPD, *args: Any, **kwargs: Any
+    ) -> None:
+        await smtpd.push("421 retry in 5 minutes")
+        await smtpd.transport.close()
+
+    return mock_response_unavailable
+
+
+@pytest.fixture(scope="session")
+def smtpd_mock_response_tls_not_available() -> Callable[
+    [SMTPD], Coroutine[Any, Any, None]
+]:
+    async def mock_tls_not_available(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
+        await smtpd.push("454 please login")
+
+    return mock_tls_not_available
+
+
+@pytest.fixture(scope="session")
+def smtpd_mock_response_tls_ready_disconnect() -> Callable[
+    [SMTPD], Coroutine[Any, Any, None]
+]:
+    async def mock_response_tls_ready_disconnect(
+        smtpd: SMTPD, *args: Any, **kwargs: Any
+    ) -> None:
+        await smtpd.push("220 go for it")
+        await smtpd.transport.close()
+
+    return mock_response_tls_ready_disconnect
+
+
+@pytest.fixture(scope="session")
+def smtpd_mock_response_disconnect() -> Callable[[SMTPD], Coroutine[Any, Any, None]]:
+    async def mock_response_disconnect(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
+        await smtpd.transport.close()
+
+    return mock_response_disconnect
+
+
+@pytest.fixture(scope="session")
+def smtpd_mock_response_eof() -> Callable[[SMTPD], Coroutine[Any, Any, None]]:
+    async def mock_response_eof(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
+        await smtpd.transport.write_eof()
+
+    return mock_response_eof
+
+
+@pytest.fixture(scope="session")
+def smtpd_mock_response_error_with_code_factory() -> Callable[
+    [str], Callable[[SMTPD], Coroutine[Any, Any, None]]
+]:
+    def factory(error_code: str) -> Callable[[SMTPD], Coroutine[Any, Any, None]]:
+        async def mock_error_response(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
+            await smtpd.push(f"{error_code} error")
+
+        return mock_error_response
+
+    return factory
+
+
+@pytest.fixture(scope="function")
+def smtpd_mock_response_error_with_code(
+    error_code: int,
+    smtpd_mock_response_error_with_code_factory: Callable[
+        [str], Callable[[SMTPD], Coroutine[Any, Any, None]]
+    ],
+) -> Callable[[SMTPD], Coroutine[Any, Any, None]]:
+    return smtpd_mock_response_error_with_code_factory(str(error_code))
+
+
+@pytest.fixture(
+    scope="function",
+    params=(str, bytes, Path),
+    ids=("str", "bytes", "pathlike"),
+)
+def socket_path(
+    request: ParamFixtureRequest, tmp_path: Path
+) -> Union[str, bytes, Path]:
+    if sys.platform.startswith("darwin"):
+        # Work around OSError: AF_UNIX path too long
+        tmp_dir = Path("/tmp")  # nosec
+    else:
+        tmp_dir = tmp_path
+
+    index = 0
+    socket_path = tmp_dir / f"aiosmtplib-test{index}"
+    while socket_path.exists():
+        index += 1
+        socket_path = tmp_dir / f"aiosmtplib-test{index}"
+
+    typed_socket_path: Union[str, bytes, Path] = request.param(socket_path)
+
+    return typed_socket_path
+
+
+# Servers #
+
+
+@pytest.fixture(scope="function")
+def smtpd_server(
+    request: pytest.FixtureRequest,
+    event_loop: asyncio.AbstractEventLoop,
+    bind_address: str,
+    hostname: str,
+    smtpd_class: Type[SMTPD],
+    smtpd_handler: RecordingHandler,
+    server_tls_context: ssl.SSLContext,
+    smtpd_auth_callback: Callable[[str, bytes, bytes], bool],
+) -> asyncio.AbstractServer:
+    def factory() -> SMTPD:
+        return smtpd_class(
+            smtpd_handler,
+            hostname=hostname,
+            enable_SMTPUTF8=False,
+            tls_context=server_tls_context,
+            auth_callback=smtpd_auth_callback,
+        )
+
+    server = event_loop.run_until_complete(
+        event_loop.create_server(
+            factory, host=bind_address, port=0, family=socket.AF_INET
+        )
+    )
+
+    def close_server() -> None:
+        server.close()
+        event_loop.run_until_complete(server.wait_closed())
+
+    request.addfinalizer(close_server)
+
+    return server
+
+
+@pytest.fixture(scope="function")
+def smtpd_server_smtputf8(
+    request: pytest.FixtureRequest,
+    event_loop: asyncio.AbstractEventLoop,
+    bind_address: str,
+    hostname: str,
+    smtpd_class: Type[SMTPD],
+    smtpd_handler: RecordingHandler,
+    server_tls_context: ssl.SSLContext,
+    smtpd_auth_callback: Callable[[str, bytes, bytes], bool],
+) -> asyncio.AbstractServer:
+    def factory() -> SMTPD:
+        return smtpd_class(
+            smtpd_handler,
+            hostname=hostname,
+            enable_SMTPUTF8=True,
+            tls_context=server_tls_context,
+            auth_callback=smtpd_auth_callback,
+        )
+
+    server = event_loop.run_until_complete(
+        event_loop.create_server(
+            factory, host=bind_address, port=0, family=socket.AF_INET
+        )
+    )
+
+    def close_server() -> None:
+        server.close()
+        event_loop.run_until_complete(server.wait_closed())
+
+    request.addfinalizer(close_server)
+
+    return server
+
+
+@pytest.fixture(scope="function")
+def echo_server(
+    request: pytest.FixtureRequest,
+    bind_address: str,
+    event_loop: asyncio.AbstractEventLoop,
+) -> asyncio.AbstractServer:
+    server = event_loop.run_until_complete(
+        event_loop.create_server(
+            EchoServerProtocol, host=bind_address, port=0, family=socket.AF_INET
+        )
+    )
+
+    def close_server() -> None:
+        server.close()
+        event_loop.run_until_complete(server.wait_closed())
+
+    request.addfinalizer(close_server)
+
+    return server
+
+
+@pytest.fixture(scope="function")
+def smtpd_server_socket_path(
+    request: pytest.FixtureRequest,
+    event_loop: asyncio.AbstractEventLoop,
+    hostname: str,
+    socket_path: Union[str, bytes, Path],
+    smtpd_class: Type[SMTPD],
+    smtpd_handler: RecordingHandler,
+    server_tls_context: ssl.SSLContext,
+    smtpd_auth_callback: Callable[[str, bytes, bytes], bool],
+) -> asyncio.AbstractServer:
+    def factory() -> SMTPD:
+        return smtpd_class(
+            smtpd_handler,
+            hostname=hostname,
+            enable_SMTPUTF8=False,
+            tls_context=server_tls_context,
+            auth_callback=smtpd_auth_callback,
+        )
+
+    create_server_coro = event_loop.create_unix_server(
+        factory,
+        path=socket_path,  # type: ignore
+    )
+    server = event_loop.run_until_complete(create_server_coro)
+
+    def close_server() -> None:
+        server.close()
+        event_loop.run_until_complete(server.wait_closed())
+
+    request.addfinalizer(close_server)
+
+    return server
+
+
+@pytest.fixture(scope="function")
+def smtpd_server_tls(
+    request: pytest.FixtureRequest,
+    event_loop: asyncio.AbstractEventLoop,
+    bind_address: str,
+    smtpd_class: Type[SMTPD],
+    smtpd_handler: RecordingHandler,
+    server_tls_context: ssl.SSLContext,
+) -> asyncio.AbstractServer:
+    def factory() -> SMTPD:
         return smtpd_class(
             smtpd_handler,
             hostname=bind_address,
@@ -472,7 +778,7 @@ def tls_smtpd_server(
         )
     )
 
-    def close_server():
+    def close_server() -> None:
         server.close()
         event_loop.run_until_complete(server.wait_closed())
 
@@ -482,38 +788,109 @@ def tls_smtpd_server(
 
 
 @pytest.fixture(scope="function")
-def tls_smtpd_server_port(request, tls_smtpd_server):
-    return tls_smtpd_server.sockets[0].getsockname()[1]
+def smtpd_controller(
+    request: pytest.FixtureRequest, bind_address: str, smtpd_handler: RecordingHandler
+) -> SMTPDController:
+    # Bind to 0 doesn't work here, so just try until we get an ok port
+    # This is pretty ugly, but only used for sync tests
+    started = False
+    port = 8025
+    controller: Optional[SMTPDController]
+    while not started:
+        try:
+            controller = SMTPDController(
+                smtpd_handler, hostname=bind_address, port=port
+            )
+            controller.start()
+        except OSError as exc:
+            if controller:
+                controller.stop()
+
+            if "address already in use" in str(exc):
+                port = port + 1
+            else:
+                raise exc
+        else:
+            started = True
+
+    if not controller:
+        raise RuntimeError("Unable to start controller")
+
+    request.addfinalizer(controller.stop)
+
+    return controller
 
 
 @pytest.fixture(scope="function")
-def tls_smtp_client(request, event_loop, hostname, tls_smtpd_server_port):
-    tls_client = SMTP(
+def smtpd_server_threaded(
+    request: pytest.FixtureRequest, smtpd_controller: SMTPDController
+) -> asyncio.AbstractServer:
+    server: asyncio.AbstractServer = smtpd_controller.server
+    return server
+
+
+# Running server ports #
+
+
+def _get_server_socket_port(server: asyncio.AbstractServer) -> Optional[int]:
+    sockets = getattr(server, "sockets", [])
+    if sockets:
+        return int(sockets[0].getsockname()[1])
+
+    return None
+
+
+@pytest.fixture(scope="function")
+def smtpd_server_port(smtpd_server: asyncio.AbstractServer) -> Optional[int]:
+    return _get_server_socket_port(smtpd_server)
+
+
+@pytest.fixture(scope="function")
+def smtpd_server_smtputf8_port(
+    smtpd_server_smtputf8: asyncio.AbstractServer,
+) -> Optional[int]:
+    return _get_server_socket_port(smtpd_server_smtputf8)
+
+
+@pytest.fixture(scope="function")
+def echo_server_port(echo_server: asyncio.AbstractServer) -> Optional[int]:
+    return _get_server_socket_port(echo_server)
+
+
+@pytest.fixture(scope="function")
+def smtpd_server_tls_port(smtpd_server_tls: asyncio.AbstractServer) -> Optional[int]:
+    return _get_server_socket_port(smtpd_server_tls)
+
+
+@pytest.fixture(scope="function")
+def smtpd_server_threaded_port(smtpd_controller: SMTPDController) -> int:
+    port: int = smtpd_controller.port
+    return port
+
+
+# SMTP Clients #
+
+
+@pytest.fixture(scope="function")
+def smtp_client(hostname: str, smtpd_server_port: int) -> SMTP:
+    return SMTP(hostname=hostname, port=smtpd_server_port, timeout=1.0)
+
+
+@pytest.fixture(scope="function")
+def smtp_client_smtputf8(hostname: str, smtpd_server_smtputf8_port: int) -> SMTP:
+    return SMTP(hostname=hostname, port=smtpd_server_smtputf8_port, timeout=1.0)
+
+
+@pytest.fixture(scope="function")
+def smtp_client_tls(hostname: str, smtpd_server_tls_port: int) -> SMTP:
+    return SMTP(
         hostname=hostname,
-        port=tls_smtpd_server_port,
+        port=smtpd_server_tls_port,
         use_tls=True,
         validate_certs=False,
     )
 
-    return tls_client
-
 
 @pytest.fixture(scope="function")
-def threaded_smtpd_server(request, bind_address, smtpd_handler):
-    controller = SMTPDController(smtpd_handler, hostname=bind_address, port=0)
-    controller.start()
-    request.addfinalizer(controller.stop)
-
-    return controller.server
-
-
-@pytest.fixture(scope="function")
-def threaded_smtpd_server_port(request, threaded_smtpd_server):
-    return threaded_smtpd_server.sockets[0].getsockname()[1]
-
-
-@pytest.fixture(scope="function")
-def smtp_client_threaded(request, hostname, threaded_smtpd_server_port):
-    client = SMTP(hostname=hostname, port=threaded_smtpd_server_port, timeout=1.0)
-
-    return client
+def smtp_client_threaded(hostname: str, smtpd_server_threaded_port: int) -> SMTP:
+    return SMTP(hostname=hostname, port=smtpd_server_threaded_port, timeout=1.0)

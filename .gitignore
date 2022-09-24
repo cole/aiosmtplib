@@ -10,6 +10,7 @@
 .pytest_cache/
 .python-version
 .tox/
+.tool-versions
 .venv
 .vscode/
 aiosmtplib.code-workspace
@@ -25,3 +26,4 @@ htmlcov/
 test-results/
 TODO
 venv/
+poetry.lock
