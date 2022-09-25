@@ -33,7 +33,7 @@ Server Responses
 Status Codes
 ------------
 
-.. autoclass:: aiosmtplib.status.SMTPStatus
+.. autoclass:: aiosmtplib.typing.SMTPStatus
     :members:
     :undoc-members:
 
