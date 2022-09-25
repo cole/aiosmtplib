@@ -324,6 +324,8 @@ class SMTPConnection:
             cert_bundle=cert_bundle,
             socket_path=socket_path,
             sock=sock,
+            username=username,
+            password=password,
         )
         self._validate_config()
 
@@ -353,8 +355,10 @@ class SMTPConnection:
             await self.starttls()
 
         if self._login_username is not None:
-            password = self._login_password if self._login_password is not None else ""
-            await self.login(self._login_username, password)
+            login_password = (
+                self._login_password if self._login_password is not None else ""
+            )
+            await self.login(self._login_username, login_password)
 
         return response
 

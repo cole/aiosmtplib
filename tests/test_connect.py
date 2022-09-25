@@ -2,7 +2,6 @@
 Connectivity tests.
 """
 import asyncio
-import email
 import pathlib
 import socket
 from typing import Any, Callable, List, Tuple, Type, Union
@@ -354,8 +353,6 @@ async def test_server_unexpected_disconnect(
 async def test_connect_with_login(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    message: email.message.Message,
-    received_messages: List[email.message.EmailMessage],
     received_commands: List[Tuple[str, Tuple[Any, ...]]],
     auth_username: str,
     auth_password: str,
