@@ -170,7 +170,7 @@ jobs:
             - .coverage.*
 
   coverage:
-    executor: circleci_py310
+    executor: py310
     environment:
       TOXENV: coverage
     steps:
