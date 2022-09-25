@@ -71,7 +71,7 @@ def test_send_message_sync_when_connected(
     assert response != ""
 
 
-def test_async_to_sync_without_loop(event_loop: asyncio.AbstractEventLoop) -> None:
+def test_async_to_sync_without_loop() -> None:
     async def test_func() -> int:
         return 7
 
