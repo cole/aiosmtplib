@@ -5,7 +5,7 @@ import asyncio
 from typing import Coroutine, Optional, TypeVar
 
 
-__all__ = ("async_to_sync", "shutdown_loop")
+__all__ = ("async_to_sync",)
 
 CoroutineResult = TypeVar("CoroutineResult")
 
@@ -26,26 +26,9 @@ def async_to_sync(
     try:
         result = loop.run_until_complete(task)
     finally:
-        shutdown_loop(loop)
-
-    return result
-
-
-def shutdown_loop(loop: asyncio.AbstractEventLoop, timeout: float = 1.0) -> None:
-    """
-    Do the various dances to gently shutdown an event loop.
-    """
-    tasks = asyncio.all_tasks(loop=loop)
-    if tasks:
-        for task in tasks:
-            task.cancel()
-        try:
-            loop.run_until_complete(asyncio.wait(tasks, timeout=timeout))
-        except RuntimeError:
-            pass
-
-    if not loop.is_closed():
         loop.run_until_complete(loop.shutdown_asyncgens())
         loop.call_soon(loop.stop)
         loop.run_forever()
         loop.close()
+
+    return result
