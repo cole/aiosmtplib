@@ -181,10 +181,10 @@ async def test_connect_source_address_takes_precedence(
 
 async def test_connect_event_loop_takes_precedence(
     event_loop: asyncio.AbstractEventLoop,
-    event_loop_policy: asyncio.AbstractEventLoopPolicy,
     hostname: str,
     smtpd_server_port: int,
 ) -> None:
+    event_loop_policy = asyncio.get_event_loop_policy()
     init_loop = event_loop_policy.new_event_loop()
     with pytest.warns(DeprecationWarning):
         client = SMTP(hostname=hostname, port=smtpd_server_port, loop=init_loop)

@@ -10,9 +10,8 @@ import pathlib
 import socket
 import ssl
 import sys
-import traceback
 from pathlib import Path
-from typing import Any, Callable, Coroutine, Dict, List, Optional, Tuple, Type, Union
+from typing import Any, Callable, Coroutine, List, Optional, Tuple, Type, Union
 
 import hypothesis
 import pytest
@@ -21,7 +20,6 @@ from aiosmtpd.controller import Controller as SMTPDController
 from aiosmtpd.smtp import SMTP as SMTPD
 
 from aiosmtplib import SMTP, SMTPStatus
-from aiosmtplib.sync import shutdown_loop
 
 from .auth import DummySMTPAuth
 from .smtpd import RecordingHandler, TestSMTPD
@@ -79,55 +77,16 @@ def pytest_addoption(parser: Any) -> None:
     )
 
 
-# Event loop handling #
-
-
-@pytest.fixture(scope="session")
-def event_loop_policy(
-    request: pytest.FixtureRequest,
-) -> asyncio.AbstractEventLoopPolicy:
-    loop_type = request.config.getoption("--event-loop")
+def pytest_sessionstart(session: pytest.Session) -> None:
+    # Install the uvloop event loop policy globally, per session
+    loop_type = session.config.getoption("--event-loop")
     if loop_type == "uvloop":
         if not HAS_UVLOOP:
             raise RuntimeError("uvloop not installed.")
         old_policy = asyncio.get_event_loop_policy()
         policy = uvloop.EventLoopPolicy()
         asyncio.set_event_loop_policy(policy)
-        request.addfinalizer(lambda: asyncio.set_event_loop_policy(old_policy))
-
-    return asyncio.get_event_loop_policy()
-
-
-@pytest.fixture(scope="function")
-def event_loop(
-    request: pytest.FixtureRequest, event_loop_policy: asyncio.AbstractEventLoopPolicy
-) -> asyncio.AbstractEventLoop:
-    verbosity = request.config.getoption("verbose", default=0)
-    old_loop = event_loop_policy.get_event_loop()
-    loop = event_loop_policy.new_event_loop()
-    event_loop_policy.set_event_loop(loop)
-
-    def handle_async_exception(
-        loop: asyncio.AbstractEventLoop, context: Dict[str, Any]
-    ) -> None:
-        message = f'{context["message"]}: {context["exception"]!r}'
-        if verbosity > 1:
-            message += "\n"
-            message += f"Future: {context['future']!r}"
-            message += "\nTraceback:\n"
-            message += "".join(traceback.format_list(context["source_traceback"]))
-
-        request.node.warn(AsyncPytestWarning(message))
-
-    loop.set_exception_handler(handle_async_exception)
-
-    def cleanup() -> None:
-        shutdown_loop(loop)
-        event_loop_policy.set_event_loop(old_loop)
-
-    request.addfinalizer(cleanup)
-
-    return loop
+        session.addfinalizer(lambda: asyncio.set_event_loop_policy(old_policy))
 
 
 # Session scoped static values #
@@ -789,32 +748,15 @@ def smtpd_server_tls(
 
 @pytest.fixture(scope="function")
 def smtpd_controller(
-    request: pytest.FixtureRequest, bind_address: str, smtpd_handler: RecordingHandler
+    request: pytest.FixtureRequest,
+    bind_address: str,
+    unused_tcp_port: int,
+    smtpd_handler: RecordingHandler,
 ) -> SMTPDController:
-    # Bind to 0 doesn't work here, so just try until we get an ok port
-    # This is pretty ugly, but only used for sync tests
-    started = False
-    port = 8025
+    port = unused_tcp_port
     controller: Optional[SMTPDController]
-    while not started:
-        try:
-            controller = SMTPDController(
-                smtpd_handler, hostname=bind_address, port=port
-            )
-            controller.start()
-        except OSError as exc:
-            if controller:
-                controller.stop()
-
-            if "address already in use" in str(exc):
-                port = port + 1
-            else:
-                raise exc
-        else:
-            started = True
-
-    if not controller:
-        raise RuntimeError("Unable to start controller")
+    controller = SMTPDController(smtpd_handler, hostname=bind_address, port=port)
+    controller.start()
 
     request.addfinalizer(controller.stop)
 
