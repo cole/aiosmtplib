@@ -77,16 +77,25 @@ def pytest_addoption(parser: Any) -> None:
     )
 
 
+original_event_loop_policy = None
+
+
 def pytest_sessionstart(session: pytest.Session) -> None:
+    global original_event_loop_policy
+
     # Install the uvloop event loop policy globally, per session
     loop_type = session.config.getoption("--event-loop")
     if loop_type == "uvloop":
         if not HAS_UVLOOP:
             raise RuntimeError("uvloop not installed.")
-        old_policy = asyncio.get_event_loop_policy()
+        original_event_loop_policy = asyncio.get_event_loop_policy()
         policy = uvloop.EventLoopPolicy()
         asyncio.set_event_loop_policy(policy)
-        session.addfinalizer(lambda: asyncio.set_event_loop_policy(old_policy))
+
+
+def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
+    if original_event_loop_policy is not None:
+        asyncio.set_event_loop_policy(original_event_loop_policy)
 
 
 # Session scoped static values #
