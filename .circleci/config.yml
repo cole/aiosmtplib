@@ -69,7 +69,7 @@ commands:
           environment:
             XDG_CACHE_HOME: "/tmp/cache"
       - run:
-          command: tox --workdir /tmp/toxworkdir --installpkg dist/aiosmtplib-*.whl
+          command: tox --workdir /tmp/toxworkdir --installpkg dist/aiosmtplib-*.whl --skip-missing-interpreters false
           name: "Running tox"
           environment:
             XDG_CACHE_HOME: "/tmp/cache"
@@ -101,7 +101,7 @@ jobs:
       TOXENV: lint
 
   docs:
-    executor: py38
+    executor: py39
     environment:
       TOXENV: docs
     steps:
