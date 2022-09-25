@@ -7,7 +7,7 @@ from aiosmtplib import SMTP
 from aiosmtplib.auth import crammd5_verify
 from aiosmtplib.errors import SMTPAuthenticationError, SMTPException
 from aiosmtplib.response import SMTPResponse
-from aiosmtplib.status import SMTPStatus
+from aiosmtplib.typing import SMTPStatus
 
 from .auth import DummySMTPAuth
 
