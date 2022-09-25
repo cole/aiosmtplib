@@ -4,9 +4,9 @@ orbs:
   codecov: codecov/codecov@1.0.5
 
 executors:
-  circleci_py38:
+  circleci_py310:
     docker:
-      - image: "cimg/python:3.8"
+      - image: "cimg/python:3.10"
         auth:
           username: $DOCKERHUB_USERNAME
           password: $DOCKERHUB_PASSWORD
@@ -82,7 +82,7 @@ commands:
 
 jobs:
   lint:
-    executor: py38
+    executor: circleci_py310
     steps:
       - python_version
       - checkout
@@ -101,7 +101,7 @@ jobs:
       TOXENV: lint
 
   docs:
-    executor: py39
+    executor: circleci_py310
     environment:
       TOXENV: docs
     steps:
@@ -112,7 +112,7 @@ jobs:
       - tox
 
   build:
-    executor: circleci_py38
+    executor: circleci_py310
     steps:
       - python_version
       - checkout
@@ -170,7 +170,7 @@ jobs:
             - .coverage.*
 
   coverage:
-    executor: py38
+    executor: circleci_py310
     environment:
       TOXENV: coverage
     steps:
@@ -190,7 +190,7 @@ jobs:
           file: coverage.xml
 
   deploy_to_pypi:
-    executor: circleci_py38
+    executor: circleci_py310
     steps:
       - python_version
       - checkout
