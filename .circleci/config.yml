@@ -141,6 +141,7 @@ jobs:
           path: dist/
 
   test:
+    name: "test-<<parameters.python_version>>-<<parameters.event_loop>>"
     executor: <<parameters.python_version>>
     parameters:
       python_version:
@@ -243,8 +244,18 @@ workflows:
       - test:
           matrix:
             parameters:
-              python_version: ["py37", "py38", "py39", "py310", "pypy3"]
+              python_version: ["py37", "py38", "py39", "py310"]
               event_loop: ["asyncio", "uvloop"]
+          requires:
+            - build
+          context:
+            - docker-hub-credentials
+          filters:
+            tags:
+              only: /.*/
+      - test-pypy3:
+          python_version: "pypy3"
+          event_loop: "asyncio"
           requires:
             - build
           context:
@@ -255,6 +266,7 @@ workflows:
       - coverage:
           requires:
             - test
+            - test-pypy3
           context:
             - docker-hub-credentials
           filters:
@@ -264,6 +276,7 @@ workflows:
           requires:
             - build
             - test
+            - test-pypy3
           context:
             - docker-hub-credentials
           filters:
