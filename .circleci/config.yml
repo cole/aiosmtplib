@@ -45,7 +45,7 @@ executors:
         auth:
           username: $DOCKERHUB_USERNAME
           password: $DOCKERHUB_PASSWORD
-    resource_class: small
+    resource_class: large
 
 commands:
   python_version:
