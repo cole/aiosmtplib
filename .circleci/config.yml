@@ -171,6 +171,8 @@ jobs:
           key: "hypothesis-v4-<<parameters.python_version>>"
           paths:
             - ~/project/.hypothesis
+      - store_artifacts:
+          path: test-results
       - store_test_results:
           path: test-results
       - persist_to_workspace:
