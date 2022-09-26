@@ -83,22 +83,23 @@ commands:
 jobs:
   lint:
     executor: circleci_py310
+    environment:
+      PRE_COMMIT_HOME: /tmp/cache/pre-commit
+      TOXENV: lint
     steps:
       - python_version
       - checkout
       - restore_cache:
           name: "Restoring pre-commit cache"
           keys:
-            - pre-commit-v4-{{ checksum ".pre-commit-config.yaml" }}
-            - pre-commit-v4-
+            - pre-commit-v5-{{ checksum ".pre-commit-config.yaml" }}
+            - pre-commit-v5-
       - tox
       - save_cache:
           name: "Updating pre-commit cache"
-          key: pre-commit-v4-{{ checksum ".pre-commit-config.yaml" }}
+          key: pre-commit-v5-{{ checksum ".pre-commit-config.yaml" }}
           paths:
             - /tmp/cache/pre-commit
-    environment:
-      TOXENV: lint
 
   docs:
     executor: circleci_py310
