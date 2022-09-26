@@ -113,9 +113,16 @@ jobs:
 
   build:
     executor: circleci_py310
+    environment:
+      POETRY_CACHE_DIR: /tmp/cache/poetry
     steps:
       - python_version
       - checkout
+      - restore_cache:
+          name: "Restoring poetry cache"
+          keys:
+            - poetry-v1-{{ .Environment.CIRCLE_JOB }}-{{ checksum "pyproject.toml" }}
+            - poetry-v1-{{ .Environment.CIRCLE_JOB }}-
       - run:
           name: Building packages
           command: poetry build -vv
@@ -125,6 +132,11 @@ jobs:
       - run:
           name: Twine check
           command: poetry run twine check dist/*
+      - save_cache:
+          name: "Updating poetry cache"
+          key: poetry-v1-{{ .Environment.CIRCLE_JOB }}-{{ checksum "pyproject.toml" }}
+          paths:
+            - /tmp/cache/poetry
       - persist_to_workspace:
           root: dist
           paths:
