@@ -224,15 +224,17 @@ workflows:
               only: /.*/
   build_test_deploy:
     jobs:
-      - docs:
+      - build:
           context:
             - docker-hub-credentials
           filters:
             tags:
               only: /.*/
-      - build:
+      - docs:
           context:
             - docker-hub-credentials
+          requires:
+            - build
           filters:
             tags:
               only: /.*/
