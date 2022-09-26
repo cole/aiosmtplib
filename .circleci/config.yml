@@ -146,7 +146,7 @@ jobs:
       python_version:
         type: enum
         description: "executor name"
-        enum: ["py37", "py38", "py39", "py-310", "pypy3"]
+        enum: ["py37", "py38", "py39", "py310", "pypy3"]
       event_loop:
         type: enum
         description: "event loop type"
@@ -243,7 +243,7 @@ workflows:
       - test:
           matrix:
             parameters:
-              python_version: ["py37", "py38", "py39", "py-310", "pypy3"]
+              python_version: ["py37", "py38", "py39", "py310", "pypy3"]
               event_loop: ["asyncio", "uvloop"]
           requires:
             - build
