@@ -127,12 +127,6 @@ jobs:
       - run:
           name: Building packages
           command: poetry build -vv
-      - run:
-          name: Install Twine
-          command: poetry add --dev twine
-      - run:
-          name: Twine check
-          command: poetry run twine check dist/*
       - save_cache:
           name: "Updating poetry cache"
           key: poetry-v2-{{ .Environment.CIRCLE_JOB }}-{{ checksum "pyproject.toml" }}
@@ -202,7 +196,7 @@ jobs:
       - codecov/upload:
           file: coverage.xml
 
-  deploy_to_pypi:
+  deploy:
     executor: circleci_py310
     steps:
       - python_version
@@ -220,9 +214,17 @@ jobs:
 
 workflows:
   version: 2
-  lint_and_test:
+  lint:
     jobs:
       - lint:
+          context:
+            - docker-hub-credentials
+          filters:
+            tags:
+              only: /.*/
+  build_test_deploy:
+    jobs:
+      - docs:
           context:
             - docker-hub-credentials
           filters:
@@ -234,21 +236,11 @@ workflows:
           filters:
             tags:
               only: /.*/
-      - docs:
-          requires:
-            - lint
-            - build
-          context:
-            - docker-hub-credentials
-          filters:
-            tags:
-              only: /.*/
       - test:
           name: "test-py37"
           executor_name: py37
           toxenv: "py37-asyncio,py37-uvloop"
           requires:
-            - lint
             - build
           context:
             - docker-hub-credentials
@@ -260,7 +252,6 @@ workflows:
           executor_name: py38
           toxenv: "py38-asyncio,py38-uvloop"
           requires:
-            - lint
             - build
           context:
             - docker-hub-credentials
@@ -272,7 +263,6 @@ workflows:
           executor_name: py39
           toxenv: "py39-asyncio,py39-uvloop"
           requires:
-            - lint
             - build
           context:
             - docker-hub-credentials
@@ -284,7 +274,6 @@ workflows:
           executor_name: py310
           toxenv: "py310-asyncio,py310-uvloop"
           requires:
-            - lint
             - build
           context:
             - docker-hub-credentials
@@ -296,7 +285,6 @@ workflows:
           executor_name: pypy3
           toxenv: "pypy3-asyncio"
           requires:
-            - lint
             - build
           context:
             - docker-hub-credentials
@@ -315,11 +303,9 @@ workflows:
           filters:
             tags:
               only: /.*/
-      - deploy_to_pypi:
+      - deploy:
           requires:
             - build
-            - lint
-            - docs
             - test-py37
             - test-py38
             - test-py39
