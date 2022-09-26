@@ -141,19 +141,21 @@ jobs:
           path: dist/
 
   test:
-    executor: <<parameters.executor_name>>
+    executor: <<parameters.python_version>>
     parameters:
-      executor_name:
-        type: string
+      python_version:
+        type: enum
         description: "executor name"
-      toxenv:
-        type: string
-        description: "tox env name"
+        enum: ["py37", "py38", "py39", "py-310", "pypy3"]
+      event_loop:
+        type: enum
+        description: "event loop type"
+        enum: ["asyncio", "uvloop"]
     environment:
-      COVERAGE_FILE: "coverage-results/.coverage.<<parameters.executor_name>>"
+      COVERAGE_FILE: "coverage-results/.coverage.<<parameters.python_version>>-<<parameters.event_loop>>"
       HYPOTHESIS_PROFILE: "ci"
       BIND_ADDR: "127.0.0.1"
-      TOXENV: "<<parameters.toxenv>>"
+      TOXENV: "<<parameters.python_version>>-<<parameters.event_loop>>"
     steps:
       - python_version
       - checkout
@@ -162,11 +164,11 @@ jobs:
       - restore_cache:
           name: "Restoring hypothesis database"
           keys:
-            - "hypothesis-v4-<<parameters.executor_name>>"
+            - "hypothesis-v4-<<parameters.python_version>>"
       - tox
       - save_cache:
           name: "Updating hypothesis database"
-          key: "hypothesis-v4-<<parameters.executor_name>>"
+          key: "hypothesis-v4-<<parameters.python_version>>"
           paths:
             - ~/project/.hypothesis
       - store_test_results:
@@ -239,53 +241,10 @@ workflows:
             tags:
               only: /.*/
       - test:
-          name: "test-py37"
-          executor_name: py37
-          toxenv: "py37-asyncio,py37-uvloop"
-          requires:
-            - build
-          context:
-            - docker-hub-credentials
-          filters:
-            tags:
-              only: /.*/
-      - test:
-          name: "test-py38"
-          executor_name: py38
-          toxenv: "py38-asyncio,py38-uvloop"
-          requires:
-            - build
-          context:
-            - docker-hub-credentials
-          filters:
-            tags:
-              only: /.*/
-      - test:
-          name: "test-py39"
-          executor_name: py39
-          toxenv: "py39-asyncio,py39-uvloop"
-          requires:
-            - build
-          context:
-            - docker-hub-credentials
-          filters:
-            tags:
-              only: /.*/
-      - test:
-          name: "test-py310"
-          executor_name: py310
-          toxenv: "py310-asyncio,py310-uvloop"
-          requires:
-            - build
-          context:
-            - docker-hub-credentials
-          filters:
-            tags:
-              only: /.*/
-      - test:
-          name: "test-pypy3"
-          executor_name: pypy3
-          toxenv: "pypy3-asyncio"
+          matrix:
+            parameters:
+              python_version: ["py37", "py38", "py39", "py-310", "pypy3"]
+              event_loop: ["asyncio", "uvloop"]
           requires:
             - build
           context:
@@ -295,11 +254,7 @@ workflows:
               only: /.*/
       - coverage:
           requires:
-            - test-py37
-            - test-py38
-            - test-py39
-            - test-py310
-            - test-pypy3
+            - test
           context:
             - docker-hub-credentials
           filters:
@@ -308,11 +263,7 @@ workflows:
       - deploy:
           requires:
             - build
-            - test-py37
-            - test-py38
-            - test-py39
-            - test-py310
-            - test-pypy3
+            - test
           context:
             - docker-hub-credentials
           filters:
