@@ -1,4 +1,4 @@
-from asyncio import TimeoutError
+from asyncio import TimeoutError, CancelledError
 from typing import List
 
 
@@ -17,6 +17,8 @@ __all__ = (
     "SMTPTimeoutError",
     "SMTPConnectTimeoutError",
     "SMTPReadTimeoutError",
+    "PreSendCancelledError",
+    "PostSendCancelledError"
 )
 
 
@@ -128,3 +130,17 @@ class SMTPRecipientsRefused(SMTPException):
     def __init__(self, recipients: List[SMTPRecipientRefused]) -> None:
         self.recipients = recipients
         self.args = (recipients,)
+
+
+class PreSendCancelledError(CancelledError):
+    """
+    CancelledError raised before sending the email
+    """
+    pass
+
+
+class PostSendCancelledError(CancelledError):
+    """
+    CancelledError raised after sending the email
+    """
+    pass

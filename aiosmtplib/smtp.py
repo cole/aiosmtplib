@@ -18,7 +18,7 @@ from .errors import (
     SMTPNotSupported,
     SMTPRecipientRefused,
     SMTPRecipientsRefused,
-    SMTPResponseException,
+    SMTPResponseException, PreSendCancelledError, PostSendCancelledError,
 )
 from .response import SMTPResponse
 from .sync import async_to_sync
@@ -165,16 +165,22 @@ class SMTP(SMTPAuth):
                 mail_options.insert(0, size_option)
 
             try:
-                await self.mail(
-                    sender,
-                    options=mail_options,
-                    encoding=mailbox_encoding,
-                    timeout=timeout,
-                )
-                recipient_errors = await self._send_recipients(
-                    recipients, rcpt_options, encoding=mailbox_encoding, timeout=timeout
-                )
-                response = await self.data(message, timeout=timeout)
+                try:
+                    await self.mail(
+                        sender,
+                        options=mail_options,
+                        encoding=mailbox_encoding,
+                        timeout=timeout,
+                    )
+                    recipient_errors = await self._send_recipients(
+                        recipients, rcpt_options, encoding=mailbox_encoding, timeout=timeout
+                    )
+                except asyncio.CancelledError:
+                    raise PreSendCancelledError
+                try:
+                    response = await self.data(message, timeout=timeout)
+                except asyncio.CancelledError:
+                    raise PostSendCancelledError
             except (SMTPResponseException, SMTPRecipientsRefused) as exc:
                 # If we got an error, reset the envelope.
                 try:
