@@ -182,3 +182,46 @@ async def test_send_via_socket_path(
 
     assert not errors
     assert len(received_messages) == 1
+
+
+async def test_send_with_mail_options(
+    hostname: str,
+    smtpd_server_port: int,
+    recipient_str: str,
+    sender_str: str,
+    message_str: str,
+    received_messages: List[email.message.EmailMessage],
+) -> None:
+    errors, _ = await send(
+        message_str,
+        hostname=hostname,
+        port=smtpd_server_port,
+        sender=sender_str,
+        recipients=[recipient_str],
+        mail_options=["BODY=8BITMIME"],
+    )
+
+    assert not errors
+    assert len(received_messages) == 1
+
+
+async def test_send_with_rcpt_options(
+    hostname: str,
+    smtpd_server_port: int,
+    recipient_str: str,
+    sender_str: str,
+    message_str: str,
+    received_messages: List[email.message.EmailMessage],
+) -> None:
+    errors, _ = await send(
+        message_str,
+        hostname=hostname,
+        port=smtpd_server_port,
+        sender=sender_str,
+        recipients=[recipient_str],
+        # RCPT params are not supported by the server; just check that the kwarg works
+        rcpt_options=[],
+    )
+
+    assert not errors
+    assert len(received_messages) == 1

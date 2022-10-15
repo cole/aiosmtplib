@@ -8,6 +8,8 @@ Changelog
 - Change: The value of ``source_address`` is now passed as the local_addr param
   to ``asyncio.create_connection``, allowing for binding to a specific IP (credit
   @rafaelrds)
+- Bugfix: the ``mail_options`` and ``rcpt_options`` arguments to the ``send``
+  coroutine no longer cause errors
 - Cleanup: Don't use private email.message.Message policy attribute (instead,
   set an appropriate policy based on message class)
 

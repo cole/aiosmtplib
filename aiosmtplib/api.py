@@ -386,14 +386,27 @@ async def send(message, sender=None, recipients=None, **kwargs):  # type: ignore
         if not sender:
             raise ValueError("Sender must be provided with raw messages.")
 
+    mail_options = kwargs.pop("mail_options", None)
+    rcpt_options = kwargs.pop("rcpt_options", None)
+
     client = SMTP(**kwargs)
 
     async with client:
         if isinstance(message, (email.message.EmailMessage, email.message.Message)):
             result = await client.send_message(
-                message, sender=sender, recipients=recipients
+                message,
+                sender=sender,
+                recipients=recipients,
+                mail_options=mail_options,
+                rcpt_options=rcpt_options,
             )
         else:
-            result = await client.sendmail(sender, recipients, message)
+            result = await client.sendmail(
+                sender,
+                recipients,
+                message,
+                mail_options=mail_options,
+                rcpt_options=rcpt_options,
+            )
 
     return result
