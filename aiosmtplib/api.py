@@ -2,10 +2,8 @@
 Main public API.
 """
 import email.message
-import os
 import socket
 import ssl
-import sys
 from typing import Dict, List, Optional, Sequence, Tuple, Union, overload
 
 from .response import SMTPResponse
