@@ -286,6 +286,94 @@ async def test_send_message_with_sender_and_recipient_args(
     assert received_messages[0]["X-RcptTo"] == ", ".join(recipients)
 
 
+async def test_send_message_with_cc_recipients(
+    smtp_client: SMTP,
+    smtpd_server: asyncio.AbstractServer,
+    recipient_str: str,
+    message: email.message.Message,
+    received_messages: List[email.message.EmailMessage],
+    received_commands: List[Tuple[str, Tuple[Any, ...]]],
+) -> None:
+    cc_recipients = ["recipient1@example.com", "recipient2@example.com"]
+    message["Cc"] = ", ".join(cc_recipients)
+
+    async with smtp_client:
+        errors, _ = await smtp_client.send_message(message)
+
+    assert not errors
+
+    assert len(received_messages) == 1
+    assert (
+        received_messages[0]["X-RcptTo"]
+        == f'{recipient_str}, {", ".join(cc_recipients)}'
+    )
+
+    assert received_commands[2][0] == "RCPT"
+    assert received_commands[2][1][0] == recipient_str
+    assert received_commands[3][0] == "RCPT"
+    assert received_commands[3][1][0] == cc_recipients[0]
+    assert received_commands[4][0] == "RCPT"
+    assert received_commands[4][1][0] == cc_recipients[1]
+
+
+async def test_send_message_with_bcc_recipients(
+    smtp_client: SMTP,
+    smtpd_server: asyncio.AbstractServer,
+    recipient_str: str,
+    message: email.message.Message,
+    received_messages: List[email.message.EmailMessage],
+    received_commands: List[Tuple[str, Tuple[Any, ...]]],
+) -> None:
+    bcc_recipients = ["recipient1@example.com", "recipient2@example.com"]
+    message["Bcc"] = ", ".join(bcc_recipients)
+
+    async with smtp_client:
+        errors, _ = await smtp_client.send_message(message)
+
+    assert not errors
+
+    assert len(received_messages) == 1
+
+    assert received_commands[2][0] == "RCPT"
+    assert received_commands[2][1][0] == recipient_str
+    assert received_commands[3][0] == "RCPT"
+    assert received_commands[3][1][0] == bcc_recipients[0]
+    assert received_commands[4][0] == "RCPT"
+    assert received_commands[4][1][0] == bcc_recipients[1]
+
+
+async def test_send_message_with_cc_and_bcc_recipients(
+    smtp_client: SMTP,
+    smtpd_server: asyncio.AbstractServer,
+    recipient_str: str,
+    message: email.message.Message,
+    received_messages: List[email.message.EmailMessage],
+    received_commands: List[Tuple[str, Tuple[Any, ...]]],
+) -> None:
+    cc_recipient = "recipient2@example.com"
+    message["Cc"] = cc_recipient
+    bcc_recipient = "recipient2@example.com"
+    message["Bcc"] = bcc_recipient
+
+    async with smtp_client:
+        errors, _ = await smtp_client.send_message(message)
+
+    assert not errors
+
+    assert len(received_messages) == 1
+    assert received_messages[0]["To"] == recipient_str
+    assert received_messages[0]["Cc"] == cc_recipient
+    # BCC shouldn't be passed through
+    assert received_messages[0]["Bcc"] is None
+
+    assert received_commands[2][0] == "RCPT"
+    assert received_commands[2][1][0] == recipient_str
+    assert received_commands[3][0] == "RCPT"
+    assert received_commands[3][1][0] == cc_recipient
+    assert received_commands[4][0] == "RCPT"
+    assert received_commands[4][1][0] == bcc_recipient
+
+
 async def test_send_multiple_messages_in_sequence(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
