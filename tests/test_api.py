@@ -1,8 +1,11 @@
 """
 send coroutine testing.
 """
+import asyncio
 import email
-from typing import Any, List, Tuple
+import pathlib
+import socket
+from typing import Any, List, Tuple, Union
 
 import pytest
 
@@ -139,4 +142,43 @@ async def test_send_with_login(
 
     assert not errors
     assert "AUTH" in [command[0] for command in received_commands]
+    assert len(received_messages) == 1
+
+
+async def test_send_via_socket(
+    hostname: str,
+    smtpd_server_port: int,
+    message: email.message.Message,
+    received_messages: List[email.message.EmailMessage],
+) -> None:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.connect((hostname, smtpd_server_port))
+
+        errors, response = await send(
+            message,
+            hostname=None,
+            port=None,
+            sock=sock,
+        )
+
+        assert not errors
+        assert len(received_messages) == 1
+
+        assert sock.fileno() > 0, "Socket unexpectedly closed"
+
+
+async def test_send_via_socket_path(
+    smtpd_server_socket_path: asyncio.AbstractServer,
+    socket_path: Union[pathlib.Path, str, bytes],
+    message: email.message.Message,
+    received_messages: List[email.message.EmailMessage],
+) -> None:
+    errors, response = await send(
+        message,
+        hostname=None,
+        port=None,
+        socket_path=socket_path,
+    )
+
+    assert not errors
     assert len(received_messages) == 1
