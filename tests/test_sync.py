@@ -46,7 +46,6 @@ def test_sendmail_sync_when_connected(
 
 
 def test_send_message_sync(
-    event_loop: asyncio.AbstractEventLoop,
     smtp_client_threaded: SMTP,
     message: email.message.Message,
 ) -> None:
@@ -89,9 +88,7 @@ def test_async_to_sync_with_exception(event_loop: asyncio.AbstractEventLoop) -> 
 
 
 @pytest.mark.asyncio
-async def test_async_to_sync_with_running_loop(
-    event_loop: asyncio.AbstractEventLoop,
-) -> None:
+async def test_async_to_sync_with_running_loop() -> None:
     async def test_func() -> None:
         return None
 

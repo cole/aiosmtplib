@@ -110,7 +110,6 @@ async def test_config_via_connect_kwargs(
     ids=["plaintext", "tls", "starttls"],
 )
 async def test_default_port_on_connect(
-    event_loop: asyncio.AbstractEventLoop,
     bind_address: str,
     use_tls: bool,
     start_tls: bool,
@@ -131,7 +130,6 @@ async def test_default_port_on_connect(
 
 
 async def test_connect_hostname_takes_precedence(
-    event_loop: asyncio.AbstractEventLoop,
     hostname: str,
     smtpd_server_port: int,
 ) -> None:
@@ -144,7 +142,6 @@ async def test_connect_hostname_takes_precedence(
 
 
 async def test_connect_port_takes_precedence(
-    event_loop: asyncio.AbstractEventLoop,
     hostname: str,
     smtpd_server_port: int,
 ) -> None:
@@ -232,7 +229,6 @@ async def test_connect_event_loop_takes_precedence(
 
 
 async def test_connect_use_tls_takes_precedence(
-    event_loop: asyncio.AbstractEventLoop,
     hostname: str,
     smtpd_server_port: int,
 ) -> None:
@@ -246,7 +242,6 @@ async def test_connect_use_tls_takes_precedence(
 
 
 async def test_connect_validate_certs_takes_precedence(
-    event_loop: asyncio.AbstractEventLoop,
     hostname: str,
     smtpd_server_port: int,
 ) -> None:
@@ -260,7 +255,6 @@ async def test_connect_validate_certs_takes_precedence(
 
 
 async def test_connect_certificate_options_take_precedence(
-    event_loop: asyncio.AbstractEventLoop,
     hostname: str,
     smtpd_server_port: int,
 ) -> None:

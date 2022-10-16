@@ -141,7 +141,6 @@ async def test_starttls_disconnect_before_upgrade(
 async def test_starttls_invalid_responses(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    event_loop: asyncio.AbstractEventLoop,
     smtpd_class: Type[SMTPD],
     smtpd_mock_response_error_with_code: Callable,
     monkeypatch: pytest.MonkeyPatch,
@@ -223,7 +222,6 @@ async def test_tls_get_transport_info(
     smtp_client_tls: SMTP,
     hostname: str,
     smtpd_server_tls_port: int,
-    event_loop: asyncio.AbstractEventLoop,
 ) -> None:
     async with smtp_client_tls:
         compression = smtp_client_tls.get_transport_info("compression")
