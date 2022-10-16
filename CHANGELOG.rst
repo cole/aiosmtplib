@@ -5,9 +5,17 @@ Changelog
 ------------------
 
 - BREAKING CHANGE: Drop Python 3.5 and 3.6 support.
-- Change: The value of ``source_address`` is now passed as the local_addr param
-  to ``asyncio.create_connection``, allowing for binding to a specific IP (credit
-  @rafaelrds)
+- Change: The ``source_address`` argument now takes a (addr, port) tuple that is
+  passed as the ``local_addr`` param to ``asyncio.create_connection``, allowing
+  for binding to a specific IP. The new ``local_hostname`` argument that takes
+  the value to be sent to the server with the EHLO/HELO message. This behaviour
+  more closely matches ``smtplib``.
+
+  In order to not break existing usage, passing a string instead of a tuple to
+  ``source_address`` will give a DeprecationWarning, and use the value as it if
+  had been passed for ``local_hostname``.
+
+  Thanks @rafaelrds and @davidmcnabnz.
 - Bugfix: the ``mail_options`` and ``rcpt_options`` arguments to the ``send``
   coroutine no longer cause errors
 - Cleanup: Don't use private email.message.Message policy attribute (instead,

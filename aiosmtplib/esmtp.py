@@ -86,7 +86,7 @@ class ESMTP(SMTPConnection):
         :raises SMTPHeloError: on unexpected server response code
         """
         if hostname is None:
-            hostname = self.source_address
+            hostname = self.local_hostname
         response = await self.execute_command(
             b"HELO", hostname.encode("ascii"), timeout=timeout
         )
@@ -346,7 +346,7 @@ class ESMTP(SMTPConnection):
         :raises SMTPHeloError: on unexpected server response code
         """
         if hostname is None:
-            hostname = self.source_address
+            hostname = self.local_hostname
 
         response = await self.execute_command(
             b"EHLO", hostname.encode("ascii"), timeout=timeout

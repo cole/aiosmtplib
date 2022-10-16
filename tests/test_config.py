@@ -74,19 +74,23 @@ async def test_port_and_socket_path_raises() -> None:
         SMTP(port=1, socket_path="/tmp/test")  # nosec
 
 
-async def test_config_via_connect_kwargs(hostname: str, smtpd_server_port: int) -> None:
+async def test_config_via_connect_kwargs(
+    bind_address: str, unused_tcp_port: int, hostname: str, smtpd_server_port: int
+) -> None:
     client = SMTP(
         hostname="",
         use_tls=True,
         port=smtpd_server_port + 1,
-        source_address="example.com",
+        local_hostname="example.com",
     )
 
-    source_address = socket.getfqdn()
+    local_hostname = "smtp.example.com"
+    source_address = (bind_address, unused_tcp_port)
     await client.connect(
         hostname=hostname,
         port=smtpd_server_port,
         use_tls=False,
+        local_hostname=local_hostname,
         source_address=source_address,
     )
     assert client.is_connected
@@ -94,6 +98,7 @@ async def test_config_via_connect_kwargs(hostname: str, smtpd_server_port: int) 
     assert client.hostname == hostname
     assert client.port == smtpd_server_port
     assert client.use_tls is False
+    assert client.local_hostname == local_hostname
     assert client.source_address == source_address
 
     await client.quit()
@@ -152,7 +157,6 @@ async def test_connect_port_takes_precedence(
 
 
 async def test_connect_timeout_takes_precedence(
-    event_loop: asyncio.AbstractEventLoop,
     hostname: str,
     smtpd_server_port: int,
 ) -> None:
@@ -165,16 +169,45 @@ async def test_connect_timeout_takes_precedence(
 
 
 async def test_connect_source_address_takes_precedence(
-    event_loop: asyncio.AbstractEventLoop,
+    bind_address: str,
+    unused_tcp_port: int,
     hostname: str,
     smtpd_server_port: int,
 ) -> None:
     client = SMTP(
-        hostname=hostname, port=smtpd_server_port, source_address="example.com"
+        hostname=hostname, port=smtpd_server_port, source_address=("example.com", 444)
     )
-    await client.connect(source_address=socket.getfqdn())
+    await client.connect(source_address=(bind_address, unused_tcp_port))
 
-    assert client.source_address != "example.com"
+    assert client.source_address == (bind_address, unused_tcp_port)
+
+    await client.quit()
+
+
+async def test_connect_local_hostname_takes_precedence(
+    hostname: str,
+    smtpd_server_port: int,
+) -> None:
+    client = SMTP(hostname=hostname, port=smtpd_server_port, local_hostname="foo.com")
+    await client.connect(local_hostname="example.com")
+
+    assert client.local_hostname == "example.com"
+
+    await client.quit()
+
+
+async def test_connect_deprecated_source_address(
+    hostname: str,
+    smtpd_server_port: int,
+) -> None:
+    client = SMTP(
+        hostname=hostname,
+        port=smtpd_server_port,
+    )
+    with pytest.warns(DeprecationWarning):
+        await client.connect(source_address="example.com")  # type: ignore
+
+    assert client.local_hostname == "example.com"
 
     await client.quit()
 
@@ -303,6 +336,13 @@ async def test_starttls_certificate_options_take_precedence(
     await client.quit()
 
 
+async def test_source_address_deprecation_warning_init() -> None:
+    with pytest.warns(DeprecationWarning):
+        client = SMTP(source_address="example.com")
+
+    assert client.local_hostname == "example.com"
+
+
 async def test_loop_kwarg_deprecation_warning_init(
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
@@ -331,9 +371,9 @@ async def test_hostname_newline_raises_error() -> None:
         SMTP(hostname="localhost\r\n")
 
 
-async def test_source_address_newline_raises_error() -> None:
+async def test_local_hostname_newline_raises_error() -> None:
     with pytest.raises(ValueError):
         SMTP(
             hostname="localhost",
-            source_address="localhost\r\nRCPT TO: <hacker@hackers.org>",
+            local_hostname="localhost\r\nRCPT TO: <hacker@hackers.org>",
         )

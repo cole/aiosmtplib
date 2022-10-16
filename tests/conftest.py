@@ -72,7 +72,7 @@ def pytest_addoption(parser: Any) -> None:
     parser.addoption(
         "--bind-addr",
         action="store",
-        default="localhost",
+        default="127.0.0.1",
         help="address to bind on for network tests",
     )
 

@@ -5,7 +5,7 @@ import asyncio
 import socket
 import ssl
 import warnings
-from typing import Any, Optional, Type, Union
+from typing import Any, Optional, Tuple, Type, Union
 
 from .errors import (
     SMTPConnectError,
@@ -44,7 +44,8 @@ class SMTPConnection:
         port: Optional[int] = None,
         username: Optional[Union[str, bytes]] = None,
         password: Optional[Union[str, bytes]] = None,
-        source_address: Optional[str] = None,
+        local_hostname: Optional[str] = None,
+        source_address: Optional[Tuple[str, int]] = None,
         timeout: Optional[float] = DEFAULT_TIMEOUT,
         loop: Optional[asyncio.AbstractEventLoop] = None,
         use_tls: bool = False,
@@ -63,8 +64,13 @@ class SMTPConnection:
             ``587`` if ``start_tls`` is ``True``, or ``25`` otherwise.
         :keyword username:  Username to login as after connect.
         :keyword password:  Password for login after connect.
-        :keyword source_address: The hostname of the client. Defaults to the
-            result of :func:`socket.getfqdn`. Note that this call blocks.
+        :keyword local_hostname: The hostname of the client.  If specified, used as the
+            FQDN of the local host in the HELO/EHLO command. Otherwise, the
+            result of :func:`socket.getfqdn`. **Note that :func:`socket.getfqdn` will
+            block the event loop.**
+        :keyword source_address: Takes a 2-tuple (host, port) for the socket to bind to
+            as its source address before connecting. If the host is '' and port is 0,
+            the OS default behavior will be used.
         :keyword timeout: Default timeout value for the connection, in seconds.
             Defaults to 60.
         :keyword loop: event loop to run on. If no loop is passed, the running loop
@@ -99,10 +105,10 @@ class SMTPConnection:
         self.port = port
         self._login_username = username
         self._login_password = password
+        self._local_hostname = local_hostname
         self.timeout = timeout
         self.use_tls = use_tls
         self._start_tls_on_connect = start_tls
-        self._source_address = source_address
         self.validate_certs = validate_certs
         self.client_cert = client_cert
         self.client_key = client_key
@@ -110,6 +116,18 @@ class SMTPConnection:
         self.cert_bundle = cert_bundle
         self.socket_path = socket_path
         self.sock = sock
+
+        self.source_address: Optional[Tuple[str, int]] = None
+        if source_address and isinstance(source_address, str):
+            warnings.warn(
+                "The source_address keyword has been renamed to local_hostname "
+                "to match smtplib more closely.",
+                DeprecationWarning,
+                stacklevel=4,
+            )
+            self._local_hostname = source_address
+        else:
+            self.source_address = source_address
 
         if loop:
             warnings.warn(
@@ -149,15 +167,15 @@ class SMTPConnection:
         return bool(self.protocol is not None and self.protocol.is_connected)
 
     @property
-    def source_address(self) -> str:
+    def local_hostname(self) -> str:
         """
         Get the system hostname to be sent to the SMTP server.
         Simply caches the result of :func:`socket.getfqdn`.
         """
-        if self._source_address is None:
-            self._source_address = socket.getfqdn()
+        if self._local_hostname is None:
+            self._local_hostname = socket.getfqdn()
 
-        return self._source_address
+        return self._local_hostname
 
     def _update_settings_from_kwargs(
         self,
@@ -165,7 +183,8 @@ class SMTPConnection:
         port: Optional[Union[int, Default]] = _default,
         username: Optional[Union[str, bytes, Default]] = _default,
         password: Optional[Union[str, bytes, Default]] = _default,
-        source_address: Optional[Union[str, Default]] = _default,
+        local_hostname: Optional[Union[str, Default]] = _default,
+        source_address: Optional[Union[Tuple[str, int], Default]] = _default,
         timeout: Optional[Union[float, Default]] = _default,
         loop: Optional[Union[asyncio.AbstractEventLoop, Default]] = _default,
         use_tls: Optional[bool] = None,
@@ -208,8 +227,19 @@ class SMTPConnection:
 
         if timeout is not _default:
             self.timeout = timeout
+        if local_hostname is not _default:
+            self._local_hostname = local_hostname
         if source_address is not _default:
-            self._source_address = source_address
+            if isinstance(source_address, str):
+                warnings.warn(
+                    "The source_address keyword has been renamed to local_hostname "
+                    "to match smtplib more closely.",
+                    DeprecationWarning,
+                    stacklevel=3,
+                )
+                self._local_hostname = source_address
+            else:
+                self.source_address = source_address
         if client_cert is not _default:
             self.client_cert = client_cert
         if client_key is not _default:
@@ -242,11 +272,11 @@ class SMTPConnection:
                 "The socket_path option is not compatible with hostname/port"
             )
 
-        if self.source_address is not None and (
-            "\r" in self.source_address or "\n" in self.source_address
+        if self._local_hostname is not None and (
+            "\r" in self._local_hostname or "\n" in self._local_hostname
         ):
             raise ValueError(
-                "The source_address param contains prohibited newline characters"
+                "The local_hostname param contains prohibited newline characters"
             )
 
         if self.hostname is not None and (
@@ -262,7 +292,8 @@ class SMTPConnection:
         port: Optional[Union[int, Default]] = _default,
         username: Optional[Union[str, bytes, Default]] = _default,
         password: Optional[Union[str, bytes, Default]] = _default,
-        source_address: Optional[Union[str, Default]] = _default,
+        local_hostname: Optional[Union[str, Default]] = _default,
+        source_address: Optional[Union[Tuple[str, int], Default]] = _default,
         timeout: Optional[Union[float, Default]] = _default,
         loop: Optional[Union[asyncio.AbstractEventLoop, Default]] = _default,
         use_tls: Optional[bool] = None,
@@ -283,8 +314,13 @@ class SMTPConnection:
         :keyword hostname:  Server name (or IP) to connect to. Defaults to "localhost".
         :keyword port: Server port. Defaults ``465`` if ``use_tls`` is ``True``,
             ``587`` if ``start_tls`` is ``True``, or ``25`` otherwise.
-        :keyword source_address: The hostname of the client. Defaults to the
-            result of :func:`socket.getfqdn`. Note that this call blocks.
+        :keyword local_hostname: The hostname of the client.  If specified, used as the
+            FQDN of the local host in the HELO/EHLO command. Otherwise, the
+            result of :func:`socket.getfqdn`. **Note that :func:`socket.getfqdn` will
+            block the event loop.**
+        :keyword source_address: Takes a 2-tuple (host, port) for the socket to bind to
+            as its source address before connecting. If the host is '' and port is 0,
+            the OS default behavior will be used.
         :keyword timeout: Default timeout value for the connection, in seconds.
             Defaults to 60.
         :keyword loop: event loop to run on. If no loop is passed, the running loop
@@ -312,6 +348,7 @@ class SMTPConnection:
         self._update_settings_from_kwargs(
             hostname=hostname,
             port=port,
+            local_hostname=local_hostname,
             source_address=source_address,
             timeout=timeout,
             loop=loop,
@@ -402,7 +439,7 @@ class SMTPConnection:
                 port=self.port,
                 ssl=tls_context,
                 ssl_handshake_timeout=ssl_handshake_timeout,
-                local_addr=(self.source_address, 0),
+                local_addr=self.source_address,
             )
 
         try:

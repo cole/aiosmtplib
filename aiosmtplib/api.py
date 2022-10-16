@@ -33,7 +33,8 @@ async def send(
     mail_options: Optional[List[str]] = ...,
     rcpt_options: Optional[List[str]] = ...,
     timeout: Optional[float] = ...,
-    source_address: Optional[str] = ...,
+    local_hostname: Optional[str] = None,
+    source_address: Optional[Tuple[str, int]] = None,
     use_tls: bool = ...,
     start_tls: bool = ...,
     validate_certs: bool = ...,
@@ -59,7 +60,8 @@ async def send(
     mail_options: Optional[List[str]] = ...,
     rcpt_options: Optional[List[str]] = ...,
     timeout: Optional[float] = ...,
-    source_address: Optional[str] = ...,
+    local_hostname: Optional[str] = None,
+    source_address: Optional[Tuple[str, int]] = None,
     use_tls: bool = ...,
     start_tls: bool = ...,
     validate_certs: bool = ...,
@@ -85,7 +87,8 @@ async def send(
     mail_options: Optional[List[str]] = ...,
     rcpt_options: Optional[List[str]] = ...,
     timeout: Optional[float] = ...,
-    source_address: Optional[str] = ...,
+    local_hostname: Optional[str] = None,
+    source_address: Optional[Tuple[str, int]] = None,
     use_tls: bool = ...,
     start_tls: bool = ...,
     validate_certs: bool = ...,
@@ -111,7 +114,8 @@ async def send(
     mail_options: Optional[List[str]] = ...,
     rcpt_options: Optional[List[str]] = ...,
     timeout: Optional[float] = ...,
-    source_address: Optional[str] = ...,
+    local_hostname: Optional[str] = None,
+    source_address: Optional[Tuple[str, int]] = None,
     use_tls: bool = ...,
     start_tls: bool = ...,
     validate_certs: bool = ...,
@@ -137,7 +141,8 @@ async def send(
     mail_options: Optional[List[str]] = ...,
     rcpt_options: Optional[List[str]] = ...,
     timeout: Optional[float] = ...,
-    source_address: Optional[str] = ...,
+    local_hostname: Optional[str] = None,
+    source_address: Optional[Tuple[str, int]] = None,
     use_tls: bool = ...,
     start_tls: bool = ...,
     validate_certs: bool = ...,
@@ -163,7 +168,8 @@ async def send(
     mail_options: Optional[List[str]] = ...,
     rcpt_options: Optional[List[str]] = ...,
     timeout: Optional[float] = ...,
-    source_address: Optional[str] = ...,
+    local_hostname: Optional[str] = None,
+    source_address: Optional[Tuple[str, int]] = None,
     use_tls: bool = ...,
     start_tls: bool = ...,
     validate_certs: bool = ...,
@@ -189,7 +195,8 @@ async def send(
     mail_options: Optional[List[str]] = ...,
     rcpt_options: Optional[List[str]] = ...,
     timeout: Optional[float] = ...,
-    source_address: Optional[str] = ...,
+    local_hostname: Optional[str] = None,
+    source_address: Optional[Tuple[str, int]] = None,
     use_tls: bool = ...,
     start_tls: bool = ...,
     validate_certs: bool = ...,
@@ -215,7 +222,8 @@ async def send(
     mail_options: Optional[List[str]] = ...,
     rcpt_options: Optional[List[str]] = ...,
     timeout: Optional[float] = ...,
-    source_address: Optional[str] = ...,
+    local_hostname: Optional[str] = None,
+    source_address: Optional[Tuple[str, int]] = None,
     use_tls: bool = ...,
     start_tls: bool = ...,
     validate_certs: bool = ...,
@@ -241,7 +249,8 @@ async def send(
     mail_options: Optional[List[str]] = ...,
     rcpt_options: Optional[List[str]] = ...,
     timeout: Optional[float] = ...,
-    source_address: Optional[str] = ...,
+    local_hostname: Optional[str] = None,
+    source_address: Optional[Tuple[str, int]] = None,
     use_tls: bool = ...,
     start_tls: bool = ...,
     validate_certs: bool = ...,
@@ -249,6 +258,60 @@ async def send(
     client_key: Optional[str] = ...,
     tls_context: None = ...,
     cert_bundle: Optional[str] = ...,
+    socket_path: SocketPathType = ...,
+    sock: None = ...,
+) -> Tuple[Dict[str, SMTPResponse], str]:
+    ...
+
+
+@overload
+async def send(
+    message: Union[str, bytes],
+    sender: str = ...,
+    recipients: Union[str, Sequence[str]] = ...,
+    hostname: None = ...,
+    port: None = ...,
+    username: Optional[Union[str, bytes]] = ...,
+    password: Optional[Union[str, bytes]] = ...,
+    mail_options: Optional[List[str]] = ...,
+    rcpt_options: Optional[List[str]] = ...,
+    timeout: Optional[float] = ...,
+    local_hostname: Optional[str] = None,
+    source_address: Optional[Tuple[str, int]] = None,
+    use_tls: bool = ...,
+    start_tls: bool = ...,
+    validate_certs: bool = ...,
+    client_cert: Optional[str] = ...,
+    client_key: Optional[str] = ...,
+    tls_context: None = ...,
+    cert_bundle: Optional[str] = ...,
+    socket_path: SocketPathType = ...,
+    sock: None = ...,
+) -> Tuple[Dict[str, SMTPResponse], str]:
+    ...
+
+
+@overload
+async def send(
+    message: Union[email.message.EmailMessage, email.message.Message],
+    sender: Optional[str] = ...,
+    recipients: Optional[Union[str, Sequence[str]]] = ...,
+    hostname: None = ...,
+    port: None = ...,
+    username: Optional[Union[str, bytes]] = ...,
+    password: Optional[Union[str, bytes]] = ...,
+    mail_options: Optional[List[str]] = ...,
+    rcpt_options: Optional[List[str]] = ...,
+    timeout: Optional[float] = ...,
+    local_hostname: Optional[str] = None,
+    source_address: Optional[Tuple[str, int]] = None,
+    use_tls: bool = ...,
+    start_tls: bool = ...,
+    validate_certs: bool = ...,
+    client_cert: None = ...,
+    client_key: None = ...,
+    tls_context: Optional[ssl.SSLContext] = ...,
+    cert_bundle: None = ...,
     socket_path: SocketPathType = ...,
     sock: None = ...,
 ) -> Tuple[Dict[str, SMTPResponse], str]:
@@ -267,59 +330,8 @@ async def send(
     mail_options: Optional[List[str]] = ...,
     rcpt_options: Optional[List[str]] = ...,
     timeout: Optional[float] = ...,
-    source_address: Optional[str] = ...,
-    use_tls: bool = ...,
-    start_tls: bool = ...,
-    validate_certs: bool = ...,
-    client_cert: Optional[str] = ...,
-    client_key: Optional[str] = ...,
-    tls_context: None = ...,
-    cert_bundle: Optional[str] = ...,
-    socket_path: SocketPathType = ...,
-    sock: None = ...,
-) -> Tuple[Dict[str, SMTPResponse], str]:
-    ...
-
-
-@overload
-async def send(
-    message: Union[email.message.EmailMessage, email.message.Message],
-    sender: Optional[str] = ...,
-    recipients: Optional[Union[str, Sequence[str]]] = ...,
-    hostname: None = ...,
-    port: None = ...,
-    username: Optional[Union[str, bytes]] = ...,
-    password: Optional[Union[str, bytes]] = ...,
-    mail_options: Optional[List[str]] = ...,
-    rcpt_options: Optional[List[str]] = ...,
-    timeout: Optional[float] = ...,
-    source_address: Optional[str] = ...,
-    use_tls: bool = ...,
-    start_tls: bool = ...,
-    validate_certs: bool = ...,
-    client_cert: None = ...,
-    client_key: None = ...,
-    tls_context: Optional[ssl.SSLContext] = ...,
-    cert_bundle: None = ...,
-    socket_path: SocketPathType = ...,
-    sock: None = ...,
-) -> Tuple[Dict[str, SMTPResponse], str]:
-    ...
-
-
-@overload
-async def send(
-    message: Union[str, bytes],
-    sender: str = ...,
-    recipients: Union[str, Sequence[str]] = ...,
-    hostname: None = ...,
-    port: None = ...,
-    username: Optional[Union[str, bytes]] = ...,
-    password: Optional[Union[str, bytes]] = ...,
-    mail_options: Optional[List[str]] = ...,
-    rcpt_options: Optional[List[str]] = ...,
-    timeout: Optional[float] = ...,
-    source_address: Optional[str] = ...,
+    local_hostname: Optional[str] = None,
+    source_address: Optional[Tuple[str, int]] = None,
     use_tls: bool = ...,
     start_tls: bool = ...,
     validate_certs: bool = ...,
@@ -353,8 +365,13 @@ async def send(message, sender=None, recipients=None, **kwargs):  # type: ignore
         ``587`` if ``start_tls`` is ``True``, or ``25`` otherwise.
     :keyword username:  Username to login as after connect.
     :keyword password:  Password for login after connect.
-    :keyword source_address: The hostname of the client. Defaults to the
-        result of :py:func:`socket.getfqdn`. Note that this call blocks.
+    :keyword local_hostname: The hostname of the client.  If specified, used as the
+        FQDN of the local host in the HELO/EHLO command. Otherwise, the
+        result of :func:`socket.getfqdn`. **Note that :func:`socket.getfqdn` will
+        block the event loop.**
+    :keyword source_address: Takes a 2-tuple (host, port) for the socket to bind to
+        as its source address before connecting. If the host is '' and port is 0,
+        the OS default behavior will be used.
     :keyword timeout: Default timeout value for the connection, in seconds.
         Defaults to 60.
     :keyword use_tls: If True, make the initial connection to the server
