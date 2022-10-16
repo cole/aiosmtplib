@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "aiosmtplib"
-version = "2.0.0rc0"
+version = "2.0.0b0"
 description = "asyncio SMTP client"
 authors = ["Cole Maclean <hi@colemaclean.dev>"]
 license = "MIT"
