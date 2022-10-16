@@ -318,7 +318,8 @@ class SMTP(SMTPAuth):
             async with self:
                 return await self.sendmail(*args, **kwargs)
 
-        return async_to_sync(sendmail_coroutine(), loop=self.loop)
+        loop = self.loop or asyncio.get_event_loop()
+        return async_to_sync(sendmail_coroutine(), loop=loop)
 
     def send_message_sync(
         self, *args: Any, **kwargs: Any
@@ -332,4 +333,5 @@ class SMTP(SMTPAuth):
             async with self:
                 return await self.send_message(*args, **kwargs)
 
-        return async_to_sync(send_message_coroutine(), loop=self.loop)
+        loop = self.loop or asyncio.get_event_loop()
+        return async_to_sync(send_message_coroutine(), loop=loop)

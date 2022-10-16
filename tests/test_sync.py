@@ -46,6 +46,7 @@ def test_sendmail_sync_when_connected(
 
 
 def test_send_message_sync(
+    event_loop: asyncio.AbstractEventLoop,
     smtp_client_threaded: SMTP,
     message: email.message.Message,
 ) -> None:

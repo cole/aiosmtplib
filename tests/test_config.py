@@ -209,25 +209,6 @@ async def test_connect_deprecated_source_address(
     await client.quit()
 
 
-async def test_connect_event_loop_takes_precedence(
-    event_loop: asyncio.AbstractEventLoop,
-    hostname: str,
-    smtpd_server_port: int,
-) -> None:
-    event_loop_policy = asyncio.get_event_loop_policy()
-    init_loop = event_loop_policy.new_event_loop()
-    with pytest.warns(DeprecationWarning):
-        client = SMTP(hostname=hostname, port=smtpd_server_port, loop=init_loop)
-
-    with pytest.warns(DeprecationWarning):
-        await client.connect(loop=event_loop)
-
-    assert init_loop is not event_loop
-    assert client.loop is event_loop
-
-    await client.quit()
-
-
 async def test_connect_use_tls_takes_precedence(
     hostname: str,
     smtpd_server_port: int,
@@ -335,29 +316,6 @@ async def test_source_address_deprecation_warning_init() -> None:
         client = SMTP(source_address="example.com")
 
     assert client.local_hostname == "example.com"
-
-
-async def test_loop_kwarg_deprecation_warning_init(
-    event_loop: asyncio.AbstractEventLoop,
-) -> None:
-    with pytest.warns(DeprecationWarning):
-        client = SMTP(loop=event_loop)
-
-    assert client.loop == event_loop
-
-
-async def test_loop_kwarg_deprecation_warning_connect(
-    event_loop: asyncio.AbstractEventLoop,
-    hostname: str,
-    smtpd_server_port: int,
-    smtpd_server: asyncio.AbstractServer,
-) -> None:
-    client = SMTP(hostname=hostname, port=smtpd_server_port)
-
-    with pytest.warns(DeprecationWarning):
-        await client.connect(loop=event_loop)
-
-    assert client.loop == event_loop
 
 
 async def test_hostname_newline_raises_error() -> None:

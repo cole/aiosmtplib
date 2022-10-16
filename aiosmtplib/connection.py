@@ -47,7 +47,6 @@ class SMTPConnection:
         local_hostname: Optional[str] = None,
         source_address: Optional[Tuple[str, int]] = None,
         timeout: Optional[float] = DEFAULT_TIMEOUT,
-        loop: Optional[asyncio.AbstractEventLoop] = None,
         use_tls: bool = False,
         start_tls: bool = False,
         validate_certs: bool = True,
@@ -73,8 +72,6 @@ class SMTPConnection:
             the OS default behavior will be used.
         :keyword timeout: Default timeout value for the connection, in seconds.
             Defaults to 60.
-        :keyword loop: event loop to run on. If no loop is passed, the running loop
-            will be used. This option is deprecated, and will be removed in future.
         :keyword use_tls: If True, make the _initial_ connection to the server
             over TLS/SSL. Note that if the server supports STARTTLS only, this
             should be False.
@@ -129,14 +126,7 @@ class SMTPConnection:
         else:
             self.source_address = source_address
 
-        if loop:
-            warnings.warn(
-                "Passing an event loop via the loop keyword argument is deprecated. "
-                "It will be removed in version 2.0.",
-                DeprecationWarning,
-                stacklevel=4,
-            )
-        self.loop = loop
+        self.loop: Optional[asyncio.AbstractEventLoop] = None
         self._connect_lock: Optional[asyncio.Lock] = None
 
         self._validate_config()
@@ -186,7 +176,6 @@ class SMTPConnection:
         local_hostname: Optional[Union[str, Default]] = _default,
         source_address: Optional[Union[Tuple[str, int], Default]] = _default,
         timeout: Optional[Union[float, Default]] = _default,
-        loop: Optional[Union[asyncio.AbstractEventLoop, Default]] = _default,
         use_tls: Optional[bool] = None,
         start_tls: Optional[bool] = None,
         validate_certs: Optional[bool] = None,
@@ -203,15 +192,6 @@ class SMTPConnection:
         """
         if hostname is not _default:
             self.hostname = hostname
-        if loop is not _default:
-            if loop is not None:
-                warnings.warn(
-                    "Passing an event loop via the loop keyword argument is deprecated."
-                    " It will be removed in version 2.0.",
-                    DeprecationWarning,
-                    stacklevel=3,
-                )
-            self.loop = loop
         if use_tls is not None:
             self.use_tls = use_tls
         if start_tls is not None:
@@ -295,7 +275,6 @@ class SMTPConnection:
         local_hostname: Optional[Union[str, Default]] = _default,
         source_address: Optional[Union[Tuple[str, int], Default]] = _default,
         timeout: Optional[Union[float, Default]] = _default,
-        loop: Optional[Union[asyncio.AbstractEventLoop, Default]] = _default,
         use_tls: Optional[bool] = None,
         start_tls: Optional[bool] = None,
         validate_certs: Optional[bool] = None,
@@ -323,8 +302,6 @@ class SMTPConnection:
             the OS default behavior will be used.
         :keyword timeout: Default timeout value for the connection, in seconds.
             Defaults to 60.
-        :keyword loop: event loop to run on. If no loop is passed, the running loop
-            will be used. This option is deprecated, and will be removed in future.
         :keyword use_tls: If True, make the initial connection to the server
             over TLS/SSL. Note that if the server supports STARTTLS only, this
             should be False.
@@ -351,7 +328,6 @@ class SMTPConnection:
             local_hostname=local_hostname,
             source_address=source_address,
             timeout=timeout,
-            loop=loop,
             use_tls=use_tls,
             start_tls=start_tls,
             validate_certs=validate_certs,
@@ -366,8 +342,7 @@ class SMTPConnection:
         )
         self._validate_config()
 
-        if self.loop is None:
-            self.loop = asyncio.get_running_loop()
+        self.loop = asyncio.get_running_loop()
         if self._connect_lock is None:
             self._connect_lock = asyncio.Lock()
         await self._connect_lock.acquire()
