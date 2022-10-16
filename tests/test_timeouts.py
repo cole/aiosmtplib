@@ -96,7 +96,7 @@ async def test_timeout_on_starttls(
     await smtp_client.ehlo()
 
     with pytest.raises(SMTPTimeoutError):
-        await smtp_client.starttls(validate_certs=False, timeout=0.0)
+        await smtp_client.starttls(timeout=0.0)
 
 
 async def test_protocol_read_response_with_timeout_times_out(

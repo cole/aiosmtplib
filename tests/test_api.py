@@ -5,6 +5,7 @@ import asyncio
 import email
 import pathlib
 import socket
+import ssl
 from typing import Any, List, Tuple, Union
 
 import pytest
@@ -104,6 +105,7 @@ async def test_send_without_recipients(
 async def test_send_with_start_tls(
     hostname: str,
     smtpd_server_port: int,
+    client_tls_context: ssl.SSLContext,
     message: email.message.Message,
     received_messages: List[email.message.EmailMessage],
     received_commands: List[Tuple[str, Tuple[Any, ...]]],
@@ -113,7 +115,7 @@ async def test_send_with_start_tls(
         hostname=hostname,
         port=smtpd_server_port,
         start_tls=True,
-        validate_certs=False,
+        tls_context=client_tls_context,
     )
 
     assert not errors
@@ -129,13 +131,14 @@ async def test_send_with_login(
     received_commands: List[Tuple[str, Tuple[Any, ...]]],
     auth_username: str,
     auth_password: str,
+    client_tls_context: ssl.SSLContext,
 ) -> None:
     errors, response = await send(
         message,
         hostname=hostname,
         port=smtpd_server_port,
         start_tls=True,
-        validate_certs=False,
+        tls_context=client_tls_context,
         username=auth_username,
         password=auth_password,
     )

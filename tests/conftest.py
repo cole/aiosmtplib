@@ -166,7 +166,7 @@ def valid_client_cert(cert_authority: trustme.CA, hostname: str) -> trustme.Leaf
 
 
 @pytest.fixture(scope="session")
-def invalid_client_cert(
+def unknown_client_cert(
     unknown_cert_authority: trustme.CA, hostname: str
 ) -> trustme.LeafCert:
     return unknown_cert_authority.issue_cert(f"user@{hostname}")
@@ -179,6 +179,17 @@ def client_tls_context(
     tls_context = ssl.create_default_context()
     cert_authority.configure_trust(tls_context)
     valid_client_cert.configure_cert(tls_context)
+
+    return tls_context
+
+
+@pytest.fixture(scope="session")
+def unknown_client_tls_context(
+    unknown_cert_authority: trustme.CA, unknown_client_cert: trustme.LeafCert
+) -> ssl.SSLContext:
+    tls_context = ssl.create_default_context()
+    unknown_cert_authority.configure_trust(tls_context)
+    unknown_client_cert.configure_cert(tls_context)
 
     return tls_context
 
@@ -219,9 +230,9 @@ def valid_key_path(tmp_path: pathlib.Path, valid_client_cert: trustme.LeafCert) 
 
 @pytest.fixture(scope="function")
 def invalid_cert_path(
-    tmp_path: pathlib.Path, invalid_client_cert: trustme.LeafCert
+    tmp_path: pathlib.Path, unknown_client_cert: trustme.LeafCert
 ) -> str:
-    for pem in invalid_client_cert.cert_chain_pems:
+    for pem in unknown_client_cert.cert_chain_pems:
         pem.write_to_path(tmp_path / "invalid.pem", append=True)
 
     return str(tmp_path / "invalid.pem")
@@ -229,9 +240,9 @@ def invalid_cert_path(
 
 @pytest.fixture(scope="function")
 def invalid_key_path(
-    tmp_path: pathlib.Path, invalid_client_cert: trustme.LeafCert
+    tmp_path: pathlib.Path, unknown_client_cert: trustme.LeafCert
 ) -> str:
-    invalid_client_cert.private_key_pem.write_to_path(tmp_path / "invalid.key")
+    unknown_client_cert.private_key_pem.write_to_path(tmp_path / "invalid.key")
     return str(tmp_path / "invalid.key")
 
 
@@ -823,25 +834,48 @@ def smtpd_server_threaded_port(smtpd_controller: SMTPDController) -> int:
 
 
 @pytest.fixture(scope="function")
-def smtp_client(hostname: str, smtpd_server_port: int) -> SMTP:
-    return SMTP(hostname=hostname, port=smtpd_server_port, timeout=1.0)
-
-
-@pytest.fixture(scope="function")
-def smtp_client_smtputf8(hostname: str, smtpd_server_smtputf8_port: int) -> SMTP:
-    return SMTP(hostname=hostname, port=smtpd_server_smtputf8_port, timeout=1.0)
-
-
-@pytest.fixture(scope="function")
-def smtp_client_tls(hostname: str, smtpd_server_tls_port: int) -> SMTP:
+def smtp_client(
+    hostname: str, smtpd_server_port: int, client_tls_context: ssl.SSLContext
+) -> SMTP:
     return SMTP(
         hostname=hostname,
-        port=smtpd_server_tls_port,
-        use_tls=True,
-        validate_certs=False,
+        port=smtpd_server_port,
+        tls_context=client_tls_context,
+        timeout=1.0,
     )
 
 
 @pytest.fixture(scope="function")
-def smtp_client_threaded(hostname: str, smtpd_server_threaded_port: int) -> SMTP:
-    return SMTP(hostname=hostname, port=smtpd_server_threaded_port, timeout=1.0)
+def smtp_client_smtputf8(
+    hostname: str, smtpd_server_smtputf8_port: int, client_tls_context: ssl.SSLContext
+) -> SMTP:
+    return SMTP(
+        hostname=hostname,
+        port=smtpd_server_smtputf8_port,
+        timeout=1.0,
+        tls_context=client_tls_context,
+    )
+
+
+@pytest.fixture(scope="function")
+def smtp_client_tls(
+    hostname: str, smtpd_server_tls_port: int, client_tls_context: ssl.SSLContext
+) -> SMTP:
+    return SMTP(
+        hostname=hostname,
+        port=smtpd_server_tls_port,
+        use_tls=True,
+        tls_context=client_tls_context,
+    )
+
+
+@pytest.fixture(scope="function")
+def smtp_client_threaded(
+    hostname: str, smtpd_server_threaded_port: int, client_tls_context: ssl.SSLContext
+) -> SMTP:
+    return SMTP(
+        hostname=hostname,
+        port=smtpd_server_threaded_port,
+        timeout=1.0,
+        tls_context=client_tls_context,
+    )

@@ -39,7 +39,7 @@ async def test_starttls(
     smtp_client: SMTP, smtpd_server: asyncio.AbstractServer
 ) -> None:
     async with smtp_client:
-        response = await smtp_client.starttls(validate_certs=False)
+        response = await smtp_client.starttls()
 
         assert response.code == SMTPStatus.ready
 
@@ -56,9 +56,14 @@ async def test_starttls(
         assert response.code == SMTPStatus.completed
 
 
-async def test_starttls_init_kwarg(hostname: str, smtpd_server_port: int) -> None:
+async def test_starttls_init_kwarg(
+    hostname: str, smtpd_server_port: int, client_tls_context: ssl.SSLContext
+) -> None:
     smtp_client = SMTP(
-        hostname=hostname, port=smtpd_server_port, start_tls=True, validate_certs=False
+        hostname=hostname,
+        port=smtpd_server_port,
+        start_tls=True,
+        tls_context=client_tls_context,
     )
 
     async with smtp_client:
@@ -70,7 +75,7 @@ async def test_starttls_init_kwarg(hostname: str, smtpd_server_port: int) -> Non
 async def test_starttls_connect_kwarg(
     smtp_client: SMTP, smtpd_server: asyncio.AbstractServer
 ) -> None:
-    await smtp_client.connect(start_tls=True, validate_certs=False)
+    await smtp_client.connect(start_tls=True)
 
     # Make sure our connection was actually upgraded. ssl protocol transport is
     # private in UVloop, so just check the class name.
@@ -85,7 +90,7 @@ async def test_starttls_with_explicit_server_hostname(
     async with smtp_client:
         await smtp_client.ehlo()
 
-        await smtp_client.starttls(validate_certs=False, server_hostname=hostname)
+        await smtp_client.starttls(server_hostname=hostname)
 
 
 async def test_starttls_not_supported(
@@ -101,7 +106,7 @@ async def test_starttls_not_supported(
         await smtp_client.ehlo()
 
         with pytest.raises(SMTPException):
-            await smtp_client.starttls(validate_certs=False)
+            await smtp_client.starttls()
 
 
 async def test_starttls_advertised_but_not_supported(
@@ -119,7 +124,7 @@ async def test_starttls_advertised_but_not_supported(
         await smtp_client.ehlo()
 
         with pytest.raises(SMTPException):
-            await smtp_client.starttls(validate_certs=False)
+            await smtp_client.starttls()
 
 
 async def test_starttls_disconnect_before_upgrade(
@@ -135,7 +140,7 @@ async def test_starttls_disconnect_before_upgrade(
 
     async with smtp_client:
         with pytest.raises(SMTPServerDisconnected):
-            await smtp_client.starttls(validate_certs=False)
+            await smtp_client.starttls()
 
 
 async def test_starttls_invalid_responses(
@@ -156,7 +161,7 @@ async def test_starttls_invalid_responses(
         old_extensions = copy.copy(smtp_client.esmtp_extensions)
 
         with pytest.raises(SMTPResponseException) as exception_info:
-            await smtp_client.starttls(validate_certs=False)
+            await smtp_client.starttls()
 
         assert exception_info.value.code == error_code
         # Make sure our state has been _not_ been cleared
@@ -169,18 +174,19 @@ async def test_starttls_invalid_responses(
 
 
 async def test_starttls_with_client_cert(
-    smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
+    hostname: str,
+    smtpd_server_port: int,
     ca_cert_path: str,
     valid_cert_path: str,
     valid_key_path: str,
 ) -> None:
+    smtp_client = SMTP(hostname=hostname, port=smtpd_server_port)
     async with smtp_client:
         response = await smtp_client.starttls(
             client_cert=valid_cert_path,
             client_key=valid_key_path,
             cert_bundle=ca_cert_path,
-            validate_certs=True,
         )
 
         assert response.code == SMTPStatus.ready
@@ -190,32 +196,75 @@ async def test_starttls_with_client_cert(
 
 
 async def test_starttls_with_invalid_client_cert(
-    smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
+    hostname: str,
+    smtpd_server_port: int,
     invalid_cert_path: str,
     invalid_key_path: str,
 ) -> None:
+    smtp_client = SMTP(hostname=hostname, port=smtpd_server_port)
     async with smtp_client:
         with pytest.raises(ssl.SSLError):
             await smtp_client.starttls(
                 client_cert=invalid_cert_path,
                 client_key=invalid_key_path,
                 cert_bundle=invalid_cert_path,
-                validate_certs=True,
             )
 
 
-async def test_starttls_cert_error(
-    event_loop: asyncio.AbstractEventLoop,
-    smtp_client: SMTP,
+async def test_starttls_with_invalid_client_cert_no_validate(
     smtpd_server: asyncio.AbstractServer,
+    hostname: str,
+    smtpd_server_port: int,
+    invalid_cert_path: str,
+    invalid_key_path: str,
 ) -> None:
-    # Don't fail on the expected exception
-    event_loop.set_exception_handler(None)
+    smtp_client = SMTP(hostname=hostname, port=smtpd_server_port)
+    async with smtp_client:
+        response = await smtp_client.starttls(
+            client_cert=invalid_cert_path,
+            client_key=invalid_key_path,
+            cert_bundle=invalid_cert_path,
+            validate_certs=False,
+        )
 
+        assert response.code == SMTPStatus.ready
+        assert smtp_client.client_cert == invalid_cert_path
+        assert smtp_client.client_key == invalid_key_path
+        assert smtp_client.cert_bundle == invalid_cert_path
+
+
+async def test_starttls_cert_error(
+    smtpd_server: asyncio.AbstractServer,
+    hostname: str,
+    smtpd_server_port: int,
+    unknown_client_tls_context: ssl.SSLContext,
+) -> None:
+    smtp_client = SMTP(
+        hostname=hostname,
+        port=smtpd_server_port,
+        tls_context=unknown_client_tls_context,
+    )
     async with smtp_client:
         with pytest.raises(ssl.SSLError):
-            await smtp_client.starttls(validate_certs=True)
+            await smtp_client.starttls()
+
+
+async def test_starttls_cert_no_validate(
+    smtpd_server: asyncio.AbstractServer,
+    hostname: str,
+    smtpd_server_port: int,
+    unknown_client_tls_context: ssl.SSLContext,
+) -> None:
+    smtp_client = SMTP(
+        hostname=hostname,
+        port=smtpd_server_port,
+        validate_certs=False,
+    )
+    async with smtp_client:
+        response = await smtp_client.starttls()
+
+    assert response.code == SMTPStatus.ready
 
 
 async def test_tls_get_transport_info(
@@ -251,13 +300,9 @@ async def test_tls_get_transport_info(
 
 
 async def test_tls_smtp_connect_to_non_tls_server(
-    event_loop: asyncio.AbstractEventLoop,
     smtp_client_tls: SMTP,
     smtpd_server_port: int,
 ) -> None:
-    # Don't fail on the expected exception
-    event_loop.set_exception_handler(None)
-
     with pytest.raises(SMTPConnectError):
         await smtp_client_tls.connect(port=smtpd_server_port)
     assert not smtp_client_tls.is_connected
@@ -278,16 +323,16 @@ async def test_tls_connection_with_existing_sslcontext(
 
 
 async def test_tls_connection_with_client_cert(
-    smtp_client_tls: SMTP,
     smtpd_server_tls: asyncio.AbstractServer,
     hostname: str,
+    smtpd_server_tls_port: int,
     ca_cert_path: str,
     valid_cert_path: str,
     valid_key_path: str,
 ) -> None:
+    smtp_client_tls = SMTP(hostname=hostname, port=smtpd_server_tls_port, use_tls=True)
     await smtp_client_tls.connect(
         hostname=hostname,
-        validate_certs=True,
         client_cert=valid_cert_path,
         client_key=valid_key_path,
         cert_bundle=ca_cert_path,
@@ -299,14 +344,13 @@ async def test_tls_connection_with_client_cert(
 
 
 async def test_tls_connection_with_cert_error(
-    event_loop: asyncio.AbstractEventLoop,
-    smtp_client_tls: SMTP,
     smtpd_server_tls: asyncio.AbstractServer,
+    hostname: str,
+    smtpd_server_tls_port: int,
 ) -> None:
-    # Don't fail on the expected exception
-    event_loop.set_exception_handler(None)
+    smtp_client_tls = SMTP(hostname=hostname, port=smtpd_server_tls_port, use_tls=True)
 
     with pytest.raises(SMTPConnectError) as exception_info:
-        await smtp_client_tls.connect(validate_certs=True)
+        await smtp_client_tls.connect()
 
     assert "CERTIFICATE" in str(exception_info.value).upper()

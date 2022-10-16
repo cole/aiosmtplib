@@ -225,7 +225,7 @@ async def test_disconnected_server_raises_on_starttls(
     await smtp_client.ehlo()
 
     with pytest.raises(SMTPServerDisconnected):
-        await smtp_client.starttls(validate_certs=False, timeout=1.0)
+        await smtp_client.starttls(timeout=1.0)
 
     assert smtp_client.protocol is None
     assert smtp_client.transport is None
@@ -360,7 +360,6 @@ async def test_connect_with_login(
     # STARTTLS is required for login
     await smtp_client.connect(
         start_tls=True,
-        validate_certs=False,
         username=auth_username,
         password=auth_password,
     )
