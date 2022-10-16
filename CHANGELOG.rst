@@ -4,8 +4,8 @@ Changelog
 2.0.0 (unreleased)
 ------------------
 
-- BREAKING CHANGE: Drop Python 3.5 and 3.6 support.
-- BREAKING CHANGE: Remove deprecated ``loop`` keyword argument for the SMTP class.
+- **BREAKING**: Drop Python 3.5 and 3.6 support.
+- **BREAKING**: Remove deprecated ``loop`` keyword argument for the SMTP class.
 - Change: The ``source_address`` argument now takes a (addr, port) tuple that is
   passed as the ``local_addr`` param to ``asyncio.create_connection``, allowing
   for binding to a specific IP. The new ``local_hostname`` argument that takes
@@ -16,7 +16,8 @@ Changelog
   ``source_address`` will give a DeprecationWarning, and use the value as it if
   had been passed for ``local_hostname``.
 
-  Thanks @rafaelrds and @davidmcnabnz.
+  Thanks @rafaelrds and @davidmcnabnz for raising and contributing work on this
+  issue.
 - Bugfix: the ``mail_options`` and ``rcpt_options`` arguments to the ``send``
   coroutine no longer cause errors
 - Cleanup: Don't use private email.message.Message policy attribute (instead,
