@@ -80,6 +80,7 @@ async def test_config_via_connect_kwargs(
     client = SMTP(
         hostname="",
         use_tls=True,
+        start_tls=None,
         port=smtpd_server_port + 1,
         local_hostname="example.com",
     )
@@ -90,6 +91,7 @@ async def test_config_via_connect_kwargs(
         hostname=hostname,
         port=smtpd_server_port,
         use_tls=False,
+        start_tls=False,
         local_hostname=local_hostname,
         source_address=source_address,
     )
@@ -100,6 +102,7 @@ async def test_config_via_connect_kwargs(
     assert client.use_tls is False
     assert client.local_hostname == local_hostname
     assert client.source_address == source_address
+    assert client._start_tls_on_connect is False
 
     await client.quit()
 
@@ -133,7 +136,7 @@ async def test_connect_hostname_takes_precedence(
     hostname: str,
     smtpd_server_port: int,
 ) -> None:
-    client = SMTP(hostname="example.com", port=smtpd_server_port)
+    client = SMTP(hostname="example.com", port=smtpd_server_port, start_tls=False)
     await client.connect(hostname=hostname)
 
     assert client.hostname == hostname
@@ -145,7 +148,7 @@ async def test_connect_port_takes_precedence(
     hostname: str,
     smtpd_server_port: int,
 ) -> None:
-    client = SMTP(hostname=hostname, port=17)
+    client = SMTP(hostname=hostname, port=17, start_tls=False)
     await client.connect(port=smtpd_server_port)
 
     assert client.port == smtpd_server_port
@@ -157,7 +160,9 @@ async def test_connect_timeout_takes_precedence(
     hostname: str,
     smtpd_server_port: int,
 ) -> None:
-    client = SMTP(hostname=hostname, port=smtpd_server_port, timeout=0.66)
+    client = SMTP(
+        hostname=hostname, port=smtpd_server_port, timeout=0.66, start_tls=False
+    )
     await client.connect(timeout=0.99)
 
     assert client.timeout == 0.99
@@ -172,7 +177,10 @@ async def test_connect_source_address_takes_precedence(
     smtpd_server_port: int,
 ) -> None:
     client = SMTP(
-        hostname=hostname, port=smtpd_server_port, source_address=("example.com", 444)
+        hostname=hostname,
+        port=smtpd_server_port,
+        start_tls=False,
+        source_address=("example.com", 444),
     )
     await client.connect(source_address=(bind_address, unused_tcp_port))
 
@@ -185,7 +193,12 @@ async def test_connect_local_hostname_takes_precedence(
     hostname: str,
     smtpd_server_port: int,
 ) -> None:
-    client = SMTP(hostname=hostname, port=smtpd_server_port, local_hostname="foo.com")
+    client = SMTP(
+        hostname=hostname,
+        port=smtpd_server_port,
+        start_tls=False,
+        local_hostname="foo.com",
+    )
     await client.connect(local_hostname="example.com")
 
     assert client.local_hostname == "example.com"
@@ -200,6 +213,7 @@ async def test_connect_deprecated_source_address(
     client = SMTP(
         hostname=hostname,
         port=smtpd_server_port,
+        start_tls=False,
     )
     with pytest.warns(DeprecationWarning):
         await client.connect(source_address="example.com")  # type: ignore
@@ -212,8 +226,14 @@ async def test_connect_deprecated_source_address(
 async def test_connect_use_tls_takes_precedence(
     hostname: str,
     smtpd_server_port: int,
+    client_tls_context: ssl.SSLContext,
 ) -> None:
-    client = SMTP(hostname=hostname, port=smtpd_server_port, use_tls=True)
+    client = SMTP(
+        hostname=hostname,
+        port=smtpd_server_port,
+        use_tls=True,
+        tls_context=client_tls_context,
+    )
 
     await client.connect(use_tls=False)
 
@@ -225,8 +245,14 @@ async def test_connect_use_tls_takes_precedence(
 async def test_connect_validate_certs_takes_precedence(
     hostname: str,
     smtpd_server_port: int,
+    client_tls_context: ssl.SSLContext,
 ) -> None:
-    client = SMTP(hostname=hostname, port=smtpd_server_port, validate_certs=False)
+    client = SMTP(
+        hostname=hostname,
+        port=smtpd_server_port,
+        validate_certs=False,
+        tls_context=client_tls_context,
+    )
 
     await client.connect(validate_certs=True)
 
@@ -238,6 +264,7 @@ async def test_connect_validate_certs_takes_precedence(
 async def test_connect_certificate_options_take_precedence(
     hostname: str,
     smtpd_server_port: int,
+    client_tls_context: ssl.SSLContext,
 ) -> None:
     client = SMTP(
         hostname=hostname,
@@ -245,6 +272,7 @@ async def test_connect_certificate_options_take_precedence(
         client_cert="test",
         client_key="test",
         cert_bundle="test",
+        start_tls=False,
     )
 
     await client.connect(client_cert=None, client_key=None, cert_bundle=None)
@@ -283,6 +311,7 @@ async def test_starttls_certificate_options_take_precedence(
     client = SMTP(
         hostname=hostname,
         port=smtpd_server_port,
+        start_tls=False,
         validate_certs=False,
         client_cert="test1",
         client_key="test1",

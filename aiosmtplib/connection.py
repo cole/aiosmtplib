@@ -48,7 +48,7 @@ class SMTPConnection:
         source_address: Optional[Tuple[str, int]] = None,
         timeout: Optional[float] = DEFAULT_TIMEOUT,
         use_tls: bool = False,
-        start_tls: bool = False,
+        start_tls: Optional[bool] = None,
         validate_certs: bool = True,
         client_cert: Optional[str] = None,
         client_key: Optional[str] = None,
@@ -177,7 +177,7 @@ class SMTPConnection:
         source_address: Optional[Union[Tuple[str, int], Default]] = _default,
         timeout: Optional[Union[float, Default]] = _default,
         use_tls: Optional[bool] = None,
-        start_tls: Optional[bool] = None,
+        start_tls: Optional[Union[bool, Default]] = _default,
         validate_certs: Optional[bool] = None,
         client_cert: Optional[Union[str, Default]] = _default,
         client_key: Optional[Union[str, Default]] = _default,
@@ -194,7 +194,7 @@ class SMTPConnection:
             self.hostname = hostname
         if use_tls is not None:
             self.use_tls = use_tls
-        if start_tls is not None:
+        if start_tls is not _default:
             self._start_tls_on_connect = start_tls
         if validate_certs is not None:
             self.validate_certs = validate_certs
@@ -276,7 +276,7 @@ class SMTPConnection:
         source_address: Optional[Union[Tuple[str, int], Default]] = _default,
         timeout: Optional[Union[float, Default]] = _default,
         use_tls: Optional[bool] = None,
-        start_tls: Optional[bool] = None,
+        start_tls: Optional[Union[bool, Default]] = _default,
         validate_certs: Optional[bool] = None,
         client_cert: Optional[Union[str, Default]] = _default,
         client_key: Optional[Union[str, Default]] = _default,
@@ -363,16 +363,16 @@ class SMTPConnection:
             self.close()  # Reset our state to disconnected
             raise exc
 
-        if self._start_tls_on_connect:
-            await self.starttls()
-
-        if self._login_username is not None:
-            login_password = (
-                self._login_password if self._login_password is not None else ""
-            )
-            await self.login(self._login_username, login_password)
+        await self._post_connect()
 
         return response
+
+    async def _post_connect(self) -> None:
+        """
+        Hook for post connect commands to execute, depending on config
+        (STARTTLS or LOGIN).
+        """
+        pass
 
     async def _create_connection(self) -> SMTPResponse:
         if self.loop is None:

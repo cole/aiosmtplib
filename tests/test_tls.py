@@ -84,6 +84,44 @@ async def test_starttls_connect_kwarg(
     await smtp_client.quit()
 
 
+async def test_starttls_auto(
+    hostname: str, smtpd_server_port: int, client_tls_context: ssl.SSLContext
+) -> None:
+    smtp_client = SMTP(
+        hostname=hostname,
+        port=smtpd_server_port,
+        start_tls=None,
+        tls_context=client_tls_context,
+    )
+
+    async with smtp_client:
+        # Make sure our connection was actually upgraded. ssl protocol transport is
+        # private in UVloop, so just check the class name.
+        assert "SSL" in type(smtp_client.transport).__name__
+
+
+async def test_starttls_auto_connect_kwarg(
+    hostname: str,
+    smtpd_server_port: int,
+    smtpd_server: asyncio.AbstractServer,
+    client_tls_context: ssl.SSLContext,
+) -> None:
+    smtp_client = SMTP(
+        hostname=hostname,
+        port=smtpd_server_port,
+        start_tls=False,
+        tls_context=client_tls_context,
+    )
+
+    await smtp_client.connect(start_tls=None)
+
+    # Make sure our connection was actually upgraded. ssl protocol transport is
+    # private in UVloop, so just check the class name.
+    assert "SSL" in type(smtp_client.transport).__name__
+
+    await smtp_client.quit()
+
+
 async def test_starttls_with_explicit_server_hostname(
     smtp_client: SMTP, hostname: str, smtpd_server: asyncio.AbstractServer
 ) -> None:
@@ -181,7 +219,7 @@ async def test_starttls_with_client_cert(
     valid_cert_path: str,
     valid_key_path: str,
 ) -> None:
-    smtp_client = SMTP(hostname=hostname, port=smtpd_server_port)
+    smtp_client = SMTP(hostname=hostname, port=smtpd_server_port, start_tls=False)
     async with smtp_client:
         response = await smtp_client.starttls(
             client_cert=valid_cert_path,
@@ -202,7 +240,7 @@ async def test_starttls_with_invalid_client_cert(
     invalid_cert_path: str,
     invalid_key_path: str,
 ) -> None:
-    smtp_client = SMTP(hostname=hostname, port=smtpd_server_port)
+    smtp_client = SMTP(hostname=hostname, port=smtpd_server_port, start_tls=False)
     async with smtp_client:
         with pytest.raises(ssl.SSLError):
             await smtp_client.starttls(
@@ -219,7 +257,7 @@ async def test_starttls_with_invalid_client_cert_no_validate(
     invalid_cert_path: str,
     invalid_key_path: str,
 ) -> None:
-    smtp_client = SMTP(hostname=hostname, port=smtpd_server_port)
+    smtp_client = SMTP(hostname=hostname, port=smtpd_server_port, start_tls=False)
     async with smtp_client:
         response = await smtp_client.starttls(
             client_cert=invalid_cert_path,
@@ -243,10 +281,27 @@ async def test_starttls_cert_error(
     smtp_client = SMTP(
         hostname=hostname,
         port=smtpd_server_port,
+        start_tls=False,
         tls_context=unknown_client_tls_context,
     )
     async with smtp_client:
         with pytest.raises(ssl.SSLError):
+            await smtp_client.starttls()
+
+
+async def test_starttls_already_upgraded_error(
+    smtpd_server: asyncio.AbstractServer,
+    hostname: str,
+    smtpd_server_port: int,
+    client_tls_context: ssl.SSLContext,
+) -> None:
+    smtp_client = SMTP(
+        hostname=hostname,
+        port=smtpd_server_port,
+        tls_context=client_tls_context,
+    )
+    async with smtp_client:
+        with pytest.raises(SMTPException, match="Connection already using TLS"):
             await smtp_client.starttls()
 
 
@@ -259,6 +314,7 @@ async def test_starttls_cert_no_validate(
     smtp_client = SMTP(
         hostname=hostname,
         port=smtpd_server_port,
+        start_tls=False,
         validate_certs=False,
     )
     async with smtp_client:

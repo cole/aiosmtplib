@@ -841,6 +841,7 @@ def smtp_client(
         hostname=hostname,
         port=smtpd_server_port,
         tls_context=client_tls_context,
+        start_tls=False,
         timeout=1.0,
     )
 
@@ -853,6 +854,7 @@ def smtp_client_smtputf8(
         hostname=hostname,
         port=smtpd_server_smtputf8_port,
         timeout=1.0,
+        start_tls=False,
         tls_context=client_tls_context,
     )
 
@@ -877,5 +879,6 @@ def smtp_client_threaded(
         hostname=hostname,
         port=smtpd_server_threaded_port,
         timeout=1.0,
+        start_tls=False,
         tls_context=client_tls_context,
     )

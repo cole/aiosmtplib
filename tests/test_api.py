@@ -21,8 +21,14 @@ async def test_send(
     smtpd_server_port: int,
     message: email.message.Message,
     received_messages: List[email.message.EmailMessage],
+    client_tls_context: ssl.SSLContext,
 ) -> None:
-    errors, response = await send(message, hostname=hostname, port=smtpd_server_port)
+    errors, response = await send(
+        message,
+        hostname=hostname,
+        port=smtpd_server_port,
+        tls_context=client_tls_context,
+    )
 
     assert not errors
     assert len(received_messages) == 1
@@ -42,6 +48,7 @@ async def test_send_with_str(
         port=smtpd_server_port,
         sender=sender_str,
         recipients=[recipient_str],
+        start_tls=False,
     )
 
     assert not errors
@@ -62,6 +69,7 @@ async def test_send_with_bytes(
         port=smtpd_server_port,
         sender=sender_str,
         recipients=[recipient_str],
+        start_tls=False,
     )
 
     assert not errors
@@ -82,6 +90,7 @@ async def test_send_without_sender(
             port=smtpd_server_port,
             sender=None,
             recipients=[recipient_str],
+            start_tls=False,
         )
 
 
@@ -99,6 +108,7 @@ async def test_send_without_recipients(
             port=smtpd_server_port,
             sender=sender_str,
             recipients=[],
+            start_tls=False,
         )
 
 
@@ -162,6 +172,7 @@ async def test_send_via_socket(
             hostname=None,
             port=None,
             sock=sock,
+            start_tls=False,
         )
 
         assert not errors
@@ -181,6 +192,7 @@ async def test_send_via_socket_path(
         hostname=None,
         port=None,
         socket_path=socket_path,
+        start_tls=False,
     )
 
     assert not errors
@@ -202,6 +214,7 @@ async def test_send_with_mail_options(
         sender=sender_str,
         recipients=[recipient_str],
         mail_options=["BODY=8BITMIME"],
+        start_tls=False,
     )
 
     assert not errors
@@ -224,6 +237,7 @@ async def test_send_with_rcpt_options(
         recipients=[recipient_str],
         # RCPT params are not supported by the server; just check that the kwarg works
         rcpt_options=[],
+        start_tls=False,
     )
 
     assert not errors

@@ -23,7 +23,7 @@ message = "\n".join(lines)
 message_len = len(message.encode("utf-8"))
 print(f"Message length (bytes): {message_len}")
 
-smtp_client = SMTP(hostname=hostname or "localhost", port=port)
+smtp_client = SMTP(hostname=hostname or "localhost", port=port, start_tls=False)
 sendmail_errors, sendmail_response = smtp_client.sendmail_sync(
     raw_sender, recipients, message
 )

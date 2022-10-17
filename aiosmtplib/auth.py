@@ -235,3 +235,12 @@ class SMTPAuth(ESMTP):
             raise SMTPAuthenticationError(response.code, response.message)
 
         return response
+
+    async def _post_connect(self) -> None:
+        await super()._post_connect()
+
+        if self._login_username is not None:
+            login_password = (
+                self._login_password if self._login_password is not None else ""
+            )
+            await self.login(self._login_username, login_password)

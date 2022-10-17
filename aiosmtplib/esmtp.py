@@ -1,6 +1,7 @@
 """
 Low level ESMTP command API.
 """
+import asyncio
 import re
 import ssl
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
@@ -40,6 +41,7 @@ class ESMTP(SMTPConnection):
         self.esmtp_extensions: Dict[str, str] = {}
         self.supports_esmtp = False
         self.server_auth_methods: List[str] = []
+        self._starttls_upgraded = asyncio.Event()
 
     @property
     def last_ehlo_response(self) -> Union[SMTPResponse, None]:
@@ -364,6 +366,21 @@ class ESMTP(SMTPConnection):
         """
         return extension.lower() in self.esmtp_extensions
 
+    async def _post_connect(self) -> None:
+        if self._start_tls_on_connect is True:
+            await self.starttls()
+        # If _start_tls_on_connect hasn't been set either way,
+        # try to STARTTLS if supported, with graceful failure handling
+        elif self._start_tls_on_connect is None and not (
+            self.use_tls or self._starttls_upgraded.is_set()
+        ):
+            await self._ehlo_or_helo_if_needed()
+            if self.supports_extension("starttls"):
+                try:
+                    await self.starttls()
+                except SMTPException:
+                    pass
+
     async def _ehlo_or_helo_if_needed(self) -> None:
         """
         Call self.ehlo() and/or self.helo() if needed.
@@ -422,6 +439,9 @@ class ESMTP(SMTPConnection):
         if self.protocol is None:
             raise SMTPServerDisconnected("Server not connected")
 
+        if self._starttls_upgraded.is_set():
+            raise SMTPException("Connection already using TLS")
+
         self._update_settings_from_kwargs(
             validate_certs=validate_certs,
             client_cert=client_cert,
@@ -447,6 +467,8 @@ class ESMTP(SMTPConnection):
             raise SMTPServerDisconnected("Connection lost")
         # Update our transport reference
         self.transport = self.protocol.transport
+
+        self._starttls_upgraded.set()
 
         # RFC 3207 part 4.2:
         # The client MUST discard any knowledge obtained from the server, such

@@ -3,6 +3,7 @@ Tests that cover asyncio usage.
 """
 
 import asyncio
+import ssl
 from typing import Any, Awaitable, Callable, Dict, List, Tuple, Type
 
 import pytest
@@ -59,13 +60,16 @@ async def test_sendmail_multiple_times_with_gather(
 async def test_connect_and_sendmail_multiple_times_with_gather(
     hostname: str,
     smtpd_server_port: int,
+    client_tls_context: ssl.SSLContext,
     sender_str: str,
     message_str: str,
 ) -> None:
     async def connect_and_send(
         *args: Any, **kwargs: Any
     ) -> Tuple[Dict[str, SMTPResponse], str]:
-        async with SMTP(hostname=hostname, port=smtpd_server_port) as client:
+        async with SMTP(
+            hostname=hostname, port=smtpd_server_port, tls_context=client_tls_context
+        ) as client:
             response = await client.sendmail(*args, **kwargs)
 
         return response
@@ -85,13 +89,16 @@ async def test_multiple_clients_with_gather(
     hostname: str,
     smtpd_server: asyncio.AbstractServer,
     smtpd_server_port: int,
+    client_tls_context: ssl.SSLContext,
     sender_str: str,
     message_str: str,
 ) -> None:
     async def connect_and_send(
         *args: Any, **kwargs: Any
     ) -> Tuple[Dict[str, SMTPResponse], str]:
-        client = SMTP(hostname=hostname, port=smtpd_server_port)
+        client = SMTP(
+            hostname=hostname, port=smtpd_server_port, tls_context=client_tls_context
+        )
         async with client:
             response = await client.sendmail(*args, **kwargs)
 
@@ -111,11 +118,14 @@ async def test_multiple_clients_with_gather(
 async def test_multiple_actions_in_context_manager_with_gather(
     hostname: str,
     smtpd_server_port: int,
+    client_tls_context: ssl.SSLContext,
     sender_str: str,
     message_str: str,
 ) -> None:
     async def connect_and_run_commands(*args: Any, **kwargs: Any) -> SMTPResponse:
-        async with SMTP(hostname=hostname, port=smtpd_server_port) as client:
+        async with SMTP(
+            hostname=hostname, port=smtpd_server_port, tls_context=client_tls_context
+        ) as client:
             await client.ehlo()
             await client.help()
             response = await client.noop()
@@ -166,8 +176,11 @@ async def test_close_works_on_stopped_loop(
     event_loop: asyncio.AbstractEventLoop,
     hostname: str,
     smtpd_server_port: int,
+    client_tls_context: ssl.SSLContext,
 ) -> None:
-    client = SMTP(hostname=hostname, port=smtpd_server_port)
+    client = SMTP(
+        hostname=hostname, port=smtpd_server_port, tls_context=client_tls_context
+    )
 
     await client.connect()
     assert client.is_connected
