@@ -64,6 +64,24 @@ DEFAULT_TIMEOUT = 60
 T = TypeVar("T")
 
 
+def ehlo_or_helo_if_needed_check(
+    func: Callable[..., Awaitable[T]]
+) -> Callable[..., Awaitable[T]]:
+    """
+    Decorator for EHLO/HELO check.
+    """
+
+    # TODO: the type hints on here are a little odd and could be improved
+    # in py310
+    @functools.wraps(func)
+    async def wrapper(self: "SMTP", *args: Any, **kwargs: Any) -> Any:
+        if self.is_ehlo_or_helo_needed:
+            await self._ehlo_or_helo_if_needed()
+        return await func(self, *args, **kwargs)
+
+    return wrapper
+
+
 class SMTP:
     """
     Main SMTP client class.
@@ -657,24 +675,6 @@ class SMTP:
             raise SMTPServerDisconnected("Server not connected")
 
         return self.transport.get_extra_info(key)
-
-    @staticmethod
-    def ehlo_or_helo_if_needed_check(
-        func: Callable[..., Awaitable[T]]
-    ) -> Callable[..., Awaitable[T]]:
-        """
-        Decorator for EHLO/HELO check.
-        """
-
-        # TODO: the type hints on here are a little odd and could be improved
-        # in py310
-        @functools.wraps(func)
-        async def wrapper(self: "SMTP", *args: Any, **kwargs: Any) -> Any:
-            if self.is_ehlo_or_helo_needed:
-                await self._ehlo_or_helo_if_needed()
-            return await func(self, *args, **kwargs)
-
-        return wrapper
 
     # Base SMTP commands #
 
