@@ -377,9 +377,11 @@ async def send(message, sender=None, recipients=None, **kwargs):  # type: ignore
     :keyword use_tls: If True, make the initial connection to the server
         over TLS/SSL. Note that if the server supports STARTTLS only, this
         should be False.
-    :keyword start_tls: If True, make the initial connection to the server
-        over plaintext, and then upgrade the connection to TLS/SSL. Not
-        compatible with use_tls.
+    :keyword start_tls: Flag to initiate a STARTTLS upgrade on connect. If ``None``
+        (the default), upgrade will be initiated if supported by the server, but
+        errors will not be raised. If ``True``, and upgrade will be initiated
+        regardless of server support. If ``False``, no upgrade will occur.
+        ``start_tls`` cannot be ``True`` if ``use_tls`` is also ``True``.
     :keyword validate_certs: Determines if server certificates are
         validated. Defaults to True.
     :keyword client_cert: Path to client side certificate, for TLS.

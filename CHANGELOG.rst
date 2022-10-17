@@ -5,6 +5,9 @@ Changelog
 ------------------
 
 - **BREAKING**: Drop Python 3.5 and 3.6 support.
+- **BREAKING**: On connect, if the server supports STARTTLS, automatically try
+  to upgrade the connection. STARTTLS after connect can be turned on or off
+  explicitly by passing ``start_tls=True`` or ``start_tls=False`` respectively.
 - **BREAKING**: Remove deprecated ``loop`` keyword argument for the SMTP class.
 - Change: The ``source_address`` argument now takes a (addr, port) tuple that is
   passed as the ``local_addr`` param to ``asyncio.create_connection``, allowing

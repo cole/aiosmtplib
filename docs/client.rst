@@ -41,16 +41,22 @@ when initializing the SMTP instance (or when calling :meth:`SMTP.connect`).
 
 STARTTLS connections
 ~~~~~~~~~~~~~~~~~~~~
-Many SMTP servers support the STARTTLS extension over port 587. When using
-STARTTLS, the initial connection is made over plaintext, and after connecting
-a STARTTLS command is sent which initiates the upgrade to a secure connection.
-To connect to a server that uses STARTTLS, set ``use_tls`` to ``False`` when
-connecting, and call :meth:`SMTP.starttls` on the client.
 
+By default, if the server advertises STARTTLS support, aiosmtplib will
+upgrade the connection automatically. Setting ``use_tls=True`` for STARTTLS
+servers will typically result in a connection error.
+
+To opt out of STARTTLS on connect, pass ``start_tls=False``. You may then
+manually call :meth:`SMTP.starttls` if needed.
 
 .. code-block:: python
 
-    smtp_client = aiosmtplib.SMTP(hostname="smtp.gmail.com", port=587, use_tls=False)
+    smtp_client = aiosmtplib.SMTP(
+        hostname="smtp.gmail.com",
+        port=587,
+        start_tls=False,
+        use_tls=False,
+    )
     await smtp_client.connect()
     await smtp_client.starttls()
 

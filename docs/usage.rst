@@ -102,25 +102,20 @@ and ``recipients`` keyword arguments.
     event_loop.run_until_complete(send_hello_world())
 
 
-Authentication
---------------
-
-To authenticate, pass the ``username`` and ``password`` keyword arguments to
-:func:`send`.
-
-.. code-block:: python
-
-    await send(
-        message,
-        hostname="127.0.0.1",
-        port=1025,
-        username="test",
-        password="test"
-    )
-
-
 Connection Options
 ------------------
+
+aiosmtplib supports three types of encryption when connecting:
+
+1. Unencrypted (default port 25). Most authentication methods will not
+   be supported by servers when using an unencrypted connection.
+2. TLS/SSL encrypted (default port 465). In this case the TLS handshake
+   occurs immediately after the connection is established.
+3. STARTTLS (default port 587). When using STARTTLS, an initial unencrypted
+   connection is made, EHLO/HELO greetings are exchanged, and the connection
+   is upgraded in place once the client requests it by sending the STARTTLS
+   command.
+
 
 Connecting Over TLS/SSL
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -136,11 +131,29 @@ If an SMTP server supports direct connection via TLS/SSL, pass
 STARTTLS connections
 ~~~~~~~~~~~~~~~~~~~~
 
-Many SMTP servers support the STARTTLS extension over port 587. When using
-STARTTLS, the initial connection is made over plaintext, and after connecting
-a STARTTLS command is sent, which initiates the upgrade to a secure connection.
-To connect to a server that uses STARTTLS, set ``start_tls`` to ``True``.
+By default, if the server advertises STARTTLS support, aiosmtplib will
+upgrade the connection automatically. Setting ``use_tls=True`` for STARTTLS
+servers will typically result in a connection error.
+
+To opt out of STARTTLS on connect, pass ``start_tls=False``.
 
 .. code-block:: python
 
-    await send(message, hostname="smtp.gmail.com", port=587, start_tls=True)
+    await send(message, hostname="smtp.gmail.com", port=587, start_tls=False)
+
+
+Authentication
+--------------
+
+To authenticate, pass the ``username`` and ``password`` keyword arguments to
+:func:`send`.
+
+.. code-block:: python
+
+    await send(
+        message,
+        hostname="smtp.gmail.com",
+        port=587,
+        username="test@gmail.com",
+        password="test"
+    )
