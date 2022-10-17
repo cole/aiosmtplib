@@ -1,11 +1,11 @@
 from collections import deque
 from typing import Any, Deque, List, Tuple
 
-from aiosmtplib.auth import SMTPAuth
 from aiosmtplib.response import SMTPResponse
+from aiosmtplib.smtp import SMTP
 
 
-class DummySMTPAuth(SMTPAuth):
+class DummySMTPAuth(SMTP):
 
     transport = None
 

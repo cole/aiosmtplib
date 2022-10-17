@@ -1,5 +1,4 @@
-from aiosmtplib.connection import SMTP_PORT
-from aiosmtplib.smtp import SMTP
+from aiosmtplib.smtp import SMTP, SMTP_PORT
 
 
 raw_hostname = input("SMTP server hostname [localhost]: ")  # nosec
