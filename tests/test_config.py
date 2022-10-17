@@ -13,13 +13,17 @@ from aiosmtplib import SMTP
 pytestmark = pytest.mark.asyncio()
 
 
-async def test_tls_context_and_cert_raises() -> None:
+async def test_tls_context_and_cert_raises(
+    client_tls_context: ssl.SSLContext,
+) -> None:
     with pytest.raises(ValueError):
-        SMTP(use_tls=True, client_cert="foo.crt", tls_context=True)
+        SMTP(use_tls=True, client_cert="foo.crt", tls_context=client_tls_context)
 
 
-async def test_tls_context_and_cert_to_connect_raises() -> None:
-    client = SMTP(use_tls=True, tls_context=True)
+async def test_tls_context_and_cert_to_connect_raises(
+    client_tls_context: ssl.SSLContext,
+) -> None:
+    client = SMTP(use_tls=True, tls_context=client_tls_context)
 
     with pytest.raises(ValueError):
         await client.connect(client_cert="foo.crt")
@@ -342,7 +346,7 @@ async def test_starttls_certificate_options_take_precedence(
 
 async def test_source_address_deprecation_warning_init() -> None:
     with pytest.warns(DeprecationWarning):
-        client = SMTP(source_address="example.com")
+        client = SMTP(source_address="example.com")  # type: ignore
 
     assert client.local_hostname == "example.com"
 
