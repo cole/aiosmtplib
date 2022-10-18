@@ -4,348 +4,39 @@ Main public API.
 import email.message
 import socket
 import ssl
-from typing import Dict, List, Optional, Sequence, Tuple, Union, overload
+from typing import Dict, Optional, Sequence, Tuple, Union, cast
 
 from .response import SMTPResponse
-from .smtp import SMTP
+from .smtp import DEFAULT_TIMEOUT, SMTP
 from .typing import SocketPathType
 
 
 __all__ = ("send",)
 
-# flake8: noqa F811
 
-# overloaded matrix is split by:
-# * message type (Message, str/bytes)
-# * connection type (hostname/socket/socket path)
-# * cert info (client_cert/tls_context)
-
-
-@overload
 async def send(
-    message: Union[email.message.EmailMessage, email.message.Message],
-    sender: Optional[str] = ...,
-    recipients: Optional[Union[str, Sequence[str]]] = ...,
-    hostname: str = ...,
-    port: Optional[int] = ...,
-    username: Optional[Union[str, bytes]] = ...,
-    password: Optional[Union[str, bytes]] = ...,
-    mail_options: Optional[List[str]] = ...,
-    rcpt_options: Optional[List[str]] = ...,
-    timeout: Optional[float] = ...,
+    message: Union[email.message.EmailMessage, email.message.Message, str, bytes],
+    sender: Optional[str] = None,
+    recipients: Optional[Union[str, Sequence[str]]] = None,
+    mail_options: Optional[Sequence[str]] = None,
+    rcpt_options: Optional[Sequence[str]] = None,
+    hostname: Optional[str] = "localhost",
+    port: Optional[int] = None,
+    username: Optional[Union[str, bytes]] = None,
+    password: Optional[Union[str, bytes]] = None,
     local_hostname: Optional[str] = None,
     source_address: Optional[Tuple[str, int]] = None,
-    use_tls: bool = ...,
-    start_tls: bool = ...,
-    validate_certs: bool = ...,
-    client_cert: Optional[str] = ...,
-    client_key: Optional[str] = ...,
-    tls_context: None = ...,
-    cert_bundle: Optional[str] = ...,
-    socket_path: None = ...,
-    sock: None = ...,
+    timeout: Optional[float] = DEFAULT_TIMEOUT,
+    use_tls: bool = False,
+    start_tls: Optional[bool] = None,
+    validate_certs: bool = True,
+    client_cert: Optional[str] = None,
+    client_key: Optional[str] = None,
+    tls_context: Optional[ssl.SSLContext] = None,
+    cert_bundle: Optional[str] = None,
+    socket_path: Optional[SocketPathType] = None,
+    sock: Optional[socket.socket] = None,
 ) -> Tuple[Dict[str, SMTPResponse], str]:
-    ...
-
-
-@overload
-async def send(
-    message: Union[str, bytes],
-    sender: str = ...,
-    recipients: Union[str, Sequence[str]] = ...,
-    hostname: str = ...,
-    port: Optional[int] = ...,
-    username: Optional[Union[str, bytes]] = ...,
-    password: Optional[Union[str, bytes]] = ...,
-    mail_options: Optional[List[str]] = ...,
-    rcpt_options: Optional[List[str]] = ...,
-    timeout: Optional[float] = ...,
-    local_hostname: Optional[str] = None,
-    source_address: Optional[Tuple[str, int]] = None,
-    use_tls: bool = ...,
-    start_tls: bool = ...,
-    validate_certs: bool = ...,
-    client_cert: Optional[str] = ...,
-    client_key: Optional[str] = ...,
-    tls_context: None = ...,
-    cert_bundle: Optional[str] = ...,
-    socket_path: None = ...,
-    sock: None = ...,
-) -> Tuple[Dict[str, SMTPResponse], str]:
-    ...
-
-
-@overload
-async def send(
-    message: Union[email.message.EmailMessage, email.message.Message],
-    sender: Optional[str] = ...,
-    recipients: Optional[Union[str, Sequence[str]]] = ...,
-    hostname: str = ...,
-    port: Optional[int] = ...,
-    username: Optional[Union[str, bytes]] = ...,
-    password: Optional[Union[str, bytes]] = ...,
-    mail_options: Optional[List[str]] = ...,
-    rcpt_options: Optional[List[str]] = ...,
-    timeout: Optional[float] = ...,
-    local_hostname: Optional[str] = None,
-    source_address: Optional[Tuple[str, int]] = None,
-    use_tls: bool = ...,
-    start_tls: bool = ...,
-    validate_certs: bool = ...,
-    client_cert: None = ...,
-    client_key: None = ...,
-    tls_context: Optional[ssl.SSLContext] = ...,
-    cert_bundle: None = ...,
-    socket_path: None = ...,
-    sock: None = ...,
-) -> Tuple[Dict[str, SMTPResponse], str]:
-    ...
-
-
-@overload
-async def send(
-    message: Union[str, bytes],
-    sender: str = ...,
-    recipients: Union[str, Sequence[str]] = ...,
-    hostname: str = ...,
-    port: Optional[int] = ...,
-    username: Optional[Union[str, bytes]] = ...,
-    password: Optional[Union[str, bytes]] = ...,
-    mail_options: Optional[List[str]] = ...,
-    rcpt_options: Optional[List[str]] = ...,
-    timeout: Optional[float] = ...,
-    local_hostname: Optional[str] = None,
-    source_address: Optional[Tuple[str, int]] = None,
-    use_tls: bool = ...,
-    start_tls: bool = ...,
-    validate_certs: bool = ...,
-    client_cert: None = ...,
-    client_key: None = ...,
-    tls_context: Optional[ssl.SSLContext] = ...,
-    cert_bundle: None = ...,
-    socket_path: None = ...,
-    sock: None = ...,
-) -> Tuple[Dict[str, SMTPResponse], str]:
-    ...
-
-
-@overload
-async def send(
-    message: Union[email.message.EmailMessage, email.message.Message],
-    sender: Optional[str] = ...,
-    recipients: Optional[Union[str, Sequence[str]]] = ...,
-    hostname: None = ...,
-    port: None = ...,
-    username: Optional[Union[str, bytes]] = ...,
-    password: Optional[Union[str, bytes]] = ...,
-    mail_options: Optional[List[str]] = ...,
-    rcpt_options: Optional[List[str]] = ...,
-    timeout: Optional[float] = ...,
-    local_hostname: Optional[str] = None,
-    source_address: Optional[Tuple[str, int]] = None,
-    use_tls: bool = ...,
-    start_tls: bool = ...,
-    validate_certs: bool = ...,
-    client_cert: Optional[str] = ...,
-    client_key: Optional[str] = ...,
-    tls_context: None = ...,
-    cert_bundle: Optional[str] = ...,
-    socket_path: None = ...,
-    sock: socket.socket = ...,
-) -> Tuple[Dict[str, SMTPResponse], str]:
-    ...
-
-
-@overload
-async def send(
-    message: Union[str, bytes],
-    sender: str = ...,
-    recipients: Union[str, Sequence[str]] = ...,
-    hostname: None = ...,
-    port: None = ...,
-    username: Optional[Union[str, bytes]] = ...,
-    password: Optional[Union[str, bytes]] = ...,
-    mail_options: Optional[List[str]] = ...,
-    rcpt_options: Optional[List[str]] = ...,
-    timeout: Optional[float] = ...,
-    local_hostname: Optional[str] = None,
-    source_address: Optional[Tuple[str, int]] = None,
-    use_tls: bool = ...,
-    start_tls: bool = ...,
-    validate_certs: bool = ...,
-    client_cert: Optional[str] = ...,
-    client_key: Optional[str] = ...,
-    tls_context: None = ...,
-    cert_bundle: Optional[str] = ...,
-    socket_path: None = ...,
-    sock: socket.socket = ...,
-) -> Tuple[Dict[str, SMTPResponse], str]:
-    ...
-
-
-@overload
-async def send(
-    message: Union[email.message.EmailMessage, email.message.Message],
-    sender: Optional[str] = ...,
-    recipients: Optional[Union[str, Sequence[str]]] = ...,
-    hostname: None = ...,
-    port: None = ...,
-    username: Optional[Union[str, bytes]] = ...,
-    password: Optional[Union[str, bytes]] = ...,
-    mail_options: Optional[List[str]] = ...,
-    rcpt_options: Optional[List[str]] = ...,
-    timeout: Optional[float] = ...,
-    local_hostname: Optional[str] = None,
-    source_address: Optional[Tuple[str, int]] = None,
-    use_tls: bool = ...,
-    start_tls: bool = ...,
-    validate_certs: bool = ...,
-    client_cert: None = ...,
-    client_key: None = ...,
-    tls_context: Optional[ssl.SSLContext] = ...,
-    cert_bundle: None = ...,
-    socket_path: None = ...,
-    sock: socket.socket = ...,
-) -> Tuple[Dict[str, SMTPResponse], str]:
-    ...
-
-
-@overload
-async def send(
-    message: Union[str, bytes],
-    sender: str = ...,
-    recipients: Union[str, Sequence[str]] = ...,
-    hostname: None = ...,
-    port: None = ...,
-    username: Optional[Union[str, bytes]] = ...,
-    password: Optional[Union[str, bytes]] = ...,
-    mail_options: Optional[List[str]] = ...,
-    rcpt_options: Optional[List[str]] = ...,
-    timeout: Optional[float] = ...,
-    local_hostname: Optional[str] = None,
-    source_address: Optional[Tuple[str, int]] = None,
-    use_tls: bool = ...,
-    start_tls: bool = ...,
-    validate_certs: bool = ...,
-    client_cert: None = ...,
-    client_key: None = ...,
-    tls_context: Optional[ssl.SSLContext] = ...,
-    cert_bundle: None = ...,
-    socket_path: None = ...,
-    sock: socket.socket = ...,
-) -> Tuple[Dict[str, SMTPResponse], str]:
-    ...
-
-
-@overload
-async def send(
-    message: Union[email.message.EmailMessage, email.message.Message],
-    sender: Optional[str] = ...,
-    recipients: Optional[Union[str, Sequence[str]]] = ...,
-    hostname: None = ...,
-    port: None = ...,
-    username: Optional[Union[str, bytes]] = ...,
-    password: Optional[Union[str, bytes]] = ...,
-    mail_options: Optional[List[str]] = ...,
-    rcpt_options: Optional[List[str]] = ...,
-    timeout: Optional[float] = ...,
-    local_hostname: Optional[str] = None,
-    source_address: Optional[Tuple[str, int]] = None,
-    use_tls: bool = ...,
-    start_tls: bool = ...,
-    validate_certs: bool = ...,
-    client_cert: Optional[str] = ...,
-    client_key: Optional[str] = ...,
-    tls_context: None = ...,
-    cert_bundle: Optional[str] = ...,
-    socket_path: SocketPathType = ...,
-    sock: None = ...,
-) -> Tuple[Dict[str, SMTPResponse], str]:
-    ...
-
-
-@overload
-async def send(
-    message: Union[str, bytes],
-    sender: str = ...,
-    recipients: Union[str, Sequence[str]] = ...,
-    hostname: None = ...,
-    port: None = ...,
-    username: Optional[Union[str, bytes]] = ...,
-    password: Optional[Union[str, bytes]] = ...,
-    mail_options: Optional[List[str]] = ...,
-    rcpt_options: Optional[List[str]] = ...,
-    timeout: Optional[float] = ...,
-    local_hostname: Optional[str] = None,
-    source_address: Optional[Tuple[str, int]] = None,
-    use_tls: bool = ...,
-    start_tls: bool = ...,
-    validate_certs: bool = ...,
-    client_cert: Optional[str] = ...,
-    client_key: Optional[str] = ...,
-    tls_context: None = ...,
-    cert_bundle: Optional[str] = ...,
-    socket_path: SocketPathType = ...,
-    sock: None = ...,
-) -> Tuple[Dict[str, SMTPResponse], str]:
-    ...
-
-
-@overload
-async def send(
-    message: Union[email.message.EmailMessage, email.message.Message],
-    sender: Optional[str] = ...,
-    recipients: Optional[Union[str, Sequence[str]]] = ...,
-    hostname: None = ...,
-    port: None = ...,
-    username: Optional[Union[str, bytes]] = ...,
-    password: Optional[Union[str, bytes]] = ...,
-    mail_options: Optional[List[str]] = ...,
-    rcpt_options: Optional[List[str]] = ...,
-    timeout: Optional[float] = ...,
-    local_hostname: Optional[str] = None,
-    source_address: Optional[Tuple[str, int]] = None,
-    use_tls: bool = ...,
-    start_tls: bool = ...,
-    validate_certs: bool = ...,
-    client_cert: None = ...,
-    client_key: None = ...,
-    tls_context: Optional[ssl.SSLContext] = ...,
-    cert_bundle: None = ...,
-    socket_path: SocketPathType = ...,
-    sock: None = ...,
-) -> Tuple[Dict[str, SMTPResponse], str]:
-    ...
-
-
-@overload
-async def send(
-    message: Union[str, bytes],
-    sender: str = ...,
-    recipients: Union[str, Sequence[str]] = ...,
-    hostname: None = ...,
-    port: None = ...,
-    username: Optional[Union[str, bytes]] = ...,
-    password: Optional[Union[str, bytes]] = ...,
-    mail_options: Optional[List[str]] = ...,
-    rcpt_options: Optional[List[str]] = ...,
-    timeout: Optional[float] = ...,
-    local_hostname: Optional[str] = None,
-    source_address: Optional[Tuple[str, int]] = None,
-    use_tls: bool = ...,
-    start_tls: bool = ...,
-    validate_certs: bool = ...,
-    client_cert: None = ...,
-    client_key: None = ...,
-    tls_context: Optional[ssl.SSLContext] = ...,
-    cert_bundle: None = ...,
-    socket_path: SocketPathType = ...,
-    sock: None = ...,
-) -> Tuple[Dict[str, SMTPResponse], str]:
-    ...
-
-
-async def send(message, sender=None, recipients=None, **kwargs):  # type: ignore
     """
     Send an email message. On await, connects to the SMTP server using the details
     provided, sends the message, then disconnects.
@@ -403,10 +94,27 @@ async def send(message, sender=None, recipients=None, **kwargs):  # type: ignore
         if not sender:
             raise ValueError("Sender must be provided with raw messages.")
 
-    mail_options = kwargs.pop("mail_options", None)
-    rcpt_options = kwargs.pop("rcpt_options", None)
+    sender = cast(str, sender)
+    recipients = cast(Union[str, Sequence[str]], recipients)
 
-    client = SMTP(**kwargs)
+    client = SMTP(
+        hostname=hostname,
+        port=port,
+        local_hostname=local_hostname,
+        source_address=source_address,
+        timeout=timeout,
+        use_tls=use_tls,
+        start_tls=start_tls,
+        validate_certs=validate_certs,
+        client_cert=client_cert,
+        client_key=client_key,
+        tls_context=tls_context,
+        cert_bundle=cert_bundle,
+        socket_path=socket_path,
+        sock=sock,
+        username=username,
+        password=password,
+    )
 
     async with client:
         if isinstance(message, (email.message.EmailMessage, email.message.Message)):
