@@ -175,7 +175,6 @@ class SMTP:
         self.esmtp_extensions: Dict[str, str] = {}
         self.supports_esmtp = False
         self.server_auth_methods: List[str] = []
-        self._starttls_upgraded = asyncio.Event()
         self._sendmail_lock: Optional[asyncio.Lock] = None
 
         self._validate_config()
@@ -991,7 +990,7 @@ class SMTP:
         if self.protocol is None:
             raise SMTPServerDisconnected("Server not connected")
 
-        if self._starttls_upgraded.is_set():
+        if self.get_transport_info("sslcontext") is not None:
             raise SMTPException("Connection already using TLS")
 
         self._update_settings_from_kwargs(
@@ -1019,8 +1018,6 @@ class SMTP:
             raise SMTPServerDisconnected("Connection lost")
         # Update our transport reference
         self.transport = self.protocol.transport
-
-        self._starttls_upgraded.set()
 
         # RFC 3207 part 4.2:
         # The client MUST discard any knowledge obtained from the server, such
