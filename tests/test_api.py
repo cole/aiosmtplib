@@ -84,7 +84,7 @@ async def test_send_without_sender(
     received_messages: List[email.message.EmailMessage],
 ) -> None:
     with pytest.raises(ValueError):
-        errors, response = await send(  # type: ignore
+        errors, response = await send(
             message_str,
             hostname=hostname,
             port=smtpd_server_port,
