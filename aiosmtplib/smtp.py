@@ -6,24 +6,10 @@ Implements SMTP, ESMTP & Auth methods.
 import asyncio
 import base64
 import email.message
-import functools
 import socket
 import ssl
 import warnings
-from typing import (
-    Any,
-    Awaitable,
-    Callable,
-    Dict,
-    Iterable,
-    List,
-    Optional,
-    Sequence,
-    Tuple,
-    Type,
-    TypeVar,
-    Union,
-)
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple, Type, Union
 
 from .auth import crammd5_verify
 from .email import (
@@ -60,26 +46,6 @@ SMTP_PORT = 25
 SMTP_TLS_PORT = 465
 SMTP_STARTTLS_PORT = 587
 DEFAULT_TIMEOUT = 60
-
-T = TypeVar("T")
-
-
-def ehlo_or_helo_if_needed_check(
-    func: Callable[..., Awaitable[T]]
-) -> Callable[..., Awaitable[T]]:
-    """
-    Decorator for EHLO/HELO check.
-    """
-
-    # TODO: the type hints on here are a little odd and could be improved
-    # in py310
-    @functools.wraps(func)
-    async def wrapper(self: "SMTP", *args: Any, **kwargs: Any) -> Any:
-        if self.is_ehlo_or_helo_needed:
-            await self._ehlo_or_helo_if_needed()
-        return await func(self, *args, **kwargs)
-
-    return wrapper
 
 
 class SMTP:
@@ -699,13 +665,14 @@ class SMTP:
 
         return response
 
-    @ehlo_or_helo_if_needed_check
     async def help(self, timeout: Optional[Union[float, Default]] = _default) -> str:
         """
         Send the SMTP HELP command, which responds with help text.
 
         :raises SMTPResponseException: on unexpected server response code
         """
+        await self._ehlo_or_helo_if_needed()
+
         response = await self.execute_command(b"HELP", timeout=timeout)
         if response.code not in (
             SMTPStatus.system_status_ok,
@@ -716,7 +683,6 @@ class SMTP:
 
         return response.message
 
-    @ehlo_or_helo_if_needed_check
     async def rset(
         self, timeout: Optional[Union[float, Default]] = _default
     ) -> SMTPResponse:
@@ -726,13 +692,14 @@ class SMTP:
 
         :raises SMTPResponseException: on unexpected server response code
         """
+        await self._ehlo_or_helo_if_needed()
+
         response = await self.execute_command(b"RSET", timeout=timeout)
         if response.code != SMTPStatus.completed:
             raise SMTPResponseException(response.code, response.message)
 
         return response
 
-    @ehlo_or_helo_if_needed_check
     async def noop(
         self, timeout: Optional[Union[float, Default]] = _default
     ) -> SMTPResponse:
@@ -741,13 +708,14 @@ class SMTP:
 
         :raises SMTPResponseException: on unexpected server response code
         """
+        await self._ehlo_or_helo_if_needed()
+
         response = await self.execute_command(b"NOOP", timeout=timeout)
         if response.code != SMTPStatus.completed:
             raise SMTPResponseException(response.code, response.message)
 
         return response
 
-    @ehlo_or_helo_if_needed_check
     async def vrfy(
         self,
         address: str,
@@ -760,6 +728,8 @@ class SMTP:
 
         :raises SMTPResponseException: on unexpected server response code
         """
+        await self._ehlo_or_helo_if_needed()
+
         if options is None:
             options = []
 
@@ -785,7 +755,6 @@ class SMTP:
 
         return response
 
-    @ehlo_or_helo_if_needed_check
     async def expn(
         self,
         address: str,
@@ -798,6 +767,8 @@ class SMTP:
 
         :raises SMTPResponseException: on unexpected server response code
         """
+        await self._ehlo_or_helo_if_needed()
+
         if options is None:
             options = []
 
@@ -819,8 +790,6 @@ class SMTP:
 
         return response
 
-    # Can't quit without HELO/EHLO
-    @ehlo_or_helo_if_needed_check
     async def quit(
         self, timeout: Optional[Union[float, Default]] = _default
     ) -> SMTPResponse:
@@ -830,6 +799,9 @@ class SMTP:
 
         :raises SMTPResponseException: on unexpected server response code
         """
+        # Can't quit without HELO/EHLO
+        await self._ehlo_or_helo_if_needed()
+
         response = await self.execute_command(b"QUIT", timeout=timeout)
         if response.code != SMTPStatus.closing:
             raise SMTPResponseException(response.code, response.message)
@@ -838,7 +810,6 @@ class SMTP:
 
         return response
 
-    @ehlo_or_helo_if_needed_check
     async def mail(
         self,
         sender: str,
@@ -852,6 +823,8 @@ class SMTP:
 
         :raises SMTPSenderRefused: on unexpected server response code
         """
+        await self._ehlo_or_helo_if_needed()
+
         if options is None:
             options = []
 
@@ -868,7 +841,6 @@ class SMTP:
 
         return response
 
-    @ehlo_or_helo_if_needed_check
     async def rcpt(
         self,
         recipient: str,
@@ -883,6 +855,8 @@ class SMTP:
 
         :raises SMTPRecipientRefused: on unexpected server response code
         """
+        await self._ehlo_or_helo_if_needed()
+
         if options is None:
             options = []
 
@@ -899,7 +873,6 @@ class SMTP:
 
         return response
 
-    @ehlo_or_helo_if_needed_check
     async def data(
         self,
         message: Union[str, bytes],
@@ -912,6 +885,8 @@ class SMTP:
         :raises SMTPDataError: on unexpected server response code
         :raises SMTPServerDisconnected: connection lost
         """
+        await self._ehlo_or_helo_if_needed()
+
         # As data accesses protocol directly, some handling is required
         if self.protocol is None:
             raise SMTPServerDisconnected("Connection lost")
@@ -983,7 +958,6 @@ class SMTP:
         self.supports_esmtp = False
         self.server_auth_methods = []
 
-    @ehlo_or_helo_if_needed_check
     async def starttls(
         self,
         server_hostname: Optional[str] = None,
@@ -1012,6 +986,8 @@ class SMTP:
         :raises SMTPServerDisconnected: connection lost
         :raises ValueError: invalid options provided
         """
+        await self._ehlo_or_helo_if_needed()
+
         if self.protocol is None:
             raise SMTPServerDisconnected("Server not connected")
 
@@ -1056,7 +1032,6 @@ class SMTP:
 
     # Auth commands
 
-    @ehlo_or_helo_if_needed_check
     async def login(
         self,
         username: Union[str, bytes],
@@ -1070,6 +1045,8 @@ class SMTP:
         support, so if authentication fails, we continue until we've tried
         all methods.
         """
+        await self._ehlo_or_helo_if_needed()
+
         if not self.supports_extension("auth"):
             if self.is_connected and self.get_transport_info("sslcontext") is None:
                 raise SMTPException(
