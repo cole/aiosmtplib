@@ -26,11 +26,9 @@ pytestmark = [
 ]
 
 
-async def test_starttls_gmail() -> None:
+async def test_auto_starttls_gmail() -> None:
     client = SMTP(hostname="smtp.gmail.com", port=587, use_tls=False)
     await client.connect(timeout=1.0)
-    await client.ehlo()
-    await client.starttls(validate_certs=False)
     response = await client.ehlo()
 
     assert response.code == SMTPStatus.completed
@@ -43,7 +41,7 @@ async def test_starttls_gmail() -> None:
 
 async def test_qq_login() -> None:
     client = SMTP(hostname="smtp.qq.com", port=587, use_tls=False)
-    await client.connect(timeout=2.0)
+    await client.connect(timeout=2.0, start_tls=False)
     await client.ehlo()
     await client.starttls(validate_certs=False)
 
@@ -76,7 +74,7 @@ async def test_office365_skip_login() -> None:
     message["Subject"] = "Hello World!"
     message.set_content("Sent via aiosmtplib")
 
-    smtp_client = SMTP("smtp.office365.com", 587)
+    smtp_client = SMTP("smtp.office365.com", 587, start_tls=False)
     await smtp_client.connect()
     await smtp_client.starttls()
     # skip login, which is required
