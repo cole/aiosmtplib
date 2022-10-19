@@ -58,7 +58,7 @@ async def send(
     :keyword password:  Password for login after connect.
     :keyword local_hostname: The hostname of the client.  If specified, used as the
         FQDN of the local host in the HELO/EHLO command. Otherwise, the result of
-        :func:`socket.getfqdn`. **Note that ``getfqdn`` will block the event loop.**
+        :func:`socket.getfqdn`. **Note that getfqdn will block the event loop.**
     :keyword source_address: Takes a 2-tuple (host, port) for the socket to bind to
         as its source address before connecting. If the host is '' and port is 0,
         the OS default behavior will be used.
