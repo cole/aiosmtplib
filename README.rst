@@ -35,7 +35,7 @@ Requirements
 Python 3.7+, compiled with SSL support, is required.
 
 
-Bug reporting
+Bug Reporting
 -------------
 Bug reports (and feature requests) are welcome via `Github issues`_.
 
