@@ -539,15 +539,12 @@ class SMTP:
             await self.starttls()
         # If _start_tls_on_connect hasn't been set either way,
         # try to STARTTLS if supported, with graceful failure handling
-        if self._start_tls_on_connect is None:
+        elif self._start_tls_on_connect is None:
             already_using_tls = self.get_transport_info("sslcontext") is not None
             if not (self.use_tls or already_using_tls):
                 await self._ehlo_or_helo_if_needed()
                 if self.supports_extension("starttls"):
-                    try:
-                        await self.starttls()
-                    except SMTPException:
-                        pass
+                    await self.starttls()
 
     async def _maybe_login_on_connect(self) -> None:
         """
