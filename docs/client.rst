@@ -30,6 +30,8 @@ server, as that is a blocking operation.
 Connecting over TLS/SSL
 ~~~~~~~~~~~~~~~~~~~~~~~
 
+For details on different connection types, see :ref:`connection-types`.
+
 If an SMTP server supports direct connection via TLS/SSL, pass ``use_tls=True``
 when initializing the SMTP instance (or when calling :meth:`SMTP.connect`).
 
@@ -41,6 +43,8 @@ when initializing the SMTP instance (or when calling :meth:`SMTP.connect`).
 
 STARTTLS connections
 ~~~~~~~~~~~~~~~~~~~~
+
+For details on different connection types, see :ref:`connection-types`.
 
 By default, if the server advertises STARTTLS support, aiosmtplib will
 upgrade the connection automatically. Setting ``use_tls=True`` for STARTTLS

@@ -102,23 +102,10 @@ and ``recipients`` keyword arguments.
     event_loop.run_until_complete(send_hello_world())
 
 
-Connection Options
-------------------
-
-aiosmtplib supports three types of encryption when connecting:
-
-1. Unencrypted (default port 25). Most authentication methods will not
-   be supported by servers when using an unencrypted connection.
-2. TLS/SSL encrypted (default port 465). In this case the TLS handshake
-   occurs immediately after the connection is established.
-3. STARTTLS (default port 587). When using STARTTLS, an initial unencrypted
-   connection is made, EHLO/HELO greetings are exchanged, and the connection
-   is upgraded in place once the client requests it by sending the STARTTLS
-   command.
-
-
 Connecting Over TLS/SSL
 ~~~~~~~~~~~~~~~~~~~~~~~
+
+For details on different connection types, see :ref:`connection-types`.
 
 If an SMTP server supports direct connection via TLS/SSL, pass
 ``use_tls=True``.
@@ -130,6 +117,8 @@ If an SMTP server supports direct connection via TLS/SSL, pass
 
 STARTTLS connections
 ~~~~~~~~~~~~~~~~~~~~
+
+For details on different connection types, see :ref:`connection-types`.
 
 By default, if the server advertises STARTTLS support, aiosmtplib will
 upgrade the connection automatically. Setting ``use_tls=True`` for STARTTLS

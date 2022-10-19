@@ -7,6 +7,7 @@ aiosmtplib
    :maxdepth: 2
 
    overview
+   encryption
    usage
    client
    reference
