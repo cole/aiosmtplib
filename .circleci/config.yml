@@ -224,7 +224,7 @@ jobs:
       - run:
           name: Uploading to Test PyPI
           command: |
-            poetry config repositories.testpypi https://test.pypi.org/simple
+            poetry config repositories.testpypi https://test.pypi.org/simple/
             poetry publish -vv --repository testpypi --username $TESTPYPI_USERNAME --password $TESTPYPI_PASSWORD
       - run:
           name: Uploading to PyPI
