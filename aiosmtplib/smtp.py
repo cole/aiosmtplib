@@ -104,33 +104,31 @@ class SMTP:
         :keyword username:  Username to login as after connect.
         :keyword password:  Password for login after connect.
         :keyword local_hostname: The hostname of the client.  If specified, used as the
-            FQDN of the local host in the HELO/EHLO command. Otherwise, the
-            result of :func:`socket.getfqdn`. **Note that :func:`socket.getfqdn` will
-            block the event loop.**
+            FQDN of the local host in the HELO/EHLO command. Otherwise, the result of
+            :func:`socket.getfqdn`. **Note that ``getfqdn`` will block the event loop.**
         :keyword source_address: Takes a 2-tuple (host, port) for the socket to bind to
             as its source address before connecting. If the host is '' and port is 0,
             the OS default behavior will be used.
         :keyword timeout: Default timeout value for the connection, in seconds.
             Defaults to 60.
-        :keyword use_tls: If True, make the _initial_ connection to the server
-            over TLS/SSL. Note that if the server supports STARTTLS only, this
-            should be False.
-        :keyword start_tls: Flag to initiate a STARTTLS upgrade on connect. If ``None``
-            (the default), upgrade will be initiated if supported by the server, but
-            errors will not be raised. If ``True``, and upgrade will be initiated
-            regardless of server support. If ``False``, no upgrade will occur.
-            ``start_tls`` cannot be ``True`` if ``use_tls`` is also ``True``.
+        :keyword use_tls: If True, make the initial connection to the server
+            over TLS/SSL. Mutually exclusive with ``start_tls``; if the server uses
+            STARTTLS, ``use_tls`` should be ``False``.
+        :keyword start_tls: Flag to initiate a STARTTLS upgrade on connect.
+            If ``None`` (the default), upgrade will be initiated if supported by the
+            server.
+            If ``True``, and upgrade will be initiated regardless of server support.
+            If ``False``, no upgrade will occur.
+            Mutually exclusive with ``use_tls``.
         :keyword validate_certs: Determines if server certificates are
-            validated. Defaults to True.
-        :keyword client_cert: Path to client side certificate, for TLS
-            verification.
-        :keyword client_key: Path to client side key, for TLS verification.
-        :keyword tls_context: An existing :py:class:`ssl.SSLContext`, for TLS
-            verification. Mutually exclusive with ``client_cert``/
-            ``client_key``.
+            validated. Defaults to ``True``.
+        :keyword client_cert: Path to client side certificate, for TLS.
+        :keyword client_key: Path to client side key, for TLS.
+        :keyword tls_context: An existing :py:class:`ssl.SSLContext`, for TLS.
+            Mutually exclusive with ``client_cert``/``client_key``.
         :keyword cert_bundle: Path to certificate bundle, for TLS verification.
         :keyword socket_path: Path to a Unix domain socket. Not compatible with
-            hostname or port. Accepts str or bytes, or a pathlike object in 3.7+.
+            hostname or port. Accepts str, bytes, or a pathlike object.
         :keyword sock: An existing, connected socket object. If given, none of
             hostname, port, or socket_path should be provided.
 
@@ -382,32 +380,34 @@ class SMTP:
         :keyword hostname:  Server name (or IP) to connect to. Defaults to "localhost".
         :keyword port: Server port. Defaults ``465`` if ``use_tls`` is ``True``,
             ``587`` if ``start_tls`` is ``True``, or ``25`` otherwise.
+        :keyword username:  Username to login as after connect.
+        :keyword password:  Password for login after connect.
         :keyword local_hostname: The hostname of the client.  If specified, used as the
-            FQDN of the local host in the HELO/EHLO command. Otherwise, the
-            result of :func:`socket.getfqdn`. **Note that :func:`socket.getfqdn` will
-            block the event loop.**
+            FQDN of the local host in the HELO/EHLO command. Otherwise, the result of
+            :func:`socket.getfqdn`. **Note that ``getfqdn`` will block the event loop.**
         :keyword source_address: Takes a 2-tuple (host, port) for the socket to bind to
             as its source address before connecting. If the host is '' and port is 0,
             the OS default behavior will be used.
         :keyword timeout: Default timeout value for the connection, in seconds.
             Defaults to 60.
         :keyword use_tls: If True, make the initial connection to the server
-            over TLS/SSL. Note that if the server supports STARTTLS only, this
-            should be False.
-        :keyword start_tls: Flag to initiate a STARTTLS upgrade on connect. If ``None``
-            (the default), upgrade will be initiated if supported by the server, but
-            errors will not be raised. If ``True``, and upgrade will be initiated
-            regardless of server support. If ``False``, no upgrade will occur.
-            ``start_tls`` cannot be ``True`` if ``use_tls`` is also ``True``.
+            over TLS/SSL. Mutually exclusive with ``start_tls``; if the server uses
+            STARTTLS, ``use_tls`` should be ``False``.
+        :keyword start_tls: Flag to initiate a STARTTLS upgrade on connect.
+            If ``None`` (the default), upgrade will be initiated if supported by the
+            server.
+            If ``True``, and upgrade will be initiated regardless of server support.
+            If ``False``, no upgrade will occur.
+            Mutually exclusive with ``use_tls``.
         :keyword validate_certs: Determines if server certificates are
-            validated. Defaults to True.
+            validated. Defaults to ``True``.
         :keyword client_cert: Path to client side certificate, for TLS.
         :keyword client_key: Path to client side key, for TLS.
         :keyword tls_context: An existing :py:class:`ssl.SSLContext`, for TLS.
             Mutually exclusive with ``client_cert``/``client_key``.
         :keyword cert_bundle: Path to certificate bundle, for TLS verification.
         :keyword socket_path: Path to a Unix domain socket. Not compatible with
-            hostname or port. Accepts str or bytes, or a pathlike object in 3.7+.
+            hostname or port. Accepts str, bytes, or a pathlike object.
         :keyword sock: An existing, connected socket object. If given, none of
             hostname, port, or socket_path should be provided.
 
