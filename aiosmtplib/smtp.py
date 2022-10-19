@@ -4,14 +4,13 @@ Main SMTP client class.
 Implements SMTP, ESMTP & Auth methods.
 """
 import asyncio
-import base64
 import email.message
 import socket
 import ssl
 import warnings
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple, Type, Union
 
-from .auth import crammd5_verify
+from .auth import auth_crammd5_verify, auth_login_encode, auth_plain_encode
 from .email import (
     extract_recipients,
     extract_sender,
@@ -1099,22 +1098,9 @@ class SMTP:
                 initial_response.code, initial_response.message
             )
 
-        if isinstance(password, bytes):
-            password_bytes = password
-        else:
-            password_bytes = password.encode("utf-8")
-
-        if isinstance(username, bytes):
-            username_bytes = username
-        else:
-            username_bytes = username.encode("utf-8")
-
-        response_bytes = initial_response.message.encode("utf-8")
-
-        verification_bytes = crammd5_verify(
-            username_bytes, password_bytes, response_bytes
+        verification_bytes = auth_crammd5_verify(
+            username, password, initial_response.message
         )
-
         response = await self.execute_command(verification_bytes)
 
         if response.code != SMTPStatus.auth_successful:
@@ -1139,19 +1125,7 @@ class SMTP:
             235 ok, go ahead (#2.0.0)
 
         """
-        if isinstance(password, bytes):
-            password_bytes = password
-        else:
-            password_bytes = password.encode("utf-8")
-
-        if isinstance(username, bytes):
-            username_bytes = username
-        else:
-            username_bytes = username.encode("utf-8")
-
-        username_and_password = b"\0" + username_bytes + b"\0" + password_bytes
-        encoded = base64.b64encode(username_and_password)
-
+        encoded = auth_plain_encode(username, password)
         response = await self.execute_command(
             b"AUTH", b"PLAIN", encoded, timeout=timeout
         )
@@ -1190,19 +1164,7 @@ class SMTP:
         However, since most servers seem to support both, we send the username
         with the initial request.
         """
-        if isinstance(password, bytes):
-            password_bytes = password
-        else:
-            password_bytes = password.encode("utf-8")
-
-        if isinstance(username, bytes):
-            username_bytes = username
-        else:
-            username_bytes = username.encode("utf-8")
-
-        encoded_username = base64.b64encode(username_bytes)
-        encoded_password = base64.b64encode(password_bytes)
-
+        encoded_username, encoded_password = auth_login_encode(username, password)
         initial_response = await self.execute_command(
             b"AUTH", b"LOGIN", encoded_username, timeout=timeout
         )

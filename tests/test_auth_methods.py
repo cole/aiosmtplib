@@ -1,10 +1,13 @@
+"""
+Tests for auth methods on the SMTP class.
+"""
 import asyncio
 import base64
 
 import pytest
 
 from aiosmtplib import SMTP
-from aiosmtplib.auth import crammd5_verify
+from aiosmtplib.auth import auth_crammd5_verify, auth_login_encode, auth_plain_encode
 from aiosmtplib.errors import SMTPAuthenticationError, SMTPException
 from aiosmtplib.response import SMTPResponse
 from aiosmtplib.typing import SMTPStatus
@@ -79,10 +82,8 @@ async def test_auth_plain_success(
     mock_auth.responses.append(SUCCESS_RESPONSE)
     await mock_auth.auth_plain(username, password)
 
-    b64data = base64.b64encode(
-        b"\0" + username.encode("utf-8") + b"\0" + password.encode("utf-8")
-    )
-    assert mock_auth.received_commands == [b"AUTH PLAIN " + b64data]
+    encoded = auth_plain_encode(username, password)
+    assert mock_auth.received_commands == [b"AUTH PLAIN " + encoded]
 
 
 async def test_auth_plain_success_bytes(mock_auth: DummySMTPAuth) -> None:
@@ -94,8 +95,8 @@ async def test_auth_plain_success_bytes(mock_auth: DummySMTPAuth) -> None:
     mock_auth.responses.append(SUCCESS_RESPONSE)
     await mock_auth.auth_plain(username, password)
 
-    b64data = base64.b64encode(b"\0" + username + b"\0" + password)
-    assert mock_auth.received_commands == [b"AUTH PLAIN " + b64data]
+    encoded = auth_plain_encode(username, password)
+    assert mock_auth.received_commands == [b"AUTH PLAIN " + encoded]
 
 
 async def test_auth_plain_error(mock_auth: DummySMTPAuth) -> None:
@@ -117,10 +118,12 @@ async def test_auth_login_success(
     mock_auth.responses.extend([continue_response, SUCCESS_RESPONSE])
     await mock_auth.auth_login(username, password)
 
-    b64username = base64.b64encode(username.encode("utf-8"))
-    b64password = base64.b64encode(password.encode("utf-8"))
+    encoded_username, encoded_password = auth_login_encode(username, password)
 
-    assert mock_auth.received_commands == [b"AUTH LOGIN " + b64username, b64password]
+    assert mock_auth.received_commands == [
+        b"AUTH LOGIN " + encoded_username,
+        encoded_password,
+    ]
 
 
 async def test_auth_login_success_bytes(mock_auth: DummySMTPAuth) -> None:
@@ -131,10 +134,12 @@ async def test_auth_login_success_bytes(mock_auth: DummySMTPAuth) -> None:
     password = "ไทย".encode("tis-620")
     await mock_auth.auth_login(username, password)
 
-    b64username = base64.b64encode(username)
-    b64password = base64.b64encode(password)
+    encoded_username, encoded_password = auth_login_encode(username, password)
 
-    assert mock_auth.received_commands == [b"AUTH LOGIN " + b64username, b64password]
+    assert mock_auth.received_commands == [
+        b"AUTH LOGIN " + encoded_username,
+        encoded_password,
+    ]
 
 
 async def test_auth_login_error(mock_auth: DummySMTPAuth) -> None:
@@ -170,7 +175,9 @@ async def test_auth_crammd5_success(
     username_bytes = username.encode("utf-8")
     response_bytes = continue_response[1].encode("utf-8")
 
-    expected_command = crammd5_verify(username_bytes, password_bytes, response_bytes)
+    expected_command = auth_crammd5_verify(
+        username_bytes, password_bytes, response_bytes
+    )
 
     assert mock_auth.received_commands == [b"AUTH CRAM-MD5", expected_command]
 
@@ -188,7 +195,7 @@ async def test_auth_crammd5_success_bytes(mock_auth: DummySMTPAuth) -> None:
 
     response_bytes = continue_response[1].encode("utf-8")
 
-    expected_command = crammd5_verify(username, password, response_bytes)
+    expected_command = auth_crammd5_verify(username, password, response_bytes)
 
     assert mock_auth.received_commands == [b"AUTH CRAM-MD5", expected_command]
 
