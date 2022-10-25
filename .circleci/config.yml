@@ -39,6 +39,13 @@ executors:
           username: $DOCKERHUB_USERNAME
           password: $DOCKERHUB_PASSWORD
     resource_class: small
+  py311:
+    docker:
+      - image: "python:3.11-bullseye"
+        auth:
+          username: $DOCKERHUB_USERNAME
+          password: $DOCKERHUB_PASSWORD
+    resource_class: small
   pypy37:
     docker:
       - image: "pypy:3.7-bullseye"
@@ -160,7 +167,7 @@ jobs:
       python_version:
         type: enum
         description: "executor name"
-        enum: ["py37", "py38", "py39", "py310", "pypy37", "pypy38", "pypy39"]
+        enum: ["py37", "py38", "py39", "py310", "py311", "pypy37", "pypy38", "pypy39"]
       event_loop:
         type: enum
         description: "event loop type"
@@ -260,7 +267,7 @@ workflows:
           name: test-<<matrix.python_version>>-<<matrix.event_loop>>
           matrix:
             parameters:
-              python_version: ["py37", "py38", "py39", "py310", "pypy37", "pypy38", "pypy39"]
+              python_version: ["py37", "py38", "py39", "py310", "py311", "pypy37", "pypy38", "pypy39"]
               event_loop: ["asyncio", "uvloop"]
             exclude:
               - python_version: "pypy37"
