@@ -261,7 +261,7 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
 
         try:
             result = await asyncio.wait_for(self._response_waiter, timeout)
-        except asyncio.TimeoutError as exc:
+        except (TimeoutError, asyncio.TimeoutError) as exc:
             raise SMTPReadTimeoutError("Timed out waiting for server response") from exc
         finally:
             # If we were disconnected, don't create a new waiter
@@ -364,7 +364,7 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
                     server_hostname=server_hostname,
                     ssl_handshake_timeout=timeout,
                 )
-            except asyncio.TimeoutError as exc:
+            except (TimeoutError, asyncio.TimeoutError) as exc:
                 raise SMTPTimeoutError("Timed out while upgrading transport") from exc
             # SSLProtocol only raises ConnectionAbortedError on timeout
             except ConnectionAbortedError as exc:
