@@ -23,6 +23,8 @@ Changelog
   issue.
 - Bugfix: the ``mail_options`` and ``rcpt_options`` arguments to the ``send``
   coroutine no longer cause errors
+- Cleanup: Refactored ``SMTP`` parent classes to remove complex inheritance
+  structure.
 - Cleanup: Don't use private email.message.Message policy attribute (instead,
   set an appropriate policy based on message class)
 
