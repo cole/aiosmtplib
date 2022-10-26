@@ -35,7 +35,6 @@ from .errors import (
 from .esmtp import parse_esmtp_extensions
 from .protocol import SMTPProtocol
 from .response import SMTPResponse
-from .sync import async_to_sync
 from .typing import Default, SMTPStatus, SocketPathType, _default
 
 
@@ -1432,27 +1431,25 @@ class SMTP:
     ) -> Tuple[Dict[str, SMTPResponse], str]:
         """
         Synchronous version of :meth:`.sendmail`. This method starts
-        the event loop to connect, send the message, and disconnect.
+        an event loop to connect, send the message, and disconnect.
         """
 
         async def sendmail_coroutine() -> Tuple[Dict[str, SMTPResponse], str]:
             async with self:
                 return await self.sendmail(*args, **kwargs)
 
-        loop = self.loop or asyncio.get_event_loop()
-        return async_to_sync(sendmail_coroutine(), loop=loop)
+        return asyncio.run(sendmail_coroutine())
 
     def send_message_sync(
         self, *args: Any, **kwargs: Any
     ) -> Tuple[Dict[str, SMTPResponse], str]:
         """
         Synchronous version of :meth:`.send_message`. This method
-        starts the event loop to connect, send the message, and disconnect.
+        starts an event loop to connect, send the message, and disconnect.
         """
 
         async def send_message_coroutine() -> Tuple[Dict[str, SMTPResponse], str]:
             async with self:
                 return await self.send_message(*args, **kwargs)
 
-        loop = self.loop or asyncio.get_event_loop()
-        return async_to_sync(send_message_coroutine(), loop=loop)
+        return asyncio.run(send_message_coroutine())

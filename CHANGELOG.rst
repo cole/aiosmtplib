@@ -25,6 +25,7 @@ Changelog
   coroutine no longer cause errors
 - Cleanup: Refactored ``SMTP`` parent classes to remove complex inheritance
   structure.
+- Cleanup: Switched to ``asyncio.run`` for sync client methods.
 - Cleanup: Don't use private email.message.Message policy attribute (instead,
   set an appropriate policy based on message class)
 
