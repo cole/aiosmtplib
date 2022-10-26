@@ -224,6 +224,11 @@ async def test_disconnected_server_raises_on_starttls(
     await smtp_client.connect()
     await smtp_client.ehlo()
 
+    async def mock_ehlo_or_helo_if_needed() -> None:
+        pass
+
+    smtp_client._ehlo_or_helo_if_needed = mock_ehlo_or_helo_if_needed  # type: ignore
+
     with pytest.raises(SMTPServerDisconnected):
         await smtp_client.starttls(timeout=1.0)
 
@@ -390,3 +395,44 @@ async def test_connect_via_socket_path(
     response = await smtp_client.ehlo()
 
     assert response.code == SMTPStatus.completed
+
+
+async def test_disconnected_server_get_transport_info(
+    smtp_client: SMTP,
+    smtpd_server: asyncio.AbstractServer,
+    smtpd_class: Type[SMTPD],
+    smtpd_mock_response_eof: Callable,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(smtpd_class, "smtp_NOOP", smtpd_mock_response_eof)
+
+    await smtp_client.connect()
+
+    with pytest.raises(SMTPServerDisconnected):
+        await smtp_client.execute_command(b"NOOP")
+
+    with pytest.raises(SMTPServerDisconnected):
+        await smtp_client.get_transport_info("sslcontext")
+
+
+async def test_disconnected_server_data(
+    smtp_client: SMTP,
+    smtpd_server: asyncio.AbstractServer,
+    smtpd_class: Type[SMTPD],
+    smtpd_mock_response_eof: Callable,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(smtpd_class, "smtp_NOOP", smtpd_mock_response_eof)
+
+    await smtp_client.connect()
+
+    with pytest.raises(SMTPServerDisconnected):
+        await smtp_client.execute_command(b"NOOP")
+
+    async def mock_ehlo_or_helo_if_needed() -> None:
+        pass
+
+    smtp_client._ehlo_or_helo_if_needed = mock_ehlo_or_helo_if_needed  # type: ignore
+
+    with pytest.raises(SMTPServerDisconnected):
+        await smtp_client.data("123")

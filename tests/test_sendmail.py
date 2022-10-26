@@ -374,6 +374,39 @@ async def test_send_message_with_cc_and_bcc_recipients(
     assert received_commands[4][1][0] == bcc_recipient
 
 
+async def test_send_message_recipient_str(
+    smtp_client: SMTP,
+    smtpd_server: asyncio.AbstractServer,
+    message: email.message.Message,
+    received_commands: List[Tuple[str, Tuple[Any, ...]]],
+) -> None:
+    recipient_str = "1234@example.org"
+    async with smtp_client:
+        errors, response = await smtp_client.send_message(
+            message, recipients=recipient_str
+        )
+
+    assert not errors
+    assert isinstance(errors, dict)
+    assert response != ""
+    assert received_commands[2][1][0] == recipient_str
+
+
+async def test_send_message_mail_options(
+    smtp_client: SMTP,
+    smtpd_server: asyncio.AbstractServer,
+    message: email.message.Message,
+) -> None:
+    async with smtp_client:
+        errors, response = await smtp_client.send_message(
+            message, mail_options=["BODY=8BITMIME"]
+        )
+
+    assert not errors
+    assert isinstance(errors, dict)
+    assert response != ""
+
+
 async def test_send_multiple_messages_in_sequence(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
