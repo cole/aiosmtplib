@@ -45,18 +45,19 @@ sphinx = { version = ">=4,<5", optional = true }
 sphinx_autodoc_typehints = { version = "^1.7.0", optional = true }
 
 [tool.poetry.dev-dependencies]
-pytest = "^7.1"
-pytest-asyncio = "^0.18"
-pytest-cov = "^3"
-coverage = {extras = ["toml"], version = "^6"}
-hypothesis = "^6"
+pytest = "^7.2"
+pytest-asyncio = "^0.20.1"
+pytest-cov = "^4.0"
+coverage = {extras = ["toml"], version = "^6.5"}
+hypothesis = "^6.56"
 aiosmtpd = "^1.4.2"
-pytest-xdist = "^2.1.0"
-mypy = "^0.950"
-flake8 = "^3.9.2"
-flake8-bugbear = "^22.1.11"
-trustme = "^0.7.0"
-black = {version = "^22.3.0", allow-prereleases = true}
+pytest-xdist = "^3.0.0"
+mypy = "^0.982"
+flake8 = "^5.0"
+flake8-bugbear = "^22.10.27"
+flake8-typing-imports = "^1.14.0"
+trustme = "^0.9.0"
+black = "22.10.0"
 
 [tool.poetry.extras]
 docs = ["sphinx", "sphinx_autodoc_typehints"]
