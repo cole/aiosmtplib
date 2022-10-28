@@ -1,8 +1,8 @@
 Changelog
 =========
 
-2.0.0 (unreleased)
-------------------
+2.0.0
+-----
 
 - **BREAKING**: Drop Python 3.5 and 3.6 support.
 - **BREAKING**: On connect, if the server supports STARTTLS, automatically try
