@@ -43,23 +43,36 @@ python = "^3.7"
 uvloop = { version = "^0.14", optional = true }
 sphinx = { version = "^5.3.0", optional = true }
 sphinx_autodoc_typehints = { version = "^1.7.0", optional = true }
-safety = "^2.3.1"
-
-[tool.poetry.dev-dependencies]
-pytest = "^7.2"
-pytest-asyncio = "^0.20.1"
-pytest-cov = "^4.0"
-coverage = {extras = ["toml"], version = "^6.5"}
-hypothesis = "^6.56"
-aiosmtpd = "^1.4.2"
-pytest-xdist = "^3.0.0"
-mypy = "^0.982"
-trustme = "^0.9.0"
-bandit = "^1.7.4"
 
 [tool.poetry.extras]
 docs = ["sphinx", "sphinx_autodoc_typehints"]
 uvloop = ["uvloop"]
+
+[tool.poetry.group.test]
+optional = true
+
+[tool.poetry.group.test.dependencies]
+pytest = "^7.2"
+pytest-asyncio = "^0.20.1"
+pytest-cov = "^4.0"
+pytest-xdist = "^3.0.0"
+coverage = {extras = ["toml"], version = "^6.5"}
+hypothesis = "^6.56"
+aiosmtpd = "^1.4.2"
+trustme = "^0.9.0"
+
+[tool.poetry.group.typecheck]
+optional = true
+
+[tool.poetry.group.typecheck.dependencies]
+mypy = "^0.982"
+
+[tool.poetry.group.security]
+optional = true
+
+[tool.poetry.group.security.dependencies]
+bandit = "^1.7.4"
+safety = "^2.3.1"
 
 [tool.pytest.ini_options]
 asyncio_mode = "strict"
