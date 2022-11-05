@@ -104,9 +104,9 @@ Sending Messages
 Use this method to send :py:class:`email.message.EmailMessage` objects, including
 :py:mod:`email.mime` subclasses such as :py:class:`email.mime.text.MIMEText`.
 
-For details on creating :py:class:`email.message.Message` objects, see `the
+For details on creating :py:class:`email.message.EmailMessage` objects, see `the
 stdlib documentation examples
-<https://docs.python.org/3.7/library/email.examples.html>`_.
+<https://docs.python.org/3.11/library/email.examples.html>`_.
 
 .. testcode::
 
