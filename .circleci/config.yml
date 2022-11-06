@@ -355,70 +355,115 @@ workflows:
   build_test_deploy:
     jobs:
       - build: *base-job
-      - docs: *base-job
-      - test:
+      - docs:
           <<: *base-job
-          name: test-<<matrix.python_version>>-<<matrix.event_loop>>
-          matrix:
-            parameters:
-              python_version:
-                [
-                  "py37",
-                  "py38",
-                  "py39",
-                  "py310",
-                  "py311",
-                ]
-              event_loop: ["asyncio"]
-          requires:
+          requires: &phase1
             - build
       - test:
           <<: *base-job
-          name: test-<<matrix.python_version>>-<<matrix.event_loop>>
-          matrix:
-            alias: test-uvloop
-            parameters:
-              python_version:
-                [
-                  "py37",
-                  "py38",
-                  "py39",
-                  "py310",
-                  "py311",
-                ]
-              event_loop: ["uvloop"]
-          requires:
-            - build
-            - test
+          python_version: "py37"
+          event_loop: "asyncio"
+          name: "test-py37-asyncio"
+          requires: *phase1
       - test:
           <<: *base-job
-          name: test-<<matrix.python_version>>-<<matrix.event_loop>>
-          matrix:
-            alias: test-pypy
-            parameters:
-              python_version:
-                [
-                  "pypy37",
-                  "pypy38",
-                  "pypy39",
-                ]
-              event_loop: ["asyncio"]
-          requires:
+          name: "test-py38-asyncio"
+          python_version: "py38"
+          event_loop: "asyncio"
+          requires: *phase1
+      - test:
+          <<: *base-job
+          name: "test-py39-asyncio"
+          python_version: "py39"
+          event_loop: "asyncio"
+          requires: *phase1
+      - test:
+          <<: *base-job
+          name: test-py310-asyncio
+          python_version: "py310"
+          event_loop: "asyncio"
+          requires: *phase1
+      - test:
+          <<: *base-job
+          name: "test-py311-asyncio"
+          python_version: "py311"
+          event_loop: "asyncio"
+          requires: *phase1
+      - test:
+          <<: *base-job
+          name: "test-py37-uvloop"
+          python_version: "py37"
+          event_loop: "uvloop"
+          requires: &phase2
             - build
-            - test
+            - docs
+            - test-py37-asyncio
+            - test-py38-asyncio
+            - test-py39-asyncio
+            - test-py310-asyncio
+            - test-py311-asyncio
+      - test:
+          <<: *base-job
+          name: "test-py38-uvloop"
+          python_version: "py38"
+          event_loop: "uvloop"
+          requires: *phase2
+      - test:
+          <<: *base-job
+          name: "test-py39-uvloop"
+          python_version: "py39"
+          event_loop: "uvloop"
+          requires: *phase2
+      - test:
+          <<: *base-job
+          name: "test-py310-uvloop"
+          python_version: "py310"
+          event_loop: "uvloop"
+          requires: *phase2
+      - test:
+          <<: *base-job
+          name: "test-py311-uvloop"
+          python_version: "py311"
+          event_loop: "uvloop"
+          requires: *phase2
+      - test:
+          <<: *base-job
+          name: "test-pypy37-asyncio"
+          python_version: "pypy37"
+          event_loop: "asyncio"
+          requires: *phase2
+      - test:
+          <<: *base-job
+          name: "test-pypy38-asyncio"
+          python_version: "pypy38"
+          event_loop: "asyncio"
+          requires: *phase2
+      - test:
+          <<: *base-job
+          name: "test-pypy39-asyncio"
+          python_version: "pypy39"
+          event_loop: "asyncio"
+          requires: *phase2
       - coverage:
           <<: *base-job
-          requires:
-            - test
-            - test-uvloop
-            - test-pypy
-      - deploy:
-          requires:
+          requires: &phase3
             - build
-            - test
-            - test-uvloop
-            - test-pypy
             - docs
+            - test-py37-asyncio
+            - test-py38-asyncio
+            - test-py39-asyncio
+            - test-py310-asyncio
+            - test-py311-asyncio
+            - test-py37-uvloop
+            - test-py38-uvloop
+            - test-py39-uvloop
+            - test-py310-uvloop
+            - test-py311-uvloop
+            - test-pypy37-asyncio
+            - test-pypy38-asyncio
+            - test-pypy39-asyncio
+      - deploy:
+          requires: *phase3
           context:
             - docker-hub-credentials
           filters:
