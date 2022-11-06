@@ -64,13 +64,17 @@ commands:
       steps:
         type: steps
         default: []
+      cache_key:
+        type: string
+        default: ""
     description: "Wraps the steps given with a poetry cache"
     steps:
       - run: python -V
       - restore_cache:
           keys:
-            - poetry-v2-{{ checksum "pyproject.toml" }}
-            - poetry-v2-
+            - poetry-v3-<<parameters.cache_key>>-{{ checksum "pyproject.toml" }}
+            - poetry-v3-<<parameters.cache_key>>-
+            - poetry-v3-
       - run: mkdir -p $POETRY_CACHE_DIR
       - run: mkdir -p $POETRY_VIRTUALENVS_PATH
       - run: mkdir -p $PIP_CACHE_DIR
@@ -79,7 +83,7 @@ commands:
       - run: poetry config --list
       - steps: <<parameters.steps>>
       - save_cache:
-          key: poetry-v2-{{ checksum "pyproject.toml" }}
+          key: poetry-v3-<<parameters.cache_key>>-{{ checksum "pyproject.toml" }}
           paths:
             - ~/caches/poetry
   using_pip_cache:
@@ -138,7 +142,7 @@ commands:
     steps:
       - using_pip_cache:
           steps:
-              - run: pip install poetry
+            - run: pip install poetry
   test:
     description: "Run tests"
     parameters:
@@ -147,27 +151,30 @@ commands:
         description: "event loop type"
         enum: ["asyncio", "uvloop"]
     steps:
-      - when:
-          condition:
-            equal:
-              - "asyncio"
-              - <<parameters.event_loop>>
+      - using_poetry:
+          cache_key: "test-<<parameters.event_loop>>"
           steps:
-            - run: poetry install --with test
-      - unless:
-          condition:
-            equal:
-              - "uvloop"
-              - <<parameters.event_loop>>
-          steps:
-            - run: poetry install -E uvloop --with test
-      - run: |
-          poetry run pytest --cov --cov-report= \
-            --cov-config=pyproject.toml \
-            --junitxml=test-results/{{ .Environment.CIRCLE_JOB }}/results.xml \
-            --event-loop=<<parameters.event_loop>> \
-            --bind-addr=$BIND_ADDR \
-            --hypothesis-profile $HYPOTHESIS_PROFILE
+            - when:
+                condition:
+                  equal:
+                    - "asyncio"
+                    - <<parameters.event_loop>>
+                steps:
+                  - run: poetry install --with test
+            - unless:
+                condition:
+                  equal:
+                    - "uvloop"
+                    - <<parameters.event_loop>>
+                steps:
+                  - run: poetry install -E uvloop --with test
+            - run: |
+                poetry run pytest --cov --cov-report= \
+                  --cov-config=pyproject.toml \
+                  --junitxml=test-results/{{ .Environment.CIRCLE_JOB }}/results.xml \
+                  --event-loop=<<parameters.event_loop>> \
+                  --bind-addr=$BIND_ADDR \
+                  --hypothesis-profile $HYPOTHESIS_PROFILE
       - store_artifacts:
           path: test-results
       - store_test_results:
@@ -183,20 +190,29 @@ commands:
   typecheck:
     description: "Run mypy"
     steps:
-      - run: poetry install --only typecheck
-      - run: poetry run mypy aiosmtplib
+      - using_poetry:
+          cache_key: "typecheck"
+          steps:
+            - run: poetry install --only typecheck
+            - run: poetry run mypy aiosmtplib
   security:
     description: "Run security checks"
     steps:
-      - run: poetry install --only security
-      - run: poetry run bandit -n 10 -x tests ./
-      - run: poetry run safety check
+      - using_poetry:
+          cache_key: "security"
+          steps:
+            - run: poetry install --only security
+            - run: poetry run bandit -n 10 -x tests ./
+            - run: poetry run safety check
   docs:
     description: "Run docs build"
     steps:
-      - run: poetry install -E docs --with test
-      - run: poetry run sphinx-build -nWT -b doctest -d ./docs/build/doctrees ./docs ./docs/build/html
-      - run: poetry run sphinx-build -nWT -b dummy -d ./docs/build/doctrees ./docs ./docs/build/html
+      - using_poetry:
+          cache_key: "docs"
+          steps:
+            - run: poetry install -E docs --with test
+            - run: poetry run sphinx-build -nWT -b doctest -d ./docs/build/doctrees ./docs ./docs/build/html
+            - run: poetry run sphinx-build -nWT -b dummy -d ./docs/build/doctrees ./docs ./docs/build/html
   build:
     description: "Run poetry build"
     steps:
@@ -219,17 +235,19 @@ commands:
     description: "Collect coverage"
     steps:
       - run: cp coverage-results/.coverage.* ./
-      - run: poetry install --with test
-      - run: poetry run coverage combine
-      - run: poetry run coverage xml
-      - run: poetry run coverage html
-      - store_artifacts:
-          path: coverage.xml
-      - store_artifacts:
-          path: htmlcov
-      - codecov/upload:
-          file: coverage.xml
-      - run: poetry run coverage report --fail-under=90
+      - using_poetry:
+          steps:
+            - run: poetry install --with test
+            - run: poetry run coverage combine
+            - run: poetry run coverage xml
+            - run: poetry run coverage html
+            - store_artifacts:
+                path: coverage.xml
+            - store_artifacts:
+                path: htmlcov
+            - codecov/upload:
+                file: coverage.xml
+            - run: poetry run coverage report --fail-under=90
 
 jobs:
   lint:
@@ -246,25 +264,19 @@ jobs:
     executor: circleci_py310
     steps:
       - checkout
-      - using_poetry:
-          steps:
-            - typecheck
+      - typecheck
 
   security:
     executor: circleci_py310
     steps:
       - checkout
-      - using_poetry:
-          steps:
-            - security
+      - security
 
   build:
     executor: circleci_py310
     steps:
       - checkout
-      - using_poetry:
-          steps:
-            - build
+      - build
 
   docs:
     executor: circleci_py310
@@ -272,9 +284,7 @@ jobs:
       - checkout
       - attach_workspace:
           at: dist
-      - using_poetry:
-          steps:
-            - docs
+      - docs
 
   test:
     executor: <<parameters.python_version>>
@@ -282,7 +292,17 @@ jobs:
       python_version:
         type: enum
         description: "executor name"
-        enum: ["py37", "py38", "py39", "py310", "py311", "pypy37", "pypy38", "pypy39"]
+        enum:
+          [
+            "py37",
+            "py38",
+            "py39",
+            "py310",
+            "py311",
+            "pypy37",
+            "pypy38",
+            "pypy39",
+          ]
       event_loop:
         type: enum
         description: "event loop type"
@@ -296,13 +316,11 @@ jobs:
       - attach_workspace:
           at: dist
       - install_poetry
-      - using_poetry:
+      - using_hypothesis_cache:
+          cache_key: <<parameters.python_version>>
           steps:
-            - using_hypothesis_cache:
-                cache_key: <<parameters.python_version>>
-                steps:
-                  - test:
-                      event_loop: <<parameters.event_loop>>
+            - test:
+                event_loop: <<parameters.event_loop>>
 
   coverage:
     executor: py310
@@ -313,9 +331,7 @@ jobs:
       - attach_workspace:
           at: coverage-results
       - install_poetry
-      - using_poetry:
-          steps:
-            - coverage
+      - coverage
 
   deploy:
     executor: circleci_py310
@@ -346,7 +362,17 @@ workflows:
           name: test-<<matrix.python_version>>-<<matrix.event_loop>>
           matrix:
             parameters:
-              python_version: ["py37", "py38", "py39", "py310", "py311", "pypy37", "pypy38", "pypy39"]
+              python_version:
+                [
+                  "py37",
+                  "py38",
+                  "py39",
+                  "py310",
+                  "py311",
+                  "pypy37",
+                  "pypy38",
+                  "pypy39",
+                ]
               event_loop: ["asyncio", "uvloop"]
             exclude:
               - python_version: "pypy37"
