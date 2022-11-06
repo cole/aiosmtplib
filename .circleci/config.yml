@@ -69,8 +69,8 @@ commands:
       - run: python -V
       - restore_cache:
           keys:
-            - poetry-v1-{{ checksum "pyproject.toml" }}
-            - poetry-v1-
+            - poetry-v2-{{ checksum "pyproject.toml" }}
+            - poetry-v2-
       - run: mkdir -p $POETRY_CACHE_DIR
       - run: mkdir -p $POETRY_VIRTUALENVS_PATH
       - run: mkdir -p $PIP_CACHE_DIR
@@ -79,9 +79,9 @@ commands:
       - run: poetry config --list
       - steps: <<parameters.steps>>
       - save_cache:
-          key: poetry-v1-{{ checksum "pyproject.toml" }}
+          key: poetry-v2-{{ checksum "pyproject.toml" }}
           paths:
-            - /caches/poetry
+            - ~/caches/poetry
   using_pip_cache:
     description: "Execute with pip caching"
     parameters:
@@ -91,13 +91,13 @@ commands:
     steps:
       - restore_cache:
           keys:
-            - pip-v1-{{ .Environment.CIRCLE_JOB }}-
+            - pip-v2-{{ .Environment.CIRCLE_JOB }}-
       - run: mkdir -p $PIP_CACHE_DIR
       - steps: <<parameters.steps>>
       - save_cache:
-          key: pip-v1-{{ .Environment.CIRCLE_JOB }}-
+          key: pip-v2-{{ .Environment.CIRCLE_JOB }}-
           paths:
-            - /caches/pip
+            - ~/caches/pip
   using_pre_commit:
     description: "Install pre-commit with caching"
     parameters:
@@ -107,15 +107,15 @@ commands:
     steps:
       - restore_cache:
           keys:
-            - pre-commit-v2-{{ checksum ".pre-commit-config.yaml" }}
-            - pre-commit-v2-
+            - pre-commit-v3-{{ checksum ".pre-commit-config.yaml" }}
+            - pre-commit-v3-
       - run: mkdir -p $PRE_COMMIT_HOME
       - run: pip install pre-commit
       - steps: <<parameters.steps>>
       - save_cache:
-          key: pre-commit-v2-{{ checksum ".pre-commit-config.yaml" }}
+          key: pre-commit-v3-{{ checksum ".pre-commit-config.yaml" }}
           paths:
-            - /caches/pre-commit
+            - ~/caches/pre-commit
   using_hypothesis_cache:
     description: "Caching for hypothesis DB"
     parameters:
