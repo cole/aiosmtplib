@@ -201,7 +201,7 @@ commands:
       - using_poetry:
           cache_key: "security"
           steps:
-            - run: poetry install --only security
+            - run: poetry install -E uvloop -E docs --with test,typecheck,security
             - run: poetry run bandit -n 10 -x tests ./
             - run: poetry run safety check
   docs:
