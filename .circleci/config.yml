@@ -158,14 +158,6 @@ commands:
           steps:
             - when:
                 condition:
-                  - or:
-                      - equal: ["pypy37", <<parameters.python_version>>]
-                      - equal: ["pypy38", <<parameters.python_version>>]
-                      - equal: ["pypy39", <<parameters.python_version>>]
-                steps:
-                  - run: poetry env use $(which pypy3)
-            - when:
-                condition:
                   equal: ["uvloop", <<parameters.event_loop>>]
                 steps:
                   - run: poetry install -E uvloop --with test
