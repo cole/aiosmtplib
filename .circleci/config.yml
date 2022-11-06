@@ -162,7 +162,7 @@ commands:
           steps:
             - run: poetry install -E uvloop --with test
       - run: |
-          pytest --cov --cov-report= \
+          poetry run pytest --cov --cov-report= \
             --cov-config=pyproject.toml \
             --junitxml=test-results/{{ .Environment.CIRCLE_JOB }}/results.xml \
             --event-loop=<<parameters.event_loop>> \
