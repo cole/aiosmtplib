@@ -1,8 +1,7 @@
 aiosmtplib
 ==========
 
-|circleci| |codecov| |pypi-version| |pypi-python-versions| |pypi-status| |downloads|
-|pypi-license| |black|
+|circleci| |precommit.ci| |codecov| |pypi-version| |pypi-status| |downloads| |pypi-python-versions| |pypi-license|
 
 ------------
 
@@ -52,11 +51,11 @@ Bug reports (and feature requests) are welcome via `Github issues`_.
 .. |pypi-license| image:: https://img.shields.io/pypi/l/aiosmtplib.svg
 .. |codecov| image:: https://codecov.io/gh/cole/aiosmtplib/branch/main/graph/badge.svg
              :target: https://codecov.io/gh/cole/aiosmtplib
-.. |black| image:: https://img.shields.io/badge/code%20style-black-000000.svg
-           :target: https://github.com/ambv/black
-           :alt: "Code style: black"
 .. |downloads| image:: https://pepy.tech/badge/aiosmtplib
                :target: https://pepy.tech/project/aiosmtplib
                :alt: "aiosmtplib on pypy.tech"
+.. |precommit.ci| image:: https://results.pre-commit.ci/badge/github/cole/aiosmtplib/main.svg
+                  :target: https://results.pre-commit.ci/latest/github/cole/aiosmtplib/main
+                  :alt: "pre-commit.ci status"
 .. _Read The Docs: https://aiosmtplib.readthedocs.io/en/stable/overview.html
 .. _Github issues: https://github.com/cole/aiosmtplib/issues
