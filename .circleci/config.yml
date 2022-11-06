@@ -12,11 +12,11 @@ executors:
           password: $DOCKERHUB_PASSWORD
     resource_class: small
     environment:
-      PIP_CACHE_DIR: /caches/pip
-      POETRY_CACHE_DIR: /caches/poetry
-      POETRY_VIRTUALENVS_PATH: /caches/poetry/virtualenvs
+      PIP_CACHE_DIR: ~/caches/pip
+      POETRY_CACHE_DIR: ~/caches/poetry
+      POETRY_VIRTUALENVS_PATH: ~/caches/poetry/virtualenvs
       POETRY_VIRTUALENVS_IN_PROJECT: "false"
-      PRE_COMMIT_HOME: /caches/pre-commit
+      PRE_COMMIT_HOME: ~/caches/pre-commit
   py37:
     <<: *executor
     docker:
@@ -69,8 +69,8 @@ commands:
       - run: python -V
       - restore_cache:
           keys:
-            - poetry-v1-{{ .Environment.CIRCLE_JOB }}-{{ checksum "pyproject.toml" }}
-            - poetry-v1-{{ .Environment.CIRCLE_JOB }}-
+            - poetry-v1-{{ checksum "pyproject.toml" }}
+            - poetry-v1-
       - run: mkdir -p $POETRY_CACHE_DIR
       - run: mkdir -p $POETRY_VIRTUALENVS_PATH
       - run: mkdir -p $PIP_CACHE_DIR
@@ -79,7 +79,7 @@ commands:
       - run: poetry config --list
       - steps: <<parameters.steps>>
       - save_cache:
-          key: poetry-v1-{{ .Environment.CIRCLE_JOB }}-{{ checksum "pyproject.toml" }}
+          key: poetry-v1-{{ checksum "pyproject.toml" }}
           paths:
             - /caches/poetry
   using_pip_cache:
