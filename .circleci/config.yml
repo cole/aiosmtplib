@@ -166,16 +166,12 @@ commands:
                   - run: poetry env use $(which pypy3)
             - when:
                 condition:
-                  equal:
-                    - "uvloop"
-                    - <<parameters.event_loop>>
+                  equal: ["uvloop", <<parameters.event_loop>>]
                 steps:
                   - run: poetry install -E uvloop --with test
             - unless:
                 condition:
-                  equal:
-                    - "uvloop"
-                    - <<parameters.event_loop>>
+                  equal: ["uvloop", <<parameters.event_loop>>]
                 steps:
                   - run: poetry install --with test
             - run: |
