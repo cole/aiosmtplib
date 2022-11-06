@@ -367,28 +367,56 @@ workflows:
                   "py39",
                   "py310",
                   "py311",
+                ]
+              event_loop: ["asyncio"]
+          requires:
+            - build
+      - test:
+          <<: *base-job
+          name: test-<<matrix.python_version>>-<<matrix.event_loop>>
+          matrix:
+            alias: test-uvloop
+            parameters:
+              python_version:
+                [
+                  "py37",
+                  "py38",
+                  "py39",
+                  "py310",
+                  "py311",
+                ]
+              event_loop: ["uvloop"]
+          requires:
+            - build
+            - test
+      - test:
+          <<: *base-job
+          name: test-<<matrix.python_version>>-<<matrix.event_loop>>
+          matrix:
+            alias: test-pypy
+            parameters:
+              python_version:
+                [
                   "pypy37",
                   "pypy38",
                   "pypy39",
                 ]
-              event_loop: ["asyncio", "uvloop"]
-            exclude:
-              - python_version: "pypy37"
-                event_loop: "uvloop"
-              - python_version: "pypy38"
-                event_loop: "uvloop"
-              - python_version: "pypy39"
-                event_loop: "uvloop"
+              event_loop: ["asyncio"]
           requires:
             - build
+            - test
       - coverage:
           <<: *base-job
           requires:
             - test
+            - test-uvloop
+            - test-pypy
       - deploy:
           requires:
             - build
             - test
+            - test-uvloop
+            - test-pypy
             - docs
           context:
             - docker-hub-credentials
