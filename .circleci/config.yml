@@ -150,10 +150,20 @@ commands:
         type: enum
         description: "event loop type"
         enum: ["asyncio", "uvloop"]
+      python_version:
+        type: string
     steps:
       - using_poetry:
           cache_key: "{{ .Environment.CIRCLE_JOB }}"
           steps:
+            - when:
+                condition:
+                  - or:
+                      - equal: ["pypy37", <<parameters.python_version>>]
+                      - equal: ["pypy38", <<parameters.python_version>>]
+                      - equal: ["pypy39", <<parameters.python_version>>]
+                steps:
+                  - run: poetry env use $(which pypy3)
             - when:
                 condition:
                   equal:
@@ -320,6 +330,7 @@ jobs:
           cache_key: <<parameters.python_version>>
           steps:
             - test:
+                python_version: <<parameters.python_version>>
                 event_loop: <<parameters.event_loop>>
 
   coverage:
