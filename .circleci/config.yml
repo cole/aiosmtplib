@@ -194,7 +194,7 @@ commands:
   docs:
     description: "Run docs build"
     steps:
-      - run: poetry install -E docs
+      - run: poetry install -E docs --with test
       - run: poetry run sphinx-build -nWT -b doctest -d ./docs/build/doctrees ./docs ./docs/build/html
       - run: poetry run sphinx-build -nWT -b dummy -d ./docs/build/doctrees ./docs ./docs/build/html
   build:
