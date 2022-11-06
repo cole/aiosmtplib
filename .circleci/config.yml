@@ -133,6 +133,12 @@ commands:
           key: "hypothesis-v5-<<parameters.cache_key>>"
           paths:
             - ~/project/.hypothesis
+  install_poetry:
+    description: "Install poetry"
+    steps:
+      - using_pip_cache:
+          steps:
+              - run: pip install poetry
   test:
     description: "Run tests"
     parameters:
@@ -289,6 +295,7 @@ jobs:
       - checkout
       - attach_workspace:
           at: dist
+      - install_poetry
       - using_poetry:
           steps:
             - using_hypothesis_cache:
@@ -305,6 +312,7 @@ jobs:
       - checkout
       - attach_workspace:
           at: coverage-results
+      - install_poetry
       - using_poetry:
           steps:
             - coverage
