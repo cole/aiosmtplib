@@ -344,13 +344,12 @@ workflows:
   version: 2
   lint:
     jobs:
-      - lint: &base-job
+      - typecheck: &base-job
           context:
             - docker-hub-credentials
           filters:
             tags:
               only: /.*/
-      - typecheck: *base-job
       - security: *base-job
   build_test_deploy:
     jobs:
