@@ -4,118 +4,135 @@ orbs:
   codecov: codecov/codecov@3.2.3
 
 executors:
-  circleci_py310:
+  circleci_py310: &executor
     docker:
       - image: "cimg/python:3.10"
-        auth:
+        auth: &docker-auth
           username: $DOCKERHUB_USERNAME
           password: $DOCKERHUB_PASSWORD
     resource_class: small
+    environment:
+      PIP_CACHE_DIR: /caches/pip
+      POETRY_CACHE_DIR: /caches/poetry
+      POETRY_VIRTUALENVS_PATH: /caches/poetry/virtualenvs
+      POETRY_VIRTUALENVS_IN_PROJECT: "false"
+      PRE_COMMIT_HOME: /caches/pre-commit
   py37:
+    <<: *executor
     docker:
       - image: "python:3.7-bullseye"
-        auth:
-          username: $DOCKERHUB_USERNAME
-          password: $DOCKERHUB_PASSWORD
-    resource_class: small
+        auth: *docker-auth
   py38:
+    <<: *executor
     docker:
       - image: "python:3.8-bullseye"
-        auth:
-          username: $DOCKERHUB_USERNAME
-          password: $DOCKERHUB_PASSWORD
-    resource_class: small
+        auth: *docker-auth
   py39:
+    <<: *executor
     docker:
       - image: "python:3.9-bullseye"
-        auth:
-          username: $DOCKERHUB_USERNAME
-          password: $DOCKERHUB_PASSWORD
-    resource_class: small
+        auth: *docker-auth
   py310:
+    <<: *executor
     docker:
       - image: "python:3.10-bullseye"
-        auth:
-          username: $DOCKERHUB_USERNAME
-          password: $DOCKERHUB_PASSWORD
-    resource_class: small
+        auth: *docker-auth
   py311:
+    <<: *executor
     docker:
       - image: "python:3.11-bullseye"
-        auth:
-          username: $DOCKERHUB_USERNAME
-          password: $DOCKERHUB_PASSWORD
-    resource_class: small
+        auth: *docker-auth
   pypy37:
+    <<: *executor
     docker:
       - image: "pypy:3.7-bullseye"
-        auth:
-          username: $DOCKERHUB_USERNAME
-          password: $DOCKERHUB_PASSWORD
-    resource_class: small
+        auth: *docker-auth
   pypy38:
+    <<: *executor
     docker:
       - image: "pypy:3.8-bullseye"
-        auth:
-          username: $DOCKERHUB_USERNAME
-          password: $DOCKERHUB_PASSWORD
-    resource_class: small
+        auth: *docker-auth
   pypy39:
+    <<: *executor
     docker:
       - image: "pypy:3.9-bullseye"
-        auth:
-          username: $DOCKERHUB_USERNAME
-          password: $DOCKERHUB_PASSWORD
-    resource_class: small
+        auth: *docker-auth
 
 commands:
-  python_version:
-    description: "Output Python version"
-    steps:
-      - run:
-          command: python -V
-          name: "Checking python version"
-  poetry_version:
-    description: "Output Poetry version"
-    steps:
-      - run:
-          command: poetry -V
-          name: "Checking Poetry version"
-  poetry_config:
-    description: "Output Poetry config"
-    steps:
-      - run:
-          command: poetry config --list
-          name: "Checking Poetry config"
-  install_dependencies:
-    description: "Install dependencies"
+  using_poetry:
     parameters:
-      event_loop:
-        type: enum
-        description: "event loop type"
-        enum: ["asyncio", "uvloop"]
-    environment:
-      XDG_CACHE_HOME: "/tmp/cache"
+      steps:
+        type: steps
+        default: []
+    description: "Wraps the steps given with a poetry cache"
+    steps:
+      - run: python -V
+      - restore_cache:
+          keys:
+            - poetry-v1-{{ .Environment.CIRCLE_JOB }}-{{ checksum "pyproject.toml" }}
+            - poetry-v1-{{ .Environment.CIRCLE_JOB }}-
+      - run: mkdir -p $POETRY_CACHE_DIR
+      - run: mkdir -p $POETRY_VIRTUALENVS_PATH
+      - run: mkdir -p $PIP_CACHE_DIR
+      - run: mkdir -p $PRE_COMMIT_HOME
+      - run: poetry -V
+      - run: poetry config --list
+      - steps: <<parameters.steps>>
+      - save_cache:
+          key: poetry-v1-{{ .Environment.CIRCLE_JOB }}-{{ checksum "pyproject.toml" }}
+          paths:
+            - /caches/poetry
+  using_pip_cache:
+    description: "Execute with pip caching"
+    parameters:
+      steps:
+        type: steps
+        default: []
     steps:
       - restore_cache:
-          name: "Restoring cache"
           keys:
-            - test-v1-{{ .Environment.CIRCLE_JOB }}-{{ checksum "pyproject.toml" }}
-            - test-v1-{{ .Environment.CIRCLE_JOB }}-
-      - run:
-          command: poetry install --no-root
-          name: "Installing dependencies"
-      - run:
-          command: tox --workdir /tmp/toxworkdir --installpkg dist/aiosmtplib-*.whl --skip-missing-interpreters false
-          name: "Running tox"
-          environment:
-            XDG_CACHE_HOME: "/tmp/cache"
+            - pip-v1-{{ .Environment.CIRCLE_JOB }}-
+      - run: mkdir -p $PIP_CACHE_DIR
+      - steps: <<parameters.steps>>
       - save_cache:
-          name: "Updating cache"
-          key: test-v1-{{ .Environment.CIRCLE_JOB }}-{{ checksum "pyproject.toml" }}
+          key: pip-v1-{{ .Environment.CIRCLE_JOB }}-
           paths:
-            - /tmp/cache/pypoetry
-            - /tmp/cache/pip
+            - /caches/pip
+  using_pre_commit:
+    description: "Install pre-commit with caching"
+    parameters:
+      steps:
+        type: steps
+        default: []
+    steps:
+      - restore_cache:
+          keys:
+            - pre-commit-v2-{{ checksum ".pre-commit-config.yaml" }}
+            - pre-commit-v2-
+      - run: mkdir -p $PRE_COMMIT_HOME
+      - run: pip install pre-commit
+      - steps: <<parameters.steps>>
+      - save_cache:
+          key: pre-commit-v2-{{ checksum ".pre-commit-config.yaml" }}
+          paths:
+            - /caches/pre-commit
+  using_hypothesis_cache:
+    description: "Caching for hypothesis DB"
+    parameters:
+      steps:
+        type: steps
+        default: []
+      cache_key:
+        type: string
+    steps:
+      - restore_cache:
+          keys:
+            - "hypothesis-v5-<<parameters.cache_key>>"
+      - steps: <<parameters.steps>>
+      - save_cache:
+          key: "hypothesis-v5-<<parameters.cache_key>>"
+          paths:
+            - ~/project/.hypothesis
   test:
     description: "Run tests"
     parameters:
@@ -123,81 +140,63 @@ commands:
         type: enum
         description: "event loop type"
         enum: ["asyncio", "uvloop"]
-    environment:
-      XDG_CACHE_HOME: "/tmp/cache"
     steps:
-      - restore_cache:
-          name: "Restoring cache"
-          keys:
-            - test-v1-{{ .Environment.CIRCLE_JOB }}-{{ checksum "pyproject.toml" }}
-            - test-v1-{{ .Environment.CIRCLE_JOB }}-
-      - run:
-          command: pip install --upgrade tox
-          name: "Installing tox"
-      - run:
-          command: tox --workdir /tmp/toxworkdir --installpkg dist/aiosmtplib-*.whl --skip-missing-interpreters false
-          name: "Running tox"
-          environment:
-            XDG_CACHE_HOME: "/tmp/cache"
-      - save_cache:
-          name: "Updating cache"
-          key: test-v1-{{ .Environment.CIRCLE_JOB }}-{{ checksum "pyproject.toml" }}
+      - when:
+          condition:
+            equal:
+              - "asyncio"
+              - <<parameters.event_loop>>
+          steps:
+            - run: poetry install --with test
+      - unless:
+          condition:
+            equal:
+              - "uvloop"
+              - <<parameters.event_loop>>
+          steps:
+            - run: poetry install -E uvloop --with test
+      - run: |
+          pytest --cov --cov-report= \
+            --cov-config=pyproject.toml \
+            --junitxml=test-results/{{ .Environment.CIRCLE_JOB }}/results.xml \
+            --event-loop=<<parameters.event_loop>> \
+            --bind-addr=$BIND_ADDR \
+            --hypothesis-profile $HYPOTHESIS_PROFILE
+      - store_artifacts:
+          path: test-results
+      - store_test_results:
+          path: test-results
+      - persist_to_workspace:
+          root: coverage-results
           paths:
-            - /tmp/cache/pypoetry
-            - /tmp/cache/pip
-
-jobs:
+            - .coverage.*
   lint:
-    executor: circleci_py310
-    environment:
-      PRE_COMMIT_HOME: /tmp/cache/pre-commit
-      TOXENV: lint
+    description: "Run pre-commit"
     steps:
-      - python_version
-      - checkout
-      - restore_cache:
-          name: "Restoring pre-commit cache"
-          keys:
-            - pre-commit-v5-{{ checksum ".pre-commit-config.yaml" }}
-            - pre-commit-v5-
-      - tox
-      - save_cache:
-          name: "Updating pre-commit cache"
-          key: pre-commit-v5-{{ checksum ".pre-commit-config.yaml" }}
-          paths:
-            - /tmp/cache/pre-commit
-
+      - run: pre-commit run --all-files--show-diff-on-failure
+  typecheck:
+    description: "Run mypy"
+    steps:
+      - run: poetry install --only typecheck
+      - run: poetry run mypy aiosmtplib
+  security:
+    description: "Run security checks"
+    steps:
+      - run: poetry install --only security
+      - run: poetry run bandit -n 10 -x tests ./
+      - run: poetry run safety check
   docs:
-    executor: circleci_py310
-    environment:
-      TOXENV: docs
+    description: "Run docs build"
     steps:
-      - python_version
-      - checkout
-      - attach_workspace:
-          at: dist
-      - tox
-
+      - run: poetry install -E docs
+      - run: cd docs
+      - run: sphinx-build -nWT -b doctest -d ./build/doctrees . ./build/html
+      - run: sphinx-build -nWT -b dummy -d ./build/doctrees . ./build/html
   build:
-    executor: circleci_py310
-    environment:
-      POETRY_CACHE_DIR: /tmp/cache/poetry
+    description: "Run poetry build"
     steps:
-      - python_version
-      - checkout
-      - restore_cache:
-          name: "Restoring poetry cache"
-          keys:
-            - poetry-v2-{{ .Environment.CIRCLE_JOB }}-{{ checksum "pyproject.toml" }}
-            - poetry-v2-{{ .Environment.CIRCLE_JOB }}-
-      - run:
-          name: Building packages
-          command: poetry build -vv
-      - save_cache:
-          name: "Updating poetry cache"
-          key: poetry-v2-{{ .Environment.CIRCLE_JOB }}-{{ checksum "pyproject.toml" }}
-          paths:
-            - /tmp/cache/poetry
+      - run: poetry check
+      - run: poetry build -vv
       - persist_to_workspace:
           root: dist
           paths:
@@ -205,6 +204,72 @@ jobs:
             - aiosmtplib-*.whl
       - store_artifacts:
           path: dist/
+  deploy:
+    description: "Deploy to PyPI"
+    steps:
+      - run: poetry config repositories.testpypi https://test.pypi.org/legacy/
+      - run: poetry publish -vv --repository testpypi --username $TESTPYPI_USERNAME --password $TESTPYPI_PASSWORD
+      - run: poetry publish -vv --username $PYPI_USERNAME --password $PYPI_PASSWORD
+  coverage:
+    description: "Collect coverage"
+    steps:
+      - run: cp coverage-results/.coverage.* ./
+      - run: poetry install --with test
+      - run: poetry run coverage combine
+      - run: poetry run coverage xml
+      - run: poetry run coverage html
+      - store_artifacts:
+          path: coverage.xml
+      - store_artifacts:
+          path: htmlcov
+      - codecov/upload:
+          file: coverage.xml
+      - run: poetry run coverage report --fail-under=90
+
+jobs:
+  lint:
+    executor: circleci_py310
+    steps:
+      - checkout
+      - using_pip_cache:
+          steps:
+            - using_pre_commit:
+                steps:
+                  - lint
+
+  typecheck:
+    executor: circleci_py310
+    steps:
+      - checkout
+      - using_poetry:
+          steps:
+            - typecheck
+
+  security:
+    executor: circleci_py310
+    steps:
+      - checkout
+      - using_poetry:
+          steps:
+            - security
+
+  build:
+    executor: circleci_py310
+    steps:
+      - checkout
+      - using_poetry:
+          steps:
+            - build
+
+  docs:
+    executor: circleci_py310
+    steps:
+      - checkout
+      - attach_workspace:
+          at: dist
+      - using_poetry:
+          steps:
+            - docs
 
   test:
     executor: <<parameters.python_version>>
@@ -221,94 +286,56 @@ jobs:
       COVERAGE_FILE: "coverage-results/.coverage.<<parameters.python_version>>-<<parameters.event_loop>>"
       HYPOTHESIS_PROFILE: "ci"
       BIND_ADDR: "127.0.0.1"
-      TOXENV: "<<parameters.python_version>>-<<parameters.event_loop>>"
     steps:
-      - python_version
       - checkout
       - attach_workspace:
           at: dist
-      - restore_cache:
-          name: "Restoring hypothesis database"
-          keys:
-            - "hypothesis-v4-<<parameters.python_version>>"
-      - tox
-      - save_cache:
-          name: "Updating hypothesis database"
-          key: "hypothesis-v4-<<parameters.python_version>>"
-          paths:
-            - ~/project/.hypothesis
-      - store_artifacts:
-          path: test-results
-      - store_test_results:
-          path: test-results
-      - persist_to_workspace:
-          root: coverage-results
-          paths:
-            - .coverage.*
+      - using_poetry:
+          steps:
+            - using_hypothesis_cache:
+                cache_key: <<parameters.python_version>>
+                steps:
+                  - test:
+                      event_loop: <<parameters.event_loop>>
 
   coverage:
     executor: py310
     environment:
-      TOXENV: coverage
+      COVERAGE_FILE: .coverage
     steps:
-      - python_version
       - checkout
       - attach_workspace:
           at: coverage-results
-      - run:
-          name: "Copy coverage results from workspace"
-          command: cp coverage-results/.coverage.* ./
-      - tox
-      - store_artifacts:
-          path: coverage.xml
-      - store_artifacts:
-          path: htmlcov
-      - codecov/upload:
-          file: coverage.xml
+      - using_poetry:
+          steps:
+            - coverage
 
   deploy:
     executor: circleci_py310
     steps:
-      - python_version
       - checkout
       - attach_workspace:
           at: dist
-      - run:
-          name: Uploading to Test PyPI
-          command: |
-            poetry config repositories.testpypi https://test.pypi.org/legacy/
-            poetry publish -vv --repository testpypi --username $TESTPYPI_USERNAME --password $TESTPYPI_PASSWORD
-      - run:
-          name: Uploading to PyPI
-          command: poetry publish -vv --username $PYPI_USERNAME --password $PYPI_PASSWORD
+      - deploy
 
 workflows:
   version: 2
   lint:
     jobs:
-      - lint:
+      - lint: &base-job
           context:
             - docker-hub-credentials
           filters:
             tags:
               only: /.*/
+      - typecheck: *base-job
+      - security: *base-job
   build_test_deploy:
     jobs:
-      - build:
-          context:
-            - docker-hub-credentials
-          filters:
-            tags:
-              only: /.*/
-      - docs:
-          context:
-            - docker-hub-credentials
-          requires:
-            - build
-          filters:
-            tags:
-              only: /.*/
+      - build: *base-job
+      - docs: *base-job
       - test:
+          <<: *base-job
           name: test-<<matrix.python_version>>-<<matrix.event_loop>>
           matrix:
             parameters:
@@ -323,23 +350,15 @@ workflows:
                 event_loop: "uvloop"
           requires:
             - build
-          context:
-            - docker-hub-credentials
-          filters:
-            tags:
-              only: /.*/
       - coverage:
+          <<: *base-job
           requires:
             - test
-          context:
-            - docker-hub-credentials
-          filters:
-            tags:
-              only: /.*/
       - deploy:
           requires:
             - build
             - test
+            - docs
           context:
             - docker-hub-credentials
           filters:
