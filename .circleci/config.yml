@@ -173,7 +173,7 @@ commands:
   lint:
     description: "Run pre-commit"
     steps:
-      - run: pre-commit run --all-files--show-diff-on-failure
+      - run: pre-commit run --all-files --show-diff-on-failure
   typecheck:
     description: "Run mypy"
     steps:
