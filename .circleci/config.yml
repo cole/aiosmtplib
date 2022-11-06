@@ -72,9 +72,9 @@ commands:
       - run: python -V
       - restore_cache:
           keys:
-            - poetry-v3-<<parameters.cache_key>>-{{ checksum "pyproject.toml" }}
-            - poetry-v3-<<parameters.cache_key>>-
-            - poetry-v3-
+            - poetry-v4-<<parameters.cache_key>>-{{ checksum "pyproject.toml" }}
+            - poetry-v4-<<parameters.cache_key>>-
+            - poetry-v4-
       - run: mkdir -p $POETRY_CACHE_DIR
       - run: mkdir -p $POETRY_VIRTUALENVS_PATH
       - run: mkdir -p $PIP_CACHE_DIR
@@ -83,7 +83,7 @@ commands:
       - run: poetry config --list
       - steps: <<parameters.steps>>
       - save_cache:
-          key: poetry-v3-<<parameters.cache_key>>-{{ checksum "pyproject.toml" }}
+          key: poetry-v4-<<parameters.cache_key>>-{{ checksum "pyproject.toml" }}
           paths:
             - ~/caches/poetry
   using_pip_cache:
@@ -95,11 +95,11 @@ commands:
     steps:
       - restore_cache:
           keys:
-            - pip-v2-{{ .Environment.CIRCLE_JOB }}-
+            - pip-v3-{{ .Environment.CIRCLE_JOB }}-
       - run: mkdir -p $PIP_CACHE_DIR
       - steps: <<parameters.steps>>
       - save_cache:
-          key: pip-v2-{{ .Environment.CIRCLE_JOB }}-
+          key: pip-v3-{{ .Environment.CIRCLE_JOB }}-
           paths:
             - ~/caches/pip
   using_pre_commit:
@@ -111,13 +111,13 @@ commands:
     steps:
       - restore_cache:
           keys:
-            - pre-commit-v3-{{ checksum ".pre-commit-config.yaml" }}
-            - pre-commit-v3-
+            - pre-commit-v4-{{ checksum ".pre-commit-config.yaml" }}
+            - pre-commit-v4-
       - run: mkdir -p $PRE_COMMIT_HOME
       - run: pip install pre-commit
       - steps: <<parameters.steps>>
       - save_cache:
-          key: pre-commit-v3-{{ checksum ".pre-commit-config.yaml" }}
+          key: pre-commit-v4-{{ checksum ".pre-commit-config.yaml" }}
           paths:
             - ~/caches/pre-commit
   using_hypothesis_cache:
@@ -131,10 +131,10 @@ commands:
     steps:
       - restore_cache:
           keys:
-            - "hypothesis-v5-<<parameters.cache_key>>"
+            - "hypothesis-v6-<<parameters.cache_key>>"
       - steps: <<parameters.steps>>
       - save_cache:
-          key: "hypothesis-v5-<<parameters.cache_key>>"
+          key: "hypothesis-v6-<<parameters.cache_key>>"
           paths:
             - ~/project/.hypothesis
   install_poetry:
@@ -152,7 +152,7 @@ commands:
         enum: ["asyncio", "uvloop"]
     steps:
       - using_poetry:
-          cache_key: "test-<<parameters.event_loop>>"
+          cache_key: "{{ .Environment.CIRCLE_JOB }}"
           steps:
             - when:
                 condition:
