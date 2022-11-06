@@ -157,21 +157,21 @@ commands:
             - when:
                 condition:
                   equal:
-                    - "asyncio"
+                    - "uvloop"
                     - <<parameters.event_loop>>
                 steps:
-                  - run: poetry install --with test
+                  - run: poetry install -E uvloop --with test
             - unless:
                 condition:
                   equal:
                     - "uvloop"
                     - <<parameters.event_loop>>
                 steps:
-                  - run: poetry install -E uvloop --with test
+                  - run: poetry install --with test
             - run: |
                 poetry run pytest --cov --cov-report= \
                   --cov-config=pyproject.toml \
-                  --junitxml=test-results/{{ .Environment.CIRCLE_JOB }}/results.xml \
+                  --junitxml=test-results/$CIRCLE_JOB/results.xml \
                   --event-loop=<<parameters.event_loop>> \
                   --bind-addr=$BIND_ADDR \
                   --hypothesis-profile $HYPOTHESIS_PROFILE
