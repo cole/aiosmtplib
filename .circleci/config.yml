@@ -154,15 +154,8 @@ commands:
         type: string
     steps:
       - using_poetry:
-          cache_key: "{{ .Environment.CIRCLE_JOB }}"
+          cache_key: "test-<<parameters.event_loop>>-<<parameters.python_version>>"
           steps:
-            - when:
-                condition:
-                  matches:
-                    value: <<parameters.python_version>>
-                    pattern: "^pypy"
-                steps:
-                  - run: poetry env use $(which pypy3)
             - when:
                 condition:
                   equal: ["uvloop", <<parameters.event_loop>>]
