@@ -155,7 +155,7 @@ commands:
         type: string
     steps:
       - using_poetry:
-          cache_key: "test-<<parameters.event_loop>>-<<parameters.python_version>>"
+          cache_key: "test-<<parameters.event_loop>>-<<parameters.python_version>>-v1"
           steps:
             - when:
                 condition:
@@ -190,7 +190,7 @@ commands:
     description: "Run mypy"
     steps:
       - using_poetry:
-          cache_key: "typecheck"
+          cache_key: "typecheck-v1"
           steps:
             - run: poetry install --only typecheck
             - run: poetry run mypy aiosmtplib
@@ -198,7 +198,7 @@ commands:
     description: "Run security checks"
     steps:
       - using_poetry:
-          cache_key: "security"
+          cache_key: "security-v2"
           steps:
             - run: poetry install -E uvloop -E docs --with test,typecheck,security
             - run: poetry run bandit -n 10 -x tests -r aiosmtplib
@@ -207,7 +207,7 @@ commands:
     description: "Run docs build"
     steps:
       - using_poetry:
-          cache_key: "docs"
+          cache_key: "docs-v1"
           steps:
             - run: poetry install -E docs --with test
             - run: poetry run sphinx-build -nWT -b doctest -d ./docs/build/doctrees ./docs ./docs/build/html
@@ -235,6 +235,7 @@ commands:
     steps:
       - run: cp coverage-results/.coverage.* ./
       - using_poetry:
+          cache_key: "coverage-v1"
           steps:
             - run: poetry install --with test
             - run: poetry run coverage combine
