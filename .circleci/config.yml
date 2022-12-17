@@ -80,7 +80,7 @@ commands:
       - run: mkdir -p $POETRY_VIRTUALENVS_PATH
       - run: mkdir -p $PIP_CACHE_DIR
       - run: mkdir -p $PRE_COMMIT_HOME
-      - run: $POETRY_HOME/poetry -V
+      - run: $POETRY_HOME/bin/poetry -V
       - run: $POETRY_HOME/bin/poetry config --list
       - steps: <<parameters.steps>>
       - save_cache:
@@ -143,7 +143,7 @@ commands:
     description: "Install poetry"
     steps:
         - run: python3 -m venv $POETRY_HOME
-        - run: pip install poetry
+        - run: $POETRY_HOME/bin/pip install poetry
   test:
     description: "Run tests"
     parameters:
