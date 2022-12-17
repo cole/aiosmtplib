@@ -23,8 +23,7 @@ server, as that is a blocking operation.
 
 
     client = SMTP()
-    event_loop =  asyncio.get_event_loop()
-    event_loop.run_until_complete(client.connect(hostname="127.0.0.1", port=1025))
+    asyncio.run(client.connect(hostname="127.0.0.1", port=1025))
 
 
 Connecting over TLS/SSL
@@ -90,8 +89,7 @@ manager, which will automatically connect/disconnect on entry/exit.
         async with smtp_client:
             await smtp_client.send_message(message)
 
-    event_loop = asyncio.get_event_loop()
-    event_loop.run_until_complete(say_hello())
+    asyncio.run(say_hello())
 
 
 
@@ -127,8 +125,7 @@ stdlib documentation examples
         await smtp_client.send_message(message)
         await smtp_client.quit()
 
-    event_loop = asyncio.get_event_loop()
-    event_loop.run_until_complete(send_with_send_message(mime_message))
+    asyncio.run(send_with_send_message(mime_message))
 
 
 Pass :py:class:`email.mime.multipart.MIMEMultipart` objects to
@@ -148,10 +145,13 @@ alternatives.
     message.attach(MIMEText("hello", "plain", "utf-8"))
     message.attach(MIMEText("<html><body><h1>Hello</h1></body></html>", "html", "utf-8"))
 
-    smtp_client = SMTP(hostname="127.0.0.1", port=1025)
-    event_loop.run_until_complete(smtp_client.connect())
-    event_loop.run_until_complete(smtp_client.send_message(message))
-    event_loop.run_until_complete(smtp_client.quit())
+    async def send_multipart_message(message):
+        smtp_client = SMTP(hostname="127.0.0.1", port=1025)
+        await smtp_client.connect()
+        await smtp_client.send_message(message)
+        await smtp_client.quit()
+
+    asyncio.run(send_multipart_message(message))
 
 
 :meth:`SMTP.sendmail`
@@ -182,8 +182,7 @@ method, you must format the message headers yourself.
         await smtp_client.sendmail(sender, recipients, message)
         await smtp_client.quit()
 
-    event_loop = asyncio.get_event_loop()
-    event_loop.run_until_complete(send_with_sendmail())
+    asyncio.run(send_with_sendmail())
 
 
 Timeouts

@@ -41,8 +41,7 @@ For details on creating :py:class:`email.message.EmailMessage` objects, see
 
         await aiosmtplib.send(message, hostname="127.0.0.1", port=1025)
 
-    event_loop = asyncio.get_event_loop()
-    event_loop.run_until_complete(send_hello_world())
+    asyncio.run(send_hello_world())
 
 
 Multipart Messages
@@ -98,8 +97,7 @@ and ``recipients`` keyword arguments.
             port=1025
         )
 
-    event_loop = asyncio.get_event_loop()
-    event_loop.run_until_complete(send_hello_world())
+    asyncio.run(send_hello_world())
 
 
 Connecting Over TLS/SSL
