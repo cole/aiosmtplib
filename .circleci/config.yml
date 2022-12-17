@@ -4,9 +4,9 @@ orbs:
   codecov: codecov/codecov@3.2.3
 
 executors:
-  circleci_py310: &executor
+  default: &executor
     docker:
-      - image: "cimg/python:3.10"
+      - image: "python:3.11-bullseye"
         auth: &docker-auth
           username: $DOCKERHUB_USERNAME
           password: $DOCKERHUB_PASSWORD
@@ -251,7 +251,7 @@ commands:
 
 jobs:
   lint:
-    executor: circleci_py310
+    executor: default
     steps:
       - checkout
       - using_pip_cache:
@@ -261,25 +261,25 @@ jobs:
                   - lint
 
   typecheck:
-    executor: circleci_py310
+    executor: default
     steps:
       - checkout
       - typecheck
 
   security:
-    executor: circleci_py310
+    executor: default
     steps:
       - checkout
       - security
 
   build:
-    executor: circleci_py310
+    executor: default
     steps:
       - checkout
       - build
 
   docs:
-    executor: circleci_py310
+    executor: default
     steps:
       - checkout
       - attach_workspace:
@@ -335,7 +335,7 @@ jobs:
       - coverage
 
   deploy:
-    executor: circleci_py310
+    executor: default
     steps:
       - checkout
       - attach_workspace:
