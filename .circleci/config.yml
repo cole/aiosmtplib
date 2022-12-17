@@ -6,7 +6,7 @@ orbs:
 executors:
   default: &executor
     docker:
-      - image: "python:3.11-bullseye"
+      - image: "python:3.10-bullseye"
         auth: &docker-auth
           username: $DOCKERHUB_USERNAME
           password: $DOCKERHUB_PASSWORD
@@ -202,7 +202,7 @@ commands:
           steps:
             - run: $POETRY_HOME/bin/poetry install -E uvloop -E docs --with test,typecheck,security
             - run: $POETRY_HOME/bin/poetry run bandit -n 10 -x tests -r aiosmtplib
-            - run: $POETRY_HOME/bin/poetry export --with test -E docs -E uvloop  -f requirements.txt --without-hashes | poetry run safety check --stdin
+            - run: $POETRY_HOME/bin/poetry export --with test -E docs -E uvloop  -f requirements.txt --without-hashes | $POETRY_HOME/bin/poetry run safety check --stdin
   docs:
     description: "Run docs build"
     steps:
