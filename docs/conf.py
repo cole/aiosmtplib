@@ -199,8 +199,14 @@ aiosmtpd_logger.setLevel(logging.ERROR)
 
 controller = Controller(object(), hostname="127.0.0.1", port=1025)
 controller.start()
+
+event_loop = asyncio.new_event_loop()
 """
 
 doctest_global_cleanup = """
 controller.stop()
+
+event_loop.stop()
+event_loop.run_until_complete(event_loop.shutdown_asyncgens())
+event_loop.close()
 """

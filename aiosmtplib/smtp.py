@@ -52,15 +52,15 @@ class SMTP:
 
     Basic usage:
 
-        >>> loop = asyncio.get_event_loop()
+        >>> event_loop = asyncio.get_event_loop()
         >>> smtp = aiosmtplib.SMTP(hostname="127.0.0.1", port=1025)
-        >>> loop.run_until_complete(smtp.connect())
+        >>> event_loop.run_until_complete(smtp.connect())
         (220, ...)
         >>> sender = "root@localhost"
         >>> recipients = ["somebody@localhost"]
         >>> message = "Hello World"
         >>> send = smtp.sendmail(sender, recipients, "Hello World")
-        >>> loop.run_until_complete(send)
+        >>> event_loop.run_until_complete(send)
         ({}, 'OK')
 
     Keyword arguments can be provided either on :meth:`__init__` or when
@@ -1220,16 +1220,16 @@ class SMTP:
 
         Example:
 
-             >>> loop = asyncio.get_event_loop()
+             >>> event_loop = asyncio.get_event_loop()
              >>> smtp = aiosmtplib.SMTP(hostname="127.0.0.1", port=1025)
-             >>> loop.run_until_complete(smtp.connect())
+             >>> event_loop.run_until_complete(smtp.connect())
              (220, ...)
              >>> recipients = ["one@one.org", "two@two.org", "3@three.org"]
              >>> message = "From: Me@my.org\\nSubject: testing\\nHello World"
              >>> send_coro = smtp.sendmail("me@my.org", recipients, message)
-             >>> loop.run_until_complete(send_coro)
+             >>> event_loop.run_until_complete(send_coro)
              ({}, 'OK')
-             >>> loop.run_until_complete(smtp.quit())
+             >>> event_loop.run_until_complete(smtp.quit())
              (221, Bye)
 
         In the above example, the message was accepted for delivery for all
