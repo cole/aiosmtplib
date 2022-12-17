@@ -141,9 +141,7 @@ commands:
   install_poetry:
     description: "Install poetry"
     steps:
-      - using_pip_cache:
-          steps:
-            - run: pip install poetry
+        - run: pip install poetry
   test:
     description: "Run tests"
     parameters:
@@ -264,19 +262,28 @@ jobs:
     executor: default
     steps:
       - checkout
-      - typecheck
+      - using_pip_cache:
+          steps:
+            - install_poetry
+            - typecheck
 
   security:
     executor: default
     steps:
       - checkout
-      - security
+      - using_pip_cache:
+          steps:
+            - install_poetry
+            - security
 
   build:
     executor: default
     steps:
       - checkout
-      - build
+      - using_pip_cache:
+          steps:
+            - install_poetry
+            - build
 
   docs:
     executor: default
@@ -284,7 +291,10 @@ jobs:
       - checkout
       - attach_workspace:
           at: dist
-      - docs
+      - using_pip_cache:
+          steps:
+            - install_poetry
+            - docs
 
   test:
     executor: <<parameters.python_version>>
@@ -315,13 +325,15 @@ jobs:
       - checkout
       - attach_workspace:
           at: dist
-      - install_poetry
-      - using_hypothesis_cache:
-          cache_key: <<parameters.python_version>>
+      - using_pip_cache:
           steps:
-            - test:
-                python_version: <<parameters.python_version>>
-                event_loop: <<parameters.event_loop>>
+            - install_poetry
+            - using_hypothesis_cache:
+                cache_key: <<parameters.python_version>>
+                steps:
+                  - test:
+                      python_version: <<parameters.python_version>>
+                      event_loop: <<parameters.event_loop>>
 
   coverage:
     executor: py310
@@ -331,8 +343,10 @@ jobs:
       - checkout
       - attach_workspace:
           at: coverage-results
-      - install_poetry
-      - coverage
+      - using_pip_cache:
+          steps:
+            - install_poetry
+            - coverage
 
   deploy:
     executor: default
@@ -340,7 +354,10 @@ jobs:
       - checkout
       - attach_workspace:
           at: dist
-      - deploy
+      - using_pip_cache:
+          steps:
+            - install_poetry
+            - deploy
 
 workflows:
   version: 2
