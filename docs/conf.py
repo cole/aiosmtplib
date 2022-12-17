@@ -201,6 +201,7 @@ controller = Controller(object(), hostname="127.0.0.1", port=1025)
 controller.start()
 
 event_loop = asyncio.new_event_loop()
+asyncio.set_event_loop(event_loop)
 """
 
 doctest_global_cleanup = """
