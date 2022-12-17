@@ -251,7 +251,7 @@ commands:
 
 jobs:
   lint:
-    executor: default
+    executor: circleci_py310
     steps:
       - checkout
       - using_pip_cache:
@@ -261,25 +261,25 @@ jobs:
                   - lint
 
   typecheck:
-    executor: default
+    executor: circleci_py310
     steps:
       - checkout
       - typecheck
 
   security:
-    executor: default
+    executor: circleci_py310
     steps:
       - checkout
       - security
 
   build:
-    executor: default
+    executor: circleci_py310
     steps:
       - checkout
       - build
 
   docs:
-    executor: default
+    executor: circleci_py310
     steps:
       - checkout
       - attach_workspace:
