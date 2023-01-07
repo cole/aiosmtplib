@@ -162,12 +162,12 @@ commands:
                 condition:
                   equal: ["uvloop", <<parameters.event_loop>>]
                 steps:
-                  - run: $POETRY_HOME/bin/poetry install --no-interaction --verbose -E uvloop --with test
+                  - run: $POETRY_HOME/bin/poetry install --no-interaction -vvv -E uvloop --with test
             - unless:
                 condition:
                   equal: ["uvloop", <<parameters.event_loop>>]
                 steps:
-                  - run: $POETRY_HOME/bin/poetry install --no-interaction --verbose --with test
+                  - run: $POETRY_HOME/bin/poetry install --no-interaction -vvv --with test
             - run: |
                 $POETRY_HOME/bin/poetry run pytest --cov --cov-report= \
                   --cov-config=pyproject.toml \
@@ -193,7 +193,7 @@ commands:
       - using_poetry:
           cache_key: "typecheck-v2"
           steps:
-            - run: $POETRY_HOME/bin/poetry install --no-interaction --verbose --only typecheck
+            - run: $POETRY_HOME/bin/poetry install --no-interaction -vvv --only typecheck
             - run: $POETRY_HOME/bin/poetry run mypy aiosmtplib
   security:
     description: "Run security checks"
@@ -201,7 +201,7 @@ commands:
       - using_poetry:
           cache_key: "security-v3"
           steps:
-            - run: $POETRY_HOME/bin/poetry install --no-interaction --verbose -E uvloop -E docs --with test,typecheck,security
+            - run: $POETRY_HOME/bin/poetry install --no-interaction -vvv -E uvloop -E docs --with test,typecheck,security
             - run: $POETRY_HOME/bin/poetry run bandit -n 10 -x tests -r aiosmtplib
             - run: $POETRY_HOME/bin/poetry export --with test -E docs -E uvloop  -f requirements.txt --without-hashes | $POETRY_HOME/bin/poetry run safety check --stdin
   docs:
@@ -210,7 +210,7 @@ commands:
       - using_poetry:
           cache_key: "docs-v2"
           steps:
-            - run: $POETRY_HOME/bin/poetry install --no-interaction --verbose -E docs --with test
+            - run: $POETRY_HOME/bin/poetry install --no-interaction -vvv -E docs --with test
             - run: $POETRY_HOME/bin/poetry run sphinx-build -nWT -b doctest -d ./docs/build/doctrees ./docs ./docs/build/html
             - run: $POETRY_HOME/bin/poetry run sphinx-build -nWT -b dummy -d ./docs/build/doctrees ./docs ./docs/build/html
   build:
@@ -238,7 +238,7 @@ commands:
       - using_poetry:
           cache_key: "coverage-v2"
           steps:
-            - run: $POETRY_HOME/bin/poetry install --no-interaction --verbose --with test
+            - run: $POETRY_HOME/bin/poetry install --no-interaction -vvv --with test
             - run: $POETRY_HOME/bin/poetry run coverage combine
             - run: $POETRY_HOME/bin/poetry run coverage xml
             - run: $POETRY_HOME/bin/poetry run coverage html
