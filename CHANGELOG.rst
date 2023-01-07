@@ -1,6 +1,13 @@
 Changelog
 =========
 
+2.0.1
+-----
+
+- Bugfix: "tests" and "docs" in the sdist should be includes, not packages,
+  so that they do not get put in ``site-packages``.
+
+
 2.0.0
 -----
 
