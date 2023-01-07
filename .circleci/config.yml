@@ -137,9 +137,9 @@ commands:
   install_poetry:
     description: "Install poetry"
     steps:
-        - run: python3 -m venv $POETRY_HOME
-        - run: $POETRY_HOME/bin/pip install --upgrade pip
-        - run: $POETRY_HOME/bin/pip install poetry==1.3.1
+      - run: python3 -m venv $POETRY_HOME
+      - run: $POETRY_HOME/bin/pip install --upgrade pip
+      - run: $POETRY_HOME/bin/pip install poetry==1.3.1
   test:
     description: "Run tests"
     parameters:
@@ -178,72 +178,6 @@ commands:
           root: coverage-results
           paths:
             - .coverage.*
-  lint:
-    description: "Run pre-commit"
-    steps:
-      - run: pre-commit run --all-files --show-diff-on-failure
-  typecheck:
-    description: "Run mypy"
-    steps:
-      - using_poetry:
-          cache_key: "typecheck-v2"
-          steps:
-            - run: $POETRY_HOME/bin/poetry install --no-interaction --no-ansi --only typecheck
-            - run: $POETRY_HOME/bin/poetry run mypy aiosmtplib
-  security:
-    description: "Run security checks"
-    steps:
-      - using_poetry:
-          cache_key: "security-v3"
-          steps:
-            - run: $POETRY_HOME/bin/poetry install --no-interaction --no-ansi -E uvloop -E docs --with test,typecheck,security
-            - run: $POETRY_HOME/bin/poetry run bandit -n 10 -x tests -r aiosmtplib
-            - run: $POETRY_HOME/bin/poetry export --with test -E docs -E uvloop  -f requirements.txt --without-hashes | $POETRY_HOME/bin/poetry run safety check --stdin
-  docs:
-    description: "Run docs build"
-    steps:
-      - using_poetry:
-          cache_key: "docs-v2"
-          steps:
-            - run: $POETRY_HOME/bin/poetry install --no-interaction --no-ansi -E docs --with test
-            - run: $POETRY_HOME/bin/poetry run sphinx-build -nWT -b doctest -d ./docs/build/doctrees ./docs ./docs/build/html
-            - run: $POETRY_HOME/bin/poetry run sphinx-build -nWT -b dummy -d ./docs/build/doctrees ./docs ./docs/build/html
-  build:
-    description: "Run poetry build"
-    steps:
-      - run: $POETRY_HOME/bin/poetry check
-      - run: $POETRY_HOME/bin/poetry build -vv
-      - persist_to_workspace:
-          root: dist
-          paths:
-            - aiosmtplib-*.tar.gz
-            - aiosmtplib-*.whl
-      - store_artifacts:
-          path: dist/
-  deploy:
-    description: "Deploy to PyPI"
-    steps:
-      - run: $POETRY_HOME/bin/poetry config repositories.testpypi https://test.pypi.org/legacy/
-      - run: $POETRY_HOME/bin/poetry publish -vv --repository testpypi --username $TESTPYPI_USERNAME --password $TESTPYPI_PASSWORD
-      - run: $POETRY_HOME/bin/poetry publish -vv --username $PYPI_USERNAME --password $PYPI_PASSWORD
-  coverage:
-    description: "Collect coverage"
-    steps:
-      - run: cp coverage-results/.coverage.* ./
-      - using_poetry:
-          cache_key: "coverage-v2"
-          steps:
-            - run: $POETRY_HOME/bin/poetry install --no-interaction --no-ansi --with test
-            - run: $POETRY_HOME/bin/poetry run coverage combine
-            - run: $POETRY_HOME/bin/poetry run coverage xml
-            - run: $POETRY_HOME/bin/poetry run coverage html
-            - store_artifacts:
-                path: coverage.xml
-            - store_artifacts:
-                path: htmlcov
-            - codecov/upload:
-                file: coverage.xml
-            - run: $POETRY_HOME/bin/poetry run coverage report --fail-under=90
 
 jobs:
   lint:
@@ -254,8 +188,7 @@ jobs:
           steps:
             - using_pre_commit:
                 steps:
-                  - lint
-
+                  - run: pre-commit run --all-files --show-diff-on-failure
   typecheck:
     executor: default
     steps:
@@ -263,7 +196,11 @@ jobs:
       - using_pip_cache:
           steps:
             - install_poetry
-            - typecheck
+            - using_poetry:
+              cache_key: "typecheck-v2"
+              steps:
+                - run: $POETRY_HOME/bin/poetry install --no-interaction --no-ansi --only typecheck
+                - run: $POETRY_HOME/bin/poetry run mypy aiosmtplib
 
   security:
     executor: default
@@ -272,7 +209,12 @@ jobs:
       - using_pip_cache:
           steps:
             - install_poetry
-            - security
+            - using_poetry:
+                cache_key: "security-v3"
+                steps:
+                  - run: $POETRY_HOME/bin/poetry install --no-interaction --no-ansi -E uvloop -E docs --with test,typecheck,security
+                  - run: $POETRY_HOME/bin/poetry run bandit -n 10 -x tests -r aiosmtplib
+                  - run: $POETRY_HOME/bin/poetry export --with test -E docs -E uvloop  -f requirements.txt --without-hashes | $POETRY_HOME/bin/poetry run safety check --stdin
 
   build:
     executor: default
@@ -281,8 +223,15 @@ jobs:
       - using_pip_cache:
           steps:
             - install_poetry
-            - build
-
+            - run: $POETRY_HOME/bin/poetry check
+            - run: $POETRY_HOME/bin/poetry build -vv
+            - persist_to_workspace:
+                root: dist
+                paths:
+                  - aiosmtplib-*.tar.gz
+                  - aiosmtplib-*.whl
+            - store_artifacts:
+                path: dist/
   docs:
     executor: default
     steps:
@@ -292,7 +241,12 @@ jobs:
       - using_pip_cache:
           steps:
             - install_poetry
-            - docs
+            - using_poetry:
+                cache_key: "docs-v2"
+                steps:
+                  - run: $POETRY_HOME/bin/poetry install --no-interaction --no-ansi -E docs --with test
+                  - run: $POETRY_HOME/bin/poetry run sphinx-build -nWT -b doctest -d ./docs/build/doctrees ./docs ./docs/build/html
+                  - run: $POETRY_HOME/bin/poetry run sphinx-build -nWT -b dummy -d ./docs/build/doctrees ./docs ./docs/build/html
 
   test:
     executor: <<parameters.python_version>>
@@ -300,16 +254,7 @@ jobs:
       python_version:
         type: enum
         description: "executor name"
-        enum:
-          [
-            "py37",
-            "py38",
-            "py39",
-            "py310",
-            "py311",
-            "pypy38",
-            "pypy39",
-          ]
+        enum: ["py37", "py38", "py39", "py310", "py311", "pypy38", "pypy39"]
       event_loop:
         type: enum
         description: "event loop type"
@@ -343,7 +288,21 @@ jobs:
       - using_pip_cache:
           steps:
             - install_poetry
-            - coverage
+            - run: cp coverage-results/.coverage.* ./
+            - using_poetry:
+                cache_key: "coverage-v2"
+                steps:
+                  - run: $POETRY_HOME/bin/poetry install --no-interaction --no-ansi --with test
+                  - run: $POETRY_HOME/bin/poetry run coverage combine
+                  - run: $POETRY_HOME/bin/poetry run coverage xml
+                  - run: $POETRY_HOME/bin/poetry run coverage html
+                  - store_artifacts:
+                      path: coverage.xml
+                  - store_artifacts:
+                      path: htmlcov
+                  - codecov/upload:
+                      file: coverage.xml
+                  - run: $POETRY_HOME/bin/poetry run coverage report --fail-under=90
 
   deploy:
     executor: default
@@ -354,11 +313,12 @@ jobs:
       - using_pip_cache:
           steps:
             - install_poetry
-            - deploy
+            - run: $POETRY_HOME/bin/poetry config repositories.testpypi https://test.pypi.org/legacy/
+            - run: $POETRY_HOME/bin/poetry publish -vv --repository testpypi --username $TESTPYPI_USERNAME --password $TESTPYPI_PASSWORD
+            - run: $POETRY_HOME/bin/poetry publish -vv --username $PYPI_USERNAME --password $PYPI_PASSWORD
 
 workflows:
-  version: 2
-  lint:
+  static_checks:
     jobs:
       - typecheck: &base-job
           context:
@@ -416,5 +376,4 @@ workflows:
               ignore: /.*/
             tags:
               only: /^v.*/
-
 # VS Code Extension Version: 1.5.1
