@@ -197,10 +197,10 @@ jobs:
           steps:
             - install_poetry
             - using_poetry:
-              cache_key: "typecheck-v2"
-              steps:
-                - run: $POETRY_HOME/bin/poetry install --no-interaction --no-ansi --only typecheck
-                - run: $POETRY_HOME/bin/poetry run mypy aiosmtplib
+                cache_key: "typecheck-v2"
+                steps:
+                  - run: $POETRY_HOME/bin/poetry install --no-interaction --no-ansi --only typecheck
+                  - run: $POETRY_HOME/bin/poetry run mypy aiosmtplib
 
   security:
     executor: default
