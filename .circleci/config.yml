@@ -44,11 +44,6 @@ executors:
     docker:
       - image: "python:3.11-bullseye"
         auth: *docker-auth
-  pypy37:
-    <<: *executor
-    docker:
-      - image: "pypy:3.7-bullseye"
-        auth: *docker-auth
   pypy38:
     <<: *executor
     docker:
@@ -312,7 +307,6 @@ jobs:
             "py39",
             "py310",
             "py311",
-            "pypy37",
             "pypy38",
             "pypy39",
           ]
@@ -449,12 +443,6 @@ workflows:
           requires: *phase2
       - test:
           <<: *base-job
-          name: "test-pypy37-asyncio"
-          python_version: "pypy37"
-          event_loop: "asyncio"
-          requires: *phase2
-      - test:
-          <<: *base-job
           name: "test-pypy38-asyncio"
           python_version: "pypy38"
           event_loop: "asyncio"
@@ -480,7 +468,6 @@ workflows:
             - test-py39-uvloop
             - test-py310-uvloop
             - test-py311-uvloop
-            - test-pypy37-asyncio
             - test-pypy38-asyncio
             - test-pypy39-asyncio
       - deploy:
