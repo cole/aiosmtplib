@@ -17,6 +17,7 @@ executors:
       POETRY_CACHE_DIR: ~/caches/poetry
       POETRY_VIRTUALENVS_PATH: ~/caches/poetry/virtualenvs
       POETRY_VIRTUALENVS_IN_PROJECT: "false"
+      POETRY_INSTALLER_PARALLEL: "false"
       PRE_COMMIT_HOME: ~/caches/pre-commit
   py37:
     <<: *executor
