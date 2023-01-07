@@ -143,6 +143,7 @@ commands:
     description: "Install poetry"
     steps:
         - run: python3 -m venv $POETRY_HOME
+        - run: $POETRY_HOME/bin/pip install --upgrade pip
         - run: $POETRY_HOME/bin/pip install poetry==1.2.0
   test:
     description: "Run tests"
@@ -492,4 +493,4 @@ workflows:
             tags:
               only: /^v.*/
 
-# VS Code Extension Version: 1.1.1
+# VS Code Extension Version: 1.5.1
