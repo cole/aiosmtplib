@@ -10,8 +10,6 @@ authors = ["Cole Maclean <hi@colemaclean.dev>"]
 license = "MIT"
 packages = [
     { include = "aiosmtplib" },
-    { include = "tests", format = "sdist" },
-    { include = "docs", format = "sdist" },
 ]
 readme = "README.rst"
 repository = "https://github.com/cole/aiosmtplib"
@@ -35,6 +33,8 @@ exclude = [
 ]
 include = [
     { path = "CHANGELOG.rst", format = "sdist" },
+    { path = "tests", format = "sdist" },
+    { path = "docs", format = "sdist" },
 ]
 
 [tool.poetry.dependencies]
