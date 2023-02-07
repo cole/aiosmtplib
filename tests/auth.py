@@ -6,7 +6,6 @@ from aiosmtplib.smtp import SMTP
 
 
 class DummySMTPAuth(SMTP):
-
     transport = None
 
     def __init__(self, *args: Any, **kwargs: Any):
