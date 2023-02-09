@@ -1055,8 +1055,10 @@ class SMTP:
             method_name = f'auth_{auth_name.replace("-", "")}'
             try:
                 auth_method = getattr(self, method_name)
-            except AttributeError:
-                raise RuntimeError(f"Missing handler for auth method {auth_name}")
+            except AttributeError as err:
+                raise RuntimeError(
+                    f"Missing handler for auth method {auth_name}"
+                ) from err
             try:
                 response = await auth_method(username, password, timeout=timeout)
             except SMTPAuthenticationError as exc:

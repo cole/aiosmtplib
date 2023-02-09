@@ -78,6 +78,12 @@ optional = true
 bandit = "^1.7.4"
 safety = "^2.3.1"
 
+[tool.poetry.group.lint]
+optional = true
+
+[tool.poetry.group.lint.dependencies]
+ruff = "^0.0.244"
+
 [tool.pytest.ini_options]
 asyncio_mode = "strict"
 minversion = "6.0"
@@ -87,11 +93,15 @@ testpaths = [
     "tests"
 ]
 
-[tool.isort]
-profile = "black"
-lines_after_imports = 2
-default_section = "THIRDPARTY"
-known_first_party = [ "aiosmtplib" ]
+[tool.ruff]
+# Enable flake8-bugbear (`B`) rules.
+select = ["E", "F", "B"]
+# Never enforce `E501` (line length violations).
+ignore = ["E501"]
+# Avoid trying to fix flake8-bugbear (`B`) violations.
+unfixable = ["B"]
+line-length = 88
+target-version = "py37"
 
 [tool.coverage]
 
