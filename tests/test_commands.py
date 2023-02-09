@@ -198,7 +198,6 @@ async def test_ehlo_or_helo_if_needed_disconnect_after_ehlo(
     smtpd_mock_response_unavailable: Callable,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-
     monkeypatch.setattr(smtpd_class, "smtp_EHLO", smtpd_mock_response_unavailable)
 
     async with smtp_client:
