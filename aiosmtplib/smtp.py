@@ -31,6 +31,7 @@ from .errors import (
     SMTPSenderRefused,
     SMTPServerDisconnected,
     SMTPTimeoutError,
+    SMTPConnectResponseError,
 )
 from .esmtp import parse_esmtp_extensions
 from .protocol import SMTPProtocol
@@ -521,7 +522,7 @@ class SMTP:
             ) from exc
 
         if response.code != SMTPStatus.ready:
-            raise SMTPConnectError(str(response))
+            raise SMTPConnectResponseError(response.code, response.message)
 
         return response
 

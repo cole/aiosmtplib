@@ -17,6 +17,7 @@ __all__ = (
     "SMTPTimeoutError",
     "SMTPConnectTimeoutError",
     "SMTPReadTimeoutError",
+    "SMTPConnectResponseError",
 )
 
 
@@ -76,6 +77,16 @@ class SMTPResponseException(SMTPException):
         self.code = code
         self.message = message
         self.args = (code, message)
+
+
+class SMTPConnectResponseError(SMTPResponseException, SMTPConnectError):
+    """
+    An error occurred while connecting to the SMTP server.
+    """
+
+    def __init__(self, code: int, message: str) -> None:
+        SMTPConnectError.__init__(self, message)
+        SMTPResponseException.__init__(self, code, message)
 
 
 class SMTPHeloError(SMTPResponseException):
