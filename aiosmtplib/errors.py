@@ -81,12 +81,8 @@ class SMTPResponseException(SMTPException):
 
 class SMTPConnectResponseError(SMTPResponseException, SMTPConnectError):
     """
-    An error occurred while connecting to the SMTP server.
+    The SMTP server returned an invalid response code after connecting.
     """
-
-    def __init__(self, code: int, message: str) -> None:
-        SMTPConnectError.__init__(self, message)
-        SMTPResponseException.__init__(self, code, message)
 
 
 class SMTPHeloError(SMTPResponseException):
