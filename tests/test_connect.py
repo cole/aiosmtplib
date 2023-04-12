@@ -279,7 +279,7 @@ async def test_context_manager_exception_quits(
 ) -> None:
     with pytest.raises(ZeroDivisionError):
         async with smtp_client:
-            1 / 0
+            1 / 0  # noqa
 
     assert received_commands[-1][0] == "QUIT"
 
