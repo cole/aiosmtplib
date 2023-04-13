@@ -160,7 +160,7 @@ async def test_connect_port_takes_precedence(
     await client.quit()
 
 
-async def test_connect_timeout_takes_precedence(
+async def test_connect_timeout_is_reverted(
     hostname: str,
     smtpd_server_port: int,
 ) -> None:
@@ -169,7 +169,7 @@ async def test_connect_timeout_takes_precedence(
     )
     await client.connect(timeout=0.99)
 
-    assert client.timeout == 0.99
+    assert client.timeout == 0.66
 
     await client.quit()
 
