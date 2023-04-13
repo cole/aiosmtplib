@@ -250,7 +250,6 @@ class SMTP:
         password: Optional[Union[str, bytes, Default]] = _default,
         local_hostname: Optional[Union[str, Default]] = _default,
         source_address: Optional[Union[Tuple[str, int], Default]] = _default,
-        timeout: Optional[Union[float, Default]] = _default,
         use_tls: Optional[bool] = None,
         start_tls: Optional[Union[bool, Default]] = _default,
         validate_certs: Optional[bool] = None,
@@ -280,8 +279,6 @@ class SMTP:
         if password is not _default:
             self._login_password = password
 
-        if timeout is not _default:
-            self.timeout = timeout
         if local_hostname is not _default:
             self._local_hostname = local_hostname
         if source_address is not _default:
@@ -417,7 +414,6 @@ class SMTP:
             port=port,
             local_hostname=local_hostname,
             source_address=source_address,
-            timeout=timeout,
             use_tls=use_tls,
             start_tls=start_tls,
             validate_certs=validate_certs,
@@ -443,7 +439,9 @@ class SMTP:
             self.port = self._get_default_port()
 
         try:
-            response = await self._create_connection()
+            response = await self._create_connection(
+                timeout=self.timeout if timeout is _default else timeout
+            )
         except Exception as exc:
             self.close()  # Reset our state to disconnected
             raise exc
@@ -453,7 +451,7 @@ class SMTP:
 
         return response
 
-    async def _create_connection(self) -> SMTPResponse:
+    async def _create_connection(self, timeout: Optional[float]) -> SMTPResponse:
         if self.loop is None:
             raise RuntimeError("No event loop set")
 
@@ -465,7 +463,7 @@ class SMTP:
         ssl_handshake_timeout: Optional[float] = None
         if self.use_tls:
             tls_context = self._get_tls_context()
-            ssl_handshake_timeout = self.timeout
+            ssl_handshake_timeout = timeout
 
         if self.sock:
             connect_coro = self.loop.create_connection(
@@ -497,7 +495,7 @@ class SMTP:
             )
 
         try:
-            transport, _ = await asyncio.wait_for(connect_coro, timeout=self.timeout)
+            transport, _ = await asyncio.wait_for(connect_coro, timeout=timeout)
         except (TimeoutError, asyncio.TimeoutError) as exc:
             raise SMTPConnectTimeoutError(
                 f"Timed out connecting to {self.hostname} on port {self.port}"
@@ -511,7 +509,7 @@ class SMTP:
         self.transport = transport
 
         try:
-            response = await protocol.read_response(timeout=self.timeout)
+            response = await protocol.read_response(timeout=timeout)
         except SMTPServerDisconnected as exc:
             raise SMTPConnectError(
                 f"Error connecting to {self.hostname} on port {self.port}: {exc}"
@@ -994,13 +992,15 @@ class SMTP:
             client_cert=client_cert,
             client_key=client_key,
             cert_bundle=cert_bundle,
-            tls_context=tls_context,
-            timeout=timeout,
+            tls_context=tls_context
         )
         self._validate_config()
 
         if server_hostname is None:
             server_hostname = self.hostname
+
+        if timeout is _default:
+            timeout = self.timeout
 
         tls_context = self._get_tls_context()
 
@@ -1008,7 +1008,7 @@ class SMTP:
             raise SMTPException("SMTP STARTTLS extension not supported by server.")
 
         response = await self.protocol.start_tls(
-            tls_context, server_hostname=server_hostname, timeout=self.timeout
+            tls_context, server_hostname=server_hostname, timeout=timeout
         )
         if self.protocol is None:
             raise SMTPServerDisconnected("Connection lost")
