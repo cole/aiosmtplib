@@ -992,7 +992,7 @@ class SMTP:
             client_cert=client_cert,
             client_key=client_key,
             cert_bundle=cert_bundle,
-            tls_context=tls_context
+            tls_context=tls_context,
         )
         self._validate_config()
 
