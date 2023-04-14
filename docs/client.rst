@@ -190,9 +190,9 @@ Timeouts
 
 All commands accept a ``timeout`` keyword argument of a numerical value in
 seconds. This value is used for all socket operations, and will raise
-:exc:`.SMTPTimeoutError` if exceeded. Timeout values passed to :func:`send`,
-:meth:`SMTP.__init__` or :meth:`SMTP.connect` will be used as the default
-value for commands executed on the connection.
+:exc:`.SMTPTimeoutError` if exceeded. Timeout values passed to :func:`send` and
+:meth:`SMTP.__init__` will be used as the default value for commands executed
+on the connection.
 
 The default timeout is 60 seconds.
 
