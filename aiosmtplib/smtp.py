@@ -65,9 +65,9 @@ class SMTP:
         ({}, 'OK')
 
     Keyword arguments can be provided either on :meth:`__init__` or when
-    calling the :meth:`connect` method. Note that in both cases these options
-    are saved for later use; subsequent calls to :meth:`connect` will use the
-    same options, unless new ones are provided.
+    calling the :meth:`connect` method. Note that, when provided on
+    :meth:`__init__`, these options are saved for later use; subsequent calls
+    to :meth:`connect` will use the same options, unless new ones are provided.
     """
 
     # Preferred methods first
