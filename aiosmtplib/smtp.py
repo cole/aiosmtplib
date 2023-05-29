@@ -794,9 +794,6 @@ class SMTP:
 
         :raises SMTPResponseException: on unexpected server response code
         """
-        # Can't quit without HELO/EHLO
-        await self._ehlo_or_helo_if_needed()
-
         response = await self.execute_command(b"QUIT", timeout=timeout)
         if response.code != SMTPStatus.closing:
             raise SMTPResponseException(response.code, response.message)
