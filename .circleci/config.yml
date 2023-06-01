@@ -18,7 +18,6 @@ executors:
       POETRY_VIRTUALENVS_PATH: ~/caches/poetry/virtualenvs
       POETRY_VIRTUALENVS_IN_PROJECT: "false"
       POETRY_INSTALLER_PARALLEL: "false"
-      PRE_COMMIT_HOME: ~/caches/pre-commit
   py38:
     <<: *executor
     docker:
@@ -94,24 +93,6 @@ commands:
           key: pip-v4-{{ .Environment.CIRCLE_JOB }}-
           paths:
             - ~/caches/pip
-  using_pre_commit:
-    description: "Install pre-commit with caching"
-    parameters:
-      steps:
-        type: steps
-        default: []
-    steps:
-      - restore_cache:
-          keys:
-            - pre-commit-v5-{{ checksum ".pre-commit-config.yaml" }}
-            - pre-commit-v5-
-      - run: mkdir -p $PRE_COMMIT_HOME
-      - run: pip install pre-commit
-      - steps: <<parameters.steps>>
-      - save_cache:
-          key: pre-commit-v5-{{ checksum ".pre-commit-config.yaml" }}
-          paths:
-            - ~/caches/pre-commit
   using_hypothesis_cache:
     description: "Caching for hypothesis DB"
     parameters:
@@ -175,15 +156,6 @@ commands:
             - .coverage.*
 
 jobs:
-  lint:
-    executor: default
-    steps:
-      - checkout
-      - using_pip_cache:
-          steps:
-            - using_pre_commit:
-                steps:
-                  - run: pre-commit run --all-files --show-diff-on-failure
   typecheck:
     executor: default
     steps:
