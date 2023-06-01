@@ -38,7 +38,7 @@ include = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.7"
+python = "^3.8"
 
 uvloop = [
     { version = "^0.14", python = "~3.7", optional = true },
@@ -101,7 +101,7 @@ ignore = ["E501"]
 # Avoid trying to fix flake8-bugbear (`B`) violations.
 unfixable = ["B"]
 line-length = 88
-target-version = "py37"
+target-version = "py38"
 
 [tool.coverage]
 
