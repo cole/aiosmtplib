@@ -20,6 +20,7 @@ def auth_crammd5_verify(
     username: Union[str, bytes],
     password: Union[str, bytes],
     challenge: Union[str, bytes],
+    /,
 ) -> bytes:
     """
     CRAM-MD5 auth uses the password as a shared secret to MD5 the server's
@@ -39,6 +40,7 @@ def auth_crammd5_verify(
 def auth_plain_encode(
     username: Union[str, bytes],
     password: Union[str, bytes],
+    /,
 ) -> bytes:
     """
     PLAIN auth base64 encodes the username and password together.
@@ -55,6 +57,7 @@ def auth_plain_encode(
 def auth_login_encode(
     username: Union[str, bytes],
     password: Union[str, bytes],
+    /,
 ) -> Tuple[bytes, bytes]:
     """
     LOGIN auth base64 encodes the username and password and sends them

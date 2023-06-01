@@ -73,6 +73,7 @@ def formataddr(pair: Tuple[str, str]) -> str:
 
 def flatten_message(
     message: Union[email.message.EmailMessage, email.message.Message],
+    /,
     utf8: bool = False,
     cte_type: str = "8bit",
 ) -> bytes:
@@ -103,6 +104,7 @@ def flatten_message(
 
 def extract_addresses(
     header: Union[str, email.headerregistry.AddressHeader, email.header.Header],
+    /,
 ) -> List[str]:
     """
     Convert address headers into raw email addresses, suitable for use in
@@ -129,7 +131,8 @@ def extract_addresses(
 
 
 def extract_sender(
-    message: Union[email.message.EmailMessage, email.message.Message]
+    message: Union[email.message.EmailMessage, email.message.Message],
+    /,
 ) -> Optional[str]:
     """
     Extract the sender from the message object given.
@@ -158,7 +161,8 @@ def extract_sender(
 
 
 def extract_recipients(
-    message: Union[email.message.EmailMessage, email.message.Message]
+    message: Union[email.message.EmailMessage, email.message.Message],
+    /,
 ) -> List[str]:
     """
     Extract the recipients from the message object given.

@@ -16,6 +16,7 @@ __all__ = ("send",)
 
 async def send(
     message: Union[email.message.EmailMessage, email.message.Message, str, bytes],
+    /,
     sender: Optional[str] = None,
     recipients: Optional[Union[str, Sequence[str]]] = None,
     mail_options: Optional[Sequence[str]] = None,

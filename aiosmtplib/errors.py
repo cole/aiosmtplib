@@ -26,7 +26,7 @@ class SMTPException(Exception):
     Base class for all SMTP exceptions.
     """
 
-    def __init__(self, message: str) -> None:
+    def __init__(self, message: str, /) -> None:
         self.message = message
         self.args = (message,)
 
@@ -73,7 +73,7 @@ class SMTPResponseException(SMTPException):
     Base class for all server responses with error codes.
     """
 
-    def __init__(self, code: int, message: str) -> None:
+    def __init__(self, code: int, message: str, /) -> None:
         self.code = code
         self.message = message
         self.args = (code, message)
@@ -108,7 +108,7 @@ class SMTPSenderRefused(SMTPResponseException):
     SMTP server refused the message sender.
     """
 
-    def __init__(self, code: int, message: str, sender: str) -> None:
+    def __init__(self, code: int, message: str, sender: str, /) -> None:
         self.code = code
         self.message = message
         self.sender = sender
@@ -120,7 +120,7 @@ class SMTPRecipientRefused(SMTPResponseException):
     SMTP server refused a message recipient.
     """
 
-    def __init__(self, code: int, message: str, recipient: str) -> None:
+    def __init__(self, code: int, message: str, recipient: str, /) -> None:
         self.code = code
         self.message = message
         self.recipient = recipient
@@ -132,6 +132,6 @@ class SMTPRecipientsRefused(SMTPException):
     SMTP server refused multiple recipients.
     """
 
-    def __init__(self, recipients: List[SMTPRecipientRefused]) -> None:
+    def __init__(self, recipients: List[SMTPRecipientRefused], /) -> None:
         self.recipients = recipients
         self.args = (recipients,)

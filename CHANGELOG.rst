@@ -5,6 +5,7 @@ Changelog
 ------------------
 
 - **BREAKING**: Drop Python 3.7 support.
+- **BREAKING**: Positional and keyword argument usage is now enforced.
 - Change: added SMTPConnectionResponseError for invalid response on
   connect only (credit @ikrivosheev)
 - Change: don't use timeout value passed to ``connect`` everywhere,
