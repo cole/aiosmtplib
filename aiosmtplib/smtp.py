@@ -528,7 +528,7 @@ class SMTP:
 
         return response
 
-    def _connection_lost(self, waiter: "asyncio.Future[None]") -> None:
+    def _connection_lost(self, waiter: asyncio.Future[None]) -> None:
         if waiter.cancelled() or waiter.exception() is not None:
             self.close()
 
