@@ -19,11 +19,6 @@ executors:
       POETRY_VIRTUALENVS_IN_PROJECT: "false"
       POETRY_INSTALLER_PARALLEL: "false"
       PRE_COMMIT_HOME: ~/caches/pre-commit
-  py37:
-    <<: *executor
-    docker:
-      - image: "python:3.7-bullseye"
-        auth: *docker-auth
   py38:
     <<: *executor
     docker:
@@ -254,7 +249,7 @@ jobs:
       python_version:
         type: enum
         description: "executor name"
-        enum: ["py37", "py38", "py39", "py310", "py311", "pypy38", "pypy39"]
+        enum: ["py38", "py39", "py310", "py311", "pypy38", "pypy39"]
       event_loop:
         type: enum
         description: "event loop type"
@@ -340,7 +335,7 @@ workflows:
             alias: "test-cpython-asyncio"
             parameters:
               event_loop: ["asyncio"]
-              python_version: ["py37", "py38", "py39", "py310", "py311"]
+              python_version: ["py38", "py39", "py310", "py311"]
           requires: *phase1
       - test:
           <<: *base-job
@@ -357,7 +352,7 @@ workflows:
             alias: "test-cpython-uvloop"
             parameters:
               event_loop: ["uvloop"]
-              python_version: ["py37", "py38", "py39", "py310", "py311"]
+              python_version: ["py38", "py39", "py310", "py311"]
           requires: *phase2
       - coverage:
           <<: *base-job
