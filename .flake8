@@ -1,6 +1,0 @@
-[flake8]
-min_python_version = 3.7.0
-max-line-length = 80
-select = C,E,F,W,B,B950
-ignore = E203,E501,W503
-exclude = .tox,.git,docs
