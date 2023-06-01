@@ -1,6 +1,18 @@
 Changelog
 =========
 
+3.0.0 (unreleased)
+------------------
+
+- **BREAKING**: Drop Python 3.7 support.
+- Change: added SMTPConnectionResponseError for invalid response on
+  connect only (credit @ikrivosheev)
+- Change: don't use timeout value passed to ``connect`` everywhere,
+  only for the initial connection (credit @wombatonfire)
+- Bugfix: fixed extra HELO/EHLO call before QUIT on disconnect
+  (credit @ikrivosheev)
+
+
 2.0.1
 -----
 
