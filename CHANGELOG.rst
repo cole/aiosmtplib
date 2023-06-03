@@ -5,7 +5,8 @@ Changelog
 -----
 
 - Bugfix: don't send extra EHLO/HELO before QUIT (credit @ikrivosheev)
-
+- Change: added SMTPConnectionResponseError for invalid response on
+  connect only (credit @ikrivosheev)
 
 2.0.1
 -----
