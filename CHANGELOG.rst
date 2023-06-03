@@ -10,8 +10,12 @@ Changelog
   connect only (credit @ikrivosheev)
 - Change: don't use timeout value passed to ``connect`` everywhere,
   only for the initial connection (credit @wombatonfire)
-- Bugfix: fixed extra HELO/EHLO call before QUIT on disconnect
-  (credit @ikrivosheev)
+
+
+2.0.2
+-----
+
+- Bugfix: don't send extra EHLO/HELO before QUIT (credit @ikrivosheev)
 
 
 2.0.1
