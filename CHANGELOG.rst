@@ -6,8 +6,6 @@ Changelog
 
 - **BREAKING**: Drop Python 3.7 support.
 - **BREAKING**: Positional and keyword argument usage is now enforced.
-- Change: added SMTPConnectionResponseError for invalid response on
-  connect only (credit @ikrivosheev)
 - Change: don't use timeout value passed to ``connect`` everywhere,
   only for the initial connection (credit @wombatonfire)
 
@@ -16,7 +14,8 @@ Changelog
 -----
 
 - Bugfix: don't send extra EHLO/HELO before QUIT (credit @ikrivosheev)
-
+- Change: added SMTPConnectionResponseError for invalid response on
+  connect only (credit @ikrivosheev)
 
 2.0.1
 -----
