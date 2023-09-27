@@ -38,6 +38,11 @@ executors:
     docker:
       - image: "python:3.11-bookworm"
         auth: *docker-auth
+  py312:
+    <<: *executor
+    docker:
+      - image: "python:3.12-bookworm"
+        auth: *docker-auth
   pypy38:
     <<: *executor
     docker:
@@ -220,7 +225,7 @@ jobs:
       python_version:
         type: enum
         description: "executor name"
-        enum: ["py38", "py39", "py310", "py311", "pypy38", "pypy39"]
+        enum: ["py38", "py39", "py310", "py311", "py312", "pypy38", "pypy39"]
       event_loop:
         type: enum
         description: "event loop type"
@@ -306,7 +311,7 @@ workflows:
             alias: "test-cpython-asyncio"
             parameters:
               event_loop: ["asyncio"]
-              python_version: ["py38", "py39", "py310", "py311"]
+              python_version: ["py38", "py39", "py310", "py311", "py312"]
           requires: *phase1
       - test:
           <<: *base-job
@@ -323,7 +328,7 @@ workflows:
             alias: "test-cpython-uvloop"
             parameters:
               event_loop: ["uvloop"]
-              python_version: ["py38", "py39", "py310", "py311"]
+              python_version: ["py38", "py39", "py310", "py311", "py312"]
           requires: *phase2
       - coverage:
           <<: *base-job
