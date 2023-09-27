@@ -249,7 +249,7 @@ jobs:
                       event_loop: <<parameters.event_loop>>
 
   coverage:
-    executor: py310
+    executor: py311
     environment:
       COVERAGE_FILE: .coverage
     steps:
