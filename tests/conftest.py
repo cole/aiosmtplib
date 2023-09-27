@@ -410,7 +410,7 @@ def smtpd_mock_response_done_then_close() -> (
             smtpd.session.host_name = args[0]
         await smtpd.push("250 done")
         await smtpd.push("221 bye now")
-        await smtpd.transport.close()
+        smtpd.transport.close()
 
     return mock_response_done_then_close
 
@@ -431,7 +431,7 @@ def smtpd_mock_response_error_disconnect() -> (
         smtpd: SMTPD, *args: Any, **kwargs: Any
     ) -> None:
         await smtpd.push("501 error")
-        await smtpd.transport.close()
+        smtpd.transport.close()
 
     return mock_response_error_disconnect
 
@@ -510,7 +510,7 @@ def smtpd_mock_response_unavailable() -> Callable[[SMTPD], Coroutine[Any, Any, N
         smtpd: SMTPD, *args: Any, **kwargs: Any
     ) -> None:
         await smtpd.push("421 retry in 5 minutes")
-        await smtpd.transport.close()
+        smtpd.transport.close()
 
     return mock_response_unavailable
 
@@ -533,7 +533,7 @@ def smtpd_mock_response_tls_ready_disconnect() -> (
         smtpd: SMTPD, *args: Any, **kwargs: Any
     ) -> None:
         await smtpd.push("220 go for it")
-        await smtpd.transport.close()
+        smtpd.transport.close()
 
     return mock_response_tls_ready_disconnect
 
@@ -541,7 +541,7 @@ def smtpd_mock_response_tls_ready_disconnect() -> (
 @pytest.fixture(scope="session")
 def smtpd_mock_response_disconnect() -> Callable[[SMTPD], Coroutine[Any, Any, None]]:
     async def mock_response_disconnect(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
-        await smtpd.transport.close()
+        smtpd.transport.close()
 
     return mock_response_disconnect
 

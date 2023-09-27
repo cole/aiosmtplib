@@ -412,7 +412,7 @@ async def test_disconnected_server_get_transport_info(
         await smtp_client.execute_command(b"NOOP")
 
     with pytest.raises(SMTPServerDisconnected):
-        await smtp_client.get_transport_info("sslcontext")
+        smtp_client.get_transport_info("sslcontext")
 
 
 async def test_disconnected_server_data(
