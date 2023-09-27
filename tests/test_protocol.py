@@ -10,6 +10,8 @@ import pytest
 from aiosmtplib import SMTPResponseException, SMTPServerDisconnected
 from aiosmtplib.protocol import SMTPProtocol
 
+from .compat import cleanup_server
+
 
 pytestmark = pytest.mark.asyncio()
 
@@ -65,7 +67,7 @@ async def test_protocol_read_limit_overrun(
     assert "Response too long" in exc_info.value.message
 
     server.close()
-    await server.wait_closed()
+    await cleanup_server(server)
 
 
 async def test_protocol_connected_check_on_read_response(
@@ -123,7 +125,7 @@ async def test_error_on_readline_with_partial_line(
         await protocol.read_response(timeout=1.0)
 
     server.close()
-    await server.wait_closed()
+    await cleanup_server(server)
 
 
 async def test_protocol_response_waiter_unset(
@@ -156,7 +158,7 @@ async def test_protocol_response_waiter_unset(
         await protocol.execute_command(b"TEST\n", timeout=1.0)
 
     server.close()
-    await server.wait_closed()
+    await cleanup_server(server)
 
 
 async def test_protocol_data_received_called_twice(
@@ -191,7 +193,7 @@ async def test_protocol_data_received_called_twice(
     assert response.message == "Hi"
 
     server.close()
-    await server.wait_closed()
+    await cleanup_server(server)
 
 
 async def test_protocol_eof_response(
@@ -213,4 +215,4 @@ async def test_protocol_eof_response(
     await asyncio.wait_for(connect_future, timeout=1.0)
 
     server.close()
-    await server.wait_closed()
+    await cleanup_server(server)

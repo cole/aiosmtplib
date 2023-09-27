@@ -22,6 +22,7 @@ from aiosmtpd.smtp import SMTP as SMTPD
 from aiosmtplib import SMTP, SMTPStatus
 
 from .auth import DummySMTPAuth
+from .compat import cleanup_server
 from .smtpd import RecordingHandler, TestSMTPD
 
 
@@ -632,7 +633,10 @@ def smtpd_server(
 
     def close_server() -> None:
         server.close()
-        event_loop.run_until_complete(server.wait_closed())
+        try:
+            event_loop.run_until_complete(cleanup_server(server))
+        except RuntimeError:
+            pass
 
     request.addfinalizer(close_server)
 
@@ -667,7 +671,10 @@ def smtpd_server_smtputf8(
 
     def close_server() -> None:
         server.close()
-        event_loop.run_until_complete(server.wait_closed())
+        try:
+            event_loop.run_until_complete(cleanup_server(server))
+        except RuntimeError:
+            pass
 
     request.addfinalizer(close_server)
 
@@ -688,9 +695,10 @@ def echo_server(
 
     def close_server() -> None:
         server.close()
-        event_loop.run_until_complete(server.wait_closed())
-
-    request.addfinalizer(close_server)
+        try:
+            event_loop.run_until_complete(cleanup_server(server))
+        except RuntimeError:
+            pass
 
     return server
 
@@ -723,7 +731,10 @@ def smtpd_server_socket_path(
 
     def close_server() -> None:
         server.close()
-        event_loop.run_until_complete(server.wait_closed())
+        try:
+            event_loop.run_until_complete(cleanup_server(server))
+        except RuntimeError:
+            pass
 
     request.addfinalizer(close_server)
 
@@ -759,7 +770,10 @@ def smtpd_server_tls(
 
     def close_server() -> None:
         server.close()
-        event_loop.run_until_complete(server.wait_closed())
+        try:
+            event_loop.run_until_complete(cleanup_server(server))
+        except RuntimeError:
+            pass
 
     request.addfinalizer(close_server)
 

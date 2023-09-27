@@ -17,6 +17,8 @@ from aiosmtplib import (
 )
 from aiosmtplib.protocol import SMTPProtocol
 
+from .compat import cleanup_server
+
 
 pytestmark = pytest.mark.asyncio()
 
@@ -172,4 +174,4 @@ async def test_protocol_timeout_on_starttls(
         await protocol.start_tls(client_tls_context, timeout=0.00001)
 
     server.close()
-    await server.wait_closed()
+    await cleanup_server(server)
