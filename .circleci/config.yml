@@ -6,7 +6,7 @@ orbs:
 executors:
   default: &executor
     docker:
-      - image: "python:3.10-bullseye"
+      - image: "python:3.10-bookworm"
         auth: &docker-auth
           username: $DOCKERHUB_USERNAME
           password: $DOCKERHUB_PASSWORD
@@ -21,32 +21,32 @@ executors:
   py38:
     <<: *executor
     docker:
-      - image: "python:3.8-bullseye"
+      - image: "python:3.8-bookworm"
         auth: *docker-auth
   py39:
     <<: *executor
     docker:
-      - image: "python:3.9-bullseye"
+      - image: "python:3.9-bookworm"
         auth: *docker-auth
   py310:
     <<: *executor
     docker:
-      - image: "python:3.10-bullseye"
+      - image: "python:3.10-bookworm"
         auth: *docker-auth
   py311:
     <<: *executor
     docker:
-      - image: "python:3.11-bullseye"
+      - image: "python:3.11-bookworm"
         auth: *docker-auth
   pypy38:
     <<: *executor
     docker:
-      - image: "pypy:3.8-bullseye"
+      - image: "pypy:3.8-bookworm"
         auth: *docker-auth
   pypy39:
     <<: *executor
     docker:
-      - image: "pypy:3.9-bullseye"
+      - image: "pypy:3.9-bookworm"
         auth: *docker-auth
 
 commands:
