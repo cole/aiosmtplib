@@ -549,7 +549,7 @@ def smtpd_mock_response_disconnect() -> Callable[[SMTPD], Coroutine[Any, Any, No
 @pytest.fixture(scope="session")
 def smtpd_mock_response_eof() -> Callable[[SMTPD], Coroutine[Any, Any, None]]:
     async def mock_response_eof(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
-        await smtpd.transport.write_eof()
+        smtpd.transport.write_eof()
 
     return mock_response_eof
 
