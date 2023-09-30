@@ -605,7 +605,6 @@ class SMTP:
         """
         Closes the connection.
         """
-        print("close")
         if self.transport is not None and not self.transport.is_closing():
             self.transport.close()
 
