@@ -529,8 +529,7 @@ class SMTP:
         return response
 
     def _connection_lost(self, waiter: "asyncio.Future[None]") -> None:
-        if waiter.cancelled() or waiter.exception() is not None:
-            self.close()
+        self.close()
 
     async def _maybe_start_tls_on_connect(self) -> None:
         """
@@ -606,6 +605,7 @@ class SMTP:
         """
         Closes the connection.
         """
+        print("close")
         if self.transport is not None and not self.transport.is_closing():
             self.transport.close()
 
