@@ -104,8 +104,7 @@ async def test_close_on_connect_raises_connect_error(
     with pytest.raises(SMTPConnectError):
         await smtp_client.connect()
 
-    assert smtp_client.transport is None
-    assert smtp_client.protocol is None
+    assert not smtp_client.is_connected
 
 
 async def test_421_closes_connection(
@@ -147,11 +146,10 @@ async def test_disconnected_server_raises_on_client_read(
 
     await smtp_client.connect()
 
-    with pytest.raises(SMTPServerDisconnected):
+    with pytest.raises(SMTPServerDisconnected, match="Connection lost"):
         await smtp_client.execute_command(b"NOOP")
 
-    assert smtp_client.protocol is None
-    assert smtp_client.transport is None
+    assert not smtp_client.is_connected
 
 
 async def test_disconnected_server_raises_on_client_write(
@@ -165,11 +163,10 @@ async def test_disconnected_server_raises_on_client_write(
 
     await smtp_client.connect()
 
-    with pytest.raises(SMTPServerDisconnected):
+    with pytest.raises(SMTPServerDisconnected, match="Connection lost"):
         await smtp_client.execute_command(b"NOOP")
 
-    assert smtp_client.protocol is None
-    assert smtp_client.transport is None
+    assert not smtp_client.is_connected
 
 
 async def test_disconnected_server_raises_on_data_read(
@@ -186,11 +183,10 @@ async def test_disconnected_server_raises_on_data_read(
     await smtp_client.mail("sender@example.com")
     await smtp_client.rcpt("recipient@example.com")
 
-    with pytest.raises(SMTPServerDisconnected):
+    with pytest.raises(SMTPServerDisconnected, match="Connection lost"):
         await smtp_client.data("A MESSAGE")
 
-    assert smtp_client.protocol is None
-    assert smtp_client.transport is None
+    assert not smtp_client.is_connected
 
 
 async def test_disconnected_server_raises_on_data_write(
@@ -205,11 +201,10 @@ async def test_disconnected_server_raises_on_data_write(
     await smtp_client.ehlo()
     await smtp_client.mail("sender@example.com")
     await smtp_client.rcpt("recipient@example.com")
-    with pytest.raises(SMTPServerDisconnected):
+    with pytest.raises(SMTPServerDisconnected, match="Connection lost"):
         await smtp_client.data("A MESSAGE\nLINE2")
 
-    assert smtp_client.protocol is None
-    assert smtp_client.transport is None
+    assert not smtp_client.is_connected
 
 
 async def test_disconnected_server_raises_on_starttls(
@@ -229,11 +224,10 @@ async def test_disconnected_server_raises_on_starttls(
 
     smtp_client._ehlo_or_helo_if_needed = mock_ehlo_or_helo_if_needed  # type: ignore
 
-    with pytest.raises(SMTPServerDisconnected):
+    with pytest.raises(SMTPServerDisconnected, match="Connection lost"):
         await smtp_client.starttls(timeout=1.0)
 
-    assert smtp_client.protocol is None
-    assert smtp_client.transport is None
+    assert not smtp_client.is_connected
 
 
 async def test_context_manager(
@@ -408,10 +402,10 @@ async def test_disconnected_server_get_transport_info(
 
     await smtp_client.connect()
 
-    with pytest.raises(SMTPServerDisconnected):
+    with pytest.raises(SMTPServerDisconnected, match="Connection lost"):
         await smtp_client.execute_command(b"NOOP")
 
-    with pytest.raises(SMTPServerDisconnected):
+    with pytest.raises(SMTPServerDisconnected, match="Server not connected"):
         smtp_client.get_transport_info("sslcontext")
 
 

@@ -634,7 +634,7 @@ class SMTP:
 
         :raises SMTPServerDisconnected: connection lost
         """
-        if self.transport is None:
+        if not (self.is_connected and self.transport):
             raise SMTPServerDisconnected("Server not connected")
 
         return self.transport.get_extra_info(key)
