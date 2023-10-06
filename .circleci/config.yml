@@ -41,7 +41,7 @@ executors:
   py312:
     <<: *executor
     docker:
-      - image: "python:3.12-rc-bookworm"
+      - image: "python:3.12-bookworm"
         auth: *docker-auth
   pypy38:
     <<: *executor
