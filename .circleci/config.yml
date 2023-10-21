@@ -68,8 +68,8 @@ commands:
       - run: python -V
       - restore_cache:
           keys:
-            - poetry-v10-<<parameters.cache_key>>-{{ checksum "pyproject.toml" }}
-            - poetry-v10-<<parameters.cache_key>>-
+            - poetry-v11-<<parameters.cache_key>>-{{ checksum "pyproject.toml" }}
+            - poetry-v11-<<parameters.cache_key>>-
       - run: mkdir -p $POETRY_CACHE_DIR
       - run: mkdir -p $POETRY_VIRTUALENVS_PATH
       - run: mkdir -p $PIP_CACHE_DIR
@@ -77,7 +77,7 @@ commands:
       - run: $POETRY_HOME/bin/poetry config --list
       - steps: <<parameters.steps>>
       - save_cache:
-          key: poetry-v10-<<parameters.cache_key>>-{{ checksum "pyproject.toml" }}
+          key: poetry-v11-<<parameters.cache_key>>-{{ checksum "pyproject.toml" }}
           paths:
             - ~/caches/poetry
             - poetry.lock
