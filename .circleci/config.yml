@@ -43,15 +43,15 @@ executors:
     docker:
       - image: "python:3.12-bookworm"
         auth: *docker-auth
-  pypy38:
-    <<: *executor
-    docker:
-      - image: "pypy:3.8-bookworm"
-        auth: *docker-auth
   pypy39:
     <<: *executor
     docker:
       - image: "pypy:3.9-bookworm"
+        auth: *docker-auth
+  pypy310:
+    <<: *executor
+    docker:
+      - image: "pypy:3.10-bookworm"
         auth: *docker-auth
 
 commands:
@@ -225,7 +225,7 @@ jobs:
       python_version:
         type: enum
         description: "executor name"
-        enum: ["py38", "py39", "py310", "py311", "py312", "pypy38", "pypy39"]
+        enum: ["py38", "py39", "py310", "py311", "py312", "pypy39", "pypy310"]
       event_loop:
         type: enum
         description: "event loop type"
@@ -319,7 +319,7 @@ workflows:
             alias: "test-pypy-asyncio"
             parameters:
               event_loop: ["asyncio"]
-              python_version: ["pypy38", "pypy39"]
+              python_version: ["pypy39", "pypy310"]
           requires: &phase2
             - test-cpython-asyncio
       - test:
