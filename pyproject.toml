@@ -8,9 +8,7 @@ version = "3.0.0dev0"
 description = "asyncio SMTP client"
 authors = ["Cole Maclean <hi@colemaclean.dev>"]
 license = "MIT"
-packages = [
-    { include = "aiosmtplib" },
-]
+packages = [{ include = "aiosmtplib" }]
 readme = "README.rst"
 repository = "https://github.com/cole/aiosmtplib"
 documentation = "https://aiosmtplib.readthedocs.io/en/stable/"
@@ -28,9 +26,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Typing :: Typed",
 ]
-exclude = [
-    "docs/requirements.txt",
-]
+exclude = ["docs/requirements.txt"]
 include = [
     { path = "CHANGELOG.rst", format = "sdist" },
     { path = "tests", format = "sdist" },
@@ -56,7 +52,7 @@ pytest = "^7.2"
 pytest-asyncio = "^0.20.1"
 pytest-cov = "^4.0"
 pytest-xdist = "^3.0.0"
-coverage = {extras = ["toml"], version = "^6.5"}
+coverage = { extras = ["toml"], version = "^6.5" }
 hypothesis = "^6.56"
 aiosmtpd = "^1.4.2"
 trustme = "^0.9.0"
@@ -100,7 +96,7 @@ target-version = "py38"
 [tool.coverage]
 
 [tool.coverage.run]
-source = [ "aiosmtplib" ]
+source = ["aiosmtplib"]
 branch = true
 parallel = true
 
