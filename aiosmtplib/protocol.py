@@ -102,15 +102,6 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
         self._command_lock: Optional[asyncio.Lock] = None
         self._closed: "asyncio.Future[None]" = self._loop.create_future()
 
-    def __del__(self) -> None:
-        # Avoid 'Future exception was never retrieved' warnings
-        if (
-            self._response_waiter
-            and self._response_waiter.done()
-            and not self._response_waiter.cancelled()
-        ):
-            self._response_waiter.exception()
-
     def _get_close_waiter(self, stream: asyncio.StreamWriter) -> "asyncio.Future[None]":
         return self._closed
 
@@ -120,6 +111,22 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
         Check if our transport is still connected.
         """
         return bool(self.transport is not None and not self.transport.is_closing())
+
+    @property
+    def response_exception(self) -> Optional[BaseException]:
+        """
+        Return any exception that has been set on the response waiter.
+
+        Used to avoid 'Future exception was never retrieved' warnings
+        """
+        if (
+            self._response_waiter
+            and self._response_waiter.done()
+            and not self._response_waiter.cancelled()
+        ):
+            return self._response_waiter.exception()
+
+        return None
 
     def connection_made(self, transport: asyncio.BaseTransport) -> None:
         self.transport = cast(asyncio.Transport, transport)
