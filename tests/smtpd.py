@@ -4,8 +4,8 @@ Implements handlers required on top of aiosmtpd for testing.
 import asyncio
 import logging
 from email.errors import HeaderParseError
-from email.message import EmailMessage
-from typing import Any, List, Optional, Tuple, Union
+from email.message import EmailMessage, Message
+from typing import Any, AnyStr, List, Optional, Tuple, Union
 
 from aiosmtpd.handlers import Message as MessageHandler
 from aiosmtpd.smtp import MISSING
@@ -19,7 +19,7 @@ log = logging.getLogger("mail.log")
 class RecordingHandler(MessageHandler):
     def __init__(
         self,
-        messages_list: List[EmailMessage],
+        messages_list: List[Union[EmailMessage, Message]],
         commands_list: List[Tuple[str, Tuple[Any, ...]]],
         responses_list: List[str],
     ):
@@ -34,7 +34,7 @@ class RecordingHandler(MessageHandler):
     def record_server_response(self, status: str) -> None:
         self.responses.append(status)
 
-    def handle_message(self, message: EmailMessage) -> None:
+    def handle_message(self, message: Union[EmailMessage, Message]) -> None:
         self.messages.append(message)
 
     async def handle_EHLO(
@@ -46,7 +46,7 @@ class RecordingHandler(MessageHandler):
         responses: List[str],
     ) -> List[str]:
         """Advertise auth login support."""
-        session.host_name = hostname
+        session.host_name = hostname  # type: ignore
         if server._tls_protocol:
             return ["250-AUTH LOGIN"] + responses
         else:
@@ -54,14 +54,14 @@ class RecordingHandler(MessageHandler):
 
 
 class TestSMTPD(SMTPD):
-    transport: Optional[asyncio.BaseTransport]
+    transport: Optional[asyncio.BaseTransport]  # type: ignore
 
-    def _getaddr(self, arg: str) -> Tuple[Optional[str], str]:
+    def _getaddr(self, arg: str) -> Tuple[Optional[str], Optional[str]]:
         """
         Don't raise an exception on unparsable email address
         """
         address: Optional[str] = None
-        rest: str = ""
+        rest: Optional[str] = ""
         try:
             address, rest = super()._getaddr(arg)
         except HeaderParseError:
@@ -69,13 +69,11 @@ class TestSMTPD(SMTPD):
 
         return address, rest
 
-    async def _call_handler_hook(
-        self, command: str, *args: Any
-    ) -> Union[str, _Missing]:
+    async def _call_handler_hook(self, command: str, *args: Any) -> Any:
         self.event_handler.record_command(command, *args)
         return await super()._call_handler_hook(command, *args)
 
-    async def push(self, status: str) -> None:
+    async def push(self, status: AnyStr) -> None:
         await super().push(status)
         self.event_handler.record_server_response(status)
 

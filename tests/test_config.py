@@ -220,7 +220,7 @@ async def test_connect_deprecated_source_address(
         start_tls=False,
     )
     with pytest.warns(DeprecationWarning):
-        await client.connect(source_address="example.com")  # type: ignore
+        await client.connect(source_address="example.com")
 
     assert client.local_hostname == "example.com"
 
@@ -346,7 +346,7 @@ async def test_starttls_certificate_options_take_precedence(
 
 async def test_source_address_deprecation_warning_init() -> None:
     with pytest.warns(DeprecationWarning):
-        client = SMTP(source_address="example.com")  # type: ignore
+        client = SMTP(source_address="example.com")
 
     assert client.local_hostname == "example.com"
 

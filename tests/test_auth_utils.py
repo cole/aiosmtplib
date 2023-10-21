@@ -19,7 +19,7 @@ def test_auth_crammd5_verify_bytes(
     encoded_challenge = base64.b64encode(challenge)
 
     # Basically a re-implementation of the function being tested :(
-    md5_digest = hmac.HMAC(password, challenge, "md5")
+    md5_digest = hmac.new(password, msg=challenge, digestmod="md5")
     verification = username + b" " + md5_digest.hexdigest().encode("ascii")
     encoded_verification = base64.b64encode(verification)
 
@@ -40,7 +40,7 @@ def test_auth_crammd5_verify_str(
     encoded_challenge = base64.b64encode(challenge_bytes)
 
     # Basically a re-implementation of the function being tested :(
-    md5_digest = hmac.HMAC(password_bytes, challenge_bytes, "md5")
+    md5_digest = hmac.new(password_bytes, msg=challenge_bytes, digestmod="md5")
     verification = username_bytes + b" " + md5_digest.hexdigest().encode("ascii")
     encoded_verification = base64.b64encode(verification)
 

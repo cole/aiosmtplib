@@ -222,7 +222,7 @@ async def test_disconnected_server_raises_on_starttls(
     async def mock_ehlo_or_helo_if_needed() -> None:
         pass
 
-    smtp_client._ehlo_or_helo_if_needed = mock_ehlo_or_helo_if_needed  # type: ignore
+    smtp_client._ehlo_or_helo_if_needed = mock_ehlo_or_helo_if_needed
 
     with pytest.raises(SMTPServerDisconnected):
         await smtp_client.starttls(timeout=1.0)
@@ -426,7 +426,7 @@ async def test_disconnected_server_data(
     async def mock_ehlo_or_helo_if_needed() -> None:
         pass
 
-    smtp_client._ehlo_or_helo_if_needed = mock_ehlo_or_helo_if_needed  # type: ignore
+    smtp_client._ehlo_or_helo_if_needed = mock_ehlo_or_helo_if_needed
 
     with pytest.raises(SMTPServerDisconnected):
         await smtp_client.data("123")

@@ -61,7 +61,7 @@ async def test_protocol_read_limit_overrun(
     monkeypatch.setattr("aiosmtplib.protocol.MAX_LINE_LENGTH", 128)
 
     with pytest.raises(SMTPResponseException) as exc_info:
-        await protocol.execute_command(b"TEST\n", timeout=1.0)
+        await protocol.execute_command(b"TEST\n", timeout=1.0)  # type: ignore
 
     assert exc_info.value.code == 500
     assert "Response too long" in exc_info.value.message
@@ -122,7 +122,7 @@ async def test_error_on_readline_with_partial_line(
     _, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
 
     with pytest.raises(SMTPServerDisconnected):
-        await protocol.read_response(timeout=1.0)
+        await protocol.read_response(timeout=1.0)  # type: ignore
 
     server.close()
     await cleanup_server(server)
@@ -155,7 +155,7 @@ async def test_protocol_response_waiter_unset(
     monkeypatch.setattr(protocol, "_response_waiter", None)
 
     with pytest.raises(SMTPServerDisconnected):
-        await protocol.execute_command(b"TEST\n", timeout=1.0)
+        await protocol.execute_command(b"TEST\n", timeout=1.0)  # type: ignore
 
     server.close()
     await cleanup_server(server)
@@ -187,7 +187,7 @@ async def test_protocol_data_received_called_twice(
 
     _, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
 
-    response = await protocol.execute_command(b"TEST\n", timeout=1.0)
+    response = await protocol.execute_command(b"TEST\n", timeout=1.0)  # type: ignore
 
     assert response.code == 220
     assert response.message == "Hi"
@@ -202,7 +202,7 @@ async def test_protocol_eof_response(
     async def client_connected(
         reader: asyncio.StreamReader, writer: asyncio.StreamWriter
     ) -> None:
-        writer.transport.abort()
+        writer.transport.abort()  # type: ignore
 
     server = await asyncio.start_server(
         client_connected, host=bind_address, port=0, family=socket.AF_INET
