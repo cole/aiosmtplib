@@ -307,6 +307,7 @@ workflows:
             - build
       - test:
           <<: *base-job
+          name: "test-asyncio-<< matrix.python_version >>"
           matrix:
             alias: "test-cpython-asyncio"
             parameters:
@@ -315,6 +316,7 @@ workflows:
           requires: *phase1
       - test:
           <<: *base-job
+          name: "test-pypy-<< matrix.python_version >>"
           matrix:
             alias: "test-pypy-asyncio"
             parameters:
@@ -323,13 +325,14 @@ workflows:
           requires: *phase1
       - test:
           <<: *base-job
+          name: "test-uvloop-<< matrix.python_version >>"
           matrix:
             alias: "test-cpython-uvloop"
             parameters:
               event_loop: ["uvloop"]
               python_version: ["py38", "py39", "py310", "py311", "py312"]
-          requires: &phase2
-            - test-cpython-asyncio
+          requires:
+            - "test-asyncio-<< matrix.python_version >>"
       - coverage:
           <<: *base-job
           requires: &phase3
