@@ -320,8 +320,7 @@ workflows:
             parameters:
               event_loop: ["asyncio"]
               python_version: ["pypy39", "pypy310"]
-          requires: &phase2
-            - test-cpython-asyncio
+          requires: *phase1
       - test:
           <<: *base-job
           matrix:
@@ -329,7 +328,8 @@ workflows:
             parameters:
               event_loop: ["uvloop"]
               python_version: ["py38", "py39", "py310", "py311", "py312"]
-          requires: *phase2
+          requires: &phase2
+            - test-cpython-asyncio
       - coverage:
           <<: *base-job
           requires: &phase3
