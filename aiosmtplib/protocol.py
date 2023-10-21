@@ -4,7 +4,7 @@ An ``asyncio.Protocol`` subclass for lower level IO handling.
 import asyncio
 import re
 import ssl
-from typing import Callable, Optional, cast
+from typing import Optional, cast
 
 from .errors import (
     SMTPDataError,
@@ -92,16 +92,11 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
     def __init__(
         self,
         loop: Optional[asyncio.AbstractEventLoop] = None,
-        connection_lost_callback: Optional[
-            Callable[["asyncio.Future[None]"], None]
-        ] = None,
     ) -> None:
         super().__init__(loop=loop)
         self._over_ssl = False
         self._buffer = bytearray()
         self._response_waiter: Optional[asyncio.Future[SMTPResponse]] = None
-        self._connection_lost_callback = connection_lost_callback
-        self._connection_lost_waiter: Optional["asyncio.Future[None]"] = None
 
         self.transport: Optional[asyncio.BaseTransport] = None
         self._command_lock: Optional[asyncio.Lock] = None
@@ -115,12 +110,6 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
             and not self._response_waiter.cancelled()
         ):
             self._response_waiter.exception()
-        if (
-            self._connection_lost_waiter
-            and self._connection_lost_waiter.done()
-            and not self._connection_lost_waiter.cancelled()
-        ):
-            self._connection_lost_waiter.exception()
 
     def _get_close_waiter(self, stream: asyncio.StreamWriter) -> "asyncio.Future[None]":
         return self._closed
@@ -138,12 +127,6 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
         self._response_waiter = self._loop.create_future()
         self._command_lock = asyncio.Lock()
 
-        if self._connection_lost_callback is not None:
-            self._connection_lost_waiter = self._loop.create_future()
-            self._connection_lost_waiter.add_done_callback(
-                self._connection_lost_callback
-            )
-
     def connection_lost(self, exc: Optional[Exception]) -> None:
         super().connection_lost(exc)
 
@@ -153,12 +136,6 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
 
         if self._response_waiter and not self._response_waiter.done():
             self._response_waiter.set_exception(smtp_exc)
-
-        if self._connection_lost_waiter and not self._connection_lost_waiter.done():
-            if exc:
-                self._connection_lost_waiter.set_exception(smtp_exc)
-            else:
-                self._connection_lost_waiter.set_result(None)
 
         self.transport = None
         self._command_lock = None
@@ -194,8 +171,6 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
         exc = SMTPServerDisconnected("Unexpected EOF received")
         if self._response_waiter and not self._response_waiter.done():
             self._response_waiter.set_exception(exc)
-        if self._connection_lost_waiter and not self._connection_lost_waiter.done():
-            self._connection_lost_waiter.set_exception(exc)
 
         # Returning false closes the transport
         return False

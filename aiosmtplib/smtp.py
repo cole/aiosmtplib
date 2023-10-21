@@ -459,9 +459,7 @@ class SMTP:
         if self.loop is None:
             raise RuntimeError("No event loop set")
 
-        protocol = SMTPProtocol(
-            loop=self.loop, connection_lost_callback=self._connection_lost
-        )
+        protocol = SMTPProtocol(loop=self.loop)
 
         tls_context: Optional[ssl.SSLContext] = None
         ssl_handshake_timeout: Optional[float] = None
