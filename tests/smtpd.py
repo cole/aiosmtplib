@@ -99,28 +99,5 @@ class TestSMTPD(SMTPD):
             await self.push(status)
 
     async def smtp_STARTTLS(self, arg: str) -> None:
-        """
-        Override for uvloop compatibility (we use ``set_protocol`` on the transport).
-        """
-        assert self.transport is not None
-
+        await super().smtp_STARTTLS(arg)
         self.event_handler.record_command("STARTTLS", arg)
-
-        log.info("%s STARTTLS", self.session.peer)
-        if arg:
-            await self.push("501 Syntax: STARTTLS")
-            return
-        if not self.tls_context:
-            await self.push("454 TLS not available")
-            return
-        await self.push("220 Ready to start TLS")
-
-        # Create SSL layer.
-        self._tls_protocol = asyncio.sslproto.SSLProtocol(  # type: ignore
-            self.loop, self, self.tls_context, None, server_side=True
-        )
-        self._original_transport = self.transport
-        self._original_transport.set_protocol(self._tls_protocol)
-
-        self.transport = self._tls_protocol._app_transport
-        self._tls_protocol.connection_made(self._original_transport)
