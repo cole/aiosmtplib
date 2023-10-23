@@ -1,14 +1,17 @@
 Changelog
 =========
 
-3.0.0 (unreleased)
-------------------
+3.0.0
+-----
 
 - **BREAKING**: Drop Python 3.7 support.
 - **BREAKING**: Positional arguments are now positional only, and keyword arguments
   are keyword only.
 - Change: don't use timeout value passed to ``connect`` everywhere,
   only for the initial connection (credit @wombatonfire)
+- Change: removed unnecessary connection lost callback
+- Change: revised handling for 'Future exception was never retrieved' warnings in
+  protocol
 
 
 2.0.2
