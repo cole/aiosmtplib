@@ -18,7 +18,7 @@ For details on creating :py:class:`email.message.EmailMessage` objects, see
 `the stdlib documentation examples
 <https://docs.python.org/3.12/library/email.examples.html>`_.
 
-.. note:: Confusingly, :py:class:`email.message.Message` objects are part of the
+.. caution:: Confusingly, :py:class:`email.message.Message` objects are part of the
     legacy email API (prior to Python 3.3), while :py:class:`email.message.EmailMessage`
     objects support email policies other than the older :py:class:`email.policy.Compat32`.
 
@@ -103,7 +103,7 @@ and ``recipients`` keyword arguments.
 Connecting Over TLS/SSL
 -----------------------
 
-For details on different connection types, see :ref:`connection-types`.
+.. seealso:: For details on different connection types, see :ref:`connection-types`.
 
 If an SMTP server supports direct connection via TLS/SSL, pass
 ``use_tls=True``.

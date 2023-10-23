@@ -18,7 +18,7 @@ aiosmtplib supports the three main types of encryption used by SMTP servers:
    is upgraded in place once the client requests it by sending the STARTTLS
    command. Most servers require an upgrade before allowing AUTH commands.
 
-.. note:: As of version 2.0, if the server advertises STARTTLS, aiosmtplib
+.. tip:: As of version 2.0, if the server advertises STARTTLS, aiosmtplib
     will automatically initiate STARTTLS on connect. If this behaviour
     causes problems, you can opt out by passing a ``start_tls`` value of
     ``False``.
