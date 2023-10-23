@@ -1,14 +1,14 @@
 .. module:: aiosmtplib
     :noindex:
 
-User's Guide
-============
+The send Coroutine
+==================
+
+The :func:`send` coroutine is the main entry point for sending email, and should is
+recommended for most use cases over instantiating an :py:class:`SMTP` object directly.
 
 Sending Messages
 ----------------
-
-Sending Message Objects
-~~~~~~~~~~~~~~~~~~~~~~~
 
 To send a message, create an :py:class:`email.message.EmailMessage` object, set
 appropriate headers ("From" and one of "To", "Cc" or "Bcc", at minimum), then
@@ -16,7 +16,7 @@ pass it to :func:`send` with the hostname and port of an SMTP server.
 
 For details on creating :py:class:`email.message.EmailMessage` objects, see
 `the stdlib documentation examples
-<https://docs.python.org/3.8/library/email.examples.html>`_.
+<https://docs.python.org/3.12/library/email.examples.html>`_.
 
 .. note:: Confusingly, :py:class:`email.message.Message` objects are part of the
     legacy email API (prior to Python 3.3), while :py:class:`email.message.EmailMessage`
@@ -45,7 +45,7 @@ For details on creating :py:class:`email.message.EmailMessage` objects, see
 
 
 Multipart Messages
-~~~~~~~~~~~~~~~~~~
+------------------
 
 Pass :py:class:`email.mime.multipart.MIMEMultipart` objects to :func:`send` to
 send messages with both HTML text and plain text alternatives.
@@ -70,7 +70,7 @@ send messages with both HTML text and plain text alternatives.
 
 
 Sending Raw Messages
-~~~~~~~~~~~~~~~~~~~~
+--------------------
 
 You can also send a ``str`` or ``bytes`` message, by providing the ``sender``
 and ``recipients`` keyword arguments.
@@ -101,7 +101,7 @@ and ``recipients`` keyword arguments.
 
 
 Connecting Over TLS/SSL
-~~~~~~~~~~~~~~~~~~~~~~~
+-----------------------
 
 For details on different connection types, see :ref:`connection-types`.
 
@@ -115,8 +115,6 @@ If an SMTP server supports direct connection via TLS/SSL, pass
 
 STARTTLS connections
 ~~~~~~~~~~~~~~~~~~~~
-
-For details on different connection types, see :ref:`connection-types`.
 
 By default, if the server advertises STARTTLS support, aiosmtplib will
 upgrade the connection automatically. Setting ``use_tls=True`` for STARTTLS

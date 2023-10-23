@@ -10,11 +10,15 @@ API Reference
 The send Coroutine
 ------------------
 
+Use the :func:`aiosmtplib.send` coroutine in most cases when you want to send a message.
+
 .. autofunction:: aiosmtplib.send
 
 
 The SMTP Class
 --------------
+
+The lower level :class:`aiosmtplib.SMTP` class gives you more control over the SMTP connection.
 
 .. autoclass:: aiosmtplib.SMTP
     :members:

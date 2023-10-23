@@ -1,7 +1,7 @@
 .. _connection-types:
 
-Connection Types
-================
+TLS, SSL & STARTTLS
+===================
 
 aiosmtplib supports the three main types of encryption used by SMTP servers:
 

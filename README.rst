@@ -13,6 +13,9 @@ For documentation, see `Read The Docs`_.
 Quickstart
 ----------
 
+
+<!-- start quickstart -->
+
 .. code-block:: python
 
     import asyncio
@@ -28,16 +31,28 @@ Quickstart
 
     asyncio.run(aiosmtplib.send(message, hostname="127.0.0.1", port=25))
 
+<!-- end quickstart -->
 
 Requirements
 ------------
-Python 3.8+, compiled with SSL support, is required.
+
+<!-- start requirements -->
+
+Python 3.8+ is required.
+
+<!-- end requirements -->
 
 
 Bug Reporting
 -------------
+
+<!-- start bug-reporting -->
+
 Bug reports (and feature requests) are welcome via `Github issues`_.
 
+.. _Github issues: https://github.com/cole/aiosmtplib/issues
+
+<!-- end bug-reporting -->
 
 
 .. |circleci| image:: https://circleci.com/gh/cole/aiosmtplib/tree/main.svg?style=shield
@@ -58,4 +73,3 @@ Bug reports (and feature requests) are welcome via `Github issues`_.
                   :target: https://results.pre-commit.ci/latest/github/cole/aiosmtplib/main
                   :alt: "pre-commit.ci status"
 .. _Read The Docs: https://aiosmtplib.readthedocs.io/en/stable/overview.html
-.. _Github issues: https://github.com/cole/aiosmtplib/issues

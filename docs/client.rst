@@ -64,7 +64,7 @@ manually call :meth:`SMTP.starttls` if needed.
     await smtp_client.starttls()
 
 
-Connecting via async context manager
+Connecting via Async Context Manager
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Instances of the :class:`SMTP` class can also be used as an async context
@@ -183,18 +183,6 @@ method, you must format the message headers yourself.
         await smtp_client.quit()
 
     asyncio.run(send_with_sendmail())
-
-
-Timeouts
---------
-
-All commands accept a ``timeout`` keyword argument of a numerical value in
-seconds. This value is used for all socket operations, and will raise
-:exc:`.SMTPTimeoutError` if exceeded. Timeout values passed to :func:`send` and
-:meth:`SMTP.__init__` will be used as the default value for commands executed
-on the connection.
-
-The default timeout is 60 seconds.
 
 
 Parallel Execution
