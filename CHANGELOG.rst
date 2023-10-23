@@ -5,7 +5,8 @@ Changelog
 ------------------
 
 - **BREAKING**: Drop Python 3.7 support.
-- **BREAKING**: Positional and keyword argument usage is now enforced.
+- **BREAKING**: Positional arguments are now positional only, and keyword arguments
+  are keyword only.
 - Change: don't use timeout value passed to ``connect`` everywhere,
   only for the initial connection (credit @wombatonfire)
 

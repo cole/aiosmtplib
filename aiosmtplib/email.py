@@ -74,6 +74,7 @@ def formataddr(pair: Tuple[str, str]) -> str:
 def flatten_message(
     message: Union[email.message.EmailMessage, email.message.Message],
     /,
+    *,
     utf8: bool = False,
     cte_type: str = "8bit",
 ) -> bytes:

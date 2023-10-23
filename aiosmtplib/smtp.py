@@ -81,7 +81,7 @@ class SMTP:
 
     def __init__(
         self,
-        /,
+        *,
         hostname: Optional[str] = "localhost",
         port: Optional[int] = None,
         username: Optional[Union[str, bytes]] = None,
@@ -354,7 +354,7 @@ class SMTP:
 
     async def connect(
         self,
-        /,
+        *,
         hostname: Optional[Union[str, Default]] = _default,
         port: Optional[Union[int, Default]] = _default,
         username: Optional[Union[str, bytes, Default]] = _default,
@@ -644,7 +644,7 @@ class SMTP:
 
     async def helo(
         self,
-        /,
+        *,
         hostname: Optional[str] = None,
         timeout: Optional[Union[float, Default]] = _default,
     ) -> SMTPResponse:
@@ -664,7 +664,7 @@ class SMTP:
 
         return response
 
-    async def help(self, /, timeout: Optional[Union[float, Default]] = _default) -> str:
+    async def help(self, *, timeout: Optional[Union[float, Default]] = _default) -> str:
         """
         Send the SMTP HELP command, which responds with help text.
 
@@ -683,7 +683,7 @@ class SMTP:
         return response.message
 
     async def rset(
-        self, /, timeout: Optional[Union[float, Default]] = _default
+        self, *, timeout: Optional[Union[float, Default]] = _default
     ) -> SMTPResponse:
         """
         Send an SMTP RSET command, which resets the server's envelope
@@ -700,7 +700,7 @@ class SMTP:
         return response
 
     async def noop(
-        self, /, timeout: Optional[Union[float, Default]] = _default
+        self, *, timeout: Optional[Union[float, Default]] = _default
     ) -> SMTPResponse:
         """
         Send an SMTP NOOP command, which does nothing.
@@ -719,6 +719,7 @@ class SMTP:
         self,
         address: str,
         /,
+        *,
         options: Optional[Iterable[str]] = None,
         timeout: Optional[Union[float, Default]] = _default,
     ) -> SMTPResponse:
@@ -759,6 +760,7 @@ class SMTP:
         self,
         address: str,
         /,
+        *,
         options: Optional[Iterable[str]] = None,
         timeout: Optional[Union[float, Default]] = _default,
     ) -> SMTPResponse:
@@ -792,7 +794,7 @@ class SMTP:
         return response
 
     async def quit(
-        self, /, timeout: Optional[Union[float, Default]] = _default
+        self, *, timeout: Optional[Union[float, Default]] = _default
     ) -> SMTPResponse:
         """
         Send the SMTP QUIT command, which closes the connection.
@@ -812,6 +814,7 @@ class SMTP:
         self,
         sender: str,
         /,
+        *,
         options: Optional[Iterable[str]] = None,
         encoding: str = "ascii",
         timeout: Optional[Union[float, Default]] = _default,
@@ -844,6 +847,7 @@ class SMTP:
         self,
         recipient: str,
         /,
+        *,
         options: Optional[Iterable[str]] = None,
         encoding: str = "ascii",
         timeout: Optional[Union[float, Default]] = _default,
@@ -877,6 +881,7 @@ class SMTP:
         self,
         message: Union[str, bytes],
         /,
+        *,
         timeout: Optional[Union[float, Default]] = _default,
     ) -> SMTPResponse:
         """
@@ -904,7 +909,7 @@ class SMTP:
 
     async def ehlo(
         self,
-        /,
+        *,
         hostname: Optional[str] = None,
         timeout: Optional[Union[float, Default]] = _default,
     ) -> SMTPResponse:
@@ -962,7 +967,7 @@ class SMTP:
 
     async def starttls(
         self,
-        /,
+        *,
         server_hostname: Optional[str] = None,
         validate_certs: Optional[bool] = None,
         client_cert: Optional[Union[str, Default]] = _default,
@@ -1089,6 +1094,7 @@ class SMTP:
         username: Union[str, bytes],
         password: Union[str, bytes],
         /,
+        *,
         timeout: Optional[Union[float, Default]] = _default,
     ) -> SMTPResponse:
         """
@@ -1127,6 +1133,7 @@ class SMTP:
         username: Union[str, bytes],
         password: Union[str, bytes],
         /,
+        *,
         timeout: Optional[Union[float, Default]] = _default,
     ) -> SMTPResponse:
         """
@@ -1155,6 +1162,7 @@ class SMTP:
         username: Union[str, bytes],
         password: Union[str, bytes],
         /,
+        *,
         timeout: Optional[Union[float, Default]] = _default,
     ) -> SMTPResponse:
         """
@@ -1203,6 +1211,7 @@ class SMTP:
         recipients: Union[str, Sequence[str]],
         message: Union[str, bytes],
         /,
+        *,
         mail_options: Optional[Iterable[str]] = None,
         rcpt_options: Optional[Iterable[str]] = None,
         timeout: Optional[Union[float, Default]] = _default,
@@ -1359,6 +1368,7 @@ class SMTP:
         self,
         message: Union[email.message.EmailMessage, email.message.Message],
         /,
+        *,
         sender: Optional[str] = None,
         recipients: Optional[Union[str, Sequence[str]]] = None,
         mail_options: Optional[Iterable[str]] = None,

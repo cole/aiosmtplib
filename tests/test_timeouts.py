@@ -35,7 +35,7 @@ async def test_command_timeout_error(
     await smtp_client.connect()
 
     with pytest.raises(SMTPTimeoutError):
-        await smtp_client.ehlo("example.com", timeout=0.0)
+        await smtp_client.ehlo(hostname="example.com", timeout=0.0)
 
 
 async def test_data_timeout_error(
