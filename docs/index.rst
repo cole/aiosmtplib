@@ -21,6 +21,7 @@ Table of Contents
    timeouts
    reference
    bug-reporting
+   trio
 
 
 Release History
