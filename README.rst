@@ -14,7 +14,8 @@ Quickstart
 ----------
 
 
-<!-- start quickstart -->
+..
+  start quickstart
 
 .. code-block:: python
 
@@ -31,28 +32,33 @@ Quickstart
 
     asyncio.run(aiosmtplib.send(message, hostname="127.0.0.1", port=25))
 
-<!-- end quickstart -->
+..
+  end quickstart
 
 Requirements
 ------------
 
-<!-- start requirements -->
+..
+  start requirements
 
 Python 3.8+ is required.
 
-<!-- end requirements -->
+..
+  end requirements
 
 
 Bug Reporting
 -------------
 
-<!-- start bug-reporting -->
+..
+  start bug-reporting
 
 Bug reports (and feature requests) are welcome via `Github issues`_.
 
 .. _Github issues: https://github.com/cole/aiosmtplib/issues
 
-<!-- end bug-reporting -->
+..
+  end bug-reporting
 
 
 .. |circleci| image:: https://circleci.com/gh/cole/aiosmtplib/tree/main.svg?style=shield
