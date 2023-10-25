@@ -7,6 +7,12 @@ Changelog
 - **BREAKING**: Drop Python 3.7 support.
 - **BREAKING**: Positional arguments are now positional only, and keyword arguments
   are keyword only.
+- **BREAKING**: Passing ``source_address`` as a string argument (deprecated in 2.0)
+  is now an error. ``source_address``  takes a (addr, port) tuple that is used as
+  the ``local_addr`` param of ``asyncio.create_connection``, allowing for binding
+  to a specific IP. The ``local_hostname`` argument takes the value to be sent to
+  the server with the EHLO/HELO message (which is what ``source_address`` was used
+  for prior to 2.0).
 - Change: don't use timeout value passed to ``connect`` everywhere,
   only for the initial connection (credit @wombatonfire)
 - Change: removed unnecessary connection lost callback

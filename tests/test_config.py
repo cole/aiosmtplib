@@ -210,23 +210,6 @@ async def test_connect_local_hostname_takes_precedence(
     await client.quit()
 
 
-async def test_connect_deprecated_source_address(
-    hostname: str,
-    smtpd_server_port: int,
-) -> None:
-    client = SMTP(
-        hostname=hostname,
-        port=smtpd_server_port,
-        start_tls=False,
-    )
-    with pytest.warns(DeprecationWarning):
-        await client.connect(source_address="example.com")
-
-    assert client.local_hostname == "example.com"
-
-    await client.quit()
-
-
 async def test_connect_use_tls_takes_precedence(
     hostname: str,
     smtpd_server_port: int,
@@ -342,13 +325,6 @@ async def test_starttls_certificate_options_take_precedence(
     assert client.validate_certs is True
 
     await client.quit()
-
-
-async def test_source_address_deprecation_warning_init() -> None:
-    with pytest.warns(DeprecationWarning):
-        client = SMTP(source_address="example.com")
-
-    assert client.local_hostname == "example.com"
 
 
 async def test_hostname_newline_raises_error() -> None:

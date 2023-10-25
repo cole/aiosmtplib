@@ -7,7 +7,6 @@ import asyncio
 import email.message
 import socket
 import ssl
-import warnings
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple, Type, Union
 
 from .auth import auth_crammd5_verify, auth_login_encode, auth_plain_encode
@@ -155,18 +154,7 @@ class SMTP:
         self.cert_bundle = cert_bundle
         self.socket_path = socket_path
         self.sock = sock
-
-        self.source_address: Optional[Tuple[str, int]] = None
-        if source_address and isinstance(source_address, str):
-            warnings.warn(
-                "The source_address keyword has been renamed to local_hostname "
-                "to match smtplib more closely.",
-                DeprecationWarning,
-                stacklevel=4,
-            )
-            self._local_hostname = source_address
-        else:
-            self.source_address = source_address
+        self.source_address = source_address
 
         self.loop: Optional[asyncio.AbstractEventLoop] = None
         self._connect_lock: Optional[asyncio.Lock] = None
@@ -285,16 +273,7 @@ class SMTP:
         if local_hostname is not _default:
             self._local_hostname = local_hostname
         if source_address is not _default:
-            if isinstance(source_address, str):
-                warnings.warn(
-                    "The source_address keyword has been renamed to local_hostname "
-                    "to match smtplib more closely.",
-                    DeprecationWarning,
-                    stacklevel=3,
-                )
-                self._local_hostname = source_address
-            else:
-                self.source_address = source_address
+            self.source_address = source_address
         if client_cert is not _default:
             self.client_cert = client_cert
         if client_key is not _default:
