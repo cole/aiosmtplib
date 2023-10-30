@@ -78,4 +78,4 @@ Bug reports (and feature requests) are welcome via `Github issues`_.
 .. |precommit.ci| image:: https://results.pre-commit.ci/badge/github/cole/aiosmtplib/main.svg
                   :target: https://results.pre-commit.ci/latest/github/cole/aiosmtplib/main
                   :alt: "pre-commit.ci status"
-.. _Read The Docs: https://aiosmtplib.readthedocs.io/en/stable/overview.html
+.. _Read The Docs: https://aiosmtplib.readthedocs.io/en/stable/
