@@ -101,6 +101,7 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
         self.transport: Optional[asyncio.BaseTransport] = None
         self._command_lock: Optional[asyncio.Lock] = None
         self._closed: "asyncio.Future[None]" = self._loop.create_future()
+        self._quit_sent = None
 
     def _get_close_waiter(self, stream: asyncio.StreamWriter) -> "asyncio.Future[None]":
         return self._closed
@@ -133,16 +134,18 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
         self._over_ssl = transport.get_extra_info("sslcontext") is not None
         self._response_waiter = self._loop.create_future()
         self._command_lock = asyncio.Lock()
+        self._quit_sent = False
 
     def connection_lost(self, exc: Optional[Exception]) -> None:
         super().connection_lost(exc)
 
-        smtp_exc = SMTPServerDisconnected("Connection lost")
-        if exc:
-            smtp_exc.__cause__ = exc
+        if not self._quit_sent:
+            smtp_exc = SMTPServerDisconnected("Connection lost")
+            if exc:
+                smtp_exc.__cause__ = exc
 
-        if self._response_waiter and not self._response_waiter.done():
-            self._response_waiter.set_exception(smtp_exc)
+            if self._response_waiter and not self._response_waiter.done():
+                self._response_waiter.set_exception(smtp_exc)
 
         self.transport = None
         self._command_lock = None
@@ -277,6 +280,10 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
 
         async with self._command_lock:
             self.write(command)
+
+            if command == b"QUIT\r\n":
+                self._quit_sent = True
+
             response = await self.read_response(timeout=timeout)
 
         return response
