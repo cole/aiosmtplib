@@ -101,7 +101,7 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
         self.transport: Optional[asyncio.BaseTransport] = None
         self._command_lock: Optional[asyncio.Lock] = None
         self._closed: "asyncio.Future[None]" = self._loop.create_future()
-        self._quit_sent = None
+        self._quit_sent = False
 
     def _get_close_waiter(self, stream: asyncio.StreamWriter) -> "asyncio.Future[None]":
         return self._closed
