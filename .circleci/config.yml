@@ -120,7 +120,7 @@ commands:
           key: venv-v3-{{ .Environment.CIRCLE_JOB }}-{{ .Branch }}-{{ checksum "python_deps" }}
           paths:
             - "venv"
-            - "{{ .Environment.PIP_CACHE_DIR }}"
+            - ~/caches/pip
   using_hypothesis_cache:
     description: "Caching for hypothesis DB"
     parameters:
