@@ -110,13 +110,15 @@ commands:
           steps:
             - restore_cache:
                 keys:
-                  - venv-v1-{{ .Environment.CIRCLE_JOB }}-
+                  - venv-v2-{{ .Environment.CIRCLE_JOB }}-{{ .Branch }}-
+                  - venv-v2-{{ .Environment.CIRCLE_JOB }}-
             - run: python -m venv venv
             - run: . venv/bin/activate
             - run: python -m pip install --upgrade pip
             - steps: <<parameters.steps>>
+            - run: ls -laR venv > python_deps
             - save_cache:
-                key: venv-v1-{{ .Environment.CIRCLE_JOB }}-
+                key: venv-v2-{{ .Environment.CIRCLE_JOB }}-{{ .Branch }}-{{ checksum "python_deps" }}
                 paths:
                   - "venv"
   using_hypothesis_cache:
