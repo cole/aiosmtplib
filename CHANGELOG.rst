@@ -1,6 +1,13 @@
 Changelog
 =========
 
+3.0.1 (unreleased)
+------------------
+
+- Bugfix: 'Future exception was never retrieved' warning in SMTPProtocol
+  after successful connection close and garbage collection.
+
+
 3.0.0
 -----
 

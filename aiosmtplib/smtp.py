@@ -585,10 +585,6 @@ class SMTP:
         if self.transport is not None and not self.transport.is_closing():
             self.transport.close()
 
-        # Avoid 'Future exception was never retrieved' warnings
-        if self.protocol:
-            self.protocol.response_exception  # noqa: B018
-
         if self._connect_lock is not None and self._connect_lock.locked():
             self._connect_lock.release()
 

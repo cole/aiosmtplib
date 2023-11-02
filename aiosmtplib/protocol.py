@@ -106,28 +106,16 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
     def _get_close_waiter(self, stream: asyncio.StreamWriter) -> "asyncio.Future[None]":
         return self._closed
 
+    def __del__(self) -> None:
+        # Avoid 'Future exception was never retrieved' warnings
+        self._retrieve_response_exception()
+
     @property
     def is_connected(self) -> bool:
         """
         Check if our transport is still connected.
         """
         return bool(self.transport is not None and not self.transport.is_closing())
-
-    @property
-    def response_exception(self) -> Optional[BaseException]:
-        """
-        Return any exception that has been set on the response waiter.
-
-        Used to avoid 'Future exception was never retrieved' warnings
-        """
-        if (
-            self._response_waiter
-            and self._response_waiter.done()
-            and not self._response_waiter.cancelled()
-        ):
-            return self._response_waiter.exception()
-
-        return None
 
     def connection_made(self, transport: asyncio.BaseTransport) -> None:
         self.transport = cast(asyncio.Transport, transport)
@@ -184,6 +172,21 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
 
         # Returning false closes the transport
         return False
+
+    def _retrieve_response_exception(self) -> Optional[BaseException]:
+        """
+        Return any exception that has been set on the response waiter.
+
+        Used to avoid 'Future exception was never retrieved' warnings
+        """
+        if (
+            self._response_waiter
+            and self._response_waiter.done()
+            and not self._response_waiter.cancelled()
+        ):
+            return self._response_waiter.exception()
+
+        return None
 
     def _read_response_from_buffer(self) -> Optional[SMTPResponse]:
         """Parse the actual response (if any) from the data buffer"""
