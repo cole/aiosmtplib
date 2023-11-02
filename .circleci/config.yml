@@ -109,10 +109,9 @@ commands:
             - restore_cache:
                 keys:
                   - venv-v1-{{ .Environment.CIRCLE_JOB }}-
-            - run:
-                command: |
-                  python3 -m venv venv
-                  . venv/bin/activate
+            - run: python3 -m venv venv
+            - run: . venv/bin/activate
+            - run: pip install --upgrade pip
             - steps: <<parameters.steps>>
             - save_cache:
                 key: venv-v1-{{ .Environment.CIRCLE_JOB }}-
