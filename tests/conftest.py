@@ -50,10 +50,6 @@ class ParamFixtureRequest(pytest.FixtureRequest):
     param: Any
 
 
-class AsyncPytestWarning(pytest.PytestWarning):
-    pass
-
-
 class EchoServerProtocol(asyncio.Protocol):
     def connection_made(self, transport: asyncio.BaseTransport) -> None:
         self.transport = transport
