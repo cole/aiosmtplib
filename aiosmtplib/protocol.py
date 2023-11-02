@@ -5,7 +5,7 @@ import asyncio
 import collections
 import re
 import ssl
-from typing import Optional, cast
+from typing import Deque, Optional, cast
 
 from .errors import (
     SMTPDataError,
@@ -45,7 +45,7 @@ class FlowControlMixin(asyncio.Protocol):
             self._loop = loop
 
         self._paused = False
-        self._drain_waiters = collections.deque()
+        self._drain_waiters: Deque[asyncio.Future[None]] = collections.deque()
         self._connection_lost = False
 
     def pause_writing(self) -> None:
