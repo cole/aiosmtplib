@@ -84,6 +84,7 @@ def flatten_message(
     del message_copy["Bcc"]
     del message_copy["Resent-Bcc"]
 
+    policy: email.policy.Policy
     if isinstance(message, email.message.EmailMessage):
         # New message class, default policy
         policy = email.policy.default.clone(
