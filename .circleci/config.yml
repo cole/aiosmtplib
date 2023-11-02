@@ -14,6 +14,7 @@ executors:
     environment:
       FORCE_COLOR: "1"
       PIP_CACHE_DIR: ~/caches/pip
+      PIP_ROOT_USER_ACTION: "ignore"
       POETRY_HOME: ~/poetry
       POETRY_CACHE_DIR: ~/caches/poetry
       POETRY_VIRTUALENVS_PATH: ~/caches/poetry/virtualenvs
