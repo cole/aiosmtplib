@@ -6,6 +6,7 @@ Changelog
 
 - Bugfix: 'Future exception was never retrieved' warning in SMTPProtocol
   after successful connection close and garbage collection.
+- Cleanup: Updated FlowControlMixin logic from stdlib
 
 
 3.0.0

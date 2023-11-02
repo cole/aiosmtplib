@@ -9,7 +9,7 @@ import ssl
 import pytest
 
 from aiosmtplib import SMTPResponseException, SMTPServerDisconnected
-from aiosmtplib.protocol import SMTPProtocol
+from aiosmtplib.protocol import FlowControlMixin, SMTPProtocol
 
 from .compat import cleanup_server
 
@@ -259,3 +259,21 @@ async def test_protocol_exception_cleanup_warning(
     await cleanup_server(server)
 
     assert "Future exception was never retrieved" not in caplog.text
+
+
+async def test_flow_control_drain(
+    event_loop: asyncio.AbstractEventLoop,
+):
+    # Adapted from stdlib
+    drained = 0
+
+    async def drainer(stream):
+        nonlocal drained
+        await stream._drain_helper()
+        drained += 1
+
+    stream = FlowControlMixin(event_loop)
+    stream.pause_writing()
+    event_loop.call_later(0.1, stream.resume_writing)
+    await asyncio.gather(*[drainer(stream) for _ in range(10)])
+    assert drained == 10
