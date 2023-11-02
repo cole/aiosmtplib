@@ -51,8 +51,7 @@ class FlowControlMixin(asyncio.Protocol):
     def pause_writing(self) -> None:
         self._paused = True
 
-    def resume_writing(self):
-        assert self._paused
+    def resume_writing(self) -> None:
         self._paused = False
 
         for waiter in self._drain_waiters:
