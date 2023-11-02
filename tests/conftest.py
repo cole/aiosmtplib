@@ -15,6 +15,7 @@ from typing import Any, Callable, Coroutine, List, Optional, Tuple, Type, Union
 
 import hypothesis
 import pytest
+import pytest_asyncio
 import trustme
 from aiosmtpd.controller import Controller as SMTPDController
 from aiosmtpd.smtp import SMTP as SMTPD
@@ -93,6 +94,18 @@ def pytest_sessionstart(session: pytest.Session) -> None:
 def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
     if original_event_loop_policy is not None:
         asyncio.set_event_loop_policy(original_event_loop_policy)
+
+
+@pytest_asyncio.fixture
+def debug_event_loop(
+    event_loop: asyncio.AbstractEventLoop
+) -> asyncio.AbstractEventLoop:
+    previous_debug = event_loop.get_debug()
+    event_loop.set_debug(True)
+
+    yield event_loop
+
+    event_loop.set_debug(previous_debug)
 
 
 # Session scoped static values #

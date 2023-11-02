@@ -2,6 +2,7 @@
 Protocol level tests.
 """
 import asyncio
+import gc
 import socket
 import ssl
 
@@ -216,3 +217,45 @@ async def test_protocol_eof_response(
 
     server.close()
     await cleanup_server(server)
+
+
+async def test_protocol_exception_cleanup_warning(
+    caplog: pytest.LogCaptureFixture,
+    debug_event_loop: asyncio.AbstractEventLoop,
+    bind_address: str,
+    hostname: str,
+) -> None:
+    async def client_connected(
+        reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+    ) -> None:
+        await reader.read(1000)
+        writer.write(b"220 Hi\r\n")
+        await writer.drain()
+
+        await reader.read(1000)
+        writer.write(b"221 Bye\r\n")
+        await writer.drain()
+
+        writer.transport.close()
+
+    server = await asyncio.start_server(
+        client_connected, host=bind_address, port=0, family=socket.AF_INET
+    )
+    server_port = server.sockets[0].getsockname()[1] if server.sockets else 0
+
+    connect_future = debug_event_loop.create_connection(
+        SMTPProtocol, host=hostname, port=server_port
+    )
+    _, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
+
+    await protocol.execute_command(b"HELO\n", timeout=1.0)
+    await protocol.execute_command(b"QUIT\n", timeout=1.0)
+
+    del protocol
+    # Force garbage collection
+    gc.collect()
+
+    server.close()
+    await cleanup_server(server)
+
+    assert "Future exception was never retrieved" not in caplog.text
