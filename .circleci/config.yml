@@ -97,6 +97,27 @@ commands:
           key: pip-v4-{{ .Environment.CIRCLE_JOB }}-
           paths:
             - ~/caches/pip
+  using_venv:
+    description: "Execute in a cached venv"
+    parameters:
+      steps:
+        type: steps
+        default: []
+    steps:
+      - using_pip_cache:
+          steps:
+            - restore_cache:
+                keys:
+                  - venv-v1-{{ .Environment.CIRCLE_JOB }}-
+            - run:
+                command: |
+                  python3 -m venv venv
+                  . venv/bin/activate
+            - steps: <<parameters.steps>>
+            - save_cache:
+                key: venv-v1-{{ .Environment.CIRCLE_JOB }}-
+                paths:
+                  - "venv"
   using_hypothesis_cache:
     description: "Caching for hypothesis DB"
     parameters:
@@ -164,19 +185,19 @@ jobs:
     executor: default
     steps:
       - checkout
-      - using_pip_cache:
+      - using_venv:
           steps:
-            - install_poetry
-            - using_poetry:
-                cache_key: "typecheck-v2"
-                steps:
-                  - run: $POETRY_HOME/bin/poetry install --no-interaction --no-ansi --only typecheck
-                  - run: $POETRY_HOME/bin/poetry run mypy aiosmtplib
-
+            - run: pip install mypy
+            - run: mypy aiosmtplib
   security:
     executor: default
     steps:
       - checkout
+      - using_venv:
+          steps:
+            - run: pip install bandit
+            - run: bandit -n 10 -x tests -r aiosmtplib
+      # TODO: move off of poetry
       - using_pip_cache:
           steps:
             - install_poetry
@@ -184,7 +205,6 @@ jobs:
                 cache_key: "security-v3"
                 steps:
                   - run: $POETRY_HOME/bin/poetry install --no-interaction --no-ansi -E uvloop -E docs --with test,typecheck,security
-                  - run: $POETRY_HOME/bin/poetry run bandit -n 10 -x tests -r aiosmtplib
                   - run: $POETRY_HOME/bin/poetry export --with test -E docs -E uvloop  -f requirements.txt --without-hashes | $POETRY_HOME/bin/poetry run safety check --stdin
 
   build:
