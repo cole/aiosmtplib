@@ -12,6 +12,7 @@ executors:
           password: $DOCKERHUB_PASSWORD
     resource_class: small
     environment:
+      FORCE_COLOR: "1"
       PIP_CACHE_DIR: ~/caches/pip
       POETRY_HOME: ~/poetry
       POETRY_CACHE_DIR: ~/caches/poetry
