@@ -110,9 +110,9 @@ commands:
             - restore_cache:
                 keys:
                   - venv-v1-{{ .Environment.CIRCLE_JOB }}-
-            - run: python3 -m venv venv
+            - run: python -m venv venv
             - run: . venv/bin/activate
-            - run: pip install --upgrade pip
+            - run: python -m pip install --upgrade pip
             - steps: <<parameters.steps>>
             - save_cache:
                 key: venv-v1-{{ .Environment.CIRCLE_JOB }}-
@@ -187,7 +187,7 @@ jobs:
       - checkout
       - using_venv:
           steps:
-            - run: pip install mypy
+            - run: python -m pip install mypy
             - run: mypy aiosmtplib
   security:
     executor: default
@@ -195,7 +195,7 @@ jobs:
       - checkout
       - using_venv:
           steps:
-            - run: pip install bandit
+            - run: python -m pip install bandit
             - run: bandit -n 10 -x tests -r aiosmtplib
       # TODO: move off of poetry
       - using_pip_cache:
