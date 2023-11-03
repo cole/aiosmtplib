@@ -80,7 +80,7 @@ commands:
           condition:
             equal: [true, <<parameters.install>>]
           steps:
-            - run: python -m pip install dist/*.whl[<<parameters.package_extras>>]
+            - run: python -m pip install --find-links dist/ aiosmtplib[<<parameters.package_extras>>]
       - steps: <<parameters.steps>>
       - save_cache:
           key: venv-v4-<<parameters.python_version>>-extras:<<parameters.package_extras>>-{{ checksum "pyproject.toml" }}
