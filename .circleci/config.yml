@@ -14,12 +14,8 @@ executors:
     environment:
       FORCE_COLOR: "1"
       PIP_CACHE_DIR: ~/caches/pip
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
       PIP_ROOT_USER_ACTION: "ignore"
-      POETRY_HOME: ~/poetry
-      POETRY_CACHE_DIR: ~/caches/poetry
-      POETRY_VIRTUALENVS_PATH: ~/caches/poetry/virtualenvs
-      POETRY_VIRTUALENVS_IN_PROJECT: "false"
-      POETRY_INSTALLER_PARALLEL: "false"
   py38:
     <<: *executor
     docker:
@@ -57,168 +53,52 @@ executors:
         auth: *docker-auth
 
 commands:
-  using_poetry:
+  using_venv:
+    description: "Setup and install in a venv, with caching"
     parameters:
       steps:
         type: steps
         default: []
-      cache_key:
+      python_version:
+        type: string
+      package_extras:
         type: string
         default: ""
-    description: "Wraps the steps given with a poetry cache"
-    steps:
-      - run: python -V
-      - restore_cache:
-          keys:
-            - poetry-v12-<<parameters.cache_key>>-{{ checksum "pyproject.toml" }}
-            - poetry-v12-<<parameters.cache_key>>-
-      - run: mkdir -p $POETRY_CACHE_DIR
-      - run: mkdir -p $POETRY_VIRTUALENVS_PATH
-      - run: mkdir -p $PIP_CACHE_DIR
-      - run: $POETRY_HOME/bin/poetry -V
-      - run: $POETRY_HOME/bin/poetry config --list
-      - steps: <<parameters.steps>>
-      - save_cache:
-          key: poetry-v12-<<parameters.cache_key>>-{{ checksum "pyproject.toml" }}
-          paths:
-            - ~/caches/poetry
-            - poetry.lock
-  using_pip_cache:
-    description: "Execute with pip caching"
-    parameters:
-      steps:
-        type: steps
-        default: []
+      install:
+        type: boolean
+        default: true
     steps:
       - restore_cache:
           keys:
-            - pip-v4-{{ .Environment.CIRCLE_JOB }}-
-      - run: mkdir -p $PIP_CACHE_DIR
-      - steps: <<parameters.steps>>
-      - save_cache:
-          key: pip-v4-{{ .Environment.CIRCLE_JOB }}-
-          paths:
-            - ~/caches/pip
-  using_venv:
-    description: "Execute in a cached venv"
-    parameters:
-      steps:
-        type: steps
-        default: []
-    steps:
-      - restore_cache:
-          keys:
-            - venv-v3-{{ .Environment.CIRCLE_JOB }}-{{ .Branch }}-
-            - venv-v3-{{ .Environment.CIRCLE_JOB }}-
+            - venv-v4-<<parameters.python_version>>-extras:<<parameters.package_extras>>-{{ checksum "pyproject.toml" }}
+            - venv-v4-<<parameters.python_version>>-extras:<<parameters.package_extras>>-
+            - venv-v4-<<parameters.python_version>>-
       - run: mkdir -p $PIP_CACHE_DIR
       - run: python -m venv venv
       - run: . venv/bin/activate
-      - run: python -m pip install --upgrade pip
+      - when:
+          condition:
+            equal: [true, <<parameters.install>>]
+          steps:
+            - run: python -m pip install "${(dist/*.whl)[0]}"[<<parameters.package_extras>>]
       - steps: <<parameters.steps>>
-      - run: ls -laR venv > python_deps
       - save_cache:
-          key: venv-v3-{{ .Environment.CIRCLE_JOB }}-{{ .Branch }}-{{ checksum "python_deps" }}
+          key: venv-v4-<<parameters.python_version>>-extras:<<parameters.package_extras>>-{{ checksum "pyproject.toml" }}
           paths:
             - "venv"
             - ~/caches/pip
-  using_hypothesis_cache:
-    description: "Caching for hypothesis DB"
-    parameters:
-      steps:
-        type: steps
-        default: []
-      cache_key:
-        type: string
-    steps:
-      - restore_cache:
-          keys:
-            - "hypothesis-v6-<<parameters.cache_key>>"
-      - steps: <<parameters.steps>>
-      - save_cache:
-          key: "hypothesis-v6-<<parameters.cache_key>>"
-          paths:
-            - ~/project/.hypothesis
-  install_poetry:
-    description: "Install poetry"
-    steps:
-      - run: python3 -m venv $POETRY_HOME
-      - run: $POETRY_HOME/bin/pip install --upgrade pip
-      - run: $POETRY_HOME/bin/pip install poetry==1.3.1
-  test:
-    description: "Run tests"
-    parameters:
-      event_loop:
-        type: enum
-        description: "event loop type"
-        enum: ["asyncio", "uvloop"]
-      python_version:
-        type: string
-    steps:
-      - using_poetry:
-          cache_key: "test-<<parameters.event_loop>>-<<parameters.python_version>>-v2"
-          steps:
-            - when:
-                condition:
-                  equal: ["uvloop", <<parameters.event_loop>>]
-                steps:
-                  - run: $POETRY_HOME/bin/poetry install --no-interaction --no-ansi -E uvloop --with test
-            - unless:
-                condition:
-                  equal: ["uvloop", <<parameters.event_loop>>]
-                steps:
-                  - run: $POETRY_HOME/bin/poetry install --no-interaction --no-ansi --with test
-            - run: |
-                $POETRY_HOME/bin/poetry run pytest --cov --cov-report= \
-                  --cov-config=pyproject.toml \
-                  --junitxml=test-results/$CIRCLE_JOB/results.xml \
-                  --event-loop=<<parameters.event_loop>> \
-                  --bind-addr=$BIND_ADDR \
-                  --hypothesis-profile $HYPOTHESIS_PROFILE
-      - store_artifacts:
-          path: test-results
-      - store_test_results:
-          path: test-results
-      - persist_to_workspace:
-          root: coverage-results
-          paths:
-            - .coverage.*
 
 jobs:
-  typecheck:
-    executor: default
-    steps:
-      - checkout
-      - using_venv:
-          steps:
-            - run: python -m pip install mypy
-            - run: mypy aiosmtplib
-  security:
-    executor: default
-    steps:
-      - checkout
-      - using_venv:
-          steps:
-            - run: python -m pip install bandit
-            - run: bandit -n 10 -x tests -r aiosmtplib
-      # TODO: move off of poetry
-      - using_pip_cache:
-          steps:
-            - install_poetry
-            - using_poetry:
-                cache_key: "security-v3"
-                steps:
-                  - run: $POETRY_HOME/bin/poetry install --no-interaction --no-ansi -E uvloop -E docs --with test,typecheck,security
-                  - run: $POETRY_HOME/bin/poetry export --with test -E docs -E uvloop  -f requirements.txt --without-hashes | $POETRY_HOME/bin/poetry run safety check --stdin
-
   build:
     executor: default
     steps:
       - checkout
-      - using_pip_cache:
+      - using_venv:
+          python_version: py310
+          install: false
           steps:
-            - install_poetry
-            - run: $POETRY_HOME/bin/poetry check
-            - run: $POETRY_HOME/bin/poetry build -vv
+            - run: python -m pip install build
+            - run: python -m build .
             - persist_to_workspace:
                 root: dist
                 paths:
@@ -226,21 +106,44 @@ jobs:
                   - aiosmtplib-*.whl
             - store_artifacts:
                 path: dist/
+
+  typecheck:
+    executor: default
+    steps:
+      - checkout
+      - attach_workspace:
+          at: dist
+      - using_venv:
+          package_extras: typing
+          python_version: py310
+          steps:
+            - run: python -m mypy src/aiosmtplib
+  security:
+    executor: default
+    steps:
+      - checkout
+      - attach_workspace:
+          at: dist
+      - using_venv:
+          # all extras for safety check
+          package_extras: uvloop,docs,tests,typing,security
+          python_version: py310
+          steps:
+            - run: python -m bandit -n 10 -x tests -r src/aiosmtplib
+            - run: python -m safety check
+
   docs:
     executor: default
     steps:
       - checkout
       - attach_workspace:
           at: dist
-      - using_pip_cache:
+      - using_venv:
+          package_extras: docs
+          python_version: py310
           steps:
-            - install_poetry
-            - using_poetry:
-                cache_key: "docs-v2"
-                steps:
-                  - run: $POETRY_HOME/bin/poetry install --no-interaction --no-ansi -E docs --with test
-                  - run: $POETRY_HOME/bin/poetry run sphinx-build -nWT -b doctest -d ./docs/build/doctrees ./docs ./docs/build/html
-                  - run: $POETRY_HOME/bin/poetry run sphinx-build -nWT -b dummy -d ./docs/build/doctrees ./docs ./docs/build/html
+            - run: python -m sphinx -nWT -b doctest -d ./docs/build/doctrees ./docs ./docs/build/html
+            - run: python -m sphinx -nWT -b dummy -d ./docs/build/doctrees ./docs ./docs/build/html
 
   test:
     executor: <<parameters.python_version>>
@@ -261,42 +164,58 @@ jobs:
       - checkout
       - attach_workspace:
           at: dist
-      - using_pip_cache:
+      - restore_cache:
+          keys:
+            - "hypothesis-v7-<<parameters.python_version>>"
+      - using_venv:
+          python_version: "<<parameters.python_version>>"
+          package_extras: "tests,<<parameters.event_loop>>"
           steps:
-            - install_poetry
-            - using_hypothesis_cache:
-                cache_key: <<parameters.python_version>>
-                steps:
-                  - test:
-                      python_version: <<parameters.python_version>>
-                      event_loop: <<parameters.event_loop>>
-
+            - run: |
+                python -m pytest --cov --cov-report= \
+                  --cov-config=pyproject.toml \
+                  --junitxml=test-results/$CIRCLE_JOB/results.xml \
+                  --event-loop=<<parameters.event_loop>> \
+                  --bind-addr=$BIND_ADDR \
+                  --hypothesis-profile $HYPOTHESIS_PROFILE
+      - store_artifacts:
+          path: test-results
+      - store_test_results:
+          path: test-results
+      - persist_to_workspace:
+          root: coverage-results
+          paths:
+            - .coverage.*
+      - save_cache:
+          key: "hypothesis-v7-<<parameters.python_version>>"
+          paths:
+            - .hypothesis
   coverage:
-    executor: py311
+    executor: default
     environment:
       COVERAGE_FILE: .coverage
     steps:
       - checkout
       - attach_workspace:
           at: coverage-results
-      - using_pip_cache:
-          steps:
-            - install_poetry
-            - run: cp coverage-results/.coverage.* ./
-            - using_poetry:
-                cache_key: "coverage-v2"
-                steps:
-                  - run: $POETRY_HOME/bin/poetry install --no-interaction --no-ansi --with test
-                  - run: $POETRY_HOME/bin/poetry run coverage combine
-                  - run: $POETRY_HOME/bin/poetry run coverage xml
-                  - run: $POETRY_HOME/bin/poetry run coverage html
-                  - store_artifacts:
-                      path: coverage.xml
-                  - store_artifacts:
-                      path: htmlcov
-                  - codecov/upload:
-                      file: coverage.xml
-                  - run: $POETRY_HOME/bin/poetry run coverage report --fail-under=90
+      # - using_pip_cache:
+      #     steps:
+      #       - install_poetry
+      #       - run: cp coverage-results/.coverage.* ./
+      #       - using_poetry:
+      #           cache_key: "coverage-v2"
+      #           steps:
+      #             - run: $POETRY_HOME/bin/poetry install --no-interaction --no-ansi --with test
+      #             - run: $POETRY_HOME/bin/poetry run coverage combine
+      #             - run: $POETRY_HOME/bin/poetry run coverage xml
+      #             - run: $POETRY_HOME/bin/poetry run coverage html
+      #             - store_artifacts:
+      #                 path: coverage.xml
+      #             - store_artifacts:
+      #                 path: htmlcov
+      #             - codecov/upload:
+      #                 file: coverage.xml
+      #             - run: $POETRY_HOME/bin/poetry run coverage report --fail-under=90
 
   deploy:
     executor: default
@@ -304,30 +223,32 @@ jobs:
       - checkout
       - attach_workspace:
           at: dist
-      - using_pip_cache:
-          steps:
-            - install_poetry
-            - run: $POETRY_HOME/bin/poetry config repositories.testpypi https://test.pypi.org/legacy/
-            - run: $POETRY_HOME/bin/poetry publish -vv --repository testpypi --username $TESTPYPI_USERNAME --password $TESTPYPI_PASSWORD
-            - run: $POETRY_HOME/bin/poetry publish -vv --username $PYPI_USERNAME --password $PYPI_PASSWORD
+      # - using_pip_cache:
+      #     steps:
+      #       - install_poetry
+      #       - run: $POETRY_HOME/bin/poetry config repositories.testpypi https://test.pypi.org/legacy/
+      #       - run: $POETRY_HOME/bin/poetry publish -vv --repository testpypi --username $TESTPYPI_USERNAME --password $TESTPYPI_PASSWORD
+      #       - run: $POETRY_HOME/bin/poetry publish -vv --username $PYPI_USERNAME --password $PYPI_PASSWORD
 
 workflows:
-  static_checks:
+  build_test_deploy:
     jobs:
-      - typecheck: &base-job
+      - build: &base-job
           context:
             - docker-hub-credentials
           filters:
             tags:
               only: /.*/
-      - security: *base-job
-  build_test_deploy:
-    jobs:
-      - build: *base-job
+      - typecheck:
+          <<: *base-job
+          requires: &build
+            - build
+      - security:
+          <<: *base-job
+          requires: *build
       - docs:
           <<: *base-job
-          requires: &phase1
-            - build
+          requires: *build
       - test:
           <<: *base-job
           name: "test-asyncio-<< matrix.python_version >>"
@@ -336,7 +257,7 @@ workflows:
             parameters:
               event_loop: ["asyncio"]
               python_version: ["py38", "py39", "py310", "py311", "py312"]
-          requires: *phase1
+          requires: *build
       - test:
           <<: *base-job
           name: "test-pypy-<< matrix.python_version >>"
@@ -345,7 +266,7 @@ workflows:
             parameters:
               event_loop: ["asyncio"]
               python_version: ["pypy39", "pypy310"]
-          requires: *phase1
+          requires: *build
       - test:
           <<: *base-job
           name: "test-uvloop-<< matrix.python_version >>"
@@ -358,14 +279,19 @@ workflows:
             - "test-asyncio-<< matrix.python_version >>"
       - coverage:
           <<: *base-job
-          requires: &phase3
-            - build
-            - docs
+          requires: &tests
             - test-cpython-asyncio
             - test-cpython-uvloop
             - test-pypy-asyncio
       - deploy:
-          requires: *phase3
+          requires:
+            - build
+            - typecheck
+            - security
+            - docs
+            - test-cpython-asyncio
+            - test-cpython-uvloop
+            - test-pypy-asyncio
           context:
             - docker-hub-credentials
           filters:
