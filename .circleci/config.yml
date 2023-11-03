@@ -114,6 +114,7 @@ jobs:
       - checkout
       - attach_workspace:
           at: dist
+      - run: ls dist/
       - using_venv:
           package_extras: typing
           python_version: py310
