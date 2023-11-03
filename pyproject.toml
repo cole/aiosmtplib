@@ -1,17 +1,15 @@
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-[tool.poetry]
+[project]
+dynamic = ["version"]
 name = "aiosmtplib"
-version = "3.0.1"
 description = "asyncio SMTP client"
-authors = ["Cole Maclean <hi@colemaclean.dev>"]
-license = "MIT"
-packages = [{ include = "aiosmtplib" }]
+authors = [{ name = "Cole Maclean", email = "hi@colemaclean.dev" }]
+license = { text = "MIT" }
 readme = "README.rst"
-repository = "https://github.com/cole/aiosmtplib"
-documentation = "https://aiosmtplib.readthedocs.io/en/stable/"
+requires-python = ">=3.8"
 keywords = ["smtp", "email", "asyncio"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
@@ -26,57 +24,35 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Typing :: Typed",
 ]
-exclude = ["docs/requirements.txt"]
-include = [
-    { path = "CHANGELOG.rst", format = "sdist" },
-    { path = "tests", format = "sdist" },
-    { path = "docs", format = "sdist" },
+
+[project.urls]
+Documentation = "https://aiosmtplib.readthedocs.io/en/stable/"
+Changelog = "https://github.com/cole/aiosmtplib/blob/main/CHANGELOG.rst"
+GitHub = "https://github.com/cole/aiosmtplib"
+
+[project.optional-dependencies]
+uvloop = ["uvloop>=0.18"]
+docs = [
+    "sphinx>=7.0.0",
+    "sphinx_autodoc_typehints>=1.24.0",
+    "sphinx-copybutton>=0.5.0",
+    "furo>=2023.9.10",
 ]
+tests = [
+    "pytest>=7.2",
+    "pytest-asyncio>=0.20.1",
+    "pytest-cov>=4.0",
+    "pytest-xdist>=3.0",
+    "coverage[toml]>=6.5",
+    "hypothesis>=6.56",
+    "aiosmtpd>=1.4.2",
+    "trustme>=0.9.0",
+]
+typing = ["mypy>=0.982"]
+security = ["bandit>=1.7.4", "safety>=2.3.1"]
 
-[tool.poetry.dependencies]
-python = "^3.8"
-
-uvloop = { version = "^0.18", optional = true }
-sphinx = { version = "^7.0.0", optional = true }
-furo = { version = "^2023.9.10", optional = true }
-sphinx-copybutton = { version = "^0.5.0", optional = true }
-sphinx_autodoc_typehints = { version = "^1.24.0", optional = true }
-
-[tool.poetry.extras]
-docs = ["sphinx", "sphinx_autodoc_typehints", "sphinx-copybutton", "furo"]
-uvloop = ["uvloop"]
-
-[tool.poetry.group.test]
-optional = true
-
-[tool.poetry.group.test.dependencies]
-pytest = "^7.2"
-pytest-asyncio = "^0.20.1"
-pytest-cov = "^4.0"
-pytest-xdist = "^3.0.0"
-coverage = { extras = ["toml"], version = "^6.5" }
-hypothesis = "^6.56"
-aiosmtpd = "^1.4.2"
-trustme = "^0.9.0"
-
-[tool.poetry.group.typecheck]
-optional = true
-
-[tool.poetry.group.typecheck.dependencies]
-mypy = "^0.982"
-
-[tool.poetry.group.security]
-optional = true
-
-[tool.poetry.group.security.dependencies]
-bandit = "^1.7.4"
-safety = "^2.3.1"
-
-[tool.poetry.group.lint]
-optional = true
-
-[tool.poetry.group.lint.dependencies]
-ruff = "^0.0.244"
+[tool.hatch.version]
+path = "src/aiosmtplib/__init__.py"
 
 [tool.pytest.ini_options]
 asyncio_mode = "strict"
