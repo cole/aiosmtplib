@@ -67,7 +67,7 @@ copyright = f"{year}, {author}"
 # |version| and |release|, also used in various other places throughout the
 # built documents.
 
-init = pathlib.Path("../aiosmtplib/__init__.py")
+init = pathlib.Path("../src/aiosmtplib/__init__.py")
 version_match = re.search(VERSION_REGEX, init.read_text("utf8"), re.MULTILINE)
 if not version_match:
     raise RuntimeError("Cannot find version information")
