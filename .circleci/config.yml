@@ -168,17 +168,37 @@ jobs:
       - restore_cache:
           keys:
             - "hypothesis-v7-<<parameters.python_version>>"
-      - using_venv:
-          python_version: "<<parameters.python_version>>"
-          package_extras: "tests,<<parameters.event_loop>>"
+      # TODO: this is a pretty clunky way of selecting uvloop
+      - when:
+          condition:
+            equal: ["uvloop", <<parameters.event_loop>>]
           steps:
-            - run: |
-                python -m pytest --cov --cov-report= \
-                  --cov-config=pyproject.toml \
-                  --junitxml=test-results/$CIRCLE_JOB/results.xml \
-                  --event-loop=<<parameters.event_loop>> \
-                  --bind-addr=$BIND_ADDR \
-                  --hypothesis-profile $HYPOTHESIS_PROFILE
+            - using_venv:
+                python_version: "<<parameters.python_version>>"
+                package_extras: "tests,uvloop"
+                steps:
+                  - run: |
+                      python -m pytest --cov --cov-report= \
+                        --cov-config=pyproject.toml \
+                        --junitxml=test-results/$CIRCLE_JOB/results.xml \
+                        --event-loop=<<parameters.event_loop>> \
+                        --bind-addr=$BIND_ADDR \
+                        --hypothesis-profile $HYPOTHESIS_PROFILE
+      - unless:
+          condition:
+            equal: ["uvloop", <<parameters.event_loop>>]
+          steps:
+            - using_venv:
+                python_version: "<<parameters.python_version>>"
+                package_extras: "tests"
+                steps:
+                  - run: |
+                      python -m pytest --cov --cov-report= \
+                        --cov-config=pyproject.toml \
+                        --junitxml=test-results/$CIRCLE_JOB/results.xml \
+                        --event-loop=<<parameters.event_loop>> \
+                        --bind-addr=$BIND_ADDR \
+                        --hypothesis-profile $HYPOTHESIS_PROFILE
       - store_artifacts:
           path: test-results
       - store_test_results:
