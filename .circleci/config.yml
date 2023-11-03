@@ -140,7 +140,7 @@ jobs:
       - attach_workspace:
           at: dist
       - using_venv:
-          package_extras: docs
+          package_extras: docs,tests
           python_version: py310
           steps:
             - run: python -m sphinx -nWT -b doctest -d ./docs/build/doctrees ./docs ./docs/build/html
