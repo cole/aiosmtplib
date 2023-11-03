@@ -4,10 +4,19 @@ orbs:
   codecov: codecov/codecov@3.3.0
 
 executors:
-  default: &executor
+  docker_executor:
+    parameters:
+      base_image:
+        default: "python"
+        type: enum
+        enum: ["python", "pypy"]
+      version:
+        default: "3.11"
+        type: enum
+        enum: ["3.8", "3.9", "3.10", "3.11", "3.12"]
     docker:
-      - image: "python:3.11-bookworm"
-        auth: &docker-auth
+      - image: "<<parameters.base_image>>:<<parameters.version>>-bookworm"
+        auth:
           username: $DOCKERHUB_USERNAME
           password: $DOCKERHUB_PASSWORD
     resource_class: small
@@ -16,41 +25,6 @@ executors:
       PIP_CACHE_DIR: ~/caches/pip
       PIP_DISABLE_PIP_VERSION_CHECK: "1"
       PIP_ROOT_USER_ACTION: "ignore"
-  py38:
-    <<: *executor
-    docker:
-      - image: "python:3.8-bookworm"
-        auth: *docker-auth
-  py39:
-    <<: *executor
-    docker:
-      - image: "python:3.9-bookworm"
-        auth: *docker-auth
-  py310:
-    <<: *executor
-    docker:
-      - image: "python:3.10-bookworm"
-        auth: *docker-auth
-  py311:
-    <<: *executor
-    docker:
-      - image: "python:3.11-bookworm"
-        auth: *docker-auth
-  py312:
-    <<: *executor
-    docker:
-      - image: "python:3.12-bookworm"
-        auth: *docker-auth
-  pypy39:
-    <<: *executor
-    docker:
-      - image: "pypy:3.9-bookworm"
-        auth: *docker-auth
-  pypy310:
-    <<: *executor
-    docker:
-      - image: "pypy:3.10-bookworm"
-        auth: *docker-auth
 
 commands:
   using_venv:
@@ -91,11 +65,13 @@ commands:
 
 jobs:
   build:
-    executor: default
+    executor:
+      name: docker_executor
+      version: "3.11"
     steps:
       - checkout
       - using_venv:
-          python_version: py310
+          python_version: python3.11
           install: false
           steps:
             - run: python -m pip install build
@@ -109,18 +85,22 @@ jobs:
                 path: dist/
 
   typecheck:
-    executor: default
+    executor:
+      name: docker_executor
+      version: "3.11"
     steps:
       - checkout
       - attach_workspace:
           at: dist
       - using_venv:
           package_extras: typing
-          python_version: py310
+          python_version: python3.11
           steps:
             - run: python -m mypy src/aiosmtplib
   security:
-    executor: default
+    executor:
+      name: docker_executor
+      version: "3.11"
     steps:
       - checkout
       - attach_workspace:
@@ -128,37 +108,45 @@ jobs:
       - using_venv:
           # all extras for safety check
           package_extras: uvloop,docs,tests,typing,security
-          python_version: py310
+          python_version: python3.11
           steps:
             - run: python -m bandit -n 10 -x tests -r src/aiosmtplib
             - run: python -m safety check
 
   docs:
-    executor: default
+    executor:
+      name: docker_executor
+      version: "3.11"
     steps:
       - checkout
       - attach_workspace:
           at: dist
       - using_venv:
           package_extras: docs,tests
-          python_version: py310
+          python_version: python3.11
           steps:
             - run: python -m sphinx -nWT -b doctest -d ./docs/build/doctrees ./docs ./docs/build/html
             - run: python -m sphinx -nWT -b dummy -d ./docs/build/doctrees ./docs ./docs/build/html
 
   test:
-    executor: <<parameters.python_version>>
+    executor:
+      name: docker_executor
+      base_image: <<parameters.base_image>>
+      version: <<parameters.python_version>>
     parameters:
+      base_image:
+        type: enum
+        enum: ["python", "pypy"]
       python_version:
         type: enum
-        description: "executor name"
-        enum: ["py38", "py39", "py310", "py311", "py312", "pypy39", "pypy310"]
+        description: "python version"
+        enum: ["3.8", "3.9", "3.10", "3.11", "3.12"]
       event_loop:
         type: enum
         description: "event loop type"
         enum: ["asyncio", "uvloop"]
     environment:
-      COVERAGE_FILE: "coverage-results/.coverage.<<parameters.python_version>>-<<parameters.event_loop>>"
+      COVERAGE_FILE: "coverage-results/.coverage.<<parameters.base_image>><<parameters.python_version>>-<<parameters.event_loop>>"
       HYPOTHESIS_PROFILE: "ci"
       BIND_ADDR: "127.0.0.1"
     steps:
@@ -174,7 +162,7 @@ jobs:
             equal: ["uvloop", <<parameters.event_loop>>]
           steps:
             - using_venv:
-                python_version: "<<parameters.python_version>>"
+                python_version: "<<parameters.base_image>><<parameters.python_version>>"
                 package_extras: "tests,uvloop"
                 steps:
                   - run: |
@@ -189,7 +177,7 @@ jobs:
             equal: ["uvloop", <<parameters.event_loop>>]
           steps:
             - using_venv:
-                python_version: "<<parameters.python_version>>"
+                python_version: "<<parameters.base_image>><<parameters.python_version>>"
                 package_extras: "tests"
                 steps:
                   - run: |
@@ -212,7 +200,9 @@ jobs:
           paths:
             - .hypothesis
   coverage:
-    executor: default
+    executor:
+      name: docker_executor
+      version: "3.11"
     environment:
       COVERAGE_FILE: .coverage
     steps:
@@ -239,7 +229,9 @@ jobs:
       #             - run: $POETRY_HOME/bin/poetry run coverage report --fail-under=90
 
   deploy:
-    executor: default
+    executor:
+      name: docker_executor
+      version: "3.11"
     steps:
       - checkout
       - attach_workspace:
@@ -277,7 +269,8 @@ workflows:
             alias: "test-cpython-asyncio"
             parameters:
               event_loop: ["asyncio"]
-              python_version: ["py38", "py39", "py310", "py311", "py312"]
+              base_image: ["python"]
+              python_version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
           requires: *build
       - test:
           <<: *base-job
@@ -286,7 +279,8 @@ workflows:
             alias: "test-pypy-asyncio"
             parameters:
               event_loop: ["asyncio"]
-              python_version: ["pypy39", "pypy310"]
+              base_image: ["pypy"]
+              python_version: ["3.9", "3.10"]
           requires: *build
       - test:
           <<: *base-job
@@ -295,7 +289,8 @@ workflows:
             alias: "test-cpython-uvloop"
             parameters:
               event_loop: ["uvloop"]
-              python_version: ["py38", "py39", "py310", "py311", "py312"]
+              base_image: ["python"]
+              python_version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
           requires:
             - "test-asyncio-<< matrix.python_version >>"
       - coverage:
