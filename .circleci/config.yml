@@ -6,7 +6,7 @@ orbs:
 executors:
   default: &executor
     docker:
-      - image: "python:3.10-bookworm"
+      - image: "python:3.11-bookworm"
         auth: &docker-auth
           username: $DOCKERHUB_USERNAME
           password: $DOCKERHUB_PASSWORD
