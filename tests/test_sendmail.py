@@ -303,9 +303,10 @@ async def test_send_message_with_cc_recipients(
     assert not errors
 
     assert len(received_messages) == 1
-    assert received_messages[0][
-        "X-RcptTo"
-    ] == f'{recipient_str}, {", ".join(cc_recipients)}'
+    assert (
+        received_messages[0]["X-RcptTo"]
+        == f'{recipient_str}, {", ".join(cc_recipients)}'
+    )
 
     assert received_commands[2][0] == "RCPT"
     assert received_commands[2][1][0] == recipient_str
