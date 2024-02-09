@@ -425,12 +425,11 @@ class SMTP:
             response = await self._create_connection(
                 timeout=self.timeout if timeout is _default else timeout
             )
+            await self._maybe_start_tls_on_connect()
+            await self._maybe_login_on_connect()
         except Exception as exc:
             self.close()  # Reset our state to disconnected
             raise exc
-
-        await self._maybe_start_tls_on_connect()
-        await self._maybe_login_on_connect()
 
         return response
 
