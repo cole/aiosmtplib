@@ -1,6 +1,7 @@
 """
 Email message and address formatting/parsing functions.
 """
+
 import copy
 import email.charset
 import email.generator

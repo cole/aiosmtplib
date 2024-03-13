@@ -1,6 +1,7 @@
 """
 Sync method tests.
 """
+
 import email.message
 
 from aiosmtplib import SMTP

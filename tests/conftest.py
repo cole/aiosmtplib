@@ -1,6 +1,7 @@
 """
 Pytest fixtures and config.
 """
+
 import asyncio
 import email.header
 import email.message
@@ -448,7 +449,7 @@ def smtpd_mock_response_error_disconnect() -> (
 @pytest.fixture(scope="session")
 def smtpd_mock_response_bad_data() -> Callable[[SMTPD], Coroutine[Any, Any, None]]:
     async def mock_response_bad_data(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
-        smtpd._writer.write(b"250 \xFF\xFF\xFF\xFF\r\n")
+        smtpd._writer.write(b"250 \xff\xff\xff\xff\r\n")
         await smtpd._writer.drain()
 
     return mock_response_bad_data

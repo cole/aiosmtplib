@@ -1,6 +1,7 @@
 """
 Tests for auth methods on the SMTP class.
 """
+
 import asyncio
 import base64
 

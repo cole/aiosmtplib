@@ -9,6 +9,7 @@ The Dragon De Monsyne <dragondm@integral.org>
 
 Author: Cole Maclean <hi@colemaclean.dev>
 """
+
 from .api import send
 from .errors import (
     SMTPAuthenticationError,

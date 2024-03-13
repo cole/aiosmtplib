@@ -1,6 +1,7 @@
 """
 Timeout tests.
 """
+
 import asyncio
 import socket
 import ssl

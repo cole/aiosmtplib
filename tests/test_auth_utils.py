@@ -1,6 +1,7 @@
 """
 Tests for authentication encoding utils.
 """
+
 import base64
 import hmac
 

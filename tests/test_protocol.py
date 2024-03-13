@@ -1,6 +1,7 @@
 """
 Protocol level tests.
 """
+
 import asyncio
 import gc
 import socket
