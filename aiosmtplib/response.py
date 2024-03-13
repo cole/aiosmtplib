@@ -1,6 +1,7 @@
 """
 SMTPResponse class, a simple namedtuple of (code, message).
 """
+
 from typing import NamedTuple
 
 

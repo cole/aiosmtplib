@@ -1,6 +1,7 @@
 """
 SMTP.sendmail and SMTP.send_message method testing.
 """
+
 import asyncio
 import copy
 import email.generator

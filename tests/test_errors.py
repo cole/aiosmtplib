@@ -1,6 +1,7 @@
 """
 Test error class imports, arguments, and inheritance.
 """
+
 import asyncio
 from typing import List, Tuple, Type, Union
 

@@ -3,6 +3,7 @@ Main SMTP client class.
 
 Implements SMTP, ESMTP & Auth methods.
 """
+
 import asyncio
 import email.message
 import socket

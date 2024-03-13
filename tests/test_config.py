@@ -1,6 +1,7 @@
 """
 Tests covering SMTP configuration options.
 """
+
 import asyncio
 import socket
 import ssl
