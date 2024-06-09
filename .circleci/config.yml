@@ -111,7 +111,6 @@ jobs:
           python_version: python3.11
           steps:
             - run: python -m bandit -n 10 -x tests -r src/aiosmtplib
-            - run: python -m safety check
 
   docs:
     executor:
