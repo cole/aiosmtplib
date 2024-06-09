@@ -208,24 +208,21 @@ jobs:
       - checkout
       - attach_workspace:
           at: coverage-results
-      # - using_pip_cache:
-      #     steps:
-      #       - install_poetry
-      #       - run: cp coverage-results/.coverage.* ./
-      #       - using_poetry:
-      #           cache_key: "coverage-v2"
-      #           steps:
-      #             - run: $POETRY_HOME/bin/poetry install --no-interaction --no-ansi --with test
-      #             - run: $POETRY_HOME/bin/poetry run coverage combine
-      #             - run: $POETRY_HOME/bin/poetry run coverage xml
-      #             - run: $POETRY_HOME/bin/poetry run coverage html
-      #             - store_artifacts:
-      #                 path: coverage.xml
-      #             - store_artifacts:
-      #                 path: htmlcov
-      #             - codecov/upload:
-      #                 file: coverage.xml
-      #             - run: $POETRY_HOME/bin/poetry run coverage report --fail-under=90
+      - run: cp coverage-results/.coverage.* ./
+      - using_venv:
+          package_extras: tests
+          python_version: python3.11
+          steps:
+            - run: python -m coverage combine
+            - run: python -m coverage xml
+            - run: python -m coverage html
+            - run: python -m coverage report --fail-under=90
+      - store_artifacts:
+          path: coverage.xml
+      - store_artifacts:
+          path: htmlcov
+      - codecov/upload:
+          file: coverage.xml
 
   deploy:
     executor:
