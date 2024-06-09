@@ -58,7 +58,6 @@ commands:
           paths:
             - "venv"
             - ~/caches/pip
-      - run: deactivate
   using_venv_packages:
     description: "Venv with specific packages"
     parameters:
