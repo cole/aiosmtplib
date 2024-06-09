@@ -27,8 +27,58 @@ executors:
       PIP_ROOT_USER_ACTION: "ignore"
 
 commands:
-  using_venv:
+  using_venv_base:
     description: "Setup and install in a venv, with caching"
+    parameters:
+      steps:
+        type: steps
+        default: []
+      python_version:
+        type: string
+      download_command_args:
+        type: string
+        default: ""
+      install_command_args:
+        type: string
+        default: ""
+    steps:
+      - restore_cache:
+          keys:
+            - venv-v4-<<parameters.python_version>>-<<parameters.download_command_args>>-<<parameters.install_command_args>>-{{ checksum "pyproject.toml" }}
+            - venv-v4-<<parameters.python_version>>-<<parameters.download_command_args>>-<<parameters.install_command_args>>-
+            - venv-v4-<<parameters.python_version>>-
+      - run: mkdir -p $PIP_CACHE_DIR
+      - run: python -m venv venv
+      - run: . venv/bin/activate
+      - run: python -m pip download <<parameters.download_command_args>>
+      - run: python -m pip install <<parameters.install_command_args>>
+      - steps: <<parameters.steps>>
+      - save_cache:
+          key: venv-v4-<<parameters.python_version>>-<<parameters.download_command_args>>-<<parameters.install_command_args>>-{{ checksum "pyproject.toml" }}
+          paths:
+            - "venv"
+            - ~/caches/pip
+      - run: deactivate
+  using_venv_packages:
+    description: "Venv with specific packages"
+    parameters:
+      steps:
+        type: steps
+        default: []
+      python_version:
+        type: string
+      packages:
+        type: string
+        default: ""
+        description: "PyPI package names, space delimited"
+    steps:
+      - using_venv_base:
+          steps: <<parameters.steps>>
+          python_version: <<parameters.python_version>>
+          download_command_args: --dest dist/ <<parameters.packages>>
+          install_command_args: --no-index --find-links=dist/ <<parameters.packages>>
+  using_venv_extras:
+    description: "Venv with an optional-dependencies group"
     parameters:
       steps:
         type: steps
@@ -38,30 +88,12 @@ commands:
       package_extras:
         type: string
         default: ""
-      install:
-        type: boolean
-        default: true
     steps:
-      - restore_cache:
-          keys:
-            - venv-v4-<<parameters.python_version>>-extras:<<parameters.package_extras>>-{{ checksum "pyproject.toml" }}
-            - venv-v4-<<parameters.python_version>>-extras:<<parameters.package_extras>>-
-            - venv-v4-<<parameters.python_version>>-
-      - run: mkdir -p $PIP_CACHE_DIR
-      - run: python -m venv venv
-      - run: . venv/bin/activate
-      - when:
-          condition:
-            equal: [true, <<parameters.install>>]
-          steps:
-            - run: python -m pip download --dest dist/ .[<<parameters.package_extras>>]
-            - run: python -m pip install --no-index --find-links=dist/ aiosmtplib[<<parameters.package_extras>>]
-      - steps: <<parameters.steps>>
-      - save_cache:
-          key: venv-v4-<<parameters.python_version>>-extras:<<parameters.package_extras>>-{{ checksum "pyproject.toml" }}
-          paths:
-            - "venv"
-            - ~/caches/pip
+      - using_venv_base:
+          steps: <<parameters.steps>>
+          python_version: <<parameters.python_version>>
+          download_command_args: --dest dist/ .[<<parameters.package_extras>>]
+          install_command_args: --no-index --find-links=dist/ aiosmtplib[<<parameters.package_extras>>]
 
 jobs:
   build:
@@ -70,11 +102,10 @@ jobs:
       version: "3.11"
     steps:
       - checkout
-      - using_venv:
+      - using_venv_packages:
           python_version: python3.11
-          install: false
+          packages: build
           steps:
-            - run: python -m pip install build
             - run: python -m build .
             - persist_to_workspace:
                 root: dist
@@ -92,7 +123,7 @@ jobs:
       - checkout
       - attach_workspace:
           at: dist
-      - using_venv:
+      - using_venv_extras:
           package_extras: typing
           python_version: python3.11
           steps:
@@ -105,9 +136,8 @@ jobs:
       - checkout
       - attach_workspace:
           at: dist
-      - using_venv:
-          # all extras for safety check
-          package_extras: uvloop,docs,tests,typing,security
+      - using_venv_extras:
+          package_extras: security
           python_version: python3.11
           steps:
             - run: python -m bandit -n 10 -x tests -r src/aiosmtplib
@@ -120,7 +150,7 @@ jobs:
       - checkout
       - attach_workspace:
           at: dist
-      - using_venv:
+      - using_venv_extras:
           package_extras: docs,tests
           python_version: python3.11
           steps:
@@ -160,7 +190,7 @@ jobs:
           condition:
             equal: ["uvloop", <<parameters.event_loop>>]
           steps:
-            - using_venv:
+            - using_venv_extras:
                 python_version: "<<parameters.base_image>><<parameters.python_version>>"
                 package_extras: "tests,uvloop"
                 steps:
@@ -175,7 +205,7 @@ jobs:
           condition:
             equal: ["uvloop", <<parameters.event_loop>>]
           steps:
-            - using_venv:
+            - using_venv_extras:
                 python_version: "<<parameters.base_image>><<parameters.python_version>>"
                 package_extras: "tests"
                 steps:
@@ -209,9 +239,11 @@ jobs:
       - attach_workspace:
           at: coverage-results
       - run: cp coverage-results/.coverage.* ./
-      - using_venv:
-          package_extras: tests
+      - attach_workspace:
+          at: dist
+      - using_venv_packages:
           python_version: python3.11
+          packages: coverage[toml]
           steps:
             - run: python -m coverage combine
             - run: python -m coverage xml
