@@ -31,7 +31,8 @@ commands:
     steps:
       - attach_workspace:
           at: dist
-      - run: export WHEEL_FILE=$(find ./dist -name *.whl)
+      - run: export WHEEL_FILE=$(find dist -name *.whl)
+      - run: echo $WHEEL_FILE
   setup_venv:
     description: "Setup and install virtualenv, with caching"
     parameters:
