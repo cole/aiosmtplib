@@ -88,4 +88,8 @@ exclude_lines = [
 ]
 
 [tool.coverage.paths]
-source = ["src/aiosmtplib", "/opt/pypy/lib/pypy3.*/site-packages/aiosmtplib"]
+source = [
+    "src/aiosmtplib",
+    "/opt/pypy/lib/pypy3.*/site-packages/aiosmtplib",
+    "/usr/local/lib/python3.*/site-packages/aiosmtplib",
+]
