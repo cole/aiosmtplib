@@ -1,6 +1,12 @@
 Changelog
 =========
 
+3.0.2 (unreleased)
+------------------
+
+- Change: Switched from Poetry to build/hatch/twine for packaging.
+
+
 3.0.1
 -----
 
