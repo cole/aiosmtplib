@@ -32,16 +32,6 @@ GitHub = "https://github.com/cole/aiosmtplib"
 
 [project.optional-dependencies]
 uvloop = ["uvloop>=0.18"]
-tests = [
-    "pytest>=7.2",
-    "pytest-asyncio>=0.20.1",
-    "pytest-cov>=4.0",
-    "pytest-xdist>=3.0",
-    "coverage[toml]>=6.5",
-    "hypothesis>=6.56",
-    "aiosmtpd>=1.4.2",
-    "trustme>=0.9.0",
-]
 
 [tool.hatch.version]
 path = "src/aiosmtplib/__init__.py"
