@@ -32,12 +32,6 @@ GitHub = "https://github.com/cole/aiosmtplib"
 
 [project.optional-dependencies]
 uvloop = ["uvloop>=0.18"]
-docs = [
-    "sphinx>=7.0.0",
-    "sphinx_autodoc_typehints>=1.24.0",
-    "sphinx-copybutton>=0.5.0",
-    "furo>=2023.9.10",
-]
 tests = [
     "pytest>=7.2",
     "pytest-asyncio>=0.20.1",
