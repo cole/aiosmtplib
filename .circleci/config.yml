@@ -127,8 +127,8 @@ jobs:
       - checkout
       - attach_workspace:
           at: dist
-      - using_venv_extras:
-          package_extras: typing
+      - using_venv_packages:
+          packages: mypy
           python_version: python3.11
           steps:
             - run: python -m mypy src/aiosmtplib
@@ -140,8 +140,8 @@ jobs:
       - checkout
       - attach_workspace:
           at: dist
-      - using_venv_extras:
-          package_extras: security
+      - using_venv_packages:
+          packages: bandit
           python_version: python3.11
           steps:
             - run: python -m bandit -n 10 -x tests -r src/aiosmtplib
