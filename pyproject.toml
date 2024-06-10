@@ -48,8 +48,6 @@ tests = [
     "aiosmtpd>=1.4.2",
     "trustme>=0.9.0",
 ]
-typing = ["mypy>=0.982"]
-security = ["bandit>=1.7.4"]
 
 [tool.hatch.version]
 path = "src/aiosmtplib/__init__.py"
