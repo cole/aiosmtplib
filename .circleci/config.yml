@@ -119,6 +119,20 @@ jobs:
             - store_artifacts:
                 path: dist/
 
+  wheelcheck:
+    executor:
+      name: docker_executor
+      version: "3.11"
+    steps:
+      - checkout
+      - attach_workspace:
+          at: dist
+      - using_venv_packages:
+          packages: check-wheel-contents
+          python_version: python3.11
+          steps:
+            - run: python3 -m check-wheel-contents ./dist/*.whl
+
   typecheck:
     executor:
       name: docker_executor
@@ -288,6 +302,9 @@ workflows:
           <<: *base-job
           requires: &build
             - build
+      - wheelcheck:
+          <<: *base-job
+          requires: *build
       - security:
           <<: *base-job
           requires: *build
@@ -335,6 +352,7 @@ workflows:
           requires:
             - build
             - typecheck
+            - wheelcheck
             - security
             - docs
             - test-cpython-asyncio
