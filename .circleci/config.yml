@@ -27,12 +27,6 @@ executors:
       PIP_ROOT_USER_ACTION: "ignore"
 
 commands:
-  mount_wheel:
-    steps:
-      - attach_workspace:
-          at: dist
-      - run: export WHEEL_FILE=$(find dist -name *.whl)
-      - run: echo $WHEEL_FILE
   setup_venv:
     description: "Setup and install virtualenv, with caching"
     parameters:
@@ -79,11 +73,12 @@ jobs:
       version: "3.11"
     steps:
       - checkout
-      - mount_wheel
+      - attach_workspace:
+          at: dist
       - setup_venv:
           install:
             - run: python -m pip install check-wheel-contents
-      - run: check-wheel-contents $WHEEL_FILE
+      - run: check-wheel-contents $(find dist -name aiosmtplib-*.whl)
 
   typecheck:
     executor:
@@ -112,12 +107,13 @@ jobs:
       version: "3.11"
     steps:
       - checkout
-      - mount_wheel
+      - attach_workspace:
+          at: dist
       - setup_venv:
           install:
             - run: python -m pip install -r docs/requirements.txt
             - run: python -m pip install -r requirements-dev.txt
-      - run: python -m pip install $WHEEL_FILE
+      - run: python -m pip install dist/*.whl
       - run: python -m sphinx -nWT -b doctest -d ./docs/build/doctrees ./docs ./docs/build/html
       - run: python -m sphinx -nWT -b dummy -d ./docs/build/doctrees ./docs ./docs/build/html
 
@@ -144,7 +140,8 @@ jobs:
       BIND_ADDR: "127.0.0.1"
     steps:
       - checkout
-      - mount_wheel
+      - attach_workspace:
+          at: dist
       - restore_cache:
           keys:
             - "hypothesis-v7-<<parameters.python_version>>"
@@ -156,12 +153,12 @@ jobs:
           condition:
             equal: ["uvloop", <<parameters.event_loop>>]
           steps:
-            - run: python -m pip install $WHEEL_FILE[uvloop]
+            - run: python -m pip install $(find dist -name aiosmtplib-*.whl)[uvloop]
       - unless:
           condition:
             equal: ["uvloop", <<parameters.event_loop>>]
           steps:
-            - run: python -m pip install $WHEEL_FILE
+            - run: python -m pip install $(find dist -name aiosmtplib-*.whl)
       - run: |
           python -m pytest --cov --cov-report= \
             --cov-config=pyproject.toml \
