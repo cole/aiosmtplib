@@ -46,9 +46,9 @@ commands:
     steps:
       - restore_cache:
           keys:
-            - venv-v4-<<parameters.python_version>>-<<parameters.cache_key>>-{{ checksum "pyproject.toml" }}
-            - venv-v4-<<parameters.python_version>>-<<parameters.cache_key>>-
-            - venv-v4-<<parameters.python_version>>-
+            - venv-v5-<<parameters.python_version>>-<<parameters.cache_key>>-{{ checksum "pyproject.toml" }}
+            - venv-v5-<<parameters.python_version>>-<<parameters.cache_key>>-
+            - venv-v5-<<parameters.python_version>>-
       - run: mkdir -p $PIP_CACHE_DIR
       - run: python -m venv venv
       - run: . venv/bin/activate
@@ -56,9 +56,10 @@ commands:
       - run: python -m pip install <<parameters.install_command_args>>
       - steps: <<parameters.steps>>
       - save_cache:
-          key: venv-v4-<<parameters.python_version>>-<<parameters.cache_key>>-{{ checksum "pyproject.toml" }}
+          key: venv-v5-<<parameters.python_version>>-<<parameters.cache_key>>-{{ checksum "pyproject.toml" }}
           paths:
             - "venv"
+            - "deps"
             - ~/caches/pip
   using_venv_packages:
     description: "Venv with specific packages"
@@ -77,8 +78,8 @@ commands:
           steps: <<parameters.steps>>
           cache_key: packages-<<parameters.packages>>
           python_version: <<parameters.python_version>>
-          download_command_args: --dest dist/ <<parameters.packages>>
-          install_command_args: --no-index --find-links=dist/ <<parameters.packages>>
+          download_command_args: --dest deps/ <<parameters.packages>>
+          install_command_args: --no-index --find-links=deps/ <<parameters.packages>>
   using_venv_extras:
     description: "Venv with an optional-dependencies group"
     parameters:
@@ -95,8 +96,8 @@ commands:
           steps: <<parameters.steps>>
           cache_key: extras-<<parameters.package_extras>>
           python_version: <<parameters.python_version>>
-          download_command_args: --dest dist/ .[<<parameters.package_extras>>]
-          install_command_args: --no-index --find-links=dist/ aiosmtplib[<<parameters.package_extras>>]
+          download_command_args: --dest deps/ .[<<parameters.package_extras>>]
+          install_command_args: --no-index --find-links=deps/ --find-links=dist/ aiosmtplib[<<parameters.package_extras>>]
 
 jobs:
   build:
