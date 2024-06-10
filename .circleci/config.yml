@@ -131,7 +131,7 @@ jobs:
           packages: check-wheel-contents
           python_version: python3.11
           steps:
-            - run: python3 -m check-wheel-contents ./dist/*.whl
+            - run: check-wheel-contents ./dist/*.whl
 
   typecheck:
     executor:
