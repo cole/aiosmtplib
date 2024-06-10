@@ -210,12 +210,12 @@ jobs:
       - checkout
       - attach_workspace:
           at: dist
-      # - using_pip_cache:
-      #     steps:
-      #       - install_poetry
-      #       - run: $POETRY_HOME/bin/poetry config repositories.testpypi https://test.pypi.org/legacy/
-      #       - run: $POETRY_HOME/bin/poetry publish -vv --repository testpypi --username $TESTPYPI_USERNAME --password $TESTPYPI_PASSWORD
-      #       - run: $POETRY_HOME/bin/poetry publish -vv --username $PYPI_USERNAME --password $PYPI_PASSWORD
+      - setup_venv:
+          install:
+            - run: python -m pip install twine
+      - run: twine check --strict dist/*
+      - run: twine upload -r testpypi --username $TESTPYPI_USERNAME --password $TESTPYPI_PASSWORD dist/*
+      # - run: twine upload -r pypi --username $PYPI_USERNAME --password $PYPI_PASSWORD dist/*
 
 workflows:
   build_test_deploy:
@@ -292,8 +292,8 @@ workflows:
           context:
             - docker-hub-credentials
           filters:
-            branches:
-              ignore: /.*/
+            # branches:
+            #   ignore: /.*/
             tags:
               only: /^v.*/
 # VS Code Extension Version: 1.5.1
