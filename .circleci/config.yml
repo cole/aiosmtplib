@@ -27,77 +27,26 @@ executors:
       PIP_ROOT_USER_ACTION: "ignore"
 
 commands:
-  using_venv:
-    description: "Setup and install in a venv, with caching"
+  setup_venv:
+    description: "Setup and install virtualenv, with caching"
     parameters:
-      steps:
+      install:
         type: steps
         default: []
-      python_version:
-        type: string
-      cache_key:
-        type: string
-      download_command_args:
-        type: string
-        default: ""
-      install_command_args:
-        type: string
-        default: ""
     steps:
       - restore_cache:
           keys:
-            - venv-v5-<<parameters.python_version>>-<<parameters.cache_key>>-{{ checksum "pyproject.toml" }}
-            - venv-v5-<<parameters.python_version>>-<<parameters.cache_key>>-
-            - venv-v5-<<parameters.python_version>>-
-      - run: mkdir -p $PIP_CACHE_DIR
-      - run: python -m venv venv
-      - run: . venv/bin/activate
-      - run: python -m pip download <<parameters.download_command_args>>
-      - run: python -m pip install <<parameters.install_command_args>>
-      - steps: <<parameters.steps>>
+            - venv-v1-{{ .Environment.CIRCLE_JOB }}-{{ checksum "pyproject.toml" }}
+            - venv-v1-{{ .Environment.CIRCLE_JOB }}
+      - run: mkdir -p ~/caches/pip
+      - run: python -m venv ~/venv
+      - run: . ~/venv/bin/activate
+      - steps: <<parameters.install>>
       - save_cache:
-          key: venv-v5-<<parameters.python_version>>-<<parameters.cache_key>>-{{ checksum "pyproject.toml" }}
+          key: venv-packages-v1-{{ .Environment.CIRCLE_JOB }}-{{ checksum "pyproject.toml" }}
           paths:
-            - "venv"
-            - "deps"
+            - "~/venv"
             - ~/caches/pip
-  using_venv_packages:
-    description: "Venv with specific packages"
-    parameters:
-      steps:
-        type: steps
-        default: []
-      python_version:
-        type: string
-      packages:
-        type: string
-        default: ""
-        description: "PyPI package names, space delimited"
-    steps:
-      - using_venv:
-          steps: <<parameters.steps>>
-          cache_key: packages-<<parameters.packages>>
-          python_version: <<parameters.python_version>>
-          download_command_args: --dest deps/ <<parameters.packages>>
-          install_command_args: --no-index --find-links=deps/ <<parameters.packages>>
-  using_venv_extras:
-    description: "Venv with an optional-dependencies group"
-    parameters:
-      steps:
-        type: steps
-        default: []
-      python_version:
-        type: string
-      package_extras:
-        type: string
-        default: ""
-    steps:
-      - using_venv:
-          steps: <<parameters.steps>>
-          cache_key: extras-<<parameters.package_extras>>
-          python_version: <<parameters.python_version>>
-          download_command_args: --dest deps/ .[<<parameters.package_extras>>]
-          install_command_args: --no-index --find-links=deps/ --find-links=dist/ aiosmtplib[<<parameters.package_extras>>]
 
 jobs:
   build:
@@ -106,18 +55,17 @@ jobs:
       version: "3.11"
     steps:
       - checkout
-      - using_venv_packages:
-          python_version: python3.11
-          packages: build
-          steps:
-            - run: python -m build .
-            - persist_to_workspace:
-                root: dist
-                paths:
-                  - aiosmtplib-*.tar.gz
-                  - aiosmtplib-*.whl
-            - store_artifacts:
-                path: dist/
+      - setup_venv:
+          install:
+            - run: python -m pip install build
+      - run: python -m build .
+      - persist_to_workspace:
+          root: dist
+          paths:
+            - aiosmtplib-*.tar.gz
+            - aiosmtplib-*.whl
+      - store_artifacts:
+          path: dist/
 
   wheelcheck:
     executor:
@@ -127,11 +75,10 @@ jobs:
       - checkout
       - attach_workspace:
           at: dist
-      - using_venv_packages:
-          packages: check-wheel-contents
-          python_version: python3.11
-          steps:
-            - run: check-wheel-contents ./dist/*.whl
+      - setup_venv:
+          install:
+            - run: python -m pip install check-wheel-contents
+      - run: check-wheel-contents ./dist/*.whl
 
   typecheck:
     executor:
@@ -139,26 +86,20 @@ jobs:
       version: "3.11"
     steps:
       - checkout
-      - attach_workspace:
-          at: dist
-      - using_venv_packages:
-          packages: mypy
-          python_version: python3.11
-          steps:
-            - run: python -m mypy src/aiosmtplib
+      - setup_venv:
+          install:
+            - run: python -m pip install mypy
+      - run: python -m mypy src/aiosmtplib
   security:
     executor:
       name: docker_executor
       version: "3.11"
     steps:
       - checkout
-      - attach_workspace:
-          at: dist
-      - using_venv_packages:
-          packages: bandit
-          python_version: python3.11
-          steps:
-            - run: python -m bandit -n 10 -x tests -r src/aiosmtplib
+      - setup_venv:
+          install:
+            - run: python -m pip install bandit
+      - run: python -m bandit -n 10 -x tests -r src/aiosmtplib
 
   docs:
     executor:
@@ -166,14 +107,12 @@ jobs:
       version: "3.11"
     steps:
       - checkout
-      - attach_workspace:
-          at: dist
-      - using_venv_extras:
-          package_extras: docs,tests
-          python_version: python3.11
-          steps:
-            - run: python -m sphinx -nWT -b doctest -d ./docs/build/doctrees ./docs ./docs/build/html
-            - run: python -m sphinx -nWT -b dummy -d ./docs/build/doctrees ./docs ./docs/build/html
+      - setup_venv:
+          install:
+            - run: python -m pip install -r docs/requirements.txt
+            - run: python -m pip install -r requirements-dev.txt
+      - run: python -m sphinx -nWT -b doctest -d ./docs/build/doctrees ./docs ./docs/build/html
+      - run: python -m sphinx -nWT -b dummy -d ./docs/build/doctrees ./docs ./docs/build/html
 
   test:
     executor:
@@ -203,37 +142,27 @@ jobs:
       - restore_cache:
           keys:
             - "hypothesis-v7-<<parameters.python_version>>"
-      # TODO: this is a pretty clunky way of selecting uvloop
+      - setup_venv:
+          install:
+            - run: python -m requirements-dev.txt
+      # package install happens outside of venv cache
       - when:
           condition:
             equal: ["uvloop", <<parameters.event_loop>>]
           steps:
-            - using_venv_extras:
-                python_version: "<<parameters.base_image>><<parameters.python_version>>"
-                package_extras: "tests,uvloop"
-                steps:
-                  - run: |
-                      python -m pytest --cov --cov-report= \
-                        --cov-config=pyproject.toml \
-                        --junitxml=test-results/$CIRCLE_JOB/results.xml \
-                        --event-loop=<<parameters.event_loop>> \
-                        --bind-addr=$BIND_ADDR \
-                        --hypothesis-profile $HYPOTHESIS_PROFILE
+            - run: python -m pip install .[uvloop]
       - unless:
           condition:
             equal: ["uvloop", <<parameters.event_loop>>]
           steps:
-            - using_venv_extras:
-                python_version: "<<parameters.base_image>><<parameters.python_version>>"
-                package_extras: "tests"
-                steps:
-                  - run: |
-                      python -m pytest --cov --cov-report= \
-                        --cov-config=pyproject.toml \
-                        --junitxml=test-results/$CIRCLE_JOB/results.xml \
-                        --event-loop=<<parameters.event_loop>> \
-                        --bind-addr=$BIND_ADDR \
-                        --hypothesis-profile $HYPOTHESIS_PROFILE
+            - run: python -m pip install .
+      - run: |
+          python -m pytest --cov --cov-report= \
+            --cov-config=pyproject.toml \
+            --junitxml=test-results/$CIRCLE_JOB/results.xml \
+            --event-loop=<<parameters.event_loop>> \
+            --bind-addr=$BIND_ADDR \
+            --hypothesis-profile $HYPOTHESIS_PROFILE
       - store_artifacts:
           path: test-results
       - store_test_results:
@@ -257,16 +186,13 @@ jobs:
       - attach_workspace:
           at: coverage-results
       - run: cp coverage-results/.coverage.* ./
-      - attach_workspace:
-          at: dist
-      - using_venv_packages:
-          python_version: python3.11
-          packages: coverage[toml]
-          steps:
-            - run: python -m coverage combine
-            - run: python -m coverage xml
-            - run: python -m coverage html
-            - run: python -m coverage report --fail-under=90
+      - setup_venv:
+          install:
+            - run: python -m pip install coverage[toml]
+      - run: python -m coverage combine
+      - run: python -m coverage xml
+      - run: python -m coverage html
+      - run: python -m coverage report --fail-under=90
       - store_artifacts:
           path: coverage.xml
       - store_artifacts:
@@ -300,17 +226,14 @@ workflows:
               only: /.*/
       - typecheck:
           <<: *base-job
-          requires: &build
-            - build
       - wheelcheck:
           <<: *base-job
-          requires: *build
+          requires:
+            - build
       - security:
           <<: *base-job
-          requires: *build
       - docs:
           <<: *base-job
-          requires: *build
       - test:
           <<: *base-job
           name: "test-asyncio-<< matrix.python_version >>"
@@ -320,7 +243,8 @@ workflows:
               event_loop: ["asyncio"]
               base_image: ["python"]
               python_version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
-          requires: *build
+          requires:
+            - build
       - test:
           <<: *base-job
           name: "test-pypy-<< matrix.python_version >>"
@@ -330,7 +254,9 @@ workflows:
               event_loop: ["asyncio"]
               base_image: ["pypy"]
               python_version: ["3.9", "3.10"]
-          requires: *build
+          requires:
+            - build
+            - "test-asyncio-<< matrix.python_version >>"
       - test:
           <<: *base-job
           name: "test-uvloop-<< matrix.python_version >>"
@@ -341,10 +267,11 @@ workflows:
               base_image: ["python"]
               python_version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
           requires:
+            - build
             - "test-asyncio-<< matrix.python_version >>"
       - coverage:
           <<: *base-job
-          requires: &tests
+          requires:
             - test-cpython-asyncio
             - test-cpython-uvloop
             - test-pypy-asyncio
