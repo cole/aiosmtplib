@@ -36,14 +36,13 @@ commands:
     steps:
       - restore_cache:
           keys:
-            - venv-v1-{{ .Environment.CIRCLE_JOB }}-{{ checksum "pyproject.toml" }}
             - venv-v1-{{ .Environment.CIRCLE_JOB }}
       - run: mkdir -p ~/caches/pip
       - run: python -m venv ~/venv
       - run: . ~/venv/bin/activate
       - steps: <<parameters.install>>
       - save_cache:
-          key: venv-v1-{{ .Environment.CIRCLE_JOB }}-{{ checksum "pyproject.toml" }}
+          key: venv-v1-{{ .Environment.CIRCLE_JOB }}
           paths:
             - "~/venv"
             - ~/caches/pip
