@@ -27,13 +27,15 @@ executors:
       PIP_ROOT_USER_ACTION: "ignore"
 
 commands:
-  using_venv_base:
+  using_venv:
     description: "Setup and install in a venv, with caching"
     parameters:
       steps:
         type: steps
         default: []
       python_version:
+        type: string
+      cache_key:
         type: string
       download_command_args:
         type: string
@@ -44,8 +46,8 @@ commands:
     steps:
       - restore_cache:
           keys:
-            - venv-v4-<<parameters.python_version>>-<<parameters.download_command_args>>-<<parameters.install_command_args>>-{{ checksum "pyproject.toml" }}
-            - venv-v4-<<parameters.python_version>>-<<parameters.download_command_args>>-<<parameters.install_command_args>>-
+            - venv-v4-<<parameters.python_version>>-<<parameters.cache_key>>-{{ checksum "pyproject.toml" }}
+            - venv-v4-<<parameters.python_version>>-<<parameters.cache_key>>-
             - venv-v4-<<parameters.python_version>>-
       - run: mkdir -p $PIP_CACHE_DIR
       - run: python -m venv venv
@@ -54,7 +56,7 @@ commands:
       - run: python -m pip install <<parameters.install_command_args>>
       - steps: <<parameters.steps>>
       - save_cache:
-          key: venv-v4-<<parameters.python_version>>-<<parameters.download_command_args>>-<<parameters.install_command_args>>-{{ checksum "pyproject.toml" }}
+          key: venv-v4-<<parameters.python_version>>-<<parameters.cache_key>>-{{ checksum "pyproject.toml" }}
           paths:
             - "venv"
             - ~/caches/pip
@@ -71,8 +73,9 @@ commands:
         default: ""
         description: "PyPI package names, space delimited"
     steps:
-      - using_venv_base:
+      - using_venv:
           steps: <<parameters.steps>>
+          cache_key: packages-<<parameters.packages>>
           python_version: <<parameters.python_version>>
           download_command_args: --dest dist/ <<parameters.packages>>
           install_command_args: --no-index --find-links=dist/ <<parameters.packages>>
@@ -88,8 +91,9 @@ commands:
         type: string
         default: ""
     steps:
-      - using_venv_base:
+      - using_venv:
           steps: <<parameters.steps>>
+          cache_key: extras-<<parameters.package_extras>>
           python_version: <<parameters.python_version>>
           download_command_args: --dest dist/ .[<<parameters.package_extras>>]
           install_command_args: --no-index --find-links=dist/ aiosmtplib[<<parameters.package_extras>>]
