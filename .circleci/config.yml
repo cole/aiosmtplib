@@ -66,7 +66,7 @@ jobs:
       - store_artifacts:
           path: dist/
 
-  wheelcheck:
+  buildcheck:
     executor:
       name: docker_executor
       version: "3.11"
@@ -77,7 +77,9 @@ jobs:
       - setup_venv:
           install:
             - run: python -m pip install check-wheel-contents
-      - run: check-wheel-contents $(find dist -name aiosmtplib-*.whl)
+            - run: python -m pip install twine
+      - run: check-wheel-contents dist/*.whl
+      - run: twine check --strict dist/*
 
   typecheck:
     executor:
@@ -213,9 +215,8 @@ jobs:
       - setup_venv:
           install:
             - run: python -m pip install twine
-      - run: twine check --strict dist/*
       - run: twine upload -r testpypi --username $TESTPYPI_USERNAME --password $TESTPYPI_PASSWORD dist/*
-      # - run: twine upload -r pypi --username $PYPI_USERNAME --password $PYPI_PASSWORD dist/*
+      - run: twine upload -r pypi --username $PYPI_USERNAME --password $PYPI_PASSWORD dist/*
 
 workflows:
   build_test_deploy:
@@ -230,7 +231,7 @@ workflows:
           <<: *base-job
       - security:
           <<: *base-job
-      - wheelcheck:
+      - buildcheck:
           <<: *base-job
           requires:
             - build
@@ -283,7 +284,7 @@ workflows:
           requires:
             - build
             - typecheck
-            - wheelcheck
+            - buildcheck
             - security
             - docs
             - test-cpython-asyncio
@@ -292,8 +293,8 @@ workflows:
           context:
             - docker-hub-credentials
           filters:
-            # branches:
-            #   ignore: /.*/
+            branches:
+              ignore: /.*/
             tags:
               only: /^v.*/
 # VS Code Extension Version: 1.5.1
