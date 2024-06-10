@@ -77,7 +77,6 @@ target-version = "py38"
 source = ["aiosmtplib"]
 branch = true
 parallel = true
-relative_files = true
 
 [tool.coverage.report]
 show_missing = true
@@ -87,3 +86,6 @@ exclude_lines = [
     "raise NotImplementedError",
     "if __name__ == .__main__.:",
 ]
+
+[tool.coverage.paths]
+source = ["src/aiosmtplib", "/opt/pypy/lib/pypy3.*/site-packages/aiosmtplib"]
