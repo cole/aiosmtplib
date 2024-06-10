@@ -149,7 +149,7 @@ jobs:
             - "hypothesis-v7-<<parameters.python_version>>"
       - setup_venv:
           install:
-            - run: python -m pip -r requirements-dev.txt
+            - run: python -m pip install -r requirements-dev.txt
       # package install happens outside of venv cache
       - when:
           condition:
