@@ -111,6 +111,7 @@ jobs:
           install:
             - run: python -m pip install -r docs/requirements.txt
             - run: python -m pip install -r requirements-dev.txt
+      - run: python -m pip install .
       - run: python -m sphinx -nWT -b doctest -d ./docs/build/doctrees ./docs ./docs/build/html
       - run: python -m sphinx -nWT -b dummy -d ./docs/build/doctrees ./docs ./docs/build/html
 
@@ -144,7 +145,7 @@ jobs:
             - "hypothesis-v7-<<parameters.python_version>>"
       - setup_venv:
           install:
-            - run: python -m requirements-dev.txt
+            - run: python -m -r requirements-dev.txt
       # package install happens outside of venv cache
       - when:
           condition:
