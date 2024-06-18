@@ -12,7 +12,7 @@ python:
     - requirements: docs/requirements.txt
     - requirements: requirements-dev.txt
     - method: pip
-      path: ./src/aiosmtplib
+      path: ./
 
 sphinx:
   configuration: docs/conf.py
