@@ -6,7 +6,7 @@ from typing import Union
 __all__ = ("Default", "SMTPStatus", "SocketPathType", "_default")
 
 
-SocketPathType = Union[str, bytes, os.PathLike]
+SocketPathType = Union[str, bytes, os.PathLike[Union[str, bytes]]]
 
 
 class Default(enum.Enum):
