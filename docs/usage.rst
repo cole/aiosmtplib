@@ -1,5 +1,4 @@
-.. module:: aiosmtplib
-    :noindex:
+ .. py:currentmodule:: aiosmtplib
 
 The send Coroutine
 ==================
