@@ -456,7 +456,7 @@ class SMTP:
         elif self.socket_path is not None:
             connect_coro = self.loop.create_unix_connection(
                 lambda: protocol,
-                path=self.socket_path,  # type: ignore
+                path=str(self.socket_path),
                 ssl=tls_context,
                 ssl_handshake_timeout=ssl_handshake_timeout,
             )
