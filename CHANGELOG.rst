@@ -1,9 +1,10 @@
 Changelog
 =========
 
-3.0.2 (unreleased)
-------------------
+3.0.2
+-----
 
+- Bugfix: Type of "send" is partially unknown with pyright
 - Change: Switched from Poetry to build/hatch/twine for packaging.
 
 
