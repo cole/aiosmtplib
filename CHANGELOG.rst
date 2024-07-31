@@ -8,6 +8,7 @@ Changelog
 -----
 
 - Bugfix: Type of "send" is partially unknown with pyright
+- Bugfix: Fix asyncio deadlock trying to reconnect after error (thanks @Voldemat)
 - Change: Switched from Poetry to build/hatch/twine for packaging.
 
 
