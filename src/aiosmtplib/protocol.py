@@ -269,7 +269,7 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
                 f"Transport {self.transport!r} does not support writing."
             )
 
-        self.transport.write(data)  # type: ignore
+        cast(asyncio.WriteTransport, self.transport).write(data)
 
     async def execute_command(
         self, *args: bytes, timeout: Optional[float] = None
@@ -345,14 +345,12 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
                 raise SMTPResponseException(response.code, response.message)
 
             # Check for disconnect after response
-            if (
-                not isinstance(self.transport, asyncio.WriteTransport)
-            ) or self.transport.is_closing():
+            if self.transport is None or self.transport.is_closing():
                 raise SMTPServerDisconnected("Connection lost")
 
             try:
                 tls_transport = await self._loop.start_tls(
-                    self.transport,
+                    cast(asyncio.WriteTransport, self.transport),
                     self,
                     tls_context,
                     server_side=False,
