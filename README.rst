@@ -1,8 +1,7 @@
 aiosmtplib
 ==========
 
-|circleci| |precommit.ci| |codecov| |pypi-version| |pypi-status| |downloads| |pypi-python-versions|
-|pypi-license|
+|circleci| |precommit.ci| |codecov| |pypi-version| |pypi-status| |downloads| |pypi-license|
 
 ------------
 
@@ -67,7 +66,6 @@ Bug reports (and feature requests) are welcome via `Github issues`_.
 .. |pypi-version| image:: https://img.shields.io/pypi/v/aiosmtplib.svg
                  :target: https://pypi.python.org/pypi/aiosmtplib
                  :alt: "aiosmtplib on the Python Package Index"
-.. |pypi-python-versions| image:: https://img.shields.io/pypi/pyversions/aiosmtplib.svg
 .. |pypi-status| image:: https://img.shields.io/pypi/status/aiosmtplib.svg
 .. |pypi-license| image:: https://img.shields.io/pypi/l/aiosmtplib.svg
 .. |codecov| image:: https://codecov.io/gh/cole/aiosmtplib/branch/main/graph/badge.svg
