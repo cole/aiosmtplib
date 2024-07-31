@@ -11,10 +11,10 @@ __all__ = ("auth_crammd5_verify", "auth_plain_encode", "auth_login_encode")
 
 
 def _ensure_bytes(value: Union[str, bytes]) -> bytes:
-    if isinstance(value, bytes):
-        return value
+    if isinstance(value, str):
+        return value.encode("utf-8")
 
-    return value.encode("utf-8")
+    return bytes(value)
 
 
 def auth_crammd5_verify(

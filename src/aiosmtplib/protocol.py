@@ -345,7 +345,9 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
                 raise SMTPResponseException(response.code, response.message)
 
             # Check for disconnect after response
-            if self.transport is None or self.transport.is_closing():
+            if (
+                not isinstance(self.transport, asyncio.WriteTransport)
+            ) or self.transport.is_closing():
                 raise SMTPServerDisconnected("Connection lost")
 
             try:
