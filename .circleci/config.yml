@@ -92,7 +92,9 @@ jobs:
             - run: python -m pip install mypy
             - run: python -m pip install pyright
       - run: python -m mypy src/aiosmtplib
-      - run: python -m pyright tests/pyright.py
+      - run: python -m pyright src/aiosmtplib
+      - run: python -m pyright tests/pyright_usage.py
+
   security:
     executor:
       name: docker_executor
