@@ -1,7 +1,7 @@
 aiosmtplib
 ==========
 
-|circleci| |precommit.ci| |codecov| |pypi-version| |pypi-status| |downloads| |pypi-license|
+|circleci| |precommit.ci| |codecov| |zero-deps| |pypi-version| |downloads| |pypi-license|
 
 ------------
 
@@ -76,4 +76,7 @@ Bug reports (and feature requests) are welcome via `Github issues`_.
 .. |precommit.ci| image:: https://results.pre-commit.ci/badge/github/cole/aiosmtplib/main.svg
                   :target: https://results.pre-commit.ci/latest/github/cole/aiosmtplib/main
                   :alt: "pre-commit.ci status"
+.. |zero-deps| image:: https://0dependencies.dev/0dependencies.svg
+               :target: https://0dependencies.dev
+               :alt: "0 dependencies"
 .. _Read The Docs: https://aiosmtplib.readthedocs.io/en/stable/
