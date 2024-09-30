@@ -12,7 +12,7 @@ import email.policy
 import email.utils
 import io
 import re
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Union
 
 
 __all__ = (
@@ -45,31 +45,6 @@ def quote_address(address: str) -> str:
     """
     parsed_address = parse_address(address)
     return f"<{parsed_address}>"
-
-
-def formataddr(pair: Tuple[str, str]) -> str:
-    """
-    Copied from the standard library, and modified to handle international (UTF-8)
-    email addresses.
-
-    The inverse of parseaddr(), this takes a 2-tuple of the form
-    (realname, email_address) and returns the string value suitable
-    for an RFC 2822 From, To or Cc header.
-    If the first element of pair is false, then the second element is
-    returned unmodified.
-    """
-    name, address = pair
-    if name:
-        encoded_name = UTF8_CHARSET.header_encode(name)
-        return f"{encoded_name} <{address}>"
-    else:
-        quotes = ""
-        if SPECIALS_REGEX.search(name):
-            quotes = '"'
-            name = ESCAPES_REGEX.sub(r"\\\g<0>", name)
-            return f"{quotes}{name}{quotes} <{address}>"
-
-    return address
 
 
 def flatten_message(
@@ -121,9 +96,9 @@ def extract_addresses(
                 addresses.append(parse_address(address))
     elif isinstance(header, email.header.Header):
         for address_bytes, charset in email.header.decode_header(header):
-            if charset is None:
-                charset = "ascii"
-            addresses.append(parse_address(str(address_bytes, encoding=charset)))
+            address_str = str(address_bytes, encoding=charset or "ascii")
+            address = parse_address(address_str)
+            addresses.append(address)
     else:
         addresses.extend(addr for _, addr in email.utils.getaddresses([header]))
 
