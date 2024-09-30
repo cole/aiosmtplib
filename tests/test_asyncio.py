@@ -173,11 +173,11 @@ async def test_many_commands_with_gather(
 
 
 async def test_close_works_on_stopped_loop(
-    event_loop: asyncio.AbstractEventLoop,
     hostname: str,
     smtpd_server_port: int,
     client_tls_context: ssl.SSLContext,
 ) -> None:
+    event_loop = asyncio.get_running_loop()
     client = SMTP(
         hostname=hostname, port=smtpd_server_port, tls_context=client_tls_context
     )

@@ -18,9 +18,8 @@ from .compat import cleanup_server
 pytestmark = pytest.mark.asyncio()
 
 
-async def test_protocol_connect(
-    event_loop: asyncio.AbstractEventLoop, hostname: str, echo_server_port: int
-) -> None:
+async def test_protocol_connect(hostname: str, echo_server_port: int) -> None:
+    event_loop = asyncio.get_running_loop()
     connect_future = event_loop.create_connection(
         SMTPProtocol, host=hostname, port=echo_server_port
     )
@@ -33,11 +32,12 @@ async def test_protocol_connect(
 
 
 async def test_protocol_read_limit_overrun(
-    event_loop: asyncio.AbstractEventLoop,
     bind_address: str,
     hostname: str,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    event_loop = asyncio.get_running_loop()
+
     async def client_connected(
         reader: asyncio.StreamReader, writer: asyncio.StreamWriter
     ) -> None:
@@ -101,8 +101,9 @@ async def test_protocol_writer_connected_check_on_start_tls(
 
 
 async def test_error_on_readline_with_partial_line(
-    event_loop: asyncio.AbstractEventLoop, bind_address: str, hostname: str
+    bind_address: str, hostname: str
 ) -> None:
+    event_loop = asyncio.get_running_loop()
     partial_response = b"499 incomplete response\\"
 
     async def client_connected(
@@ -131,11 +132,12 @@ async def test_error_on_readline_with_partial_line(
 
 
 async def test_protocol_response_waiter_unset(
-    event_loop: asyncio.AbstractEventLoop,
     bind_address: str,
     hostname: str,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    event_loop = asyncio.get_running_loop()
+
     async def client_connected(
         reader: asyncio.StreamReader, writer: asyncio.StreamWriter
     ) -> None:
@@ -164,10 +166,11 @@ async def test_protocol_response_waiter_unset(
 
 
 async def test_protocol_data_received_called_twice(
-    event_loop: asyncio.AbstractEventLoop,
     bind_address: str,
     hostname: str,
 ) -> None:
+    event_loop = asyncio.get_running_loop()
+
     async def client_connected(
         reader: asyncio.StreamReader, writer: asyncio.StreamWriter
     ) -> None:
@@ -198,9 +201,9 @@ async def test_protocol_data_received_called_twice(
     await cleanup_server(server)
 
 
-async def test_protocol_eof_response(
-    event_loop: asyncio.AbstractEventLoop, bind_address: str, hostname: str
-) -> None:
+async def test_protocol_eof_response(bind_address: str, hostname: str) -> None:
+    event_loop = asyncio.get_running_loop()
+
     async def client_connected(
         reader: asyncio.StreamReader, writer: asyncio.StreamWriter
     ) -> None:
@@ -262,9 +265,9 @@ async def test_protocol_exception_cleanup_warning(
     assert "Future exception was never retrieved" not in caplog.text
 
 
-async def test_flow_control_drain(
-    event_loop: asyncio.AbstractEventLoop,
-):
+async def test_flow_control_drain():
+    event_loop = asyncio.get_running_loop()
+
     # Adapted from stdlib
     drained = 0
 

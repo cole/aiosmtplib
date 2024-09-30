@@ -103,11 +103,12 @@ async def test_timeout_on_starttls(
 
 
 async def test_protocol_read_response_with_timeout_times_out(
-    event_loop: asyncio.AbstractEventLoop,
     echo_server: asyncio.AbstractServer,
     hostname: str,
     echo_server_port: int,
 ) -> None:
+    event_loop = asyncio.get_running_loop()
+
     connect_future = event_loop.create_connection(
         SMTPProtocol, host=hostname, port=echo_server_port
     )
@@ -149,11 +150,12 @@ async def test_server_disconnected_error_after_connect_timeout(
 
 
 async def test_protocol_timeout_on_starttls(
-    event_loop: asyncio.AbstractEventLoop,
     bind_address: str,
     hostname: str,
     client_tls_context: ssl.SSLContext,
 ) -> None:
+    event_loop = asyncio.get_running_loop()
+
     async def client_connected(
         reader: asyncio.StreamReader, writer: asyncio.StreamWriter
     ) -> None:
