@@ -44,6 +44,7 @@ docs = [
 path = "src/aiosmtplib/__init__.py"
 
 [tool.pytest.ini_options]
+pythonpath = "src"
 asyncio_mode = "strict"
 minversion = "6.0"
 junit_family = "xunit2"
@@ -54,14 +55,16 @@ addopts = [
 testpaths = ["tests"]
 
 [tool.ruff]
+target-version = "py38"
+line-length = 88
+
+[tool.ruff.lint]
 # Enable flake8-bugbear (`B`) rules.
 select = ["E", "F", "B"]
 # Never enforce `E501` (line length violations).
 ignore = ["E501"]
 # Avoid trying to fix flake8-bugbear (`B`) violations.
 unfixable = ["B"]
-line-length = 88
-target-version = "py38"
 
 [tool.coverage]
 
