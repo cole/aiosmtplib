@@ -11,8 +11,9 @@ import pathlib
 import socket
 import ssl
 import sys
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable, Coroutine, List, Optional, Tuple, Type, Union
+from typing import Any, Coroutine, Dict, Generator, List, Optional, Tuple, Type, Union
 
 import hypothesis
 import pytest
@@ -616,10 +617,71 @@ def socket_path(
 
 
 @pytest.fixture(scope="function")
-def smtpd_server(
-    request: pytest.FixtureRequest,
+def cleanup_server_factory(
     event_loop: asyncio.AbstractEventLoop,
+) -> Generator[Callable[[asyncio.AbstractServer], None], None, None]:
+    def cleanup(server: asyncio.AbstractServer) -> None:
+        server.close()
+        try:
+            event_loop.run_until_complete(cleanup_server(server))
+        except RuntimeError:
+            pass
+
+    yield cleanup
+
+
+@pytest.fixture(scope="function")
+def server_factory(
+    event_loop: asyncio.AbstractEventLoop,
+    cleanup_server_factory: Callable[[asyncio.AbstractServer], None],
     bind_address: str,
+) -> Generator[Callable[..., asyncio.AbstractServer], None, None]:
+    server = None
+
+    def start_server(
+        factory: Callable[..., Any], **kwargs: Dict[str, Any]
+    ) -> asyncio.AbstractServer:
+        nonlocal server
+        server = event_loop.run_until_complete(
+            event_loop.create_server(
+                factory, host=bind_address, port=0, family=socket.AF_INET, **kwargs
+            )
+        )
+        return server
+
+    yield start_server
+
+    cleanup_server_factory(server)
+
+
+@pytest.fixture(scope="function")
+def socket_server_factory(
+    event_loop: asyncio.AbstractEventLoop,
+    cleanup_server_factory: Callable[[asyncio.AbstractServer], None],
+    socket_path: Union[str, bytes, Path],
+) -> Generator[Callable[..., asyncio.AbstractServer], None, None]:
+    server = None
+
+    def start_server(
+        factory: Callable[..., Any], **kwargs: Dict[str, Any]
+    ) -> asyncio.AbstractServer:
+        nonlocal server
+        create_server_coro = event_loop.create_unix_server(
+            factory,
+            path=socket_path,  # type: ignore
+            **kwargs,
+        )
+        server = event_loop.run_until_complete(create_server_coro)
+        return server
+
+    yield start_server
+
+    cleanup_server_factory(server)
+
+
+@pytest.fixture(scope="function")
+def smtpd_server(
+    server_factory: Callable[..., asyncio.AbstractServer],
     hostname: str,
     smtpd_class: Type[SMTPD],
     smtpd_handler: RecordingHandler,
@@ -635,29 +697,12 @@ def smtpd_server(
             auth_callback=smtpd_auth_callback,
         )
 
-    server = event_loop.run_until_complete(
-        event_loop.create_server(
-            factory, host=bind_address, port=0, family=socket.AF_INET
-        )
-    )
-
-    def close_server() -> None:
-        server.close()
-        try:
-            event_loop.run_until_complete(cleanup_server(server))
-        except RuntimeError:
-            pass
-
-    request.addfinalizer(close_server)
-
-    return server
+    return server_factory(factory)
 
 
 @pytest.fixture(scope="function")
 def smtpd_server_smtputf8(
-    request: pytest.FixtureRequest,
-    event_loop: asyncio.AbstractEventLoop,
-    bind_address: str,
+    server_factory: Callable[..., asyncio.AbstractServer],
     hostname: str,
     smtpd_class: Type[SMTPD],
     smtpd_handler: RecordingHandler,
@@ -673,52 +718,20 @@ def smtpd_server_smtputf8(
             auth_callback=smtpd_auth_callback,
         )
 
-    server = event_loop.run_until_complete(
-        event_loop.create_server(
-            factory, host=bind_address, port=0, family=socket.AF_INET
-        )
-    )
-
-    def close_server() -> None:
-        server.close()
-        try:
-            event_loop.run_until_complete(cleanup_server(server))
-        except RuntimeError:
-            pass
-
-    request.addfinalizer(close_server)
-
-    return server
+    return server_factory(factory)
 
 
 @pytest.fixture(scope="function")
 def echo_server(
-    request: pytest.FixtureRequest,
-    bind_address: str,
-    event_loop: asyncio.AbstractEventLoop,
+    server_factory: Callable[..., asyncio.AbstractServer],
 ) -> asyncio.AbstractServer:
-    server = event_loop.run_until_complete(
-        event_loop.create_server(
-            EchoServerProtocol, host=bind_address, port=0, family=socket.AF_INET
-        )
-    )
-
-    def close_server() -> None:
-        server.close()
-        try:
-            event_loop.run_until_complete(cleanup_server(server))
-        except RuntimeError:
-            pass
-
-    return server
+    return server_factory(EchoServerProtocol)
 
 
 @pytest.fixture(scope="function")
 def smtpd_server_socket_path(
-    request: pytest.FixtureRequest,
-    event_loop: asyncio.AbstractEventLoop,
+    socket_server_factory: Callable[..., asyncio.AbstractServer],
     hostname: str,
-    socket_path: Union[str, bytes, Path],
     smtpd_class: Type[SMTPD],
     smtpd_handler: RecordingHandler,
     server_tls_context: ssl.SSLContext,
@@ -733,29 +746,12 @@ def smtpd_server_socket_path(
             auth_callback=smtpd_auth_callback,
         )
 
-    create_server_coro = event_loop.create_unix_server(
-        factory,
-        path=socket_path,  # type: ignore
-    )
-    server = event_loop.run_until_complete(create_server_coro)
-
-    def close_server() -> None:
-        server.close()
-        try:
-            event_loop.run_until_complete(cleanup_server(server))
-        except RuntimeError:
-            pass
-
-    request.addfinalizer(close_server)
-
-    return server
+    return socket_server_factory(factory)
 
 
 @pytest.fixture(scope="function")
 def smtpd_server_tls(
-    request: pytest.FixtureRequest,
-    event_loop: asyncio.AbstractEventLoop,
-    bind_address: str,
+    server_factory: Callable[..., asyncio.AbstractServer],
     smtpd_class: Type[SMTPD],
     smtpd_handler: RecordingHandler,
     server_tls_context: ssl.SSLContext,
@@ -768,49 +764,27 @@ def smtpd_server_tls(
             tls_context=server_tls_context,
         )
 
-    server = event_loop.run_until_complete(
-        event_loop.create_server(
-            factory,
-            host=bind_address,
-            port=0,
-            ssl=server_tls_context,
-            family=socket.AF_INET,
-        )
-    )
-
-    def close_server() -> None:
-        server.close()
-        try:
-            event_loop.run_until_complete(cleanup_server(server))
-        except RuntimeError:
-            pass
-
-    request.addfinalizer(close_server)
-
-    return server
+    return server_factory(factory, ssl=server_tls_context)
 
 
 @pytest.fixture(scope="function")
 def smtpd_controller(
-    request: pytest.FixtureRequest,
     bind_address: str,
     unused_tcp_port: int,
     smtpd_handler: RecordingHandler,
-) -> SMTPDController:
+) -> Generator[SMTPDController, None, None]:
     port = unused_tcp_port
     controller: Optional[SMTPDController]
     controller = SMTPDController(smtpd_handler, hostname=bind_address, port=port)
     controller.start()
 
-    request.addfinalizer(controller.stop)
+    yield controller
 
-    return controller
+    controller.stop()
 
 
 @pytest.fixture(scope="function")
-def smtpd_server_threaded(
-    request: pytest.FixtureRequest, smtpd_controller: SMTPDController
-) -> asyncio.AbstractServer:
+def smtpd_server_threaded(smtpd_controller: SMTPDController) -> asyncio.AbstractServer:
     server: asyncio.AbstractServer = smtpd_controller.server
     return server
 
