@@ -84,14 +84,11 @@ def flatten_message(
     del message_copy["Bcc"]
     del message_copy["Resent-Bcc"]
 
-    policy: email.policy.Policy
-    if isinstance(message, email.message.EmailMessage):
-        # New message class, default policy
-        policy = email.policy.default.clone(
-            linesep=LINE_SEP,
-            utf8=utf8,
-            cte_type=cte_type,
-        )
+    policy: Union[email.policy.EmailPolicy, email.policy.Compat32]
+    if isinstance(message, email.message.EmailMessage) and utf8:
+        policy = email.policy.SMTPUTF8.clone(cte_type=cte_type)
+    elif isinstance(message, email.message.EmailMessage):
+        policy = email.policy.SMTP.clone(cte_type=cte_type)
     else:
         # Old message class, Compat32 policy.
         # Compat32 cannot use UTF8
