@@ -47,7 +47,10 @@ path = "src/aiosmtplib/__init__.py"
 asyncio_mode = "strict"
 minversion = "6.0"
 junit_family = "xunit2"
-addopts = "--strict-markers"
+addopts = [
+    "--import-mode=importlib",
+    "--strict-markers",
+]
 testpaths = ["tests"]
 
 [tool.ruff]
