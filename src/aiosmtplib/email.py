@@ -97,8 +97,7 @@ def extract_addresses(
     elif isinstance(header, email.header.Header):
         for address_bytes, charset in email.header.decode_header(header):
             address_str = str(address_bytes, encoding=charset or "ascii")
-            address = parse_address(address_str)
-            addresses.append(address)
+            addresses.append(parse_address(address_str))
     else:
         addresses.extend(addr for _, addr in email.utils.getaddresses([header]))
 
