@@ -11,9 +11,19 @@ import pathlib
 import socket
 import ssl
 import sys
-from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Coroutine, Dict, Generator, List, Optional, Tuple, Type, Union
+from typing import (
+    Any,
+    Callable,
+    Coroutine,
+    Dict,
+    Generator,
+    List,
+    Optional,
+    Tuple,
+    Type,
+    Union,
+)
 
 import hypothesis
 import pytest
