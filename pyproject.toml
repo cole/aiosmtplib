@@ -87,6 +87,7 @@ source = [
 ]
 
 [tool.pyright]
+strict = ["src/aiosmtplib"]
 # exclude all tests except pyright_usage
 exclude = [
     "tests/test_*.py",

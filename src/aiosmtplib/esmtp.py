@@ -39,7 +39,7 @@ def parse_esmtp_extensions(message: str) -> Tuple[Dict[str, str], List[str]]:
          250-XGEN
          250 SIZE 51200000
     """
-    esmtp_extensions = {}
+    esmtp_extensions: Dict[str, str] = {}
     auth_types: List[str] = []
 
     response_lines = message.split("\n")

@@ -12,7 +12,7 @@ import email.policy
 import email.utils
 import io
 import re
-from typing import List, Optional, Union
+from typing import Iterable, List, Optional, Union, cast
 
 
 __all__ = (
@@ -34,7 +34,7 @@ def parse_address(address: str) -> str:
     """
     Parse an email address, falling back to the raw string given.
     """
-    display_name, parsed_address = email.utils.parseaddr(address)
+    _, parsed_address = email.utils.parseaddr(address)
 
     return parsed_address or address.strip()
 
@@ -85,11 +85,13 @@ def extract_addresses(
     Convert address headers into raw email addresses, suitable for use in
     low level SMTP commands.
     """
-    addresses = []
+    addresses: List[str] = []
     if isinstance(header, email.headerregistry.AddressHeader):
-        for address in header.addresses:
-            # If the object has been assigned an iterable, it's possible to get
-            # a string here
+        # If the object has been assigned an iterable, it's possible to get a string here.
+        header_addresses = cast(
+            Iterable[Union[str, email.headerregistry.Address]], header.addresses
+        )
+        for address in header_addresses:
             if isinstance(address, email.headerregistry.Address):
                 addresses.append(address.addr_spec)
             else:
