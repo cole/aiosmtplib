@@ -70,7 +70,7 @@ Bug reports (and feature requests) are welcome via `Github issues`_.
 .. |pypi-license| image:: https://img.shields.io/pypi/l/aiosmtplib.svg
 .. |codecov| image:: https://codecov.io/gh/cole/aiosmtplib/branch/main/graph/badge.svg
              :target: https://codecov.io/gh/cole/aiosmtplib
-.. |downloads| image:: https://pepy.tech/badge/aiosmtplib
+.. |downloads| image:: https://static.pepy.tech/badge/aiosmtplib/month
                :target: https://pepy.tech/project/aiosmtplib
                :alt: "aiosmtplib on pypy.tech"
 .. |precommit.ci| image:: https://results.pre-commit.ci/badge/github/cole/aiosmtplib/main.svg
