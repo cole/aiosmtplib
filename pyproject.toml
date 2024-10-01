@@ -48,10 +48,7 @@ pythonpath = "src"
 asyncio_mode = "strict"
 minversion = "6.0"
 junit_family = "xunit2"
-addopts = [
-    "--import-mode=importlib",
-    "--strict-markers",
-]
+addopts = ["--import-mode=importlib", "--strict-markers"]
 testpaths = ["tests"]
 
 [tool.ruff]
@@ -87,4 +84,14 @@ source = [
     "src/aiosmtplib",
     "/opt/pypy/lib/pypy3.*/site-packages/aiosmtplib",
     "/usr/local/lib/python3.*/site-packages/aiosmtplib",
+]
+
+[tool.pyright]
+# exclude all tests except pyright_usage
+exclude = [
+    "tests/test_*.py",
+    "tests/auth.py",
+    "tests/compat.py",
+    "tests/conftest.py",
+    "tests/smtpd.py",
 ]
