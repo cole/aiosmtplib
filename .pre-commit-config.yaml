@@ -16,9 +16,12 @@ repos:
     hooks:
       - id: ruff
       - id: ruff-format
-  - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.382.post1
+  - repo: local
     hooks:
-    - id: pyright
-      additional_dependencies:
-        - nodejs
+    -   id: pyright
+        name: pyright
+        entry: pyright
+        language: node
+        args: []
+        files: '\.py$'
+        additional_dependencies: ["pyright@1.1.383"]
