@@ -13,7 +13,7 @@ executors:
       version:
         default: "3.11"
         type: enum
-        enum: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        enum: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
     docker:
       - image: "<<parameters.base_image>>:<<parameters.version>>-bookworm"
         auth:
@@ -131,7 +131,7 @@ jobs:
       python_version:
         type: enum
         description: "python version"
-        enum: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        enum: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
       event_loop:
         type: enum
         description: "event loop type"
@@ -249,7 +249,7 @@ workflows:
             parameters:
               event_loop: ["asyncio"]
               base_image: ["python"]
-              python_version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+              python_version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
           requires:
             - build
       - test:
