@@ -260,7 +260,7 @@ workflows:
             parameters:
               event_loop: ["asyncio"]
               base_image: ["pypy"]
-              python_version: ["3.9", "3.10"]
+              python_version: ["3.10"]
           requires:
             - build
             - "test-asyncio-<< matrix.python_version >>"
