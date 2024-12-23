@@ -199,6 +199,10 @@ workflows:
           <<: *base-job
           requires:
             - build
+      - docs:
+          <<: *base-job
+          requires:
+            - build
       - test-pypy:
           <<: *base-job
           name: "test-asyncio-pypy3.10"
@@ -235,6 +239,7 @@ workflows:
           requires:
             - build
             - buildcheck
+            - docs
             - test-cpython-asyncio
             - test-cpython-uvloop
             - test-asyncio-pypy3.10
@@ -251,13 +256,5 @@ workflows:
           <<: *base-job
       - security:
           <<: *base-job
-  docs:
-    jobs:
-      - build:
-          <<: *base-job
-      - docs:
-          <<: *base-job
-          requires:
-            - build
 
 # VS Code Extension Version: 1.5.1
