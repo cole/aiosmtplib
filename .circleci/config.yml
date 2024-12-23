@@ -206,10 +206,6 @@ workflows:
           <<: *base-job
           requires:
             - build
-      - docs:
-          <<: *base-job
-          requires:
-            - build
       - test-pypy:
           <<: *base-job
           name: "test-pypy-asyncio"
@@ -245,10 +241,7 @@ workflows:
       - deploy:
           requires:
             - build
-            - typecheck
             - buildcheck
-            - security
-            - docs
             - test-cpython-asyncio
             - test-cpython-uvloop
             - test-pypy-asyncio
@@ -259,4 +252,19 @@ workflows:
               ignore: /.*/
             tags:
               only: /^v.*/
+  lint:
+    jobs:
+      - typecheck:
+          <<: *base-job
+      - security:
+          <<: *base-job
+  docs:
+    jobs:
+      - build:
+          <<: *base-job
+      - docs:
+          <<: *base-job
+          requires:
+            - build
+
 # VS Code Extension Version: 1.5.1
