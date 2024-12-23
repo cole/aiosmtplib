@@ -6,7 +6,7 @@ orbs:
 executors:
   uv_executor:
     docker:
-      - image: "ghcr.io/astral-sh/uv:0.5-python3.12-bookworm"
+      - image: "ghcr.io/astral-sh/uv:python3.12-bookworm"
         auth:
           username: $DOCKERHUB_USERNAME
           password: $DOCKERHUB_PASSWORD
