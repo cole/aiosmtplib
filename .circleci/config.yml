@@ -7,9 +7,6 @@ executors:
   uv_executor:
     docker:
       - image: "ghcr.io/astral-sh/uv:python3.12-bookworm"
-        auth:
-          username: $DOCKERHUB_USERNAME
-          password: $DOCKERHUB_PASSWORD
     resource_class: small
     environment:
       FORCE_COLOR: "1"
