@@ -201,7 +201,7 @@ workflows:
             - build
       - test-pypy:
           <<: *base-job
-          name: "test-pypy-asyncio"
+          name: "test-asyncio-pypy3.10"
           requires:
             - build
       - test:
@@ -230,14 +230,14 @@ workflows:
           requires:
             - test-cpython-asyncio
             - test-cpython-uvloop
-            - test-pypy-asyncio
+            - test-asyncio-pypy3.10
       - deploy:
           requires:
             - build
             - buildcheck
             - test-cpython-asyncio
             - test-cpython-uvloop
-            - test-pypy-asyncio
+            - test-asyncio-pypy3.10
           context:
             - docker-hub-credentials
           filters:
