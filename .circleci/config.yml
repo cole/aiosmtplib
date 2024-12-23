@@ -163,6 +163,7 @@ jobs:
     environment:
       COVERAGE_FILE: .coverage
     steps:
+      - checkout
       - attach_workspace:
           at: coverage-results
       - run: cp coverage-results/.coverage.* ./
