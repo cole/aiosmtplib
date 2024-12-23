@@ -4,55 +4,30 @@ orbs:
   codecov: codecov/codecov@4.1.0
 
 executors:
-  uv_executor:
-    docker:
-      - image: "ghcr.io/astral-sh/uv:python3.12-bookworm"
-    resource_class: small
-    environment:
-      FORCE_COLOR: "1"
-      UV_CACHE_DIR: "~/caches/uv"
-  matrix_executor:
+  cpython_executor:
     parameters:
-      base_image:
-        default: "python"
-        type: enum
-        enum: ["python", "pypy"]
       version:
         default: "3.12"
         type: enum
         enum: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
     docker:
-      - image: "<<parameters.base_image>>:<<parameters.version>>-bookworm"
+      - image: "ghcr.io/astral-sh/uv:python<<parameters.version>>-bookworm"
+    resource_class: small
+    environment:
+      FORCE_COLOR: "1"
+      UV_CACHE_DIR: "~/caches/uv"
+  pypy_executor:
+    docker:
+      - image: "pypy:3.10-bookworm"
         auth:
           username: $DOCKERHUB_USERNAME
           password: $DOCKERHUB_PASSWORD
     resource_class: small
     environment:
       FORCE_COLOR: "1"
-      PIP_CACHE_DIR: ~/caches/pip
-      PIP_DISABLE_PIP_VERSION_CHECK: "1"
       PIP_ROOT_USER_ACTION: "ignore"
 
 commands:
-  setup_venv:
-    description: "Setup and install virtualenv, with caching"
-    parameters:
-      install:
-        type: steps
-        default: []
-    steps:
-      - restore_cache:
-          keys:
-            - venv-v1-{{ .Environment.CIRCLE_JOB }}
-      - run: mkdir -p ~/caches/pip
-      - run: python -m venv ~/venv
-      - run: . ~/venv/bin/activate
-      - steps: <<parameters.install>>
-      - save_cache:
-          key: venv-v1-{{ .Environment.CIRCLE_JOB }}
-          paths:
-            - "~/venv"
-            - ~/caches/pip
   setup_uv:
     description: "Install via uv"
     parameters:
@@ -72,11 +47,10 @@ commands:
             - ".venv"
             - ~/caches/uv
 
-
 jobs:
   build:
     executor:
-      name: uv_executor
+      name: cpython_executor
     steps:
       - checkout
       - run: uv build
@@ -90,7 +64,7 @@ jobs:
 
   buildcheck:
     executor:
-      name: uv_executor
+      name: cpython_executor
     steps:
       - checkout
       - attach_workspace:
@@ -104,7 +78,7 @@ jobs:
 
   typecheck:
     executor:
-      name: uv_executor
+      name: cpython_executor
     steps:
       - checkout
       - setup_uv:
@@ -114,7 +88,7 @@ jobs:
 
   security:
     executor:
-      name: uv_executor
+      name: cpython_executor
     steps:
       - checkout
       - setup_uv:
@@ -124,7 +98,7 @@ jobs:
 
   docs:
     executor:
-      name: uv_executor
+      name: cpython_executor
     steps:
       - checkout
       - attach_workspace:
@@ -139,13 +113,9 @@ jobs:
 
   test:
     executor:
-      name: matrix_executor
-      base_image: <<parameters.base_image>>
+      name: cpython_executor
       version: <<parameters.python_version>>
     parameters:
-      base_image:
-        type: enum
-        enum: ["python", "pypy"]
       python_version:
         type: enum
         description: "python version"
@@ -155,7 +125,7 @@ jobs:
         description: "event loop type"
         enum: ["asyncio", "uvloop"]
     environment:
-      COVERAGE_FILE: "coverage-results/.coverage.<<parameters.base_image>><<parameters.python_version>>-<<parameters.event_loop>>"
+      COVERAGE_FILE: "coverage-results/.coverage.cpython<<parameters.python_version>>-<<parameters.event_loop>>"
       HYPOTHESIS_PROFILE: "ci"
       BIND_ADDR: "127.0.0.1"
     steps:
@@ -165,22 +135,22 @@ jobs:
       - restore_cache:
           keys:
             - "hypothesis-v7-<<parameters.python_version>>"
-      - setup_venv:
+      - setup_uv:
           install:
-            - run: python -m pip install -r requirements-dev.txt
+            - run: uv pip install -r requirements-dev.txt
       # package install happens outside of venv cache
       - when:
           condition:
             equal: ["uvloop", <<parameters.event_loop>>]
           steps:
-            - run: python -m pip install $(find dist -name aiosmtplib-*.whl)[uvloop]
+            - run: uv pip install $(find dist -name aiosmtplib-*.whl)[uvloop]
       - unless:
           condition:
             equal: ["uvloop", <<parameters.event_loop>>]
           steps:
-            - run: python -m pip install $(find dist -name aiosmtplib-*.whl)
+            - run: uv pip install $(find dist -name aiosmtplib-*.whl)
       - run: |
-          python -m pytest --cov --cov-report= \
+          uv run python -m pytest --cov --cov-report= \
             --cov-config=pyproject.toml \
             --junitxml=test-results/$CIRCLE_JOB/results.xml \
             --override-ini=pythonpath= \
@@ -199,9 +169,46 @@ jobs:
           key: "hypothesis-v7-<<parameters.python_version>>"
           paths:
             - .hypothesis
+  test-pypy:
+    executor:
+      name: pypy_executor
+    environment:
+      COVERAGE_FILE: "coverage-results/.coverage.pypyn3.10-asyncio"
+      HYPOTHESIS_PROFILE: "ci"
+      BIND_ADDR: "127.0.0.1"
+    steps:
+      - checkout
+      - attach_workspace:
+          at: dist
+      - restore_cache:
+          keys:
+            - "hypothesis-v7-pypy-3.10"
+      - run: python -m pip install -r requirements-dev.txt
+      - run: python -m pip install $(find dist -name aiosmtplib-*.whl)
+      - run: |
+          python -m pytest --cov --cov-report= \
+            --cov-config=pyproject.toml \
+            --junitxml=test-results/$CIRCLE_JOB/results.xml \
+            --override-ini=pythonpath= \
+            --event-loop=asyncio \
+            --bind-addr=$BIND_ADDR \
+            --hypothesis-profile $HYPOTHESIS_PROFILE
+      - store_artifacts:
+          path: test-results
+      - store_test_results:
+          path: test-results
+      - persist_to_workspace:
+          root: coverage-results
+          paths:
+            - .coverage.*
+      - save_cache:
+          key: "hypothesis-v7-pypy-3.10"
+          paths:
+            - .hypothesis
+
   coverage:
     executor:
-      name: uv_executor
+      name: cpython_executor
     environment:
       COVERAGE_FILE: .coverage
     steps:
@@ -225,7 +232,7 @@ jobs:
 
   deploy:
     executor:
-      name: uv_executor
+      name: cpython_executor
     steps:
       - checkout
       - attach_workspace:
@@ -257,6 +264,11 @@ workflows:
           <<: *base-job
           requires:
             - build
+      - test-pypy:
+          <<: *base-job
+          name: "test-pypy-asyncio"
+          requires:
+            - build
       - test:
           <<: *base-job
           name: "test-asyncio-<< matrix.python_version >>"
@@ -264,22 +276,9 @@ workflows:
             alias: "test-cpython-asyncio"
             parameters:
               event_loop: ["asyncio"]
-              base_image: ["python"]
               python_version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
           requires:
             - build
-      - test:
-          <<: *base-job
-          name: "test-pypy-<< matrix.python_version >>"
-          matrix:
-            alias: "test-pypy-asyncio"
-            parameters:
-              event_loop: ["asyncio"]
-              base_image: ["pypy"]
-              python_version: ["3.10"]
-          requires:
-            - build
-            - "test-asyncio-<< matrix.python_version >>"
       - test:
           <<: *base-job
           name: "test-uvloop-<< matrix.python_version >>"
@@ -287,7 +286,6 @@ workflows:
             alias: "test-cpython-uvloop"
             parameters:
               event_loop: ["uvloop"]
-              base_image: ["python"]
               python_version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
           requires:
             - build
