@@ -11,7 +11,7 @@ executors:
         type: enum
         enum: ["python", "pypy"]
       version:
-        default: "3.11"
+        default: "3.12"
         type: enum
         enum: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
     docker:
@@ -51,7 +51,7 @@ jobs:
   build:
     executor:
       name: docker_executor
-      version: "3.11"
+      version: "3.12"
     steps:
       - checkout
       - setup_venv:
@@ -69,7 +69,7 @@ jobs:
   buildcheck:
     executor:
       name: docker_executor
-      version: "3.11"
+      version: "3.12"
     steps:
       - checkout
       - attach_workspace:
@@ -84,7 +84,7 @@ jobs:
   typecheck:
     executor:
       name: docker_executor
-      version: "3.11"
+      version: "3.12"
     steps:
       - checkout
       - setup_venv:
@@ -95,7 +95,7 @@ jobs:
   security:
     executor:
       name: docker_executor
-      version: "3.11"
+      version: "3.12"
     steps:
       - checkout
       - setup_venv:
@@ -106,7 +106,7 @@ jobs:
   docs:
     executor:
       name: docker_executor
-      version: "3.11"
+      version: "3.12"
     steps:
       - checkout
       - attach_workspace:
@@ -184,7 +184,7 @@ jobs:
   coverage:
     executor:
       name: docker_executor
-      version: "3.11"
+      version: "3.12"
     environment:
       COVERAGE_FILE: .coverage
     steps:
@@ -209,7 +209,7 @@ jobs:
   deploy:
     executor:
       name: docker_executor
-      version: "3.11"
+      version: "3.12"
     steps:
       - checkout
       - attach_workspace:
