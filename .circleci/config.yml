@@ -72,6 +72,7 @@ jobs:
       - checkout
       - attach_workspace:
           at: dist
+      - run: uv venv
       - run: uv pip install -r docs/requirements.txt
       - run: uv pip install -r requirements-dev.txt
       - run: uv pip install dist/*.whl
@@ -99,6 +100,7 @@ jobs:
       - checkout
       - attach_workspace:
           at: dist
+      - run: uv venv
       - run: uv pip install -r requirements-dev.txt
       - when:
           condition:
