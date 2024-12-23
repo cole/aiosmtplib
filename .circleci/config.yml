@@ -45,7 +45,6 @@ jobs:
     executor:
       name: cpython_executor
     steps:
-      - checkout
       - attach_workspace:
           at: dist
       - run: uv tool run check-wheel-contents dist/*.whl
@@ -164,7 +163,6 @@ jobs:
     environment:
       COVERAGE_FILE: .coverage
     steps:
-      - checkout
       - attach_workspace:
           at: coverage-results
       - run: cp coverage-results/.coverage.* ./
@@ -183,7 +181,6 @@ jobs:
     executor:
       name: cpython_executor
     steps:
-      - checkout
       - attach_workspace:
           at: dist
       - run: uv tool run twine upload -r testpypi --username $TESTPYPI_USERNAME --password $TESTPYPI_PASSWORD dist/*
