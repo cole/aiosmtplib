@@ -104,41 +104,38 @@ jobs:
 
   typecheck:
     executor:
-      name: matrix_executor
-      version: "3.12"
+      name: uv_executor
     steps:
       - checkout
-      - setup_venv:
+      - setup_uv:
           install:
-            - run: python -m pip install mypy
-      - run: python -m mypy src/aiosmtplib
+            - run: uv pip install mypy
+      - run: uv run python -m mypy src/aiosmtplib
 
   security:
     executor:
-      name: matrix_executor
-      version: "3.12"
+      name: uv_executor
     steps:
       - checkout
-      - setup_venv:
+      - setup_uv:
           install:
-            - run: python -m pip install bandit
-      - run: python -m bandit -n 10 -x tests -r src/aiosmtplib
+            - run: uv pip install bandit
+      - run: uv run python -m bandit -n 10 -x tests -r src/aiosmtplib
 
   docs:
     executor:
-      name: matrix_executor
-      version: "3.12"
+      name: uv_executor
     steps:
       - checkout
       - attach_workspace:
           at: dist
-      - setup_venv:
+      - setup_uv:
           install:
-            - run: python -m pip install -r docs/requirements.txt
-            - run: python -m pip install -r requirements-dev.txt
-      - run: python -m pip install dist/*.whl
-      - run: python -m sphinx -nWT -b doctest -d ./docs/build/doctrees ./docs ./docs/build/html
-      - run: python -m sphinx -nWT -b dummy -d ./docs/build/doctrees ./docs ./docs/build/html
+            - run: uv pip install -r docs/requirements.txt
+            - run: uv pip install -r requirements-dev.txt
+      - run: uv pip install dist/*.whl
+      - run: uv run python -m sphinx -nWT -b doctest -d ./docs/build/doctrees ./docs ./docs/build/html
+      - run: uv run python -m sphinx -nWT -b dummy -d ./docs/build/doctrees ./docs ./docs/build/html
 
   test:
     executor:
@@ -204,8 +201,7 @@ jobs:
             - .hypothesis
   coverage:
     executor:
-      name: matrix_executor
-      version: "3.12"
+      name: uv_executor
     environment:
       COVERAGE_FILE: .coverage
     steps:
@@ -213,13 +209,13 @@ jobs:
       - attach_workspace:
           at: coverage-results
       - run: cp coverage-results/.coverage.* ./
-      - setup_venv:
+      - setup_uv:
           install:
-            - run: python -m pip install coverage[toml]
-      - run: python -m coverage combine
-      - run: python -m coverage xml
-      - run: python -m coverage html
-      - run: python -m coverage report --fail-under=90
+            - run: uv pip install coverage[toml]
+      - run: uv run python -m coverage combine
+      - run: uv run python -m coverage xml
+      - run: uv run python -m coverage html
+      - run: uv run python -m coverage report --fail-under=90
       - store_artifacts:
           path: coverage.xml
       - store_artifacts:
@@ -229,17 +225,16 @@ jobs:
 
   deploy:
     executor:
-      name: matrix_executor
-      version: "3.12"
+      name: uv_executor
     steps:
       - checkout
       - attach_workspace:
           at: dist
-      - setup_venv:
+      - setup_uv:
           install:
-            - run: python -m pip install twine
-      - run: twine upload -r testpypi --username $TESTPYPI_USERNAME --password $TESTPYPI_PASSWORD dist/*
-      - run: twine upload -r pypi --username $PYPI_USERNAME --password $PYPI_PASSWORD dist/*
+            - run: uv pip install twine
+      - run: uv run twine upload -r testpypi --username $TESTPYPI_USERNAME --password $TESTPYPI_PASSWORD dist/*
+      - run: uv run twine upload -r pypi --username $PYPI_USERNAME --password $PYPI_PASSWORD dist/*
 
 workflows:
   build_test_deploy:
