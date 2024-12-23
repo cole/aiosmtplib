@@ -28,3 +28,4 @@ test-results/
 TODO
 venv/
 poetry.lock
+uv.lock
