@@ -24,7 +24,6 @@ __all__ = (
 )
 
 
-LINE_SEP = "\r\n"
 SPECIALS_REGEX = re.compile(r'[][\\()<>@,:;".]')
 ESCAPES_REGEX = re.compile(r'[\\"]')
 UTF8_CHARSET = email.charset.Charset("utf-8")
@@ -59,19 +58,27 @@ def flatten_message(
     del message_copy["Bcc"]
     del message_copy["Resent-Bcc"]
 
-    policy: Union[email.policy.EmailPolicy, email.policy.Compat32]
-    if isinstance(message, email.message.EmailMessage) and utf8:
-        policy = email.policy.SMTPUTF8.clone(cte_type=cte_type)
-    elif isinstance(message, email.message.EmailMessage):
-        policy = email.policy.SMTP.clone(cte_type=cte_type)
-    else:
-        # Old message class, Compat32 policy.
-        # Compat32 cannot use UTF8
-        policy = email.policy.compat32.clone(linesep=LINE_SEP, cte_type=cte_type)
-
     with io.BytesIO() as messageio:
-        generator = email.generator.BytesGenerator(messageio, policy=policy)
-        generator.flatten(message_copy)
+        if isinstance(message_copy, email.message.EmailMessage):
+            policy = email.policy.SMTPUTF8 if utf8 else email.policy.SMTP
+
+            if cte_type != "8bit":
+                policy = policy.clone(cte_type=cte_type)
+
+            generator = email.generator.BytesGenerator(messageio, policy=policy)
+            generator.flatten(message_copy)
+        else:
+            # Old message class, Compat32 policy. Compat32 cannot use UTF8
+            # Mypy can't handle message unions, so just use different vars
+            compat_policy = email.policy.compat32
+            if cte_type != "8bit":
+                compat_policy = compat_policy.clone(cte_type=cte_type)
+
+            compat_generator = email.generator.BytesGenerator(
+                messageio, policy=compat_policy
+            )
+            compat_generator.flatten(message_copy)
+
         flat_message = messageio.getvalue()
 
     return flat_message
