@@ -62,14 +62,14 @@ commands:
     steps:
       - restore_cache:
           keys:
-            - uv-v1-{{ .Environment.CIRCLE_JOB }}
+            - uv-v2-{{ .Environment.CIRCLE_JOB }}
       - run: mkdir -p ~/caches/uv
       - run: uv venv
       - steps: <<parameters.install>>
       - save_cache:
-          key: uv-v1-{{ .Environment.CIRCLE_JOB }}
+          key: uv-v2-{{ .Environment.CIRCLE_JOB }}
           paths:
-            - "~/.venv"
+            - ".venv"
             - ~/caches/uv
 
 
