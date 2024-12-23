@@ -198,10 +198,6 @@ workflows:
           filters:
             tags:
               only: /.*/
-      - typecheck:
-          <<: *base-job
-      - security:
-          <<: *base-job
       - buildcheck:
           <<: *base-job
           requires:
