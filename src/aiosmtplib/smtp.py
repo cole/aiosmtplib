@@ -1072,7 +1072,7 @@ class SMTP:
         response: Optional[SMTPResponse] = None
         exception: Optional[SMTPAuthenticationError] = None
         for auth_name in self.supported_auth_methods:
-            method_name = f'auth_{auth_name.replace("-", "")}'
+            method_name = f"auth_{auth_name.replace('-', '')}"
             try:
                 auth_method = getattr(self, method_name)
             except AttributeError as err:

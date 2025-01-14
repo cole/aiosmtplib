@@ -421,9 +421,9 @@ def smtpd_mock_response_done() -> Callable[[SMTPD], Coroutine[Any, Any, None]]:
 
 
 @pytest.fixture(scope="session")
-def smtpd_mock_response_done_then_close() -> (
-    Callable[[SMTPD], Coroutine[Any, Any, None]]
-):
+def smtpd_mock_response_done_then_close() -> Callable[
+    [SMTPD], Coroutine[Any, Any, None]
+]:
     async def mock_response_done_then_close(
         smtpd: SMTPD, *args: Any, **kwargs: Any
     ) -> None:
@@ -445,9 +445,9 @@ def smtpd_mock_response_error() -> Callable[[SMTPD], Coroutine[Any, Any, None]]:
 
 
 @pytest.fixture(scope="session")
-def smtpd_mock_response_error_disconnect() -> (
-    Callable[[SMTPD], Coroutine[Any, Any, None]]
-):
+def smtpd_mock_response_error_disconnect() -> Callable[
+    [SMTPD], Coroutine[Any, Any, None]
+]:
     async def mock_response_error_disconnect(
         smtpd: SMTPD, *args: Any, **kwargs: Any
     ) -> None:
@@ -537,9 +537,9 @@ def smtpd_mock_response_unavailable() -> Callable[[SMTPD], Coroutine[Any, Any, N
 
 
 @pytest.fixture(scope="session")
-def smtpd_mock_response_tls_not_available() -> (
-    Callable[[SMTPD], Coroutine[Any, Any, None]]
-):
+def smtpd_mock_response_tls_not_available() -> Callable[
+    [SMTPD], Coroutine[Any, Any, None]
+]:
     async def mock_tls_not_available(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
         await smtpd.push("454 please login")
 
@@ -547,9 +547,9 @@ def smtpd_mock_response_tls_not_available() -> (
 
 
 @pytest.fixture(scope="session")
-def smtpd_mock_response_tls_ready_disconnect() -> (
-    Callable[[SMTPD], Coroutine[Any, Any, None]]
-):
+def smtpd_mock_response_tls_ready_disconnect() -> Callable[
+    [SMTPD], Coroutine[Any, Any, None]
+]:
     async def mock_response_tls_ready_disconnect(
         smtpd: SMTPD, *args: Any, **kwargs: Any
     ) -> None:
@@ -576,9 +576,9 @@ def smtpd_mock_response_eof() -> Callable[[SMTPD], Coroutine[Any, Any, None]]:
 
 
 @pytest.fixture(scope="session")
-def smtpd_mock_response_error_with_code_factory() -> (
-    Callable[[str], Callable[[SMTPD], Coroutine[Any, Any, None]]]
-):
+def smtpd_mock_response_error_with_code_factory() -> Callable[
+    [str], Callable[[SMTPD], Coroutine[Any, Any, None]]
+]:
     def factory(error_code: str) -> Callable[[SMTPD], Coroutine[Any, Any, None]]:
         async def mock_error_response(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
             await smtpd.push(f"{error_code} error")
