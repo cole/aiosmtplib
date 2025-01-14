@@ -4,60 +4,35 @@ orbs:
   codecov: codecov/codecov@4.1.0
 
 executors:
-  docker_executor:
+  cpython_executor:
     parameters:
-      base_image:
-        default: "python"
-        type: enum
-        enum: ["python", "pypy"]
       version:
-        default: "3.11"
+        default: "3.12"
         type: enum
         enum: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
     docker:
-      - image: "<<parameters.base_image>>:<<parameters.version>>-bookworm"
+      - image: "ghcr.io/astral-sh/uv:python<<parameters.version>>-bookworm"
+    resource_class: small
+    environment:
+      FORCE_COLOR: "1"
+  pypy_executor:
+    docker:
+      - image: "pypy:3.10-bookworm"
         auth:
           username: $DOCKERHUB_USERNAME
           password: $DOCKERHUB_PASSWORD
     resource_class: small
     environment:
       FORCE_COLOR: "1"
-      PIP_CACHE_DIR: ~/caches/pip
-      PIP_DISABLE_PIP_VERSION_CHECK: "1"
       PIP_ROOT_USER_ACTION: "ignore"
-
-commands:
-  setup_venv:
-    description: "Setup and install virtualenv, with caching"
-    parameters:
-      install:
-        type: steps
-        default: []
-    steps:
-      - restore_cache:
-          keys:
-            - venv-v1-{{ .Environment.CIRCLE_JOB }}
-      - run: mkdir -p ~/caches/pip
-      - run: python -m venv ~/venv
-      - run: . ~/venv/bin/activate
-      - steps: <<parameters.install>>
-      - save_cache:
-          key: venv-v1-{{ .Environment.CIRCLE_JOB }}
-          paths:
-            - "~/venv"
-            - ~/caches/pip
 
 jobs:
   build:
     executor:
-      name: docker_executor
-      version: "3.11"
+      name: cpython_executor
     steps:
       - checkout
-      - setup_venv:
-          install:
-            - run: python -m pip install build
-      - run: python -m build .
+      - run: uv build
       - persist_to_workspace:
           root: dist
           paths:
@@ -68,66 +43,46 @@ jobs:
 
   buildcheck:
     executor:
-      name: docker_executor
-      version: "3.11"
+      name: cpython_executor
     steps:
-      - checkout
       - attach_workspace:
           at: dist
-      - setup_venv:
-          install:
-            - run: python -m pip install check-wheel-contents
-            - run: python -m pip install twine
-      - run: check-wheel-contents dist/*.whl
-      - run: twine check --strict dist/*
+      - run: uv tool run check-wheel-contents dist/*.whl
+      - run: uv tool run twine check --strict dist/*
 
   typecheck:
     executor:
-      name: docker_executor
-      version: "3.11"
+      name: cpython_executor
     steps:
       - checkout
-      - setup_venv:
-          install:
-            - run: python -m pip install mypy
-      - run: python -m mypy src/aiosmtplib
+      - run: uv tool run mypy src/aiosmtplib
 
   security:
     executor:
-      name: docker_executor
-      version: "3.11"
+      name: cpython_executor
     steps:
       - checkout
-      - setup_venv:
-          install:
-            - run: python -m pip install bandit
-      - run: python -m bandit -n 10 -x tests -r src/aiosmtplib
+      - run: uv tool run bandit -n 10 -x tests -r src/aiosmtplib
 
   docs:
     executor:
-      name: docker_executor
-      version: "3.11"
+      name: cpython_executor
     steps:
       - checkout
       - attach_workspace:
           at: dist
-      - setup_venv:
-          install:
-            - run: python -m pip install -r docs/requirements.txt
-            - run: python -m pip install -r requirements-dev.txt
-      - run: python -m pip install dist/*.whl
-      - run: python -m sphinx -nWT -b doctest -d ./docs/build/doctrees ./docs ./docs/build/html
-      - run: python -m sphinx -nWT -b dummy -d ./docs/build/doctrees ./docs ./docs/build/html
+      - run: uv venv
+      - run: uv pip install -r docs/requirements.txt
+      - run: uv pip install -r requirements-dev.txt
+      - run: uv pip install dist/*.whl
+      - run: uv run python -m sphinx -nWT -b doctest -d ./docs/build/doctrees ./docs ./docs/build/html
+      - run: uv run python -m sphinx -nWT -b dummy -d ./docs/build/doctrees ./docs ./docs/build/html
 
   test:
     executor:
-      name: docker_executor
-      base_image: <<parameters.base_image>>
+      name: cpython_executor
       version: <<parameters.python_version>>
     parameters:
-      base_image:
-        type: enum
-        enum: ["python", "pypy"]
       python_version:
         type: enum
         description: "python version"
@@ -137,32 +92,27 @@ jobs:
         description: "event loop type"
         enum: ["asyncio", "uvloop"]
     environment:
-      COVERAGE_FILE: "coverage-results/.coverage.<<parameters.base_image>><<parameters.python_version>>-<<parameters.event_loop>>"
+      COVERAGE_FILE: "coverage-results/.coverage.cpython<<parameters.python_version>>-<<parameters.event_loop>>"
       HYPOTHESIS_PROFILE: "ci"
       BIND_ADDR: "127.0.0.1"
     steps:
       - checkout
       - attach_workspace:
           at: dist
-      - restore_cache:
-          keys:
-            - "hypothesis-v7-<<parameters.python_version>>"
-      - setup_venv:
-          install:
-            - run: python -m pip install -r requirements-dev.txt
-      # package install happens outside of venv cache
+      - run: uv venv
+      - run: uv pip install -r requirements-dev.txt
       - when:
           condition:
             equal: ["uvloop", <<parameters.event_loop>>]
           steps:
-            - run: python -m pip install $(find dist -name aiosmtplib-*.whl)[uvloop]
+            - run: uv pip install $(find dist -name aiosmtplib-*.whl)[uvloop]
       - unless:
           condition:
             equal: ["uvloop", <<parameters.event_loop>>]
           steps:
-            - run: python -m pip install $(find dist -name aiosmtplib-*.whl)
+            - run: uv pip install $(find dist -name aiosmtplib-*.whl)
       - run: |
-          python -m pytest --cov --cov-report= \
+          uv run python -m pytest --cov --cov-report= \
             --cov-config=pyproject.toml \
             --junitxml=test-results/$CIRCLE_JOB/results.xml \
             --override-ini=pythonpath= \
@@ -177,14 +127,39 @@ jobs:
           root: coverage-results
           paths:
             - .coverage.*
-      - save_cache:
-          key: "hypothesis-v7-<<parameters.python_version>>"
+  test-pypy:
+    executor:
+      name: pypy_executor
+    environment:
+      COVERAGE_FILE: "coverage-results/.coverage.pypyn3.10-asyncio"
+      HYPOTHESIS_PROFILE: "ci"
+      BIND_ADDR: "127.0.0.1"
+    steps:
+      - checkout
+      - attach_workspace:
+          at: dist
+      - run: python -m pip install -r requirements-dev.txt
+      - run: python -m pip install dist/*.whl
+      - run: |
+          python -m pytest --cov --cov-report= \
+            --cov-config=pyproject.toml \
+            --junitxml=test-results/$CIRCLE_JOB/results.xml \
+            --override-ini=pythonpath= \
+            --event-loop=asyncio \
+            --bind-addr=$BIND_ADDR \
+            --hypothesis-profile $HYPOTHESIS_PROFILE
+      - store_artifacts:
+          path: test-results
+      - store_test_results:
+          path: test-results
+      - persist_to_workspace:
+          root: coverage-results
           paths:
-            - .hypothesis
+            - .coverage.*
+
   coverage:
     executor:
-      name: docker_executor
-      version: "3.11"
+      name: cpython_executor
     environment:
       COVERAGE_FILE: .coverage
     steps:
@@ -192,13 +167,10 @@ jobs:
       - attach_workspace:
           at: coverage-results
       - run: cp coverage-results/.coverage.* ./
-      - setup_venv:
-          install:
-            - run: python -m pip install coverage[toml]
-      - run: python -m coverage combine
-      - run: python -m coverage xml
-      - run: python -m coverage html
-      - run: python -m coverage report --fail-under=90
+      - run: uv tool run coverage combine
+      - run: uv tool run coverage xml
+      - run: uv tool run coverage html
+      - run: uv tool run coverage report --fail-under=90
       - store_artifacts:
           path: coverage.xml
       - store_artifacts:
@@ -208,17 +180,12 @@ jobs:
 
   deploy:
     executor:
-      name: docker_executor
-      version: "3.11"
+      name: cpython_executor
     steps:
-      - checkout
       - attach_workspace:
           at: dist
-      - setup_venv:
-          install:
-            - run: python -m pip install twine
-      - run: twine upload -r testpypi --username $TESTPYPI_USERNAME --password $TESTPYPI_PASSWORD dist/*
-      - run: twine upload -r pypi --username $PYPI_USERNAME --password $PYPI_PASSWORD dist/*
+      - run: uv tool run twine upload -r testpypi --username $TESTPYPI_USERNAME --password $TESTPYPI_PASSWORD dist/*
+      - run: uv tool run twine upload -r pypi --username $PYPI_USERNAME --password $PYPI_PASSWORD dist/*
 
 workflows:
   build_test_deploy:
@@ -229,16 +196,17 @@ workflows:
           filters:
             tags:
               only: /.*/
-      - typecheck:
-          <<: *base-job
-      - security:
-          <<: *base-job
       - buildcheck:
           <<: *base-job
           requires:
             - build
       - docs:
           <<: *base-job
+          requires:
+            - build
+      - test-pypy:
+          <<: *base-job
+          name: "test-asyncio-pypy3.10"
           requires:
             - build
       - test:
@@ -248,22 +216,9 @@ workflows:
             alias: "test-cpython-asyncio"
             parameters:
               event_loop: ["asyncio"]
-              base_image: ["python"]
               python_version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
           requires:
             - build
-      - test:
-          <<: *base-job
-          name: "test-pypy-<< matrix.python_version >>"
-          matrix:
-            alias: "test-pypy-asyncio"
-            parameters:
-              event_loop: ["asyncio"]
-              base_image: ["pypy"]
-              python_version: ["3.10"]
-          requires:
-            - build
-            - "test-asyncio-<< matrix.python_version >>"
       - test:
           <<: *base-job
           name: "test-uvloop-<< matrix.python_version >>"
@@ -271,8 +226,7 @@ workflows:
             alias: "test-cpython-uvloop"
             parameters:
               event_loop: ["uvloop"]
-              base_image: ["python"]
-              python_version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+              python_version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
           requires:
             - build
             - "test-asyncio-<< matrix.python_version >>"
@@ -281,17 +235,15 @@ workflows:
           requires:
             - test-cpython-asyncio
             - test-cpython-uvloop
-            - test-pypy-asyncio
+            - test-asyncio-pypy3.10
       - deploy:
           requires:
             - build
-            - typecheck
             - buildcheck
-            - security
             - docs
             - test-cpython-asyncio
             - test-cpython-uvloop
-            - test-pypy-asyncio
+            - test-asyncio-pypy3.10
           context:
             - docker-hub-credentials
           filters:
@@ -299,4 +251,11 @@ workflows:
               ignore: /.*/
             tags:
               only: /^v.*/
+  lint:
+    jobs:
+      - typecheck:
+          <<: *base-job
+      - security:
+          <<: *base-job
+
 # VS Code Extension Version: 1.5.1
