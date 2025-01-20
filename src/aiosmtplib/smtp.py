@@ -5,6 +5,7 @@ Implements SMTP, ESMTP & Auth methods.
 """
 
 import asyncio
+import contextvars
 import email.message
 import socket
 import ssl
@@ -118,7 +119,7 @@ class SMTP:
         :keyword password:  Password for login after connect.
         :keyword local_hostname: The hostname of the client.  If specified, used as the
             FQDN of the local host in the HELO/EHLO command. Otherwise, the result of
-            :func:`socket.getfqdn`. **Note that getfqdn will block the event loop.**
+            :func:`socket.getfqdn`.
         :keyword source_address: Takes a 2-tuple (host, port) for the socket to bind to
             as its source address before connecting. If the host is '' and port is 0,
             the OS default behavior will be used.
@@ -387,7 +388,7 @@ class SMTP:
         :keyword password:  Password for login after connect.
         :keyword local_hostname: The hostname of the client.  If specified, used as the
             FQDN of the local host in the HELO/EHLO command. Otherwise, the result of
-            :func:`socket.getfqdn`. **Note that getfqdn will block the event loop.**
+            :func:`socket.getfqdn`.
         :keyword source_address: Takes a 2-tuple (host, port) for the socket to bind to
             as its source address before connecting. If the host is '' and port is 0,
             the OS default behavior will be used.
@@ -444,6 +445,13 @@ class SMTP:
         # and only if we're not using a socket.
         if self.port is None and self.sock is None and self.socket_path is None:
             self.port = self._get_default_port()
+
+        if self._local_hostname is None:
+            context = contextvars.copy_context()
+            self._local_hostname = await self.loop.run_in_executor(
+                executor=None,
+                func=lambda: context.run(socket.getfqdn),
+            )
 
         try:
             response = await self._create_connection(
@@ -655,8 +663,11 @@ class SMTP:
 
         :raises SMTPHeloError: on unexpected server response code
         """
+        if hostname is None:
+            hostname = self.local_hostname
+
         response = self.last_helo_response = await self.execute_command(
-            b"HELO", (hostname or self.local_hostname).encode("ascii"), timeout=timeout
+            b"HELO", hostname.encode("ascii"), timeout=timeout
         )
 
         if response.code != SMTPStatus.completed:
