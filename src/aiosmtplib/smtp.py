@@ -155,7 +155,7 @@ class SMTP:
         self.port = port
         self._login_username = username
         self._login_password = password
-        self._local_hostname = local_hostname
+        self.local_hostname = local_hostname
         self.timeout = timeout
         self.use_tls = use_tls
         self._start_tls_on_connect = start_tls
@@ -203,17 +203,6 @@ class SMTP:
         Check if our transport is still connected.
         """
         return bool(self.protocol is not None and self.protocol.is_connected)
-
-    @property
-    def local_hostname(self) -> str:
-        """
-        Get the system hostname to be sent to the SMTP server.
-        Simply caches the result of :func:`socket.getfqdn`.
-        """
-        if self._local_hostname is None:
-            self._local_hostname = socket.getfqdn()
-
-        return self._local_hostname
 
     @property
     def last_ehlo_response(self) -> Union[SMTPResponse, None]:
@@ -289,7 +278,7 @@ class SMTP:
             self._login_password = password
 
         if local_hostname is not Default.token:
-            self._local_hostname = local_hostname
+            self.local_hostname = local_hostname
         if source_address is not Default.token:
             self.source_address = source_address
         if client_cert is not Default.token:
@@ -324,8 +313,8 @@ class SMTP:
                 "The socket_path option is not compatible with hostname/port"
             )
 
-        if self._local_hostname is not None and (
-            "\r" in self._local_hostname or "\n" in self._local_hostname
+        if self.local_hostname is not None and (
+            "\r" in self.local_hostname or "\n" in self.local_hostname
         ):
             raise ValueError(
                 "The local_hostname param contains prohibited newline characters"
@@ -348,6 +337,9 @@ class SMTP:
             return SMTP_STARTTLS_PORT
 
         return SMTP_PORT
+
+    async def _get_default_local_hostname(self) -> str:
+        return await asyncio.to_thread(socket.getfqdn)
 
     async def connect(
         self,
@@ -445,8 +437,8 @@ class SMTP:
         if self.port is None and self.sock is None and self.socket_path is None:
             self.port = self._get_default_port()
 
-        if self._local_hostname is None:
-            self._local_hostname = await asyncio.to_thread(socket.getfqdn)
+        if self.local_hostname is None:
+            self.local_hostname = await self._get_default_local_hostname()
 
         try:
             response = await self._create_connection(
@@ -659,6 +651,10 @@ class SMTP:
         :raises SMTPHeloError: on unexpected server response code
         """
         if hostname is None:
+            # Should already be set on connect
+            if self.local_hostname is None:
+                self.local_hostname = await self._get_default_local_hostname()
+
             hostname = self.local_hostname
 
         response = self.last_helo_response = await self.execute_command(
@@ -929,6 +925,10 @@ class SMTP:
         :raises SMTPHeloError: on unexpected server response code
         """
         if hostname is None:
+            # Should already be set on connect
+            if self.local_hostname is None:
+                self.local_hostname = await self._get_default_local_hostname()
+
             hostname = self.local_hostname
 
         response = await self.execute_command(
