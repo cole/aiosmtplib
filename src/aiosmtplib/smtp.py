@@ -5,7 +5,6 @@ Implements SMTP, ESMTP & Auth methods.
 """
 
 import asyncio
-import contextvars
 import email.message
 import socket
 import ssl
@@ -447,11 +446,7 @@ class SMTP:
             self.port = self._get_default_port()
 
         if self._local_hostname is None:
-            context = contextvars.copy_context()
-            self._local_hostname = await self.loop.run_in_executor(
-                executor=None,
-                func=lambda: context.run(socket.getfqdn),
-            )
+            self._local_hostname = await asyncio.to_thread(socket.getfqdn)
 
         try:
             response = await self._create_connection(
