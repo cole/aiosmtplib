@@ -9,7 +9,7 @@ executors:
       version:
         default: "3.12"
         type: enum
-        enum: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
+        enum: ["3.9", "3.10", "3.11", "3.12", "3.13"]
     docker:
       - image: "ghcr.io/astral-sh/uv:python<<parameters.version>>-bookworm"
     resource_class: small
@@ -86,7 +86,7 @@ jobs:
       python_version:
         type: enum
         description: "python version"
-        enum: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
+        enum: ["3.9", "3.10", "3.11", "3.12", "3.13"]
       event_loop:
         type: enum
         description: "event loop type"
@@ -216,7 +216,7 @@ workflows:
             alias: "test-cpython-asyncio"
             parameters:
               event_loop: ["asyncio"]
-              python_version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
+              python_version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
           requires:
             - build
       - test:
@@ -226,7 +226,7 @@ workflows:
             alias: "test-cpython-uvloop"
             parameters:
               event_loop: ["uvloop"]
-              python_version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
+              python_version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
           requires:
             - build
             - "test-asyncio-<< matrix.python_version >>"

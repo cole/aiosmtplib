@@ -1,8 +1,12 @@
 Changelog
 =========
 
-3.0.3 (unreleased)
+4.0.0 (unreleased)
 ------------------
+
+- **BREAKING**: Drop Python 3.8 support
+- Bugfix: Run `socket.getfqdn` in thread to avoid blocking event loop
+  if `local_hostname` not provided (thanks @Raidzin)
 
 3.0.2
 -----
