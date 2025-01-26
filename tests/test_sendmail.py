@@ -8,7 +8,7 @@ import email.generator
 import email.header
 import email.message
 from collections.abc import Callable, Coroutine
-from typing import Any
+from typing import Any, Optional
 
 import pytest
 from aiosmtpd.smtp import SMTP as SMTPD
@@ -493,17 +493,25 @@ async def test_send_message_smtputf8_sender(
     assert received_messages[0]["X-MailFrom"] == message["From"]
 
 
+@pytest.mark.parametrize(
+    "mail_options",
+    (None, ["SMTPUTF8"]),
+    ids=("no_mail_options", "smtputf8_option"),
+)
 async def test_send_mime_message_smtputf8_recipient(
     smtp_client_smtputf8: SMTP,
     smtpd_server_smtputf8: asyncio.AbstractServer,
     mime_message: email.message.EmailMessage,
     received_commands: list[tuple[str, tuple[Any, ...]]],
     received_messages: list[email.message.EmailMessage],
+    mail_options: Optional[list[str]],
 ) -> None:
     mime_message["To"] = "reçipïént@exåmple.com"
 
     async with smtp_client_smtputf8:
-        errors, response = await smtp_client_smtputf8.send_message(mime_message)
+        errors, response = await smtp_client_smtputf8.send_message(
+            mime_message, mail_options=mail_options
+        )
 
     assert not errors
     assert response != ""
