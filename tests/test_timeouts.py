@@ -5,7 +5,7 @@ Timeout tests.
 import asyncio
 import socket
 import ssl
-from typing import Callable, Type
+from collections.abc import Callable
 
 import pytest
 from aiosmtpd.smtp import SMTP as SMTPD
@@ -24,7 +24,7 @@ from .compat import cleanup_server
 async def test_command_timeout_error(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    smtpd_class: Type[SMTPD],
+    smtpd_class: type[SMTPD],
     smtpd_mock_response_delayed_ok: Callable,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -39,7 +39,7 @@ async def test_command_timeout_error(
 async def test_data_timeout_error(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    smtpd_class: Type[SMTPD],
+    smtpd_class: type[SMTPD],
     smtpd_mock_response_delayed_ok: Callable,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -56,7 +56,7 @@ async def test_data_timeout_error(
 async def test_timeout_error_on_connect(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    smtpd_class: Type[SMTPD],
+    smtpd_class: type[SMTPD],
     smtpd_mock_response_delayed_ok: Callable,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -72,7 +72,7 @@ async def test_timeout_error_on_connect(
 async def test_timeout_on_initial_read(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    smtpd_class: Type[SMTPD],
+    smtpd_class: type[SMTPD],
     smtpd_mock_response_delayed_read: Callable,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -86,7 +86,7 @@ async def test_timeout_on_initial_read(
 async def test_timeout_on_starttls(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    smtpd_class: Type[SMTPD],
+    smtpd_class: type[SMTPD],
     smtpd_mock_response_delayed_ok: Callable,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

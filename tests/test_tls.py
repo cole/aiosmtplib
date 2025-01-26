@@ -5,7 +5,7 @@ TLS and STARTTLS handling.
 import asyncio
 import copy
 import ssl
-from typing import Callable, Type
+from collections.abc import Callable
 
 import pytest
 from aiosmtpd.smtp import SMTP as SMTPD
@@ -132,7 +132,7 @@ async def test_starttls_with_explicit_server_hostname(
 async def test_starttls_not_supported(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    smtpd_class: Type[SMTPD],
+    smtpd_class: type[SMTPD],
     smtpd_mock_response_ehlo_minimal: Callable,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -148,7 +148,7 @@ async def test_starttls_not_supported(
 async def test_starttls_advertised_but_not_supported(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    smtpd_class: Type[SMTPD],
+    smtpd_class: type[SMTPD],
     smtpd_mock_response_tls_not_available: Callable,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -166,7 +166,7 @@ async def test_starttls_advertised_but_not_supported(
 async def test_starttls_disconnect_before_upgrade(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    smtpd_class: Type[SMTPD],
+    smtpd_class: type[SMTPD],
     smtpd_mock_response_tls_ready_disconnect: Callable,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -182,7 +182,7 @@ async def test_starttls_disconnect_before_upgrade(
 async def test_starttls_invalid_responses(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    smtpd_class: Type[SMTPD],
+    smtpd_class: type[SMTPD],
     smtpd_mock_response_error_with_code: Callable,
     monkeypatch: pytest.MonkeyPatch,
     error_code: int,

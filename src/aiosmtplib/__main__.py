@@ -1,5 +1,3 @@
-from typing import List
-
 from aiosmtplib.smtp import SMTP, SMTP_PORT
 
 
@@ -11,7 +9,7 @@ raw_recipients = input("To: ")  # nosec
 hostname = raw_hostname or "localhost"
 port = int(raw_port) if raw_port else SMTP_PORT
 recipients = raw_recipients.split(",")
-lines: List[str] = []
+lines: list[str] = []
 
 print("Enter message, end with ^D:")
 while True:

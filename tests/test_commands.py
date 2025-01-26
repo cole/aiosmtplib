@@ -3,7 +3,8 @@ Lower level SMTP command tests.
 """
 
 import asyncio
-from typing import Any, Callable, Coroutine, List, Tuple, Type
+from collections.abc import Callable, Coroutine
+from typing import Any
 
 import pytest
 from aiosmtpd.smtp import SMTP as SMTPD
@@ -49,7 +50,7 @@ async def test_helo_with_hostname_unset_after_connect(
 async def test_helo_error(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    smtpd_class: Type[SMTPD],
+    smtpd_class: type[SMTPD],
     smtpd_mock_response_error_with_code: Callable,
     monkeypatch: pytest.MonkeyPatch,
     error_code: int,
@@ -91,7 +92,7 @@ async def test_ehlo_with_hostname_unset_after_connect(
 async def test_ehlo_error(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    smtpd_class: Type[SMTPD],
+    smtpd_class: type[SMTPD],
     smtpd_mock_response_error_with_code: Callable,
     monkeypatch: pytest.MonkeyPatch,
     error_code: int,
@@ -107,7 +108,7 @@ async def test_ehlo_error(
 async def test_ehlo_parses_esmtp_extensions(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    smtpd_class: Type[SMTPD],
+    smtpd_class: type[SMTPD],
     smtpd_mock_response_ehlo_full: Callable,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -126,7 +127,7 @@ async def test_ehlo_parses_esmtp_extensions(
 async def test_ehlo_with_no_extensions(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    smtpd_class: Type[SMTPD],
+    smtpd_class: type[SMTPD],
     smtpd_mock_response_done: Callable,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -152,7 +153,7 @@ async def test_ehlo_or_helo_if_needed_ehlo_success(
 async def test_ehlo_or_helo_if_needed_helo_success(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    smtpd_class: Type[SMTPD],
+    smtpd_class: type[SMTPD],
     smtpd_mock_response_error_with_code: Callable,
     monkeypatch: pytest.MonkeyPatch,
     error_code: int,
@@ -185,7 +186,7 @@ async def test_ehlo_or_helo_if_needed_helo_success(
 async def test_ehlo_or_helo_if_needed_neither_succeeds(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    smtpd_class: Type[SMTPD],
+    smtpd_class: type[SMTPD],
     smtpd_mock_response_error_with_code: Callable,
     smtpd_mock_response_error_with_code_factory: Callable[
         [str], Callable[[SMTPD], Coroutine[Any, Any, None]]
@@ -212,7 +213,7 @@ async def test_ehlo_or_helo_if_needed_neither_succeeds(
 async def test_ehlo_or_helo_if_needed_disconnect_after_ehlo(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    smtpd_class: Type[SMTPD],
+    smtpd_class: type[SMTPD],
     smtpd_mock_response_unavailable: Callable,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -234,7 +235,7 @@ async def test_rset_ok(smtp_client: SMTP, smtpd_server: asyncio.AbstractServer) 
 async def test_rset_error(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    smtpd_class: Type[SMTPD],
+    smtpd_class: type[SMTPD],
     smtpd_mock_response_error_with_code: Callable,
     monkeypatch: pytest.MonkeyPatch,
     error_code: int,
@@ -258,7 +259,7 @@ async def test_noop_ok(smtp_client: SMTP, smtpd_server: asyncio.AbstractServer) 
 async def test_noop_error(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    smtpd_class: Type[SMTPD],
+    smtpd_class: type[SMTPD],
     smtpd_mock_response_error_with_code: Callable,
     monkeypatch: pytest.MonkeyPatch,
     error_code: int,
@@ -310,7 +311,7 @@ async def test_vrfy_smtputf8_not_supported(
 async def test_expn_ok(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    smtpd_class: Type[SMTPD],
+    smtpd_class: type[SMTPD],
     smtpd_mock_response_expn: Callable,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -335,7 +336,7 @@ async def test_expn_error(
 async def test_expn_smtputf8_supported(
     smtp_client_smtputf8: SMTP,
     smtpd_server_smtputf8: asyncio.AbstractServer,
-    smtpd_class: Type[SMTPD],
+    smtpd_class: type[SMTPD],
     smtpd_mock_response_expn: Callable,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -367,7 +368,7 @@ async def test_help_ok(smtp_client: SMTP, smtpd_server: asyncio.AbstractServer) 
 async def test_help_error(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    smtpd_class: Type[SMTPD],
+    smtpd_class: type[SMTPD],
     smtpd_mock_response_error_with_code: Callable,
     monkeypatch: pytest.MonkeyPatch,
     error_code: int,
@@ -383,7 +384,7 @@ async def test_help_error(
 async def test_quit_error(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    smtpd_class: Type[SMTPD],
+    smtpd_class: type[SMTPD],
     smtpd_mock_response_error_with_code: Callable,
     monkeypatch: pytest.MonkeyPatch,
     error_code: int,
@@ -419,7 +420,7 @@ async def test_mail_ok(smtp_client: SMTP, smtpd_server: asyncio.AbstractServer) 
 async def test_mail_error(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    smtpd_class: Type[SMTPD],
+    smtpd_class: type[SMTPD],
     smtpd_mock_response_error_with_code: Callable,
     monkeypatch: pytest.MonkeyPatch,
     error_code: int,
@@ -472,7 +473,7 @@ async def test_rcpt_ok(smtp_client: SMTP, smtpd_server: asyncio.AbstractServer) 
 async def test_rcpt_options_ok(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    smtpd_class: Type[SMTPD],
+    smtpd_class: type[SMTPD],
     smtpd_mock_response_done: Callable,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -504,7 +505,7 @@ async def test_rcpt_options_not_implemented(
 async def test_rcpt_error(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    smtpd_class: Type[SMTPD],
+    smtpd_class: type[SMTPD],
     smtpd_mock_response_error_with_code: Callable,
     monkeypatch: pytest.MonkeyPatch,
     error_code: int,
@@ -552,7 +553,7 @@ async def test_data_ok(smtp_client: SMTP, smtpd_server: asyncio.AbstractServer) 
 async def test_data_error_on_start_input(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    smtpd_class: Type[SMTPD],
+    smtpd_class: type[SMTPD],
     smtpd_mock_response_error_with_code: Callable,
     monkeypatch: pytest.MonkeyPatch,
     error_code: int,
@@ -590,7 +591,7 @@ async def test_data_complete_error(
 async def test_gibberish_raises_exception(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    smtpd_class: Type[SMTPD],
+    smtpd_class: type[SMTPD],
     smtpd_mock_response_gibberish: Callable,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -604,7 +605,7 @@ async def test_gibberish_raises_exception(
 async def test_badly_encoded_text_response(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    smtpd_class: Type[SMTPD],
+    smtpd_class: type[SMTPD],
     smtpd_mock_response_bad_data: Callable,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -619,7 +620,7 @@ async def test_badly_encoded_text_response(
 async def test_header_injection(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    received_commands: List[Tuple[str, Tuple[Any, ...]]],
+    received_commands: list[tuple[str, tuple[Any, ...]]],
 ) -> None:
     async with smtp_client:
         await smtp_client.mail("test@example.com\r\nX-Malicious-Header: bad stuff")

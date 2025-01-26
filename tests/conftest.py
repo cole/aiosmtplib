@@ -11,19 +11,9 @@ import pathlib
 import socket
 import ssl
 import sys
+from collections.abc import Callable, Coroutine, Generator
 from pathlib import Path
-from typing import (
-    Any,
-    Callable,
-    Coroutine,
-    Dict,
-    Generator,
-    List,
-    Optional,
-    Tuple,
-    Type,
-    Union,
-)
+from typing import Any, Optional, Union
 
 import hypothesis
 import pytest
@@ -163,7 +153,7 @@ def message_str(recipient_str: str, sender_str: str) -> str:
 
 
 @pytest.fixture(scope="session")
-def smtpd_class() -> Type[SMTPD]:
+def smtpd_class() -> type[SMTPD]:
     return TestSMTPD
 
 
@@ -351,25 +341,25 @@ def message(
 
 
 @pytest.fixture(scope="function")
-def received_messages() -> List[email.message.EmailMessage]:
+def received_messages() -> list[email.message.EmailMessage]:
     return []
 
 
 @pytest.fixture(scope="function")
-def received_commands() -> List[Tuple[str, Tuple[Any, ...]]]:
+def received_commands() -> list[tuple[str, tuple[Any, ...]]]:
     return []
 
 
 @pytest.fixture(scope="function")
-def smtpd_responses() -> List[str]:
+def smtpd_responses() -> list[str]:
     return []
 
 
 @pytest.fixture(scope="function")
 def smtpd_handler(
-    received_messages: List[email.message.EmailMessage],
-    received_commands: List[Tuple[str, Tuple[Any, ...]]],
-    smtpd_responses: List[str],
+    received_messages: list[email.message.EmailMessage],
+    received_commands: list[tuple[str, tuple[Any, ...]]],
+    smtpd_responses: list[str],
 ) -> RecordingHandler:
     return RecordingHandler(received_messages, received_commands, smtpd_responses)
 
@@ -649,7 +639,7 @@ def server_factory(
     server = None
 
     def start_server(
-        factory: Callable[..., Any], **kwargs: Dict[str, Any]
+        factory: Callable[..., Any], **kwargs: dict[str, Any]
     ) -> asyncio.AbstractServer:
         nonlocal server
         server = event_loop.run_until_complete(
@@ -673,7 +663,7 @@ def socket_server_factory(
     server = None
 
     def start_server(
-        factory: Callable[..., Any], **kwargs: Dict[str, Any]
+        factory: Callable[..., Any], **kwargs: dict[str, Any]
     ) -> asyncio.AbstractServer:
         nonlocal server
         create_server_coro = event_loop.create_unix_server(
@@ -693,7 +683,7 @@ def socket_server_factory(
 def smtpd_server(
     server_factory: Callable[..., asyncio.AbstractServer],
     hostname: str,
-    smtpd_class: Type[SMTPD],
+    smtpd_class: type[SMTPD],
     smtpd_handler: RecordingHandler,
     server_tls_context: ssl.SSLContext,
     smtpd_auth_callback: Callable[[str, bytes, bytes], bool],
@@ -714,7 +704,7 @@ def smtpd_server(
 def smtpd_server_smtputf8(
     server_factory: Callable[..., asyncio.AbstractServer],
     hostname: str,
-    smtpd_class: Type[SMTPD],
+    smtpd_class: type[SMTPD],
     smtpd_handler: RecordingHandler,
     server_tls_context: ssl.SSLContext,
     smtpd_auth_callback: Callable[[str, bytes, bytes], bool],
@@ -742,7 +732,7 @@ def echo_server(
 def smtpd_server_socket_path(
     socket_server_factory: Callable[..., asyncio.AbstractServer],
     hostname: str,
-    smtpd_class: Type[SMTPD],
+    smtpd_class: type[SMTPD],
     smtpd_handler: RecordingHandler,
     server_tls_context: ssl.SSLContext,
     smtpd_auth_callback: Callable[[str, bytes, bytes], bool],
@@ -762,7 +752,7 @@ def smtpd_server_socket_path(
 @pytest.fixture(scope="function")
 def smtpd_server_tls(
     server_factory: Callable[..., asyncio.AbstractServer],
-    smtpd_class: Type[SMTPD],
+    smtpd_class: type[SMTPD],
     smtpd_handler: RecordingHandler,
     server_tls_context: ssl.SSLContext,
 ) -> asyncio.AbstractServer:

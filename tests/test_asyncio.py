@@ -4,7 +4,8 @@ Tests that cover asyncio usage.
 
 import asyncio
 import ssl
-from typing import Any, Awaitable, Callable, Dict, List, Tuple, Type
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 import pytest
 from aiosmtpd.smtp import SMTP as SMTPD
@@ -64,7 +65,7 @@ async def test_connect_and_sendmail_multiple_times_with_gather(
 ) -> None:
     async def connect_and_send(
         *args: Any, **kwargs: Any
-    ) -> Tuple[Dict[str, SMTPResponse], str]:
+    ) -> tuple[dict[str, SMTPResponse], str]:
         async with SMTP(
             hostname=hostname, port=smtpd_server_port, tls_context=client_tls_context
         ) as client:
@@ -93,7 +94,7 @@ async def test_multiple_clients_with_gather(
 ) -> None:
     async def connect_and_send(
         *args: Any, **kwargs: Any
-    ) -> Tuple[Dict[str, SMTPResponse], str]:
+    ) -> tuple[dict[str, SMTPResponse], str]:
         client = SMTP(
             hostname=hostname, port=smtpd_server_port, tls_context=client_tls_context
         )
@@ -143,7 +144,7 @@ async def test_many_commands_with_gather(
     monkeypatch: pytest.MonkeyPatch,
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    smtpd_class: Type[SMTPD],
+    smtpd_class: type[SMTPD],
     smtpd_mock_response_expn: Callable,
 ) -> None:
     """
@@ -152,7 +153,7 @@ async def test_many_commands_with_gather(
     monkeypatch.setattr(smtpd_class, "smtp_EXPN", smtpd_mock_response_expn)
 
     async with smtp_client:
-        tasks: List[Awaitable] = [
+        tasks: list[Awaitable] = [
             smtp_client.ehlo(),
             smtp_client.helo(),
             smtp_client.noop(),
@@ -198,7 +199,7 @@ async def test_context_manager_entry_multiple_times_with_gather(
 ) -> None:
     async def connect_and_send(
         *args: Any, **kwargs: Any
-    ) -> Tuple[Dict[str, SMTPResponse], str]:
+    ) -> tuple[dict[str, SMTPResponse], str]:
         async with smtp_client:
             response = await smtp_client.sendmail(*args, **kwargs)
 

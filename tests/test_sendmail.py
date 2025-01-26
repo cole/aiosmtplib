@@ -7,7 +7,8 @@ import copy
 import email.generator
 import email.header
 import email.message
-from typing import Any, Callable, Coroutine, List, Tuple, Type
+from collections.abc import Callable, Coroutine
+from typing import Any
 
 import pytest
 from aiosmtpd.smtp import SMTP as SMTPD
@@ -90,7 +91,7 @@ async def test_sendmail_with_mail_option(
 async def test_sendmail_without_size_option(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    smtpd_class: Type[SMTPD],
+    smtpd_class: type[SMTPD],
     smtpd_mock_response_done: Callable,
     monkeypatch: pytest.MonkeyPatch,
     sender_str: str,
@@ -163,7 +164,7 @@ async def test_sendmail_simple_failure(
 async def test_sendmail_error_silent_rset_handles_disconnect(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    smtpd_class: Type[SMTPD],
+    smtpd_class: type[SMTPD],
     smtpd_mock_response_error_disconnect: Callable,
     monkeypatch: pytest.MonkeyPatch,
     sender_str: str,
@@ -180,7 +181,7 @@ async def test_sendmail_error_silent_rset_handles_disconnect(
 async def test_rset_after_sendmail_error_response_to_mail(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    received_commands: List[Tuple[str, Tuple[Any, ...]]],
+    received_commands: list[tuple[str, tuple[Any, ...]]],
 ) -> None:
     """
     If an error response is given to the MAIL command in the sendmail method,
@@ -200,7 +201,7 @@ async def test_rset_after_sendmail_error_response_to_mail(
 async def test_rset_after_sendmail_error_response_to_rcpt(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    received_commands: List[Tuple[str, Tuple[Any, ...]]],
+    received_commands: list[tuple[str, tuple[Any, ...]]],
 ) -> None:
     """
     If an error response is given to the RCPT command in the sendmail method,
@@ -222,13 +223,13 @@ async def test_rset_after_sendmail_error_response_to_rcpt(
 async def test_rset_after_sendmail_error_response_to_data(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    smtpd_class: Type[SMTPD],
+    smtpd_class: type[SMTPD],
     monkeypatch: pytest.MonkeyPatch,
     error_code: int,
     sender_str: str,
     recipient_str: str,
     message_str: str,
-    received_commands: List[Tuple[str, Tuple[Any, ...]]],
+    received_commands: list[tuple[str, tuple[Any, ...]]],
     smtpd_mock_response_error_with_code: Callable[[SMTPD], Coroutine[Any, Any, None]],
 ) -> None:
     """
@@ -265,7 +266,7 @@ async def test_send_message_with_sender_and_recipient_args(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
     message: email.message.Message,
-    received_messages: List[email.message.EmailMessage],
+    received_messages: list[email.message.EmailMessage],
 ) -> None:
     sender = "sender2@example.com"
     recipients = ["recipient1@example.com", "recipient2@example.com"]
@@ -288,8 +289,8 @@ async def test_send_message_with_cc_recipients(
     smtpd_server: asyncio.AbstractServer,
     recipient_str: str,
     message: email.message.Message,
-    received_messages: List[email.message.EmailMessage],
-    received_commands: List[Tuple[str, Tuple[Any, ...]]],
+    received_messages: list[email.message.EmailMessage],
+    received_commands: list[tuple[str, tuple[Any, ...]]],
 ) -> None:
     cc_recipients = ["recipient1@example.com", "recipient2@example.com"]
     message["Cc"] = ", ".join(cc_recipients)
@@ -318,8 +319,8 @@ async def test_send_message_with_bcc_recipients(
     smtpd_server: asyncio.AbstractServer,
     recipient_str: str,
     message: email.message.Message,
-    received_messages: List[email.message.EmailMessage],
-    received_commands: List[Tuple[str, Tuple[Any, ...]]],
+    received_messages: list[email.message.EmailMessage],
+    received_commands: list[tuple[str, tuple[Any, ...]]],
 ) -> None:
     bcc_recipients = ["recipient1@example.com", "recipient2@example.com"]
     message["Bcc"] = ", ".join(bcc_recipients)
@@ -344,8 +345,8 @@ async def test_send_message_with_cc_and_bcc_recipients(
     smtpd_server: asyncio.AbstractServer,
     recipient_str: str,
     message: email.message.Message,
-    received_messages: List[email.message.EmailMessage],
-    received_commands: List[Tuple[str, Tuple[Any, ...]]],
+    received_messages: list[email.message.EmailMessage],
+    received_commands: list[tuple[str, tuple[Any, ...]]],
 ) -> None:
     cc_recipient = "recipient2@example.com"
     message["Cc"] = cc_recipient
@@ -375,7 +376,7 @@ async def test_send_message_recipient_str(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
     message: email.message.Message,
-    received_commands: List[Tuple[str, Tuple[Any, ...]]],
+    received_commands: list[tuple[str, tuple[Any, ...]]],
 ) -> None:
     recipient_str = "1234@example.org"
     async with smtp_client:
@@ -457,8 +458,8 @@ async def test_send_message_smtputf8_sender(
     smtp_client_smtputf8: SMTP,
     smtpd_server_smtputf8: asyncio.AbstractServer,
     message: email.message.Message,
-    received_commands: List[Tuple[str, Tuple[Any, ...]]],
-    received_messages: List[email.message.EmailMessage],
+    received_commands: list[tuple[str, tuple[Any, ...]]],
+    received_messages: list[email.message.EmailMessage],
 ) -> None:
     del message["From"]
     message["From"] = "séndër@exåmple.com"
@@ -483,8 +484,8 @@ async def test_send_mime_message_smtputf8_recipient(
     smtp_client_smtputf8: SMTP,
     smtpd_server_smtputf8: asyncio.AbstractServer,
     mime_message: email.message.EmailMessage,
-    received_commands: List[Tuple[str, Tuple[Any, ...]]],
-    received_messages: List[email.message.EmailMessage],
+    received_commands: list[tuple[str, tuple[Any, ...]]],
+    received_messages: list[email.message.EmailMessage],
 ) -> None:
     mime_message["To"] = "reçipïént@exåmple.com"
 
@@ -505,8 +506,8 @@ async def test_send_compat32_message_smtputf8_recipient(
     smtp_client_smtputf8: SMTP,
     smtpd_server_smtputf8: asyncio.AbstractServer,
     compat32_message: email.message.Message,
-    received_commands: List[Tuple[str, Tuple[Any, ...]]],
-    received_messages: List[email.message.EmailMessage],
+    received_commands: list[tuple[str, tuple[Any, ...]]],
+    received_messages: list[email.message.EmailMessage],
 ) -> None:
     recipient_bytes = bytes("reçipïént@exåmple.com", "utf-8")
     compat32_message["To"] = email.header.Header(recipient_bytes, "utf-8")
@@ -543,8 +544,8 @@ async def test_send_compat32_message_utf8_text_without_smtputf8(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
     compat32_message: email.message.Message,
-    received_commands: List[Tuple[str, Tuple[Any, ...]]],
-    received_messages: List[email.message.EmailMessage],
+    received_commands: list[tuple[str, tuple[Any, ...]]],
+    received_messages: list[email.message.EmailMessage],
 ) -> None:
     compat32_message["To"] = email.header.Header(
         "reçipïént <recipient2@example.com>", "utf-8"
@@ -575,8 +576,8 @@ async def test_send_mime_message_utf8_text_without_smtputf8(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
     mime_message: email.message.EmailMessage,
-    received_commands: List[Tuple[str, Tuple[Any, ...]]],
-    received_messages: List[email.message.EmailMessage],
+    received_commands: list[tuple[str, tuple[Any, ...]]],
+    received_messages: list[email.message.EmailMessage],
 ) -> None:
     mime_message["To"] = "reçipïént <recipient2@example.com>"
 

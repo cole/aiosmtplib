@@ -5,7 +5,8 @@ Connectivity tests.
 import asyncio
 import pathlib
 import socket
-from typing import Any, Callable, List, Tuple, Type, Union
+from collections.abc import Callable
+from typing import Any, Union
 
 import pytest
 from aiosmtpd.smtp import SMTP as SMTPD
@@ -61,7 +62,7 @@ async def test_quit_then_connect_ok(
 async def test_bad_connect_response_raises_error(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    smtpd_class: Type[SMTPD],
+    smtpd_class: type[SMTPD],
     smtpd_mock_response_unavailable: Callable,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -77,7 +78,7 @@ async def test_bad_connect_response_raises_error(
 async def test_eof_on_connect_raises_connect_error(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    smtpd_class: Type[SMTPD],
+    smtpd_class: type[SMTPD],
     smtpd_mock_response_eof: Callable,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -93,7 +94,7 @@ async def test_eof_on_connect_raises_connect_error(
 async def test_close_on_connect_raises_connect_error(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    smtpd_class: Type[SMTPD],
+    smtpd_class: type[SMTPD],
     smtpd_mock_response_disconnect: Callable,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -108,7 +109,7 @@ async def test_close_on_connect_raises_connect_error(
 async def test_421_closes_connection(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    smtpd_class: Type[SMTPD],
+    smtpd_class: type[SMTPD],
     smtpd_mock_response_unavailable: Callable,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -136,7 +137,7 @@ async def test_connect_error_with_no_server(
 async def test_disconnected_server_raises_on_client_read(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    smtpd_class: Type[SMTPD],
+    smtpd_class: type[SMTPD],
     smtpd_mock_response_disconnect: Callable,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -153,7 +154,7 @@ async def test_disconnected_server_raises_on_client_read(
 async def test_disconnected_server_raises_on_client_write(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    smtpd_class: Type[SMTPD],
+    smtpd_class: type[SMTPD],
     smtpd_mock_response_eof: Callable,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -170,7 +171,7 @@ async def test_disconnected_server_raises_on_client_write(
 async def test_disconnected_server_raises_on_data_read(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    smtpd_class: Type[SMTPD],
+    smtpd_class: type[SMTPD],
     smtpd_mock_response_disconnect: Callable,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -190,7 +191,7 @@ async def test_disconnected_server_raises_on_data_read(
 async def test_disconnected_server_raises_on_data_write(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    smtpd_class: Type[SMTPD],
+    smtpd_class: type[SMTPD],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(smtpd_class, "smtp_DATA", close_during_read_response)
@@ -208,7 +209,7 @@ async def test_disconnected_server_raises_on_data_write(
 async def test_disconnected_server_raises_on_starttls(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    smtpd_class: Type[SMTPD],
+    smtpd_class: type[SMTPD],
     smtpd_mock_response_disconnect: Callable,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -243,7 +244,7 @@ async def test_context_manager(
 async def test_context_manager_disconnect_handling(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    smtpd_class: Type[SMTPD],
+    smtpd_class: type[SMTPD],
     smtpd_mock_response_disconnect: Callable,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -267,7 +268,7 @@ async def test_context_manager_disconnect_handling(
 async def test_context_manager_exception_quits(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    received_commands: List[Tuple[str, Tuple[Any, ...]]],
+    received_commands: list[tuple[str, tuple[Any, ...]]],
 ) -> None:
     with pytest.raises(ZeroDivisionError):
         async with smtp_client:
@@ -279,7 +280,7 @@ async def test_context_manager_exception_quits(
 async def test_context_manager_connect_exception_closes(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    received_commands: List[Tuple[str, Tuple[Any, ...]]],
+    received_commands: list[tuple[str, tuple[Any, ...]]],
 ) -> None:
     with pytest.raises(ConnectionError):
         async with smtp_client:
@@ -334,7 +335,7 @@ async def test_connect_error_second_attempt(
 async def test_server_unexpected_disconnect(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    smtpd_class: Type[SMTPD],
+    smtpd_class: type[SMTPD],
     smtpd_mock_response_done_then_close: Callable,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -350,7 +351,7 @@ async def test_server_unexpected_disconnect(
 async def test_connect_with_login(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    received_commands: List[Tuple[str, Tuple[Any, ...]]],
+    received_commands: list[tuple[str, tuple[Any, ...]]],
     auth_username: str,
     auth_password: str,
 ) -> None:
@@ -392,7 +393,7 @@ async def test_connect_via_socket_path(
 async def test_disconnected_server_get_transport_info(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    smtpd_class: Type[SMTPD],
+    smtpd_class: type[SMTPD],
     smtpd_mock_response_eof: Callable,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -410,7 +411,7 @@ async def test_disconnected_server_get_transport_info(
 async def test_disconnected_server_data(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
-    smtpd_class: Type[SMTPD],
+    smtpd_class: type[SMTPD],
     smtpd_mock_response_eof: Callable,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

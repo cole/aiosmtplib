@@ -4,7 +4,7 @@ Authentication related methods.
 
 import base64
 import hmac
-from typing import Tuple, Union
+from typing import Union
 
 
 __all__ = ("auth_crammd5_verify", "auth_plain_encode", "auth_login_encode")
@@ -59,7 +59,7 @@ def auth_login_encode(
     username: Union[str, bytes],
     password: Union[str, bytes],
     /,
-) -> Tuple[bytes, bytes]:
+) -> tuple[bytes, bytes]:
     """
     LOGIN auth base64 encodes the username and password and sends them
     in sequence.

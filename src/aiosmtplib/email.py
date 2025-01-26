@@ -12,7 +12,8 @@ import email.policy
 import email.utils
 import io
 import re
-from typing import Iterable, List, Optional, Union, cast
+from collections.abc import Iterable
+from typing import Optional, Union, cast
 
 
 __all__ = (
@@ -87,12 +88,12 @@ def flatten_message(
 def extract_addresses(
     header: Union[str, email.headerregistry.AddressHeader, email.header.Header],
     /,
-) -> List[str]:
+) -> list[str]:
     """
     Convert address headers into raw email addresses, suitable for use in
     low level SMTP commands.
     """
-    addresses: List[str] = []
+    addresses: list[str] = []
     if isinstance(header, email.headerregistry.AddressHeader):
         # If the object has been assigned an iterable, it's possible to get a string here.
         header_addresses = cast(
@@ -146,11 +147,11 @@ def extract_sender(
 def extract_recipients(
     message: Union[email.message.EmailMessage, email.message.Message],
     /,
-) -> List[str]:
+) -> list[str]:
     """
     Extract the recipients from the message object given.
     """
-    recipients: List[str] = []
+    recipients: list[str] = []
 
     resent_dates = message.get_all("Resent-Date")
 

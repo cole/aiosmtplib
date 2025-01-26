@@ -7,7 +7,7 @@ import email
 import pathlib
 import socket
 import ssl
-from typing import Any, List, Tuple, Union
+from typing import Any, Union
 
 import pytest
 
@@ -18,7 +18,7 @@ async def test_send(
     hostname: str,
     smtpd_server_port: int,
     message: email.message.Message,
-    received_messages: List[email.message.EmailMessage],
+    received_messages: list[email.message.EmailMessage],
     client_tls_context: ssl.SSLContext,
 ) -> None:
     errors, response = await send(
@@ -38,7 +38,7 @@ async def test_send_with_str(
     recipient_str: str,
     sender_str: str,
     message_str: str,
-    received_messages: List[email.message.EmailMessage],
+    received_messages: list[email.message.EmailMessage],
 ) -> None:
     errors, response = await send(
         message_str,
@@ -59,7 +59,7 @@ async def test_send_with_bytes(
     recipient_str: str,
     sender_str: str,
     message_str: str,
-    received_messages: List[email.message.EmailMessage],
+    received_messages: list[email.message.EmailMessage],
 ) -> None:
     errors, response = await send(
         bytes(message_str, "ascii"),
@@ -79,7 +79,7 @@ async def test_send_without_sender(
     smtpd_server_port: int,
     recipient_str: str,
     message_str: str,
-    received_messages: List[email.message.EmailMessage],
+    received_messages: list[email.message.EmailMessage],
 ) -> None:
     with pytest.raises(ValueError):
         errors, response = await send(
@@ -97,7 +97,7 @@ async def test_send_without_recipients(
     smtpd_server_port: int,
     sender_str: str,
     message_str: str,
-    received_messages: List[email.message.EmailMessage],
+    received_messages: list[email.message.EmailMessage],
 ) -> None:
     with pytest.raises(ValueError):
         errors, response = await send(
@@ -115,8 +115,8 @@ async def test_send_with_start_tls(
     smtpd_server_port: int,
     client_tls_context: ssl.SSLContext,
     message: email.message.Message,
-    received_messages: List[email.message.EmailMessage],
-    received_commands: List[Tuple[str, Tuple[Any, ...]]],
+    received_messages: list[email.message.EmailMessage],
+    received_commands: list[tuple[str, tuple[Any, ...]]],
 ) -> None:
     errors, response = await send(
         message,
@@ -135,8 +135,8 @@ async def test_send_with_login(
     hostname: str,
     smtpd_server_port: int,
     message: email.message.Message,
-    received_messages: List[email.message.EmailMessage],
-    received_commands: List[Tuple[str, Tuple[Any, ...]]],
+    received_messages: list[email.message.EmailMessage],
+    received_commands: list[tuple[str, tuple[Any, ...]]],
     auth_username: str,
     auth_password: str,
     client_tls_context: ssl.SSLContext,
@@ -160,7 +160,7 @@ async def test_send_via_socket(
     hostname: str,
     smtpd_server_port: int,
     message: email.message.Message,
-    received_messages: List[email.message.EmailMessage],
+    received_messages: list[email.message.EmailMessage],
 ) -> None:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.connect((hostname, smtpd_server_port))
@@ -183,7 +183,7 @@ async def test_send_via_socket_path(
     smtpd_server_socket_path: asyncio.AbstractServer,
     socket_path: Union[pathlib.Path, str, bytes],
     message: email.message.Message,
-    received_messages: List[email.message.EmailMessage],
+    received_messages: list[email.message.EmailMessage],
 ) -> None:
     errors, response = await send(
         message,
@@ -203,7 +203,7 @@ async def test_send_with_mail_options(
     recipient_str: str,
     sender_str: str,
     message_str: str,
-    received_messages: List[email.message.EmailMessage],
+    received_messages: list[email.message.EmailMessage],
 ) -> None:
     errors, _ = await send(
         message_str,
@@ -225,7 +225,7 @@ async def test_send_with_rcpt_options(
     recipient_str: str,
     sender_str: str,
     message_str: str,
-    received_messages: List[email.message.EmailMessage],
+    received_messages: list[email.message.EmailMessage],
 ) -> None:
     errors, _ = await send(
         message_str,

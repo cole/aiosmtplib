@@ -19,7 +19,6 @@
 import datetime
 import pathlib
 import re
-from typing import Dict, List
 
 
 VERSION_REGEX = r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]'
@@ -115,7 +114,7 @@ html_theme_options = {
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path: List[str] = []
+html_static_path: list[str] = []
 
 
 # -- Options for HTMLHelp output ------------------------------------------
@@ -126,7 +125,7 @@ htmlhelp_basename = "aiosmtplibdoc"
 
 # -- Options for LaTeX output ---------------------------------------------
 
-latex_elements: Dict[str, str] = {
+latex_elements: dict[str, str] = {
     # The paper size ('letterpaper' or 'a4paper').
     #
     # 'papersize': 'letterpaper',

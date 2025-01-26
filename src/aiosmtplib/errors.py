@@ -1,5 +1,4 @@
 from asyncio import TimeoutError
-from typing import List
 
 
 __all__ = (
@@ -132,6 +131,6 @@ class SMTPRecipientsRefused(SMTPException):
     SMTP server refused multiple recipients.
     """
 
-    def __init__(self, recipients: List[SMTPRecipientRefused], /) -> None:
+    def __init__(self, recipients: list[SMTPRecipientRefused], /) -> None:
         self.recipients = recipients
         self.args = (recipients,)

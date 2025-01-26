@@ -5,7 +5,8 @@ Main public API.
 import email.message
 import socket
 import ssl
-from typing import Dict, Optional, Sequence, Tuple, Union, cast
+from collections.abc import Sequence
+from typing import Optional, Union, cast
 
 from .response import SMTPResponse
 from .smtp import DEFAULT_TIMEOUT, SMTP
@@ -28,7 +29,7 @@ async def send(
     username: Optional[Union[str, bytes]] = None,
     password: Optional[Union[str, bytes]] = None,
     local_hostname: Optional[str] = None,
-    source_address: Optional[Tuple[str, int]] = None,
+    source_address: Optional[tuple[str, int]] = None,
     timeout: Optional[float] = DEFAULT_TIMEOUT,
     use_tls: bool = False,
     start_tls: Optional[bool] = None,
@@ -39,7 +40,7 @@ async def send(
     cert_bundle: Optional[str] = None,
     socket_path: Optional[SocketPathType] = None,
     sock: Optional[socket.socket] = None,
-) -> Tuple[Dict[str, SMTPResponse], str]:
+) -> tuple[dict[str, SMTPResponse], str]:
     """
     Send an email message. On await, connects to the SMTP server using the details
     provided, sends the message, then disconnects.

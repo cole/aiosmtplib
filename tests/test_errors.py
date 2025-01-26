@@ -3,7 +3,7 @@ Test error class imports, arguments, and inheritance.
 """
 
 import asyncio
-from typing import List, Tuple, Type, Union
+from typing import Union
 
 import pytest
 from hypothesis import given
@@ -50,7 +50,7 @@ def test_raise_smtp_response_exception(code: int, error_message: str) -> None:
 )
 @given(error_message=text())
 def test_connection_exceptions(
-    error_message: str, error_class: Type[SMTPException]
+    error_message: str, error_class: type[SMTPException]
 ) -> None:
     with pytest.raises(error_class) as excinfo:
         raise error_class(error_message)
@@ -65,7 +65,7 @@ def test_connection_exceptions(
 )
 @given(error_message=text())
 def test_timeout_exceptions(
-    error_message: str, error_class: Type[SMTPException]
+    error_message: str, error_class: type[SMTPException]
 ) -> None:
     with pytest.raises(error_class) as excinfo:
         raise error_class(error_message)
@@ -82,7 +82,7 @@ def test_timeout_exceptions(
 def test_simple_response_exceptions(
     code: int,
     error_message: str,
-    error_class: Type[Union[SMTPHeloError, SMTPDataError, SMTPAuthenticationError]],
+    error_class: type[Union[SMTPHeloError, SMTPDataError, SMTPAuthenticationError]],
 ) -> None:
     with pytest.raises(error_class) as excinfo:
         raise error_class(code, error_message)
@@ -117,7 +117,7 @@ def test_raise_smtp_recipient_refused(
 
 
 @given(lists(elements=tuples(integers(), text(), text())))
-def test_raise_smtp_recipients_refused(addresses: List[Tuple[int, str, str]]) -> None:
+def test_raise_smtp_recipients_refused(addresses: list[tuple[int, str, str]]) -> None:
     errors = [SMTPRecipientRefused(*address) for address in addresses]
     with pytest.raises(SMTPRecipientsRefused) as excinfo:
         raise SMTPRecipientsRefused(errors)

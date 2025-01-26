@@ -8,16 +8,11 @@ import asyncio
 import email.message
 import socket
 import ssl
+from collections.abc import Iterable, Sequence
 from typing import (
     Any,
-    Dict,
-    Iterable,
-    List,
     Literal,
     Optional,
-    Sequence,
-    Tuple,
-    Type,
     Union,
 )
 
@@ -82,7 +77,7 @@ class SMTP:
     """
 
     # Preferred methods first
-    AUTH_METHODS: Tuple[str, ...] = (
+    AUTH_METHODS: tuple[str, ...] = (
         "cram-md5",
         "plain",
         "login",
@@ -96,7 +91,7 @@ class SMTP:
         username: Optional[Union[str, bytes]] = None,
         password: Optional[Union[str, bytes]] = None,
         local_hostname: Optional[str] = None,
-        source_address: Optional[Tuple[str, int]] = None,
+        source_address: Optional[tuple[str, int]] = None,
         timeout: Optional[float] = DEFAULT_TIMEOUT,
         use_tls: bool = False,
         start_tls: Optional[bool] = None,
@@ -170,9 +165,9 @@ class SMTP:
         self._connect_lock: Optional[asyncio.Lock] = None
         self.last_helo_response: Optional[SMTPResponse] = None
         self._last_ehlo_response: Optional[SMTPResponse] = None
-        self.esmtp_extensions: Dict[str, str] = {}
+        self.esmtp_extensions: dict[str, str] = {}
         self.supports_esmtp = False
-        self.server_auth_methods: List[str] = []
+        self.server_auth_methods: list[str] = []
         self._sendmail_lock: Optional[asyncio.Lock] = None
 
         self._validate_config()
@@ -184,7 +179,7 @@ class SMTP:
         return self
 
     async def __aexit__(
-        self, exc_type: Type[BaseException], exc: BaseException, traceback: Any
+        self, exc_type: type[BaseException], exc: BaseException, traceback: Any
     ) -> None:
         if isinstance(exc, (ConnectionError, TimeoutError)):
             self.close()
@@ -226,7 +221,7 @@ class SMTP:
         return self.last_ehlo_response is None and self.last_helo_response is None
 
     @property
-    def supported_auth_methods(self) -> List[str]:
+    def supported_auth_methods(self) -> list[str]:
         """
         Get all AUTH methods supported by the both server and by us.
         """
@@ -240,7 +235,7 @@ class SMTP:
         password: Optional[Union[str, bytes, Literal[Default.token]]] = Default.token,
         local_hostname: Optional[Union[str, Literal[Default.token]]] = Default.token,
         source_address: Optional[
-            Union[Tuple[str, int], Literal[Default.token]]
+            Union[tuple[str, int], Literal[Default.token]]
         ] = Default.token,
         use_tls: Optional[bool] = None,
         start_tls: Optional[Union[bool, Literal[Default.token]]] = Default.token,
@@ -348,7 +343,7 @@ class SMTP:
         password: Optional[Union[str, bytes, Literal[Default.token]]] = Default.token,
         local_hostname: Optional[Union[str, Literal[Default.token]]] = Default.token,
         source_address: Optional[
-            Union[Tuple[str, int], Literal[Default.token]]
+            Union[tuple[str, int], Literal[Default.token]]
         ] = Default.token,
         timeout: Optional[Union[float, Literal[Default.token]]] = Default.token,
         use_tls: Optional[bool] = None,
@@ -1222,7 +1217,7 @@ class SMTP:
         mail_options: Optional[Iterable[str]] = None,
         rcpt_options: Optional[Iterable[str]] = None,
         timeout: Optional[Union[float, Literal[Default.token]]] = Default.token,
-    ) -> Tuple[Dict[str, SMTPResponse], str]:
+    ) -> tuple[dict[str, SMTPResponse], str]:
         """
         This command performs an entire mail transaction.
 
@@ -1345,12 +1340,12 @@ class SMTP:
         options: Iterable[str],
         encoding: str = "ascii",
         timeout: Optional[Union[float, Literal[Default.token]]] = Default.token,
-    ) -> Dict[str, SMTPResponse]:
+    ) -> dict[str, SMTPResponse]:
         """
         Send the recipients given to the server. Used as part of
         :meth:`.sendmail`.
         """
-        recipient_errors: List[SMTPRecipientRefused] = []
+        recipient_errors: list[SMTPRecipientRefused] = []
         for address in recipients:
             try:
                 await self.rcpt(
@@ -1379,7 +1374,7 @@ class SMTP:
         mail_options: Optional[Iterable[str]] = None,
         rcpt_options: Optional[Iterable[str]] = None,
         timeout: Optional[Union[float, Literal[Default.token]]] = Default.token,
-    ) -> Tuple[Dict[str, SMTPResponse], str]:
+    ) -> tuple[dict[str, SMTPResponse], str]:
         r"""
         Sends an :py:class:`email.message.EmailMessage` object.
 
@@ -1462,13 +1457,13 @@ class SMTP:
 
     def sendmail_sync(
         self, *args: Any, **kwargs: Any
-    ) -> Tuple[Dict[str, SMTPResponse], str]:
+    ) -> tuple[dict[str, SMTPResponse], str]:
         """
         Synchronous version of :meth:`.sendmail`. This method starts
         an event loop to connect, send the message, and disconnect.
         """
 
-        async def sendmail_coroutine() -> Tuple[Dict[str, SMTPResponse], str]:
+        async def sendmail_coroutine() -> tuple[dict[str, SMTPResponse], str]:
             async with self:
                 return await self.sendmail(*args, **kwargs)
 
@@ -1476,13 +1471,13 @@ class SMTP:
 
     def send_message_sync(
         self, *args: Any, **kwargs: Any
-    ) -> Tuple[Dict[str, SMTPResponse], str]:
+    ) -> tuple[dict[str, SMTPResponse], str]:
         """
         Synchronous version of :meth:`.send_message`. This method
         starts an event loop to connect, send the message, and disconnect.
         """
 
-        async def send_message_coroutine() -> Tuple[Dict[str, SMTPResponse], str]:
+        async def send_message_coroutine() -> tuple[dict[str, SMTPResponse], str]:
             async with self:
                 return await self.send_message(*args, **kwargs)
 

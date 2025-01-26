@@ -5,7 +5,7 @@ Test message and address parsing/formatting functions.
 from email.header import Header
 from email.headerregistry import Address
 from email.message import EmailMessage, Message
-from typing import List, Union
+from typing import Union
 
 import pytest
 from hypothesis import example, given
@@ -210,7 +210,7 @@ def test_extract_recipients(
     mime_cc_header: Union[str, Address],
     compat32_to_header: Union[str, Header],
     compat32_cc_header: Union[str, Header],
-    expected_recipients: List[str],
+    expected_recipients: list[str],
 ) -> None:
     mime_message = EmailMessage()
     mime_message["To"] = mime_to_header

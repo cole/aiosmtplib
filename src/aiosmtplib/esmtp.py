@@ -3,7 +3,6 @@ ESMTP utils
 """
 
 import re
-from typing import Dict, List, Tuple
 
 
 __all__ = ("parse_esmtp_extensions",)
@@ -13,7 +12,7 @@ OLDSTYLE_AUTH_REGEX = re.compile(r"auth=(?P<auth>.*)", flags=re.I)
 EXTENSIONS_REGEX = re.compile(r"(?P<ext>[A-Za-z0-9][A-Za-z0-9\-]*) ?")
 
 
-def parse_esmtp_extensions(message: str) -> Tuple[Dict[str, str], List[str]]:
+def parse_esmtp_extensions(message: str) -> tuple[dict[str, str], list[str]]:
     """
     Parse an EHLO response from the server into a dict of {extension: params}
     and a list of auth method names.
@@ -39,8 +38,8 @@ def parse_esmtp_extensions(message: str) -> Tuple[Dict[str, str], List[str]]:
          250-XGEN
          250 SIZE 51200000
     """
-    esmtp_extensions: Dict[str, str] = {}
-    auth_types: List[str] = []
+    esmtp_extensions: dict[str, str] = {}
+    auth_types: list[str] = []
 
     response_lines = message.split("\n")
 
