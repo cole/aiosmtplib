@@ -768,6 +768,25 @@ def smtpd_server_tls(
 
 
 @pytest.fixture(scope="function")
+def smtpd_server_no_starttls(
+    server_factory: Callable[..., asyncio.AbstractServer],
+    hostname: str,
+    smtpd_class: type[SMTPD],
+    smtpd_handler: RecordingHandler,
+) -> asyncio.AbstractServer:
+    def factory() -> SMTPD:
+        return smtpd_class(
+            smtpd_handler,
+            hostname=hostname,
+            enable_SMTPUTF8=False,
+            tls_context=None,
+            auth_callback=None,
+        )
+
+    return server_factory(factory)
+
+
+@pytest.fixture(scope="function")
 def smtpd_controller(
     bind_address: str,
     unused_tcp_port: int,
@@ -823,6 +842,13 @@ def smtpd_server_tls_port(smtpd_server_tls: asyncio.AbstractServer) -> Optional[
 
 
 @pytest.fixture(scope="function")
+def smtpd_server_no_starttls_port(
+    smtpd_server_no_starttls: asyncio.AbstractServer,
+) -> Optional[int]:
+    return _get_server_socket_port(smtpd_server_no_starttls)
+
+
+@pytest.fixture(scope="function")
 def smtpd_server_threaded_port(smtpd_controller: SMTPDController) -> int:
     port: int = smtpd_controller.port
     return port
@@ -867,6 +893,14 @@ def smtp_client_tls(
         use_tls=True,
         tls_context=client_tls_context,
     )
+
+
+@pytest.fixture(scope="function")
+def smtp_client_no_starttls(
+    hostname: str,
+    smtpd_server_no_starttls_port: int,
+) -> SMTP:
+    return SMTP(hostname=hostname, port=smtpd_server_no_starttls_port)
 
 
 @pytest.fixture(scope="function")

@@ -367,6 +367,18 @@ async def test_connect_with_login(
     await smtp_client.quit()
 
 
+async def test_connect_with_no_starttls_support(
+    smtp_client_no_starttls: SMTP,
+    smtpd_server_no_starttls: asyncio.AbstractServer,
+) -> None:
+    await smtp_client_no_starttls.connect()
+
+    assert smtp_client_no_starttls.is_connected
+    assert not smtp_client_no_starttls.protocol._over_ssl
+
+    await smtp_client_no_starttls.quit()
+
+
 async def test_connect_via_socket(
     smtp_client: SMTP, hostname: str, smtpd_server_port: int
 ) -> None:
