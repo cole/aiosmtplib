@@ -161,6 +161,19 @@ async def test_sendmail_simple_failure(
             await smtp_client.sendmail("test@example.com", ["@@"], "blah")
 
 
+async def test_sendmail_smtputf8_not_supported(
+    smtp_client: SMTP, smtpd_server: asyncio.AbstractServer
+) -> None:
+    async with smtp_client:
+        with pytest.raises(SMTPNotSupported, match="SMTPUTF8 is not supported"):
+            await smtp_client.sendmail(
+                "test@example.com",
+                ["børk@example.com"],
+                "blah",
+                mail_options=["SMTPUTF8"],
+            )
+
+
 async def test_sendmail_error_silent_rset_handles_disconnect(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
