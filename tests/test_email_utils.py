@@ -88,19 +88,35 @@ This is a test\r
 
 
 @pytest.mark.parametrize(
-    "utf8, cte_type, expected_chunk",
+    "message_class, utf8, cte_type, expected_chunk",
     (
-        (False, "7bit", b"=?utf-8?q?=C3=A5lice?="),
-        (True, "7bit", b"From: \xc3\xa5lice@example.com"),
-        (False, "8bit", b"=?utf-8?q?=C3=A5lice?="),
-        (True, "8bit", b"\xc3\xa5lice@example.com"),
+        (Message, False, "7bit", b"=?utf-8?b?w6VsaWNlQGV4YW1wbGUuY29t?="),
+        (Message, True, "7bit", b"=?utf-8?b?w6VsaWNlQGV4YW1wbGUuY29t?="),
+        (Message, False, "8bit", b"=?utf-8?b?w6VsaWNlQGV4YW1wbGUuY29t?="),
+        (Message, True, "8bit", b"=?utf-8?b?w6VsaWNlQGV4YW1wbGUuY29t?="),
+        (EmailMessage, False, "7bit", b"=?utf-8?q?=C3=A5lice?="),
+        (EmailMessage, True, "7bit", b"\xc3\xa5lice@example.com"),
+        (EmailMessage, False, "8bit", b"=?utf-8?q?=C3=A5lice?="),
+        (EmailMessage, True, "8bit", b"\xc3\xa5lice@example.com"),
     ),
-    ids=("ascii-7bit", "utf8-7bit", "ascii-8bit", "utf8-8bit"),
+    ids=(
+        "compat32-ascii-7bit",
+        "compat32-utf8-7bit",
+        "compat32-ascii-8bit",
+        "compat32-utf8-8bit",
+        "mime-ascii-7bit",
+        "mime-utf8-7bit",
+        "mime-ascii-8bit",
+        "mime-utf8-8bit",
+    ),
 )
 def test_flatten_message_utf8_options(
-    utf8: bool, cte_type: str, expected_chunk: bytes
+    message_class: Union[type[EmailMessage], type[Message]],
+    utf8: bool,
+    cte_type: str,
+    expected_chunk: bytes,
 ) -> None:
-    message = EmailMessage()
+    message = message_class()
     message["From"] = "ålice@example.com"
 
     flat_message = flatten_message(message, utf8=utf8, cte_type=cte_type)
