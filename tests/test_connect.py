@@ -428,3 +428,10 @@ async def test_disconnected_server_data(
 
     with pytest.raises(SMTPServerDisconnected):
         await smtp_client.data("123")
+
+
+async def test_create_connection_runtime_error(
+    smtp_client: SMTP,
+) -> None:
+    with pytest.raises(RuntimeError):
+        await smtp_client._create_connection(1.0)
