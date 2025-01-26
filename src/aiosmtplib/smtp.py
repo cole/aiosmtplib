@@ -519,9 +519,6 @@ class SMTP:
 
         return response
 
-    def _connection_lost(self, waiter: "asyncio.Future[None]") -> None:
-        self.close()
-
     async def _maybe_start_tls_on_connect(self) -> None:
         """
         Depending on config, upgrade the connection via STARTTLS.
