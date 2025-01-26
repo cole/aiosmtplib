@@ -623,6 +623,21 @@ async def test_send_mime_message_utf8_text_without_smtputf8(
     ]
 
 
+async def test_send_message_7bit(
+    smtp_client_7bit: SMTP,
+    smtpd_server_7bit: asyncio.AbstractServer,
+    message: email.message.Message,
+    received_commands: list[tuple[str, tuple[Any, ...]]],
+) -> None:
+    async with smtp_client_7bit:
+        errors, response = await smtp_client_7bit.send_message(message)
+
+    assert not errors
+    assert response != ""
+
+    assert "BODY=8BITMIME" not in received_commands[1][1][1]
+
+
 async def test_sendmail_empty_sender(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
