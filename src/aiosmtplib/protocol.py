@@ -213,9 +213,10 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
             try:
                 code = int(line[:3])
             except ValueError:
+                error_text = line.decode("utf-8", errors="ignore")
                 raise SMTPResponseException(
                     SMTPStatus.invalid_response.value,
-                    f"Malformed SMTP response line: {line!r}",
+                    f"Malformed SMTP response line: {error_text}",
                 ) from None
 
             offset += len(line)

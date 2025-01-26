@@ -128,6 +128,39 @@ async def test_error_on_readline_with_partial_line(
     await cleanup_server(server)
 
 
+async def test_error_on_readline_with_malformed_response(
+    bind_address: str, hostname: str
+) -> None:
+    event_loop = asyncio.get_running_loop()
+    response = b"ERROR\n"
+
+    async def client_connected(
+        reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+    ) -> None:
+        writer.write(response)
+        writer.write_eof()
+        await writer.drain()
+
+    server = await asyncio.start_server(
+        client_connected, host=bind_address, port=0, family=socket.AF_INET
+    )
+    server_port = server.sockets[0].getsockname()[1] if server.sockets else 0
+
+    connect_future = event_loop.create_connection(
+        SMTPProtocol, host=hostname, port=server_port
+    )
+
+    _, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
+
+    with pytest.raises(
+        SMTPResponseException, match="Malformed SMTP response line: ERROR"
+    ):
+        await protocol.read_response(timeout=1.0)  # type: ignore
+
+    server.close()
+    await cleanup_server(server)
+
+
 async def test_protocol_response_waiter_unset(
     bind_address: str,
     hostname: str,
