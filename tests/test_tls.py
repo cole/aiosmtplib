@@ -20,9 +20,6 @@ from aiosmtplib import (
 )
 
 
-pytestmark = pytest.mark.asyncio()
-
-
 async def test_tls_connection(
     smtp_client_tls: SMTP, smtpd_server_tls: asyncio.AbstractServer
 ) -> None:

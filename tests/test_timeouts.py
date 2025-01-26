@@ -21,9 +21,6 @@ from aiosmtplib.protocol import SMTPProtocol
 from .compat import cleanup_server
 
 
-pytestmark = pytest.mark.asyncio()
-
-
 async def test_command_timeout_error(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,

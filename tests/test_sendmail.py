@@ -21,9 +21,6 @@ from aiosmtplib import (
 )
 
 
-pytestmark = pytest.mark.asyncio()
-
-
 async def test_sendmail_simple_success(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,

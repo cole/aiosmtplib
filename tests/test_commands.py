@@ -20,9 +20,6 @@ from aiosmtplib import (
 from .smtpd import RecordingHandler
 
 
-pytestmark = pytest.mark.asyncio()
-
-
 async def test_helo_ok(smtp_client: SMTP, smtpd_server: asyncio.AbstractServer) -> None:
     async with smtp_client:
         response = await smtp_client.helo()

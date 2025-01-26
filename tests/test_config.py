@@ -11,9 +11,6 @@ import pytest
 from aiosmtplib import SMTP
 
 
-pytestmark = pytest.mark.asyncio()
-
-
 async def test_tls_context_and_cert_raises(
     client_tls_context: ssl.SSLContext,
 ) -> None:

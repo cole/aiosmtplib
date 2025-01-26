@@ -19,8 +19,6 @@ RECIPIENTS = [
     "recipient3@example.com",
 ]
 
-pytestmark = pytest.mark.asyncio()
-
 
 async def test_sendmail_multiple_times_in_sequence(
     smtp_client: SMTP,

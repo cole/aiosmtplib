@@ -16,9 +16,6 @@ from aiosmtplib.typing import SMTPStatus
 from .auth import DummySMTPAuth
 
 
-pytestmark = pytest.mark.asyncio()
-
-
 SUCCESS_RESPONSE = SMTPResponse(SMTPStatus.auth_successful, "OK")
 FAILURE_RESPONSE = SMTPResponse(SMTPStatus.auth_failed, "Nope")
 

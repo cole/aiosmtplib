@@ -15,9 +15,6 @@ from aiosmtplib.protocol import FlowControlMixin, SMTPProtocol
 from .compat import cleanup_server
 
 
-pytestmark = pytest.mark.asyncio()
-
-
 async def test_protocol_connect(hostname: str, echo_server_port: int) -> None:
     event_loop = asyncio.get_running_loop()
     connect_future = event_loop.create_connection(

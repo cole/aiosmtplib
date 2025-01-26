@@ -19,9 +19,6 @@ from aiosmtplib import (
 )
 
 
-pytestmark = pytest.mark.asyncio()
-
-
 async def close_during_read_response(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
     # Read one line of data, then cut the connection.
     await smtpd.push(f"{SMTPStatus.start_input} End data with <CR><LF>.<CR><LF>")

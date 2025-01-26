@@ -14,9 +14,6 @@ import pytest
 from aiosmtplib import send
 
 
-pytestmark = pytest.mark.asyncio()
-
-
 async def test_send(
     hostname: str,
     smtpd_server_port: int,
