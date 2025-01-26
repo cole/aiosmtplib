@@ -86,7 +86,7 @@ class SMTP:
     def __init__(
         self,
         *,
-        hostname: Optional[str] = "localhost",
+        hostname: Optional[str] = None,
         port: Optional[int] = None,
         username: Optional[Union[str, bytes]] = None,
         password: Optional[Union[str, bytes]] = None,
@@ -425,10 +425,13 @@ class SMTP:
             self._connect_lock = asyncio.Lock()
         await self._connect_lock.acquire()
 
-        # Set default port last in case use_tls or start_tls is provided,
-        # and only if we're not using a socket.
-        if self.port is None and self.sock is None and self.socket_path is None:
-            self.port = self._get_default_port()
+        # If we're not using a socket, default to port and hostname
+        if self.sock is None and self.socket_path is None:
+            if self.hostname is None:
+                self.hostname = "localhost"
+
+            if self.port is None and self.sock is None and self.socket_path is None:
+                self.port = self._get_default_port()
 
         if self.local_hostname is None:
             self.local_hostname = await self._get_default_local_hostname()
