@@ -408,3 +408,10 @@ async def test_tls_connection_with_cert_error(
         await smtp_client_tls.connect()
 
     assert "CERTIFICATE" in str(exception_info.value).upper()
+
+
+async def test_starttls_when_disconnected() -> None:
+    client = SMTP()
+
+    with pytest.raises(SMTPServerDisconnected):
+        await client.starttls()
