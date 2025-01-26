@@ -109,8 +109,8 @@ class SMTP:
         sock: Optional[socket.socket] = None,
     ) -> None:
         """
-        :keyword hostname:  Server name (or IP) to connect to. Literal[Default.token]s to "localhost".
-        :keyword port: Server port. Literal[Default.token]s ``465`` if ``use_tls`` is ``True``,
+        :keyword hostname:  Server name (or IP) to connect to. defaults to "localhost".
+        :keyword port: Server port. defaults ``465`` if ``use_tls`` is ``True``,
             ``587`` if ``start_tls`` is ``True``, or ``25`` otherwise.
         :keyword username:  Username to login as after connect.
         :keyword password:  Password for login after connect.
@@ -120,8 +120,8 @@ class SMTP:
         :keyword source_address: Takes a 2-tuple (host, port) for the socket to bind to
             as its source address before connecting. If the host is '' and port is 0,
             the OS default behavior will be used.
-        :keyword timeout: Literal[Default.token] timeout value for the connection, in seconds.
-            Literal[Default.token]s to 60.
+        :keyword timeout: Default timeout value for the connection, in seconds.
+            defaults to 60.
         :keyword use_tls: If True, make the initial connection to the server
             over TLS/SSL. Mutually exclusive with ``start_tls``; if the server uses
             STARTTLS, ``use_tls`` should be ``False``.
@@ -132,7 +132,7 @@ class SMTP:
             If ``False``, no upgrade will occur.
             Mutually exclusive with ``use_tls``.
         :keyword validate_certs: Determines if server certificates are
-            validated. Literal[Default.token]s to ``True``.
+            validated. defaults to ``True``.
         :keyword client_cert: Path to client side certificate, for TLS.
         :keyword client_key: Path to client side key, for TLS.
         :keyword tls_context: An existing :py:class:`ssl.SSLContext`, for TLS.
@@ -370,8 +370,8 @@ class SMTP:
         :meth:`.connect` take precedence over those used to initialize the
         class.
 
-        :keyword hostname:  Server name (or IP) to connect to. Literal[Default.token]s to "localhost".
-        :keyword port: Server port. Literal[Default.token]s ``465`` if ``use_tls`` is ``True``,
+        :keyword hostname:  Server name (or IP) to connect to. defaults to "localhost".
+        :keyword port: Server port. defaults ``465`` if ``use_tls`` is ``True``,
             ``587`` if ``start_tls`` is ``True``, or ``25`` otherwise.
         :keyword username:  Username to login as after connect.
         :keyword password:  Password for login after connect.
@@ -382,7 +382,7 @@ class SMTP:
             as its source address before connecting. If the host is '' and port is 0,
             the OS default behavior will be used.
         :keyword timeout: Literal[Default.token] timeout value for the connection, in seconds.
-            Literal[Default.token]s to 60.
+            defaults to 60.
         :keyword use_tls: If True, make the initial connection to the server
             over TLS/SSL. Mutually exclusive with ``start_tls``; if the server uses
             STARTTLS, ``use_tls`` should be ``False``.
@@ -393,7 +393,7 @@ class SMTP:
             If ``False``, no upgrade will occur.
             Mutually exclusive with ``use_tls``.
         :keyword validate_certs: Determines if server certificates are
-            validated. Literal[Default.token]s to ``True``.
+            validated. defaults to ``True``.
         :keyword client_cert: Path to client side certificate, for TLS.
         :keyword client_key: Path to client side key, for TLS.
         :keyword tls_context: An existing :py:class:`ssl.SSLContext`, for TLS.
