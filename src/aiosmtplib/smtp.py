@@ -891,11 +891,10 @@ class SMTP:
         :raises SMTPDataError: on unexpected server response code
         :raises SMTPServerDisconnected: connection lost
         """
-        await self._ehlo_or_helo_if_needed()
-
-        # As data accesses protocol directly, some handling is required
         if self.protocol is None:
             raise SMTPServerDisconnected("Connection lost")
+
+        await self._ehlo_or_helo_if_needed()
 
         if timeout is Default.token:
             timeout = self.timeout
@@ -1000,13 +999,13 @@ class SMTP:
         :raises SMTPServerDisconnected: connection lost
         :raises ValueError: invalid options provided
         """
-        await self._ehlo_or_helo_if_needed()
-
         if self.protocol is None:
             raise SMTPServerDisconnected("Server not connected")
 
         if self.get_transport_info("sslcontext") is not None:
             raise SMTPException("Connection already using TLS")
+
+        await self._ehlo_or_helo_if_needed()
 
         self._update_settings_from_kwargs(
             validate_certs=validate_certs,
