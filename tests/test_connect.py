@@ -431,8 +431,23 @@ async def test_disconnected_server_data(
         await smtp_client.data("123")
 
 
-async def test_create_connection_runtime_error(
+async def test_create_connection_runtime_error_on_missing_loop(
     smtp_client: SMTP,
 ) -> None:
-    with pytest.raises(RuntimeError):
-        await smtp_client._create_connection(1.0)
+    client = SMTP(timeout=1.0)
+    with pytest.raises(RuntimeError, match="No event loop set"):
+        await client._create_connection(1.0)
+
+
+async def test_create_connection_runtime_error_on_missing_hostname() -> None:
+    client = SMTP(hostname=None, port=None, timeout=1.0)
+    client.loop = asyncio.get_running_loop()
+    with pytest.raises(RuntimeError, match="No hostname provided"):
+        await client._create_connection(1.0)
+
+
+async def test_create_connection_runtime_error_on_missing_port() -> None:
+    client = SMTP(hostname="localhost", port=None, timeout=1.0)
+    client.loop = asyncio.get_running_loop()
+    with pytest.raises(RuntimeError, match="No port provided"):
+        await client._create_connection(1.0)
