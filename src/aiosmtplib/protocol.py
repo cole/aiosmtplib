@@ -364,13 +364,13 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
                 raise SMTPTimeoutError("Timed out while upgrading transport") from exc
             # SSLProtocol only raises ConnectionAbortedError on timeout
             except ConnectionAbortedError as exc:
-                raise SMTPTimeoutError(exc.args[0]) from exc
+                raise SMTPTimeoutError(
+                    "Connection aborted while upgrading transport"
+                ) from exc
             except ConnectionResetError as exc:
-                if exc.args:
-                    message = exc.args[0]
-                else:
-                    message = "Connection was reset while upgrading transport"
-                raise SMTPServerDisconnected(message) from exc
+                raise SMTPServerDisconnected(
+                    "Connection reset while upgrading transport"
+                ) from exc
 
             self.transport = tls_transport
 
