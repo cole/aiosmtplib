@@ -112,7 +112,9 @@ jobs:
           steps:
             - run: uv pip install $(find dist -name aiosmtplib-*.whl)
       - run: |
-          uv run python -m pytest --cov --cov-report= \
+          uv run --with aiosmtplib --no-project -- python -m pytest \
+            --cov \
+            --cov-report= \
             --cov-config=pyproject.toml \
             --junitxml=test-results/$CIRCLE_JOB/results.xml \
             --override-ini=pythonpath= \
