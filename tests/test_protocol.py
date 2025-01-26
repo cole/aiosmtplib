@@ -79,6 +79,27 @@ async def test_protocol_connected_check_on_read_response(
         await protocol.read_response(timeout=1.0)
 
 
+async def test_protocol_read_only_transport_error() -> None:
+    class MockPipe:
+        def fileno(self):
+            return 7
+
+        def close(self):
+            pass
+
+    event_loop = asyncio.get_running_loop()
+    pipe = MockPipe()
+    connect_future = event_loop.connect_read_pipe(SMTPProtocol, pipe)
+    transport, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
+
+    assert getattr(protocol, "transport", None) is transport
+
+    with pytest.raises(RuntimeError, match="does not support writing"):
+        protocol.write(b"TEST\n")
+
+    transport.close()
+
+
 async def test_protocol_reader_connected_check_on_start_tls(
     client_tls_context: ssl.SSLContext,
 ) -> None:
