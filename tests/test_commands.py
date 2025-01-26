@@ -39,6 +39,16 @@ async def test_helo_with_hostname(
         assert response.code == SMTPStatus.completed
 
 
+async def test_helo_with_hostname_unset_after_connect(
+    smtp_client: SMTP, smtpd_server: asyncio.AbstractServer
+) -> None:
+    async with smtp_client:
+        smtp_client.local_hostname = None
+        response = await smtp_client.helo()
+
+        assert response.code == SMTPStatus.completed
+
+
 async def test_helo_error(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,
@@ -67,6 +77,16 @@ async def test_ehlo_with_hostname(
 ) -> None:
     async with smtp_client:
         response = await smtp_client.ehlo(hostname="example.com")
+
+        assert response.code == SMTPStatus.completed
+
+
+async def test_ehlo_with_hostname_unset_after_connect(
+    smtp_client: SMTP, smtpd_server: asyncio.AbstractServer
+) -> None:
+    async with smtp_client:
+        smtp_client.local_hostname = None
+        response = await smtp_client.ehlo()
 
         assert response.code == SMTPStatus.completed
 
