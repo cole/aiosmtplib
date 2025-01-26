@@ -97,6 +97,16 @@ async def test_protocol_writer_connected_check_on_start_tls(
         await smtp_protocol.start_tls(client_tls_context)
 
 
+async def test_already_over_tls_check_on_start_tls(
+    client_tls_context: ssl.SSLContext,
+) -> None:
+    smtp_protocol = SMTPProtocol()
+    smtp_protocol._over_ssl = True
+
+    with pytest.raises(RuntimeError, match="Already using TLS"):
+        await smtp_protocol.start_tls(client_tls_context)
+
+
 async def test_error_on_readline_with_partial_line(
     bind_address: str, hostname: str
 ) -> None:
