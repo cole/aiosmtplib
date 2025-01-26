@@ -64,15 +64,13 @@ class SMTP:
 
     Basic usage:
 
-        >>> event_loop = asyncio.get_event_loop()
         >>> smtp = aiosmtplib.SMTP(hostname="127.0.0.1", port=1025)
-        >>> event_loop.run_until_complete(smtp.connect())
-        (220, ...)
         >>> sender = "root@localhost"
         >>> recipients = ["somebody@localhost"]
-        >>> message = "Hello World"
-        >>> send = smtp.sendmail(sender, recipients, "Hello World")
-        >>> event_loop.run_until_complete(send)
+        >>> async def connect_and_send():
+        ...     await smtp.connect()
+        ...     return await smtp.sendmail(sender, recipients, "Hello")
+        >>> asyncio.run(connect_and_send())
         ({}, 'OK')
 
     Keyword arguments can be provided either on :meth:`__init__` or when
@@ -1256,17 +1254,15 @@ class SMTP:
 
         Example:
 
-             >>> event_loop = asyncio.get_event_loop()
-             >>> smtp = aiosmtplib.SMTP(hostname="127.0.0.1", port=1025)
-             >>> event_loop.run_until_complete(smtp.connect())
-             (220, ...)
-             >>> recipients = ["one@one.org", "two@two.org", "3@three.org"]
-             >>> message = "From: Me@my.org\\nSubject: testing\\nHello World"
-             >>> send_coro = smtp.sendmail("me@my.org", recipients, message)
-             >>> event_loop.run_until_complete(send_coro)
-             ({}, 'OK')
-             >>> event_loop.run_until_complete(smtp.quit())
-             (221, Bye)
+            >>> smtp = aiosmtplib.SMTP(hostname="127.0.0.1", port=1025)
+            >>> recipients = ["one@one.org", "two@two.org", "3@three.org"]
+            >>> message = "From: Me@my.org\\nSubject: testing\\nHello World"
+            >>> async def connect_and_send():
+            ...     await smtp.connect()
+            ...     await smtp.sendmail("me@my.org", recipients, message)
+            ...     return await smtp.quit()
+            >>> asyncio.run(connect_and_send())
+            (221, Bye)
 
         In the above example, the message was accepted for delivery for all
         three addresses. If delivery had been only successful to two
