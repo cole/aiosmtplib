@@ -4,6 +4,7 @@ Protocol level tests.
 
 import asyncio
 import gc
+import os
 import socket
 import ssl
 
@@ -80,16 +81,10 @@ async def test_protocol_connected_check_on_read_response(
 
 
 async def test_protocol_read_only_transport_error() -> None:
-    class MockPipe:
-        def fileno(self):
-            return 7
-
-        def close(self):
-            pass
-
     event_loop = asyncio.get_running_loop()
-    pipe = MockPipe()
-    connect_future = event_loop.connect_read_pipe(SMTPProtocol, pipe)
+    read_descriptor, _ = os.pipe()
+    read_pipe = os.fdopen(read_descriptor, "rb", buffering=0)
+    connect_future = event_loop.connect_read_pipe(SMTPProtocol, read_pipe)
     transport, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
 
     assert getattr(protocol, "transport", None) is transport
