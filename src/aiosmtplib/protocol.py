@@ -267,12 +267,14 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
     def write(self, data: bytes) -> None:
         if self.transport is None or self.transport.is_closing():
             raise SMTPServerDisconnected("Connection lost")
-        if not hasattr(self.transport, "write"):
+
+        try:
+            cast(asyncio.WriteTransport, self.transport).write(data)
+        # uvloop raises NotImplementedError, asyncio doesn't have a write method
+        except (AttributeError, NotImplementedError):
             raise RuntimeError(
                 f"Transport {self.transport!r} does not support writing."
-            )
-
-        cast(asyncio.WriteTransport, self.transport).write(data)
+            ) from None
 
     async def execute_command(
         self, *args: bytes, timeout: Optional[float] = None
