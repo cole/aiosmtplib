@@ -85,6 +85,7 @@ source = [
     "src/aiosmtplib",
     "/opt/pypy/lib/pypy3.*/site-packages/aiosmtplib",
     "/usr/local/lib/python3.*/site-packages/aiosmtplib",
+    "/root/project/.venv/lib/python3.*/site-packages/aiosmtplib",
 ]
 
 [tool.pyright]
