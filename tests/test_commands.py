@@ -15,6 +15,7 @@ from aiosmtplib import (
     SMTPHeloError,
     SMTPNotSupported,
     SMTPResponseException,
+    SMTPServerDisconnected,
     SMTPStatus,
 )
 
@@ -586,6 +587,13 @@ async def test_data_complete_error(
         with pytest.raises(SMTPDataError) as exception_info:
             await smtp_client.data("TEST MESSAGE")
         assert exception_info.value.code == error_code
+
+
+async def test_data_error_when_disconnected() -> None:
+    client = SMTP()
+
+    with pytest.raises(SMTPServerDisconnected):
+        await client.data("HELLO WORLD")
 
 
 async def test_gibberish_raises_exception(
