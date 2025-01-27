@@ -93,7 +93,7 @@ def pytest_sessionstart(session: pytest.Session) -> None:
 @pytest_asyncio.fixture
 def debug_event_loop(
     event_loop: asyncio.AbstractEventLoop,
-) -> asyncio.AbstractEventLoop:
+) -> Generator[asyncio.AbstractEventLoop, None, None]:
     previous_debug = event_loop.get_debug()
     event_loop.set_debug(True)
 
@@ -673,66 +673,46 @@ def socket_server_factory(
 
 @pytest.fixture(scope="function")
 def smtpd_server(
-    server_factory: Callable[..., asyncio.AbstractServer],
+    request: pytest.FixtureRequest,
+    event_loop: asyncio.AbstractEventLoop,
+    bind_address: str,
     hostname: str,
-    smtpd_class: type[SMTPD],
     smtpd_handler: RecordingHandler,
     server_tls_context: ssl.SSLContext,
     smtpd_auth_callback: Callable[[str, bytes, bytes], bool],
-) -> asyncio.AbstractServer:
+) -> Generator[asyncio.AbstractServer, None, None]:
+    smtpd_options_marker = request.node.get_closest_marker("smtpd_options")
+    if smtpd_options_marker is None:
+        smtpd_options = {}
+    else:
+        smtpd_options = smtpd_options_marker.kwargs
+
     def factory() -> SMTPD:
-        return smtpd_class(
+        return TestSMTPD(
             smtpd_handler,
             hostname=hostname,
-            enable_SMTPUTF8=False,
+            enable_SMTPUTF8=smtpd_options.get("smtputf8", False),
+            decode_data=smtpd_options.get("7bit", False),
             tls_context=server_tls_context,
             auth_callback=smtpd_auth_callback,
         )
 
-    return server_factory(factory)
+    create_server_kwargs = {
+        "host": bind_address,
+        "port": 0,
+        "family": socket.AF_INET,
+    }
 
+    server_coro = event_loop.create_server(factory, **create_server_kwargs)
+    server = event_loop.run_until_complete(server_coro)
 
-@pytest.fixture(scope="function")
-def smtpd_server_smtputf8(
-    server_factory: Callable[..., asyncio.AbstractServer],
-    hostname: str,
-    smtpd_class: type[SMTPD],
-    smtpd_handler: RecordingHandler,
-    server_tls_context: ssl.SSLContext,
-    smtpd_auth_callback: Callable[[str, bytes, bytes], bool],
-) -> asyncio.AbstractServer:
-    def factory() -> SMTPD:
-        return smtpd_class(
-            smtpd_handler,
-            hostname=hostname,
-            enable_SMTPUTF8=True,
-            tls_context=server_tls_context,
-            auth_callback=smtpd_auth_callback,
-        )
+    yield server
 
-    return server_factory(factory)
-
-
-@pytest.fixture(scope="function")
-def smtpd_server_7bit(
-    server_factory: Callable[..., asyncio.AbstractServer],
-    hostname: str,
-    smtpd_class: type[SMTPD],
-    smtpd_handler: RecordingHandler,
-    server_tls_context: ssl.SSLContext,
-    smtpd_auth_callback: Callable[[str, bytes, bytes], bool],
-) -> asyncio.AbstractServer:
-    def factory() -> SMTPD:
-        return smtpd_class(
-            smtpd_handler,
-            hostname=hostname,
-            decode_data=True,
-            enable_SMTPUTF8=False,
-            tls_context=server_tls_context,
-            auth_callback=smtpd_auth_callback,
-        )
-
-    return server_factory(factory)
+    server.close()
+    try:
+        event_loop.run_until_complete(cleanup_server(server))
+    except RuntimeError:
+        pass
 
 
 @pytest.fixture(scope="function")
@@ -839,20 +819,6 @@ def smtpd_server_port(smtpd_server: asyncio.AbstractServer) -> Optional[int]:
 
 
 @pytest.fixture(scope="function")
-def smtpd_server_smtputf8_port(
-    smtpd_server_smtputf8: asyncio.AbstractServer,
-) -> Optional[int]:
-    return _get_server_socket_port(smtpd_server_smtputf8)
-
-
-@pytest.fixture(scope="function")
-def smtpd_server_7bit_port(
-    smtpd_server_7bit: asyncio.AbstractServer,
-) -> Optional[int]:
-    return _get_server_socket_port(smtpd_server_7bit)
-
-
-@pytest.fixture(scope="function")
 def echo_server_port(echo_server: asyncio.AbstractServer) -> Optional[int]:
     return _get_server_socket_port(echo_server)
 
@@ -880,7 +846,9 @@ def smtpd_server_threaded_port(smtpd_controller: SMTPDController) -> int:
 
 @pytest.fixture(scope="function")
 def smtp_client(
-    hostname: str, smtpd_server_port: int, client_tls_context: ssl.SSLContext
+    hostname: str,
+    smtpd_server_port: int,
+    client_tls_context: ssl.SSLContext,
 ) -> SMTP:
     return SMTP(
         hostname=hostname,
@@ -888,32 +856,6 @@ def smtp_client(
         tls_context=client_tls_context,
         start_tls=False,
         timeout=1.0,
-    )
-
-
-@pytest.fixture(scope="function")
-def smtp_client_smtputf8(
-    hostname: str, smtpd_server_smtputf8_port: int, client_tls_context: ssl.SSLContext
-) -> SMTP:
-    return SMTP(
-        hostname=hostname,
-        port=smtpd_server_smtputf8_port,
-        timeout=1.0,
-        start_tls=False,
-        tls_context=client_tls_context,
-    )
-
-
-@pytest.fixture(scope="function")
-def smtp_client_7bit(
-    hostname: str, smtpd_server_7bit_port: int, client_tls_context: ssl.SSLContext
-) -> SMTP:
-    return SMTP(
-        hostname=hostname,
-        port=smtpd_server_7bit_port,
-        timeout=1.0,
-        start_tls=False,
-        tls_context=client_tls_context,
     )
 
 
