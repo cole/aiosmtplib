@@ -369,7 +369,7 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
                 raise SMTPTimeoutError(
                     "Connection aborted while upgrading transport"
                 ) from exc
-            except ConnectionResetError as exc:
+            except ConnectionError as exc:
                 raise SMTPServerDisconnected(
                     "Connection reset while upgrading transport"
                 ) from exc
