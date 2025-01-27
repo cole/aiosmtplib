@@ -95,7 +95,7 @@ async def test_protocol_read_only_transport_error() -> None:
     transport.close()
 
 
-async def test_protocol_reader_connected_check_on_start_tls(
+async def test_protocol_connected_check_on_start_tls(
     client_tls_context: ssl.SSLContext,
 ) -> None:
     smtp_protocol = SMTPProtocol()
@@ -104,16 +104,7 @@ async def test_protocol_reader_connected_check_on_start_tls(
         await smtp_protocol.start_tls(client_tls_context, timeout=1.0)
 
 
-async def test_protocol_writer_connected_check_on_start_tls(
-    client_tls_context: ssl.SSLContext,
-) -> None:
-    smtp_protocol = SMTPProtocol()
-
-    with pytest.raises(SMTPServerDisconnected):
-        await smtp_protocol.start_tls(client_tls_context)
-
-
-async def test_already_over_tls_check_on_start_tls(
+async def test_protocol_already_over_tls_check_on_start_tls(
     client_tls_context: ssl.SSLContext,
 ) -> None:
     smtp_protocol = SMTPProtocol()
@@ -121,6 +112,30 @@ async def test_already_over_tls_check_on_start_tls(
 
     with pytest.raises(RuntimeError, match="Already using TLS"):
         await smtp_protocol.start_tls(client_tls_context)
+
+
+async def test_protocol_connection_reset_on_starttls(
+    hostname: str,
+    smtpd_server_port: int,
+    client_tls_context: ssl.SSLContext,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    event_loop = asyncio.get_running_loop()
+
+    connect_future = event_loop.create_connection(
+        SMTPProtocol, host=hostname, port=smtpd_server_port
+    )
+    transport, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
+
+    def mock_start_tls(*args, **kwargs) -> None:
+        raise ConnectionResetError("Connection was reset")
+
+    monkeypatch.setattr(event_loop, "start_tls", mock_start_tls)
+
+    with pytest.raises(SMTPServerDisconnected):
+        await protocol.start_tls(client_tls_context)
+
+    transport.close()
 
 
 async def test_error_on_readline_with_partial_line(
