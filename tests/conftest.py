@@ -373,191 +373,6 @@ def smtpd_auth_callback(
 
 
 @pytest.fixture(scope="session")
-def smtpd_mock_response_delayed_ok() -> Callable[[SMTPD], Coroutine[Any, Any, None]]:
-    async def mock_response_delayed_ok(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
-        await asyncio.sleep(1.0)
-        await smtpd.push("250 all done")
-
-    return mock_response_delayed_ok
-
-
-@pytest.fixture(scope="session")
-def smtpd_mock_response_delayed_read() -> Callable[[SMTPD], Coroutine[Any, Any, None]]:
-    async def mock_response_delayed_read(
-        smtpd: SMTPD, *args: Any, **kwargs: Any
-    ) -> None:
-        await smtpd.push("220-hi")
-        await asyncio.sleep(1.0)
-
-    return mock_response_delayed_read
-
-
-@pytest.fixture(scope="session")
-def smtpd_mock_response_done() -> Callable[[SMTPD], Coroutine[Any, Any, None]]:
-    async def mock_response_done(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
-        if args and args[0]:
-            smtpd.session.host_name = args[0]
-        await smtpd.push("250 done")
-
-    return mock_response_done
-
-
-@pytest.fixture(scope="session")
-def smtpd_mock_response_done_then_close() -> Callable[
-    [SMTPD], Coroutine[Any, Any, None]
-]:
-    async def mock_response_done_then_close(
-        smtpd: SMTPD, *args: Any, **kwargs: Any
-    ) -> None:
-        if args and args[0]:
-            smtpd.session.host_name = args[0]
-        await smtpd.push("250 done")
-        await smtpd.push("221 bye now")
-        smtpd.transport.close()
-
-    return mock_response_done_then_close
-
-
-@pytest.fixture(scope="session")
-def smtpd_mock_response_error() -> Callable[[SMTPD], Coroutine[Any, Any, None]]:
-    async def mock_response_error(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
-        await smtpd.push("555 error")
-
-    return mock_response_error
-
-
-@pytest.fixture(scope="session")
-def smtpd_mock_response_error_disconnect() -> Callable[
-    [SMTPD], Coroutine[Any, Any, None]
-]:
-    async def mock_response_error_disconnect(
-        smtpd: SMTPD, *args: Any, **kwargs: Any
-    ) -> None:
-        await smtpd.push("501 error")
-        smtpd.transport.close()
-
-    return mock_response_error_disconnect
-
-
-@pytest.fixture(scope="session")
-def smtpd_mock_response_bad_data() -> Callable[[SMTPD], Coroutine[Any, Any, None]]:
-    async def mock_response_bad_data(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
-        smtpd._writer.write(b"250 \xff\xff\xff\xff\r\n")
-        await smtpd._writer.drain()
-
-    return mock_response_bad_data
-
-
-@pytest.fixture(scope="session")
-def smtpd_mock_response_gibberish() -> Callable[[SMTPD], Coroutine[Any, Any, None]]:
-    async def mock_response_gibberish(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
-        smtpd._writer.write("wefpPSwrsfa2sdfsdf")
-        await smtpd._writer.drain()
-
-    return mock_response_gibberish
-
-
-@pytest.fixture(scope="session")
-def smtpd_mock_response_expn() -> Callable[[SMTPD], Coroutine[Any, Any, None]]:
-    async def mock_response_expn(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
-        await smtpd.push(
-            """250-Joseph Blow <jblow@example.com>
-250 Alice Smith <asmith@example.com>"""
-        )
-
-    return mock_response_expn
-
-
-@pytest.fixture(scope="session")
-def smtpd_mock_response_ehlo_minimal() -> Callable[[SMTPD], Coroutine[Any, Any, None]]:
-    async def mock_response_ehlo(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
-        if args and args[0]:
-            smtpd.session.host_name = args[0]
-
-        await smtpd.push("250 HELP")
-
-    return mock_response_ehlo
-
-
-@pytest.fixture(scope="session")
-def smtpd_mock_response_ehlo_full() -> Callable[[SMTPD], Coroutine[Any, Any, None]]:
-    async def mock_response_ehlo(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
-        if args and args[0]:
-            smtpd.session.host_name = args[0]
-
-        await smtpd.push(
-            """250-localhost
-250-PIPELINING
-250-8BITMIME
-250-SIZE 512000
-250-DSN
-250-ENHANCEDSTATUSCODES
-250-EXPN
-250-HELP
-250-SAML
-250-SEND
-250-SOML
-250-TURN
-250-XADR
-250-XSTA
-250-ETRN
-250 XGEN"""
-        )
-
-    return mock_response_ehlo
-
-
-@pytest.fixture(scope="session")
-def smtpd_mock_response_unavailable() -> Callable[[SMTPD], Coroutine[Any, Any, None]]:
-    async def mock_response_unavailable(
-        smtpd: SMTPD, *args: Any, **kwargs: Any
-    ) -> None:
-        await smtpd.push("421 retry in 5 minutes")
-        smtpd.transport.close()
-
-    return mock_response_unavailable
-
-
-@pytest.fixture(scope="session")
-def smtpd_mock_response_tls_not_available() -> Callable[
-    [SMTPD], Coroutine[Any, Any, None]
-]:
-    async def mock_tls_not_available(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
-        await smtpd.push("454 please login")
-
-    return mock_tls_not_available
-
-
-@pytest.fixture(scope="session")
-def smtpd_mock_response_tls_ready_disconnect() -> Callable[
-    [SMTPD], Coroutine[Any, Any, None]
-]:
-    async def mock_response_tls_ready_disconnect(
-        smtpd: SMTPD, *args: Any, **kwargs: Any
-    ) -> None:
-        await smtpd.push("220 go for it")
-        smtpd.transport.close()
-
-    return mock_response_tls_ready_disconnect
-
-
-@pytest.fixture(scope="session")
-def smtpd_mock_response_disconnect() -> Callable[[SMTPD], Coroutine[Any, Any, None]]:
-    async def mock_response_disconnect(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
-        smtpd.transport.close()
-
-    return mock_response_disconnect
-
-
-@pytest.fixture(scope="session")
-def smtpd_mock_response_eof() -> Callable[[SMTPD], Coroutine[Any, Any, None]]:
-    async def mock_response_eof(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
-        smtpd.transport.write_eof()
-
-    return mock_response_eof
-
-
-@pytest.fixture(scope="session")
 def smtpd_mock_response_error_with_code_factory() -> Callable[
     [str], Callable[[SMTPD], Coroutine[Any, Any, None]]
 ]:
@@ -609,20 +424,28 @@ def socket_path(
 
 
 @pytest.fixture(scope="function")
-def smtpd_server(
+def smtpd_factory(
     request: pytest.FixtureRequest,
-    event_loop: asyncio.AbstractEventLoop,
-    bind_address: str,
+    monkeypatch: pytest.MonkeyPatch,
     hostname: str,
     smtpd_handler: RecordingHandler,
     server_tls_context: ssl.SSLContext,
     smtpd_auth_callback: Callable[[str, bytes, bytes], bool],
-) -> Generator[asyncio.AbstractServer, None, None]:
+) -> Callable[[], SMTPD]:
     smtpd_options_marker = request.node.get_closest_marker("smtpd_options")
     if smtpd_options_marker is None:
         smtpd_options = {}
     else:
         smtpd_options = smtpd_options_marker.kwargs
+
+    smtpd_mocks_marker = request.node.get_closest_marker("smtpd_mocks")
+    if smtpd_mocks_marker is None:
+        smtpd_mocks = {}
+    else:
+        smtpd_mocks = smtpd_mocks_marker.kwargs
+
+    for attr, mock_fn in smtpd_mocks.items():
+        monkeypatch.setattr(TestSMTPD, attr, mock_fn)
 
     smtpd_tls_context = (
         server_tls_context if smtpd_options.get("starttls", True) else None
@@ -638,6 +461,22 @@ def smtpd_server(
             auth_callback=smtpd_auth_callback,
         )
 
+    return factory
+
+
+@pytest.fixture(scope="function")
+def smtpd_server(
+    request: pytest.FixtureRequest,
+    event_loop: asyncio.AbstractEventLoop,
+    bind_address: str,
+    smtpd_factory: Callable[[], SMTPD],
+) -> Generator[asyncio.AbstractServer, None, None]:
+    smtpd_options_marker = request.node.get_closest_marker("smtpd_options")
+    if smtpd_options_marker is None:
+        smtpd_options = {}
+    else:
+        smtpd_options = smtpd_options_marker.kwargs
+
     create_server_kwargs = {
         "host": bind_address,
         "port": 0,
@@ -646,7 +485,7 @@ def smtpd_server(
     if smtpd_options.get("tls", False):
         create_server_kwargs["ssl"] = server_tls_context
 
-    server_coro = event_loop.create_server(factory, **create_server_kwargs)
+    server_coro = event_loop.create_server(smtpd_factory, **create_server_kwargs)
     server = event_loop.run_until_complete(server_coro)
 
     yield server
@@ -680,23 +519,10 @@ def echo_server(
 def smtpd_server_socket_path(
     event_loop: asyncio.AbstractEventLoop,
     socket_path: Union[str, bytes, Path],
-    hostname: str,
-    smtpd_class: type[SMTPD],
-    smtpd_handler: RecordingHandler,
-    server_tls_context: ssl.SSLContext,
-    smtpd_auth_callback: Callable[[str, bytes, bytes], bool],
+    smtpd_factory: Callable[[], SMTPD],
 ) -> Generator[asyncio.AbstractServer, None, None]:
-    def factory() -> SMTPD:
-        return smtpd_class(
-            smtpd_handler,
-            hostname=hostname,
-            enable_SMTPUTF8=False,
-            tls_context=server_tls_context,
-            auth_callback=smtpd_auth_callback,
-        )
-
     create_server_coro = event_loop.create_unix_server(
-        factory,
+        smtpd_factory,
         path=socket_path,  # type: ignore
     )
     server = event_loop.run_until_complete(create_server_coro)

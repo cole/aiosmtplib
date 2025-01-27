@@ -5,7 +5,6 @@ Connectivity tests.
 import asyncio
 import pathlib
 import socket
-from collections.abc import Callable
 from typing import Any, Union
 
 import pytest
@@ -17,6 +16,13 @@ from aiosmtplib import (
     SMTPResponseException,
     SMTPServerDisconnected,
     SMTPStatus,
+)
+
+from .smtpd import (
+    mock_response_done_then_close,
+    mock_response_unavailable,
+    mock_response_disconnect,
+    mock_response_eof,
 )
 
 
@@ -59,15 +65,8 @@ async def test_quit_then_connect_ok(
         assert response.code == SMTPStatus.completed
 
 
-async def test_bad_connect_response_raises_error(
-    smtp_client: SMTP,
-    smtpd_server: asyncio.AbstractServer,
-    smtpd_class: type[SMTPD],
-    smtpd_mock_response_unavailable: Callable,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(smtpd_class, "_handle_client", smtpd_mock_response_unavailable)
-
+@pytest.mark.smtpd_mocks(_handle_client=mock_response_unavailable)
+async def test_bad_connect_response_raises_error(smtp_client: SMTP) -> None:
     with pytest.raises(SMTPConnectError):
         await smtp_client.connect()
 
@@ -75,15 +74,8 @@ async def test_bad_connect_response_raises_error(
     assert smtp_client.protocol is None
 
 
-async def test_eof_on_connect_raises_connect_error(
-    smtp_client: SMTP,
-    smtpd_server: asyncio.AbstractServer,
-    smtpd_class: type[SMTPD],
-    smtpd_mock_response_eof: Callable,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(smtpd_class, "_handle_client", smtpd_mock_response_eof)
-
+@pytest.mark.smtpd_mocks(_handle_client=mock_response_eof)
+async def test_eof_on_connect_raises_connect_error(smtp_client: SMTP) -> None:
     with pytest.raises(SMTPConnectError):
         await smtp_client.connect()
 
@@ -91,30 +83,16 @@ async def test_eof_on_connect_raises_connect_error(
     assert smtp_client.protocol is None
 
 
-async def test_close_on_connect_raises_connect_error(
-    smtp_client: SMTP,
-    smtpd_server: asyncio.AbstractServer,
-    smtpd_class: type[SMTPD],
-    smtpd_mock_response_disconnect: Callable,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(smtpd_class, "_handle_client", smtpd_mock_response_disconnect)
-
+@pytest.mark.smtpd_mocks(_handle_client=mock_response_disconnect)
+async def test_close_on_connect_raises_connect_error(smtp_client: SMTP) -> None:
     with pytest.raises(SMTPConnectError):
         await smtp_client.connect()
 
     assert not smtp_client.is_connected
 
 
-async def test_421_closes_connection(
-    smtp_client: SMTP,
-    smtpd_server: asyncio.AbstractServer,
-    smtpd_class: type[SMTPD],
-    smtpd_mock_response_unavailable: Callable,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(smtpd_class, "smtp_NOOP", smtpd_mock_response_unavailable)
-
+@pytest.mark.smtpd_mocks(smtp_NOOP=mock_response_unavailable)
+async def test_421_closes_connection(smtp_client: SMTP) -> None:
     await smtp_client.connect()
 
     with pytest.raises(SMTPResponseException):
@@ -134,15 +112,8 @@ async def test_connect_error_with_no_server(
         await client.connect(timeout=1.0)
 
 
-async def test_disconnected_server_raises_on_client_read(
-    smtp_client: SMTP,
-    smtpd_server: asyncio.AbstractServer,
-    smtpd_class: type[SMTPD],
-    smtpd_mock_response_disconnect: Callable,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(smtpd_class, "smtp_NOOP", smtpd_mock_response_disconnect)
-
+@pytest.mark.smtpd_mocks(smtp_NOOP=mock_response_disconnect)
+async def test_disconnected_server_raises_on_client_read(smtp_client: SMTP) -> None:
     await smtp_client.connect()
 
     with pytest.raises(SMTPServerDisconnected):
@@ -151,15 +122,8 @@ async def test_disconnected_server_raises_on_client_read(
     assert not smtp_client.is_connected
 
 
-async def test_disconnected_server_raises_on_client_write(
-    smtp_client: SMTP,
-    smtpd_server: asyncio.AbstractServer,
-    smtpd_class: type[SMTPD],
-    smtpd_mock_response_eof: Callable,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(smtpd_class, "smtp_NOOP", smtpd_mock_response_eof)
-
+@pytest.mark.smtpd_mocks(smtp_NOOP=mock_response_eof)
+async def test_disconnected_server_raises_on_client_write(smtp_client: SMTP) -> None:
     await smtp_client.connect()
 
     with pytest.raises(SMTPServerDisconnected):
@@ -168,15 +132,8 @@ async def test_disconnected_server_raises_on_client_write(
     assert not smtp_client.is_connected
 
 
-async def test_disconnected_server_raises_on_data_read(
-    smtp_client: SMTP,
-    smtpd_server: asyncio.AbstractServer,
-    smtpd_class: type[SMTPD],
-    smtpd_mock_response_disconnect: Callable,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(smtpd_class, "smtp_DATA", smtpd_mock_response_disconnect)
-
+@pytest.mark.smtpd_mocks(smtp_DATA=mock_response_disconnect)
+async def test_disconnected_server_raises_on_data_read(smtp_client: SMTP) -> None:
     await smtp_client.connect()
     await smtp_client.ehlo()
     await smtp_client.mail("sender@example.com")
@@ -206,15 +163,8 @@ async def test_disconnected_server_raises_on_data_write(
     assert not smtp_client.is_connected
 
 
-async def test_disconnected_server_raises_on_starttls(
-    smtp_client: SMTP,
-    smtpd_server: asyncio.AbstractServer,
-    smtpd_class: type[SMTPD],
-    smtpd_mock_response_disconnect: Callable,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(smtpd_class, "smtp_STARTTLS", smtpd_mock_response_disconnect)
-
+@pytest.mark.smtpd_mocks(smtp_STARTTLS=mock_response_disconnect)
+async def test_disconnected_server_raises_on_starttls(smtp_client: SMTP) -> None:
     await smtp_client.connect()
     await smtp_client.ehlo()
 
@@ -241,19 +191,12 @@ async def test_context_manager(
     assert not smtp_client.is_connected
 
 
-async def test_context_manager_disconnect_handling(
-    smtp_client: SMTP,
-    smtpd_server: asyncio.AbstractServer,
-    smtpd_class: type[SMTPD],
-    smtpd_mock_response_disconnect: Callable,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+@pytest.mark.smtpd_mocks(smtp_NOOP=mock_response_disconnect)
+async def test_context_manager_disconnect_handling(smtp_client: SMTP) -> None:
     """
     Exceptions can be raised, but the context manager should handle
     disconnection.
     """
-    monkeypatch.setattr(smtpd_class, "smtp_NOOP", smtpd_mock_response_disconnect)
-
     async with smtp_client:
         assert smtp_client.is_connected
 
@@ -332,15 +275,8 @@ async def test_connect_error_second_attempt(
         await client.connect()
 
 
-async def test_server_unexpected_disconnect(
-    smtp_client: SMTP,
-    smtpd_server: asyncio.AbstractServer,
-    smtpd_class: type[SMTPD],
-    smtpd_mock_response_done_then_close: Callable,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(smtpd_class, "smtp_EHLO", smtpd_mock_response_done_then_close)
-
+@pytest.mark.smtpd_mocks(smtp_EHLO=mock_response_done_then_close)
+async def test_server_unexpected_disconnect(smtp_client: SMTP) -> None:
     await smtp_client.connect()
     await smtp_client.ehlo()
 
@@ -400,15 +336,8 @@ async def test_connect_via_socket_path(
     assert response.code == SMTPStatus.completed
 
 
-async def test_disconnected_server_get_transport_info(
-    smtp_client: SMTP,
-    smtpd_server: asyncio.AbstractServer,
-    smtpd_class: type[SMTPD],
-    smtpd_mock_response_eof: Callable,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(smtpd_class, "smtp_NOOP", smtpd_mock_response_eof)
-
+@pytest.mark.smtpd_mocks(smtp_NOOP=mock_response_eof)
+async def test_disconnected_server_get_transport_info(smtp_client: SMTP) -> None:
     await smtp_client.connect()
 
     with pytest.raises(SMTPServerDisconnected):
@@ -418,15 +347,8 @@ async def test_disconnected_server_get_transport_info(
         smtp_client.get_transport_info("sslcontext")
 
 
-async def test_disconnected_server_data(
-    smtp_client: SMTP,
-    smtpd_server: asyncio.AbstractServer,
-    smtpd_class: type[SMTPD],
-    smtpd_mock_response_eof: Callable,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(smtpd_class, "smtp_NOOP", smtpd_mock_response_eof)
-
+@pytest.mark.smtpd_mocks(smtp_NOOP=mock_response_eof)
+async def test_disconnected_server_data(smtp_client: SMTP) -> None:
     await smtp_client.connect()
 
     with pytest.raises(SMTPServerDisconnected):

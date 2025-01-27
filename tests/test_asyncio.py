@@ -4,14 +4,15 @@ Tests that cover asyncio usage.
 
 import asyncio
 import ssl
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable
 from typing import Any
 
 import pytest
-from aiosmtpd.smtp import SMTP as SMTPD
 
 from aiosmtplib import SMTP
 from aiosmtplib.response import SMTPResponse
+
+from .smtpd import mock_response_expn
 
 
 RECIPIENTS = [
@@ -140,18 +141,11 @@ async def test_multiple_actions_in_context_manager_with_gather(
         assert 200 <= response.code < 300
 
 
-async def test_many_commands_with_gather(
-    monkeypatch: pytest.MonkeyPatch,
-    smtp_client: SMTP,
-    smtpd_server: asyncio.AbstractServer,
-    smtpd_class: type[SMTPD],
-    smtpd_mock_response_expn: Callable,
-) -> None:
+@pytest.mark.smtpd_mocks(smtp_EXPN=mock_response_expn)
+async def test_many_commands_with_gather(smtp_client: SMTP) -> None:
     """
     Tests that appropriate locks are in place to prevent commands confusing each other.
     """
-    monkeypatch.setattr(smtpd_class, "smtp_EXPN", smtpd_mock_response_expn)
-
     async with smtp_client:
         tasks: list[Awaitable] = [
             smtp_client.ehlo(),

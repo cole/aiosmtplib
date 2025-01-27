@@ -100,3 +100,110 @@ class TestSMTPD(SMTPD):
     async def smtp_STARTTLS(self, arg: str) -> None:
         await super().smtp_STARTTLS(arg)
         self.event_handler.record_command("STARTTLS", arg)
+
+
+async def mock_response_delayed_ok(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
+    await asyncio.sleep(1.0)
+    await smtpd.push("250 all done")
+
+
+async def mock_response_delayed_read(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
+    await smtpd.push("220-hi")
+    await asyncio.sleep(1.0)
+
+
+async def mock_response_done(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
+    if args and args[0]:
+        smtpd.session.host_name = args[0]
+    await smtpd.push("250 done")
+
+
+async def mock_response_done_then_close(
+    smtpd: SMTPD, *args: Any, **kwargs: Any
+) -> None:
+    if args and args[0]:
+        smtpd.session.host_name = args[0]
+    await smtpd.push("250 done")
+    await smtpd.push("221 bye now")
+    smtpd.transport.close()
+
+
+async def mock_response_error_disconnect(
+    smtpd: SMTPD, *args: Any, **kwargs: Any
+) -> None:
+    await smtpd.push("501 error")
+    smtpd.transport.close()
+
+
+async def mock_response_bad_data(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
+    smtpd._writer.write(b"250 \xff\xff\xff\xff\r\n")
+    await smtpd._writer.drain()
+
+
+async def mock_response_gibberish(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
+    smtpd._writer.write("wefpPSwrsfa2sdfsdf")
+    await smtpd._writer.drain()
+
+
+async def mock_response_expn(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
+    await smtpd.push(
+        """250-Joseph Blow <jblow@example.com>
+250 Alice Smith <asmith@example.com>"""
+    )
+
+
+async def mock_response_ehlo_minimal(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
+    if args and args[0]:
+        smtpd.session.host_name = args[0]
+
+    await smtpd.push("250 HELP")
+
+
+async def mock_response_ehlo_full(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
+    if args and args[0]:
+        smtpd.session.host_name = args[0]
+
+    await smtpd.push(
+        """250-localhost
+250-PIPELINING
+250-8BITMIME
+250-SIZE 512000
+250-DSN
+250-ENHANCEDSTATUSCODES
+250-EXPN
+250-HELP
+250-SAML
+250-SEND
+250-SOML
+250-TURN
+250-XADR
+250-XSTA
+250-ETRN
+250 XGEN"""
+    )
+
+
+async def mock_response_unavailable(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
+    await smtpd.push("421 retry in 5 minutes")
+    smtpd.transport.close()
+
+
+async def mock_response_tls_not_available(
+    smtpd: SMTPD, *args: Any, **kwargs: Any
+) -> None:
+    await smtpd.push("454 please login")
+
+
+async def mock_response_tls_ready_disconnect(
+    smtpd: SMTPD, *args: Any, **kwargs: Any
+) -> None:
+    await smtpd.push("220 go for it")
+    smtpd.transport.close()
+
+
+async def mock_response_disconnect(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
+    smtpd.transport.close()
+
+
+async def mock_response_eof(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
+    smtpd.transport.write_eof()

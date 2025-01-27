@@ -18,7 +18,15 @@ from aiosmtplib import (
     SMTPStatus,
 )
 
-from .smtpd import RecordingHandler
+from .smtpd import (
+    RecordingHandler,
+    mock_response_done,
+    mock_response_bad_data,
+    mock_response_ehlo_full,
+    mock_response_expn,
+    mock_response_gibberish,
+    mock_response_unavailable,
+)
 
 
 async def test_helo_ok(smtp_client: SMTP) -> None:
@@ -95,14 +103,8 @@ async def test_ehlo_error(
         assert exception_info.value.code == error_code
 
 
-async def test_ehlo_parses_esmtp_extensions(
-    smtp_client: SMTP,
-    smtpd_class: type[SMTPD],
-    smtpd_mock_response_ehlo_full: Callable,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(smtpd_class, "smtp_EHLO", smtpd_mock_response_ehlo_full)
-
+@pytest.mark.smtpd_mocks(smtp_EHLO=mock_response_ehlo_full)
+async def test_ehlo_parses_esmtp_extensions(smtp_client: SMTP) -> None:
     async with smtp_client:
         await smtp_client.ehlo()
 
@@ -113,14 +115,8 @@ async def test_ehlo_parses_esmtp_extensions(
         assert not smtp_client.supports_extension("notreal")
 
 
-async def test_ehlo_with_no_extensions(
-    smtp_client: SMTP,
-    smtpd_class: type[SMTPD],
-    smtpd_mock_response_done: Callable,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(smtpd_class, "smtp_EHLO", smtpd_mock_response_done)
-
+@pytest.mark.smtpd_mocks(smtp_EHLO=mock_response_done)
+async def test_ehlo_with_no_extensions(smtp_client: SMTP) -> None:
     async with smtp_client:
         await smtp_client.ehlo()
 
@@ -193,14 +189,8 @@ async def test_ehlo_or_helo_if_needed_neither_succeeds(
         assert exception_info.value.code == error_code
 
 
-async def test_ehlo_or_helo_if_needed_disconnect_after_ehlo(
-    smtp_client: SMTP,
-    smtpd_class: type[SMTPD],
-    smtpd_mock_response_unavailable: Callable,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(smtpd_class, "smtp_EHLO", smtpd_mock_response_unavailable)
-
+@pytest.mark.smtpd_mocks(smtp_EHLO=mock_response_unavailable)
+async def test_ehlo_or_helo_if_needed_disconnect_after_ehlo(smtp_client: SMTP) -> None:
     async with smtp_client:
         with pytest.raises(SMTPHeloError):
             await smtp_client._ehlo_or_helo_if_needed()
@@ -282,14 +272,8 @@ async def test_vrfy_smtputf8_not_supported(smtp_client: SMTP) -> None:
             await smtp_client.vrfy("tést@exåmple.com", options=["SMTPUTF8"])
 
 
-async def test_expn_ok(
-    smtp_client: SMTP,
-    smtpd_class: type[SMTPD],
-    smtpd_mock_response_expn: Callable,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(smtpd_class, "smtp_EXPN", smtpd_mock_response_expn)
-
+@pytest.mark.smtpd_mocks(smtp_EXPN=mock_response_expn)
+async def test_expn_ok(smtp_client: SMTP) -> None:
     async with smtp_client:
         response = await smtp_client.expn("listserv-members")
         assert response.code == SMTPStatus.completed
@@ -305,14 +289,8 @@ async def test_expn_error(smtp_client: SMTP) -> None:
 
 
 @pytest.mark.smtpd_options(smtputf8=True)
-async def test_expn_smtputf8_supported(
-    smtp_client: SMTP,
-    smtpd_class: type[SMTPD],
-    smtpd_mock_response_expn: Callable,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(smtpd_class, "smtp_EXPN", smtpd_mock_response_expn)
-
+@pytest.mark.smtpd_mocks(smtp_EXPN=mock_response_expn)
+async def test_expn_smtputf8_supported(smtp_client: SMTP) -> None:
     utf8_list = "tést-lïst"
     async with smtp_client:
         response = await smtp_client.expn(utf8_list, options=["SMTPUTF8"])
@@ -430,15 +408,8 @@ async def test_rcpt_ok(smtp_client: SMTP) -> None:
         assert response.message == "OK"
 
 
-async def test_rcpt_options_ok(
-    smtp_client: SMTP,
-    smtpd_class: type[SMTPD],
-    smtpd_mock_response_done: Callable,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    # RCPT options are not implemented in aiosmtpd, so force success response
-    monkeypatch.setattr(smtpd_class, "smtp_RCPT", smtpd_mock_response_done)
-
+@pytest.mark.smtpd_mocks(smtp_RCPT=mock_response_done)
+async def test_rcpt_options_ok(smtp_client: SMTP) -> None:
     async with smtp_client:
         await smtp_client.mail("j@example.com")
 
@@ -546,27 +517,15 @@ async def test_data_error_when_disconnected() -> None:
         await client.data("HELLO WORLD")
 
 
-async def test_gibberish_raises_exception(
-    smtp_client: SMTP,
-    smtpd_class: type[SMTPD],
-    smtpd_mock_response_gibberish: Callable,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(smtpd_class, "smtp_NOOP", smtpd_mock_response_gibberish)
-
+@pytest.mark.smtpd_mocks(smtp_NOOP=mock_response_gibberish)
+async def test_gibberish_raises_exception(smtp_client: SMTP) -> None:
     async with smtp_client:
         with pytest.raises(SMTPResponseException):
             await smtp_client.noop()
 
 
-async def test_badly_encoded_text_response(
-    smtp_client: SMTP,
-    smtpd_class: type[SMTPD],
-    smtpd_mock_response_bad_data: Callable,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(smtpd_class, "smtp_NOOP", smtpd_mock_response_bad_data)
-
+@pytest.mark.smtpd_mocks(smtp_NOOP=mock_response_bad_data)
+async def test_badly_encoded_text_response(smtp_client: SMTP) -> None:
     async with smtp_client:
         response = await smtp_client.noop()
 
