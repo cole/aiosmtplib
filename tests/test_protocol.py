@@ -16,56 +16,6 @@ from aiosmtplib.protocol import FlowControlMixin, SMTPProtocol
 from .compat import cleanup_server
 
 
-def test_flow_control_mixin_connection_lost_exception(
-    event_loop: asyncio.AbstractEventLoop,
-) -> None:
-    flow_control = FlowControlMixin(event_loop)
-    flow_control.pause_writing()
-    waiter = event_loop.create_future()
-
-    flow_control._drain_waiters.append(waiter)
-
-    exc = ConnectionAbortedError("boom")
-    flow_control.connection_lost(exc)
-
-    assert waiter.done()
-    assert not waiter.cancelled()
-    assert waiter.exception() is exc
-
-
-def test_flow_control_mixin_connection_lost_no_exception(
-    event_loop: asyncio.AbstractEventLoop,
-) -> None:
-    flow_control = FlowControlMixin(event_loop)
-    flow_control.pause_writing()
-    waiter = event_loop.create_future()
-
-    flow_control._drain_waiters.append(waiter)
-
-    flow_control.connection_lost(None)
-
-    assert waiter.done()
-    assert not waiter.cancelled()
-    assert waiter.exception() is None
-
-
-async def test_flow_control_mixin_drain_helper() -> None:
-    loop = asyncio.get_running_loop()
-    flow_control = FlowControlMixin(loop)
-
-    await flow_control._drain_helper()
-
-
-async def test_flow_control_mixin_drain_helper_connection_lost() -> None:
-    loop = asyncio.get_running_loop()
-    flow_control = FlowControlMixin(loop)
-    flow_control.pause_writing()
-    flow_control.connection_lost(None)
-
-    with pytest.raises(ConnectionResetError):
-        await flow_control._drain_helper()
-
-
 async def test_protocol_connect(hostname: str, echo_server_port: int) -> None:
     event_loop = asyncio.get_running_loop()
     connect_future = event_loop.create_connection(
@@ -204,7 +154,7 @@ async def test_error_on_readline_with_partial_line(
     await cleanup_server(server)
 
 
-async def test_error_on_readline_with_malformed_response(
+async def test_protocol_error_on_readline_with_malformed_response(
     bind_address: str, hostname: str
 ) -> None:
     event_loop = asyncio.get_running_loop()
@@ -371,7 +321,15 @@ async def test_protocol_exception_cleanup_warning(
     assert "Future exception was never retrieved" not in caplog.text
 
 
-async def test_flow_control_drain():
+async def test_protocol_get_close_waiter() -> None:
+    event_loop = asyncio.get_running_loop()
+    protocol = SMTPProtocol(event_loop)
+
+    close_waiter = protocol._get_close_waiter(None)  # type: ignore
+    assert close_waiter is not None
+
+
+async def test_flow_control_mixin_drain():
     event_loop = asyncio.get_running_loop()
 
     # Adapted from stdlib
@@ -387,3 +345,53 @@ async def test_flow_control_drain():
     event_loop.call_later(0.1, stream.resume_writing)
     await asyncio.gather(*[drainer(stream) for _ in range(10)])
     assert drained == 10
+
+
+def test_flow_control_mixin_connection_lost_exception(
+    event_loop: asyncio.AbstractEventLoop,
+) -> None:
+    flow_control = FlowControlMixin(event_loop)
+    flow_control.pause_writing()
+    waiter = event_loop.create_future()
+
+    flow_control._drain_waiters.append(waiter)
+
+    exc = ConnectionAbortedError("boom")
+    flow_control.connection_lost(exc)
+
+    assert waiter.done()
+    assert not waiter.cancelled()
+    assert waiter.exception() is exc
+
+
+def test_flow_control_mixin_connection_lost_no_exception(
+    event_loop: asyncio.AbstractEventLoop,
+) -> None:
+    flow_control = FlowControlMixin(event_loop)
+    flow_control.pause_writing()
+    waiter = event_loop.create_future()
+
+    flow_control._drain_waiters.append(waiter)
+
+    flow_control.connection_lost(None)
+
+    assert waiter.done()
+    assert not waiter.cancelled()
+    assert waiter.exception() is None
+
+
+async def test_flow_control_mixin_drain_helper() -> None:
+    loop = asyncio.get_running_loop()
+    flow_control = FlowControlMixin(loop)
+
+    await flow_control._drain_helper()
+
+
+async def test_flow_control_mixin_drain_helper_connection_lost() -> None:
+    loop = asyncio.get_running_loop()
+    flow_control = FlowControlMixin(loop)
+    flow_control.pause_writing()
+    flow_control.connection_lost(None)
+
+    with pytest.raises(ConnectionResetError):
+        await flow_control._drain_helper()
