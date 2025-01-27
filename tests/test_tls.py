@@ -18,6 +18,12 @@ from aiosmtplib import (
     SMTPStatus,
 )
 
+from .smtpd import (
+    mock_response_ehlo_minimal,
+    mock_response_tls_not_available,
+    mock_response_tls_ready_disconnect,
+)
+
 
 @pytest.mark.smtpd_options(tls=True)
 @pytest.mark.smtp_client_options(use_tls=True)
@@ -128,14 +134,8 @@ async def test_starttls_with_explicit_server_hostname(
 
 
 @pytest.mark.smtpd_options(tls=False)
-async def test_starttls_not_supported(
-    smtp_client: SMTP,
-    smtpd_class: type[SMTPD],
-    smtpd_mock_response_ehlo_minimal: Callable,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(smtpd_class, "smtp_EHLO", smtpd_mock_response_ehlo_minimal)
-
+@pytest.mark.smtpd_mocks(smtp_EHLO=mock_response_ehlo_minimal)
+async def test_starttls_not_supported(smtp_client: SMTP) -> None:
     async with smtp_client:
         await smtp_client.ehlo()
 
@@ -144,16 +144,8 @@ async def test_starttls_not_supported(
 
 
 @pytest.mark.smtpd_options(tls=False)
-async def test_starttls_advertised_but_not_supported(
-    smtp_client: SMTP,
-    smtpd_class: type[SMTPD],
-    smtpd_mock_response_tls_not_available: Callable,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(
-        smtpd_class, "smtp_STARTTLS", smtpd_mock_response_tls_not_available
-    )
-
+@pytest.mark.smtpd_mocks(smtp_STARTTLS=mock_response_tls_not_available)
+async def test_starttls_advertised_but_not_supported(smtp_client: SMTP) -> None:
     async with smtp_client:
         await smtp_client.ehlo()
 
@@ -162,16 +154,8 @@ async def test_starttls_advertised_but_not_supported(
 
 
 @pytest.mark.smtpd_options(tls=False)
-async def test_starttls_disconnect_before_upgrade(
-    smtp_client: SMTP,
-    smtpd_class: type[SMTPD],
-    smtpd_mock_response_tls_ready_disconnect: Callable,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(
-        smtpd_class, "smtp_STARTTLS", smtpd_mock_response_tls_ready_disconnect
-    )
-
+@pytest.mark.smtpd_mocks(smtp_STARTTLS=mock_response_tls_ready_disconnect)
+async def test_starttls_disconnect_before_upgrade(smtp_client: SMTP) -> None:
     async with smtp_client:
         with pytest.raises(SMTPServerDisconnected):
             await smtp_client.starttls()

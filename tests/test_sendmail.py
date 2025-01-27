@@ -20,6 +20,8 @@ from aiosmtplib import (
     SMTPStatus,
 )
 
+from .smtpd import mock_response_done, mock_response_error_disconnect
+
 
 async def test_sendmail_simple_success(
     smtp_client: SMTP,
@@ -83,17 +85,13 @@ async def test_sendmail_with_mail_option(
         assert response != ""
 
 
+@pytest.mark.smtpd_mocks(smtp_EHLO=mock_response_done)
 async def test_sendmail_without_size_option(
     smtp_client: SMTP,
-    smtpd_class: type[SMTPD],
-    smtpd_mock_response_done: Callable,
-    monkeypatch: pytest.MonkeyPatch,
     sender_str: str,
     recipient_str: str,
     message_str: str,
 ) -> None:
-    monkeypatch.setattr(smtpd_class, "smtp_EHLO", smtpd_mock_response_done)
-
     async with smtp_client:
         errors, response = await smtp_client.sendmail(
             sender_str, [recipient_str], message_str
@@ -162,17 +160,13 @@ async def test_sendmail_smtputf8_not_supported(smtp_client: SMTP) -> None:
             )
 
 
+@pytest.mark.smtpd_mocks(smtp_DATA=mock_response_error_disconnect)
 async def test_sendmail_error_silent_rset_handles_disconnect(
     smtp_client: SMTP,
-    smtpd_class: type[SMTPD],
-    smtpd_mock_response_error_disconnect: Callable,
-    monkeypatch: pytest.MonkeyPatch,
     sender_str: str,
     recipient_str: str,
     message_str: str,
 ) -> None:
-    monkeypatch.setattr(smtpd_class, "smtp_DATA", smtpd_mock_response_error_disconnect)
-
     async with smtp_client:
         with pytest.raises(SMTPResponseException):
             await smtp_client.sendmail(sender_str, [recipient_str], message_str)
