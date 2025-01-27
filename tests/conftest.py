@@ -687,13 +687,17 @@ def smtpd_server(
     else:
         smtpd_options = smtpd_options_marker.kwargs
 
+    smtpd_tls_context = (
+        server_tls_context if smtpd_options.get("starttls", True) else None
+    )
+
     def factory() -> SMTPD:
         return TestSMTPD(
             smtpd_handler,
             hostname=hostname,
             enable_SMTPUTF8=smtpd_options.get("smtputf8", False),
             decode_data=smtpd_options.get("7bit", False),
-            tls_context=server_tls_context,
+            tls_context=smtpd_tls_context,
             auth_callback=smtpd_auth_callback,
         )
 
@@ -702,6 +706,8 @@ def smtpd_server(
         "port": 0,
         "family": socket.AF_INET,
     }
+    if smtpd_options.get("tls", False):
+        create_server_kwargs["ssl"] = server_tls_context
 
     server_coro = event_loop.create_server(factory, **create_server_kwargs)
     server = event_loop.run_until_complete(server_coro)
@@ -741,43 +747,6 @@ def smtpd_server_socket_path(
         )
 
     return socket_server_factory(factory)
-
-
-@pytest.fixture(scope="function")
-def smtpd_server_tls(
-    server_factory: Callable[..., asyncio.AbstractServer],
-    smtpd_class: type[SMTPD],
-    smtpd_handler: RecordingHandler,
-    server_tls_context: ssl.SSLContext,
-) -> asyncio.AbstractServer:
-    def factory() -> SMTPD:
-        return smtpd_class(
-            smtpd_handler,
-            hostname=bind_address,
-            enable_SMTPUTF8=False,
-            tls_context=server_tls_context,
-        )
-
-    return server_factory(factory, ssl=server_tls_context)
-
-
-@pytest.fixture(scope="function")
-def smtpd_server_no_starttls(
-    server_factory: Callable[..., asyncio.AbstractServer],
-    hostname: str,
-    smtpd_class: type[SMTPD],
-    smtpd_handler: RecordingHandler,
-) -> asyncio.AbstractServer:
-    def factory() -> SMTPD:
-        return smtpd_class(
-            smtpd_handler,
-            hostname=hostname,
-            enable_SMTPUTF8=False,
-            tls_context=None,
-            auth_callback=None,
-        )
-
-    return server_factory(factory)
 
 
 @pytest.fixture(scope="function")
@@ -824,18 +793,6 @@ def echo_server_port(echo_server: asyncio.AbstractServer) -> Optional[int]:
 
 
 @pytest.fixture(scope="function")
-def smtpd_server_tls_port(smtpd_server_tls: asyncio.AbstractServer) -> Optional[int]:
-    return _get_server_socket_port(smtpd_server_tls)
-
-
-@pytest.fixture(scope="function")
-def smtpd_server_no_starttls_port(
-    smtpd_server_no_starttls: asyncio.AbstractServer,
-) -> Optional[int]:
-    return _get_server_socket_port(smtpd_server_no_starttls)
-
-
-@pytest.fixture(scope="function")
 def smtpd_server_threaded_port(smtpd_controller: SMTPDController) -> int:
     port: int = smtpd_controller.port
     return port
@@ -846,37 +803,26 @@ def smtpd_server_threaded_port(smtpd_controller: SMTPDController) -> int:
 
 @pytest.fixture(scope="function")
 def smtp_client(
+    request: pytest.FixtureRequest,
     hostname: str,
     smtpd_server_port: int,
     client_tls_context: ssl.SSLContext,
 ) -> SMTP:
+    smtp_client_options_marker = request.node.get_closest_marker("smtp_client_options")
+    if smtp_client_options_marker is None:
+        smtp_client_options = {}
+    else:
+        smtp_client_options = smtp_client_options_marker.kwargs
+
+    smtp_client_options.setdefault("tls_context", client_tls_context)
+    smtp_client_options.setdefault("start_tls", False)
+
     return SMTP(
         hostname=hostname,
         port=smtpd_server_port,
-        tls_context=client_tls_context,
-        start_tls=False,
         timeout=1.0,
+        **smtp_client_options,
     )
-
-
-@pytest.fixture(scope="function")
-def smtp_client_tls(
-    hostname: str, smtpd_server_tls_port: int, client_tls_context: ssl.SSLContext
-) -> SMTP:
-    return SMTP(
-        hostname=hostname,
-        port=smtpd_server_tls_port,
-        use_tls=True,
-        tls_context=client_tls_context,
-    )
-
-
-@pytest.fixture(scope="function")
-def smtp_client_no_starttls(
-    hostname: str,
-    smtpd_server_no_starttls_port: int,
-) -> SMTP:
-    return SMTP(hostname=hostname, port=smtpd_server_no_starttls_port)
 
 
 @pytest.fixture(scope="function")

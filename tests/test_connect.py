@@ -367,16 +367,14 @@ async def test_connect_with_login(
     await smtp_client.quit()
 
 
-async def test_connect_with_no_starttls_support(
-    smtp_client_no_starttls: SMTP,
-    smtpd_server_no_starttls: asyncio.AbstractServer,
-) -> None:
-    await smtp_client_no_starttls.connect()
+@pytest.mark.smtpd_options(starttls=False)
+async def test_connect_with_no_starttls_support(smtp_client: SMTP) -> None:
+    await smtp_client.connect()
 
-    assert smtp_client_no_starttls.is_connected
-    assert not smtp_client_no_starttls.protocol._over_ssl
+    assert smtp_client.is_connected
+    assert not smtp_client.protocol._over_ssl
 
-    await smtp_client_no_starttls.quit()
+    await smtp_client.quit()
 
 
 async def test_connect_via_socket(

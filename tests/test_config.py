@@ -11,9 +11,7 @@ import pytest
 from aiosmtplib import SMTP
 
 
-async def test_tls_context_and_cert_raises(
-    client_tls_context: ssl.SSLContext,
-) -> None:
+async def test_tls_context_and_cert_raises(client_tls_context: ssl.SSLContext) -> None:
     with pytest.raises(ValueError):
         SMTP(use_tls=True, client_cert="foo.crt", tls_context=client_tls_context)
 
@@ -28,9 +26,7 @@ async def test_tls_context_and_cert_to_connect_raises(
 
 
 async def test_tls_context_and_cert_to_starttls_raises(
-    smtp_client: SMTP,
-    smtpd_server: asyncio.AbstractServer,
-    client_tls_context: ssl.SSLContext,
+    smtp_client: SMTP, client_tls_context: ssl.SSLContext
 ) -> None:
     async with smtp_client:
         with pytest.raises(ValueError):
@@ -135,8 +131,7 @@ async def test_default_port_on_connect(
 
 
 async def test_connect_hostname_takes_precedence(
-    hostname: str,
-    smtpd_server_port: int,
+    hostname: str, smtpd_server_port: int
 ) -> None:
     client = SMTP(hostname="example.com", port=smtpd_server_port, start_tls=False)
     await client.connect(hostname=hostname)
@@ -147,8 +142,7 @@ async def test_connect_hostname_takes_precedence(
 
 
 async def test_connect_port_takes_precedence(
-    hostname: str,
-    smtpd_server_port: int,
+    hostname: str, smtpd_server_port: int
 ) -> None:
     client = SMTP(hostname=hostname, port=17, start_tls=False)
     await client.connect(port=smtpd_server_port)
@@ -159,8 +153,7 @@ async def test_connect_port_takes_precedence(
 
 
 async def test_connect_timeout_is_reverted(
-    hostname: str,
-    smtpd_server_port: int,
+    hostname: str, smtpd_server_port: int
 ) -> None:
     client = SMTP(
         hostname=hostname, port=smtpd_server_port, timeout=0.66, start_tls=False
@@ -247,9 +240,7 @@ async def test_connect_validate_certs_takes_precedence(
 
 
 async def test_connect_certificate_options_take_precedence(
-    hostname: str,
-    smtpd_server_port: int,
-    client_tls_context: ssl.SSLContext,
+    hostname: str, smtpd_server_port: int
 ) -> None:
     client = SMTP(
         hostname=hostname,
