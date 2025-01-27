@@ -175,3 +175,27 @@ async def test_protocol_timeout_on_starttls(
 
     server.close()
     await cleanup_server(server)
+
+
+async def test_protocol_connection_aborted_on_starttls(
+    hostname: str,
+    smtpd_server_port: int,
+    client_tls_context: ssl.SSLContext,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    event_loop = asyncio.get_running_loop()
+
+    connect_future = event_loop.create_connection(
+        SMTPProtocol, host=hostname, port=smtpd_server_port
+    )
+    transport, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
+
+    def mock_start_tls(*args, **kwargs) -> None:
+        raise ConnectionAbortedError("Connection was aborted")
+
+    monkeypatch.setattr(event_loop, "start_tls", mock_start_tls)
+
+    with pytest.raises(SMTPTimeoutError):
+        await protocol.start_tls(client_tls_context)
+
+    transport.close()
