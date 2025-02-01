@@ -6,11 +6,9 @@ import copy
 import email.generator
 import email.header
 import email.message
-from collections.abc import Callable, Coroutine
 from typing import Any, Optional
 
 import pytest
-from aiosmtpd.smtp import SMTP as SMTPD
 
 from aiosmtplib import (
     SMTP,
@@ -20,7 +18,11 @@ from aiosmtplib import (
     SMTPStatus,
 )
 
-from .smtpd import mock_response_done, mock_response_error_disconnect
+from .smtpd import (
+    mock_response_done,
+    mock_response_error_disconnect,
+    mock_response_bad_command_sequence,
+)
 
 
 async def test_sendmail_simple_success(
@@ -212,23 +214,18 @@ async def test_rset_after_sendmail_error_response_to_rcpt(
         assert received_commands[-1][0] == "RSET"
 
 
+@pytest.mark.smtpd_mocks(smtp_DATA=mock_response_bad_command_sequence)
 async def test_rset_after_sendmail_error_response_to_data(
     smtp_client: SMTP,
-    smtpd_class: type[SMTPD],
-    monkeypatch: pytest.MonkeyPatch,
-    error_code: int,
     sender_str: str,
     recipient_str: str,
     message_str: str,
     received_commands: list[tuple[str, tuple[Any, ...]]],
-    smtpd_mock_response_error_with_code: Callable[[SMTPD], Coroutine[Any, Any, None]],
 ) -> None:
     """
     If an error response is given to the DATA command in the sendmail method,
     test that we reset the server session.
     """
-    monkeypatch.setattr(smtpd_class, "smtp_DATA", smtpd_mock_response_error_with_code)
-
     async with smtp_client:
         response = await smtp_client.ehlo()
         assert response.code == SMTPStatus.completed
@@ -236,7 +233,7 @@ async def test_rset_after_sendmail_error_response_to_data(
         with pytest.raises(SMTPResponseException) as excinfo:
             await smtp_client.sendmail(sender_str, [recipient_str], message_str)
 
-        assert excinfo.value.code == error_code
+        assert excinfo.value.code == SMTPStatus.bad_command_sequence
         assert received_commands[-1][0] == "RSET"
 
 

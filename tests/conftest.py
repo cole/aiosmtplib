@@ -10,7 +10,7 @@ import email.mime.text
 import socket
 import ssl
 import sys
-from collections.abc import Callable, Coroutine, Generator
+from collections.abc import Callable, Generator
 from pathlib import Path
 from typing import Any, Optional, Union
 
@@ -21,7 +21,7 @@ import trustme
 from aiosmtpd.controller import Controller as SMTPDController
 from aiosmtpd.smtp import SMTP as SMTPD
 
-from aiosmtplib import SMTP, SMTPStatus
+from aiosmtplib import SMTP
 
 from .auth import DummySMTPAuth
 from .compat import cleanup_server
@@ -272,25 +272,6 @@ def auth_password() -> str:
     return "test"
 
 
-@pytest.fixture(
-    scope="session",
-    params=[
-        SMTPStatus.mailbox_unavailable,
-        SMTPStatus.unrecognized_command,
-        SMTPStatus.bad_command_sequence,
-        SMTPStatus.syntax_error,
-    ],
-    ids=[
-        SMTPStatus.mailbox_unavailable.name,
-        SMTPStatus.unrecognized_command.name,
-        SMTPStatus.bad_command_sequence.name,
-        SMTPStatus.syntax_error.name,
-    ],
-)
-def error_code(request: ParamFixtureRequest) -> int:
-    return int(request.param.value)
-
-
 # Auth #
 
 
@@ -376,32 +357,6 @@ def smtpd_auth_callback(
         )
 
     return auth_callback
-
-
-# Mock response #
-
-
-@pytest.fixture(scope="session")
-def smtpd_mock_response_error_with_code_factory() -> Callable[
-    [str], Callable[[SMTPD], Coroutine[Any, Any, None]]
-]:
-    def factory(error_code: str) -> Callable[[SMTPD], Coroutine[Any, Any, None]]:
-        async def mock_error_response(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
-            await smtpd.push(f"{error_code} error")
-
-        return mock_error_response
-
-    return factory
-
-
-@pytest.fixture(scope="function")
-def smtpd_mock_response_error_with_code(
-    error_code: int,
-    smtpd_mock_response_error_with_code_factory: Callable[
-        [str], Callable[[SMTPD], Coroutine[Any, Any, None]]
-    ],
-) -> Callable[[SMTPD], Coroutine[Any, Any, None]]:
-    return smtpd_mock_response_error_with_code_factory(str(error_code))
 
 
 @pytest.fixture(
