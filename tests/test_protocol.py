@@ -10,7 +10,7 @@ import ssl
 
 import pytest
 
-from aiosmtplib import SMTPResponseException, SMTPServerDisconnected
+from aiosmtplib import SMTPResponseException, SMTPServerDisconnected, SMTPTimeoutError
 from aiosmtplib.protocol import FlowControlMixin, SMTPProtocol
 
 from .compat import cleanup_server
@@ -133,6 +133,30 @@ async def test_protocol_connection_reset_on_starttls(
     monkeypatch.setattr(event_loop, "start_tls", mock_start_tls)
 
     with pytest.raises(SMTPServerDisconnected):
+        await protocol.start_tls(client_tls_context)
+
+    transport.close()
+
+
+async def test_protocol_timeout_on_starttls(
+    hostname: str,
+    smtpd_server_port: int,
+    client_tls_context: ssl.SSLContext,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    event_loop = asyncio.get_running_loop()
+
+    connect_future = event_loop.create_connection(
+        SMTPProtocol, host=hostname, port=smtpd_server_port
+    )
+    transport, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
+
+    def mock_start_tls(*args, **kwargs) -> None:
+        raise TimeoutError("Timed out")
+
+    monkeypatch.setattr(event_loop, "start_tls", mock_start_tls)
+
+    with pytest.raises(SMTPTimeoutError, match="Timed out while upgrading transport"):
         await protocol.start_tls(client_tls_context)
 
     transport.close()
