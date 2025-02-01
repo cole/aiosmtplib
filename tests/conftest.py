@@ -7,7 +7,6 @@ import email.header
 import email.message
 import email.mime.multipart
 import email.mime.text
-import pathlib
 import socket
 import ssl
 import sys
@@ -210,42 +209,55 @@ def server_tls_context(
     return tls_context
 
 
-@pytest.fixture(scope="function")
-def ca_cert_path(tmp_path: pathlib.Path, cert_authority: trustme.CA) -> str:
+@pytest.fixture(scope="session")
+def ca_cert_path(
+    tmp_path_factory: pytest.TempPathFactory, cert_authority: trustme.CA
+) -> str:
+    tmp_path = tmp_path_factory.mktemp("cacert")
+
     cert_authority.cert_pem.write_to_path(tmp_path / "ca.pem")
 
     return str(tmp_path / "ca.pem")
 
 
-@pytest.fixture(scope="function")
-def valid_cert_path(tmp_path: pathlib.Path, valid_client_cert: trustme.LeafCert) -> str:
+@pytest.fixture(scope="session")
+def valid_cert_path(
+    tmp_path_factory: pytest.TempPathFactory, valid_client_cert: trustme.LeafCert
+) -> str:
+    tmp_path = tmp_path_factory.mktemp("cert-valid-pem")
     for pem in valid_client_cert.cert_chain_pems:
         pem.write_to_path(tmp_path / "valid.pem", append=True)
 
     return str(tmp_path / "valid.pem")
 
 
-@pytest.fixture(scope="function")
-def valid_key_path(tmp_path: pathlib.Path, valid_client_cert: trustme.LeafCert) -> str:
+@pytest.fixture(scope="session")
+def valid_key_path(
+    tmp_path_factory: pytest.TempPathFactory, valid_client_cert: trustme.LeafCert
+) -> str:
+    tmp_path = tmp_path_factory.mktemp("cert-valid-key")
+
     valid_client_cert.private_key_pem.write_to_path(tmp_path / "valid.key")
 
     return str(tmp_path / "valid.key")
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="session")
 def invalid_cert_path(
-    tmp_path: pathlib.Path, unknown_client_cert: trustme.LeafCert
+    tmp_path_factory: pytest.TempPathFactory, unknown_client_cert: trustme.LeafCert
 ) -> str:
+    tmp_path = tmp_path_factory.mktemp("cert-invalid-pem")
     for pem in unknown_client_cert.cert_chain_pems:
         pem.write_to_path(tmp_path / "invalid.pem", append=True)
 
     return str(tmp_path / "invalid.pem")
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="session")
 def invalid_key_path(
-    tmp_path: pathlib.Path, unknown_client_cert: trustme.LeafCert
+    tmp_path_factory: pytest.TempPathFactory, unknown_client_cert: trustme.LeafCert
 ) -> str:
+    tmp_path = tmp_path_factory.mktemp("cert-invalid-key")
     unknown_client_cert.private_key_pem.write_to_path(tmp_path / "invalid.key")
     return str(tmp_path / "invalid.key")
 
@@ -260,11 +272,8 @@ def auth_password() -> str:
     return "test"
 
 
-# Error code params #
-
-
 @pytest.fixture(
-    scope="function",
+    scope="session",
     params=[
         SMTPStatus.mailbox_unavailable,
         SMTPStatus.unrecognized_command,
