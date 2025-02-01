@@ -104,12 +104,12 @@ async def test_421_closes_connection(smtp_client: SMTP) -> None:
 async def test_connect_error_with_no_server(
     hostname: str, unused_tcp_port: int
 ) -> None:
-    client = SMTP(hostname=hostname, port=unused_tcp_port)
+    client = SMTP(hostname=hostname, port=unused_tcp_port, timeout=1.0)
 
     with pytest.raises(SMTPConnectError):
         # SMTPConnectTimeoutError vs SMTPConnectError here depends on
         # processing time.
-        await client.connect(timeout=1.0)
+        await client.connect()
 
 
 @pytest.mark.smtpd_mocks(smtp_NOOP=mock_response_disconnect)

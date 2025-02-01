@@ -64,6 +64,7 @@ async def test_starttls_init_kwarg(
         port=smtpd_server_port,
         start_tls=True,
         tls_context=client_tls_context,
+        timeout=1.0,
     )
 
     async with smtp_client:
@@ -91,6 +92,7 @@ async def test_starttls_auto(
         port=smtpd_server_port,
         start_tls=None,
         tls_context=client_tls_context,
+        timeout=1.0,
     )
 
     async with smtp_client:
@@ -109,6 +111,7 @@ async def test_starttls_auto_connect_kwarg(
         port=smtpd_server_port,
         start_tls=False,
         tls_context=client_tls_context,
+        timeout=1.0,
     )
 
     await smtp_client.connect(start_tls=None)
@@ -188,7 +191,9 @@ async def test_starttls_with_client_cert(
     valid_cert_path: str,
     valid_key_path: str,
 ) -> None:
-    smtp_client = SMTP(hostname=hostname, port=smtpd_server_port, start_tls=False)
+    smtp_client = SMTP(
+        hostname=hostname, port=smtpd_server_port, start_tls=False, timeout=1.0
+    )
     async with smtp_client:
         response = await smtp_client.starttls(
             client_cert=valid_cert_path,
@@ -209,7 +214,9 @@ async def test_starttls_with_invalid_client_cert(
     invalid_cert_path: str,
     invalid_key_path: str,
 ) -> None:
-    smtp_client = SMTP(hostname=hostname, port=smtpd_server_port, start_tls=False)
+    smtp_client = SMTP(
+        hostname=hostname, port=smtpd_server_port, start_tls=False, timeout=1.0
+    )
     async with smtp_client:
         with pytest.raises(ssl.SSLError):
             await smtp_client.starttls(
@@ -226,13 +233,16 @@ async def test_starttls_with_invalid_client_cert_no_validate(
     invalid_cert_path: str,
     invalid_key_path: str,
 ) -> None:
-    smtp_client = SMTP(hostname=hostname, port=smtpd_server_port, start_tls=False)
+    smtp_client = SMTP(
+        hostname=hostname, port=smtpd_server_port, start_tls=False, timeout=1.0
+    )
     async with smtp_client:
         response = await smtp_client.starttls(
             client_cert=invalid_cert_path,
             client_key=invalid_key_path,
             cert_bundle=invalid_cert_path,
             validate_certs=False,
+            timeout=1.0,
         )
 
         assert response.code == SMTPStatus.ready
@@ -252,6 +262,7 @@ async def test_starttls_cert_error(
         port=smtpd_server_port,
         start_tls=False,
         tls_context=unknown_client_tls_context,
+        timeout=1.0,
     )
     async with smtp_client:
         with pytest.raises(ssl.SSLError):
@@ -268,6 +279,7 @@ async def test_starttls_already_upgraded_error(
         hostname=hostname,
         port=smtpd_server_port,
         tls_context=client_tls_context,
+        timeout=1.0,
     )
     async with smtp_client:
         with pytest.raises(SMTPException, match="Connection already using TLS"):
@@ -281,6 +293,7 @@ async def test_starttls_cert_no_validate(hostname: str, smtpd_server_port: int) 
         port=smtpd_server_port,
         start_tls=False,
         validate_certs=False,
+        timeout=1.0,
     )
     async with smtp_client:
         response = await smtp_client.starttls()
@@ -356,7 +369,9 @@ async def test_tls_connection_with_client_cert(
     valid_cert_path: str,
     valid_key_path: str,
 ) -> None:
-    smtp_client = SMTP(hostname=hostname, port=smtpd_server_port, use_tls=True)
+    smtp_client = SMTP(
+        hostname=hostname, port=smtpd_server_port, use_tls=True, timeout=1.0
+    )
     await smtp_client.connect(
         hostname=hostname,
         client_cert=valid_cert_path,
@@ -374,7 +389,9 @@ async def test_tls_connection_with_cert_error(
     hostname: str,
     smtpd_server_port: int,
 ) -> None:
-    smtp_client = SMTP(hostname=hostname, port=smtpd_server_port, use_tls=True)
+    smtp_client = SMTP(
+        hostname=hostname, port=smtpd_server_port, use_tls=True, timeout=1.0
+    )
 
     with pytest.raises(SMTPConnectError) as exception_info:
         await smtp_client.connect()
@@ -383,7 +400,7 @@ async def test_tls_connection_with_cert_error(
 
 
 async def test_starttls_when_disconnected() -> None:
-    client = SMTP()
+    client = SMTP(timeout=1.0)
 
     with pytest.raises(SMTPServerDisconnected):
         await client.starttls()
