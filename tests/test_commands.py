@@ -2,11 +2,9 @@
 Lower level SMTP command tests.
 """
 
-from collections.abc import Callable, Coroutine
 from typing import Any
 
 import pytest
-from aiosmtpd.smtp import SMTP as SMTPD
 
 from aiosmtplib import (
     SMTP,
@@ -26,6 +24,9 @@ from .smtpd import (
     mock_response_expn,
     mock_response_gibberish,
     mock_response_unavailable,
+    mock_response_unrecognized_command,
+    mock_response_bad_command_sequence,
+    mock_response_syntax_error,
 )
 
 
@@ -51,19 +52,12 @@ async def test_helo_with_hostname_unset_after_connect(smtp_client: SMTP) -> None
         assert response.code == SMTPStatus.completed
 
 
-async def test_helo_error(
-    smtp_client: SMTP,
-    smtpd_class: type[SMTPD],
-    smtpd_mock_response_error_with_code: Callable,
-    monkeypatch: pytest.MonkeyPatch,
-    error_code: int,
-) -> None:
-    monkeypatch.setattr(smtpd_class, "smtp_HELO", smtpd_mock_response_error_with_code)
-
+@pytest.mark.smtpd_mocks(smtp_HELO=mock_response_unrecognized_command)
+async def test_helo_error(smtp_client: SMTP) -> None:
     async with smtp_client:
         with pytest.raises(SMTPHeloError) as exception_info:
             await smtp_client.helo()
-        assert exception_info.value.code == error_code
+        assert exception_info.value.code == SMTPStatus.unrecognized_command
 
 
 async def test_ehlo_ok(smtp_client: SMTP) -> None:
@@ -88,19 +82,12 @@ async def test_ehlo_with_hostname_unset_after_connect(smtp_client: SMTP) -> None
         assert response.code == SMTPStatus.completed
 
 
-async def test_ehlo_error(
-    smtp_client: SMTP,
-    smtpd_class: type[SMTPD],
-    smtpd_mock_response_error_with_code: Callable,
-    monkeypatch: pytest.MonkeyPatch,
-    error_code: int,
-) -> None:
-    monkeypatch.setattr(smtpd_class, "smtp_EHLO", smtpd_mock_response_error_with_code)
-
+@pytest.mark.smtpd_mocks(smtp_EHLO=mock_response_unrecognized_command)
+async def test_ehlo_error(smtp_client: SMTP) -> None:
     async with smtp_client:
         with pytest.raises(SMTPHeloError) as exception_info:
             await smtp_client.ehlo()
-        assert exception_info.value.code == error_code
+        assert exception_info.value.code == SMTPStatus.unrecognized_command
 
 
 @pytest.mark.smtpd_mocks(smtp_EHLO=mock_response_ehlo_full)
@@ -132,14 +119,8 @@ async def test_ehlo_or_helo_if_needed_ehlo_success(smtp_client: SMTP) -> None:
         assert smtp_client.is_ehlo_or_helo_needed is False
 
 
-async def test_ehlo_or_helo_if_needed_helo_success(
-    smtp_client: SMTP,
-    smtpd_class: type[SMTPD],
-    smtpd_mock_response_error_with_code: Callable,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(smtpd_class, "smtp_EHLO", smtpd_mock_response_error_with_code)
-
+@pytest.mark.smtpd_mocks(smtp_EHLO=mock_response_unrecognized_command)
+async def test_ehlo_or_helo_if_needed_helo_success(smtp_client: SMTP) -> None:
     async with smtp_client:
         assert smtp_client.is_ehlo_or_helo_needed is True
 
@@ -148,45 +129,17 @@ async def test_ehlo_or_helo_if_needed_helo_success(
         assert smtp_client.is_ehlo_or_helo_needed is False
 
 
-@pytest.mark.parametrize(
-    "ehlo_error_code",
-    [
-        SMTPStatus.mailbox_unavailable,
-        SMTPStatus.unrecognized_command,
-        SMTPStatus.bad_command_sequence,
-        SMTPStatus.syntax_error,
-    ],
-    ids=[
-        SMTPStatus.mailbox_unavailable.name,
-        SMTPStatus.unrecognized_command.name,
-        SMTPStatus.bad_command_sequence.name,
-        SMTPStatus.syntax_error.name,
-    ],
+@pytest.mark.smtpd_mocks(
+    smtp_HELO=mock_response_unrecognized_command,
+    smtp_EHLO=mock_response_unrecognized_command,
 )
-async def test_ehlo_or_helo_if_needed_neither_succeeds(
-    smtp_client: SMTP,
-    smtpd_class: type[SMTPD],
-    smtpd_mock_response_error_with_code: Callable,
-    smtpd_mock_response_error_with_code_factory: Callable[
-        [str], Callable[[SMTPD], Coroutine[Any, Any, None]]
-    ],
-    monkeypatch: pytest.MonkeyPatch,
-    error_code: int,
-    ehlo_error_code: int,
-) -> None:
-    monkeypatch.setattr(smtpd_class, "smtp_HELO", smtpd_mock_response_error_with_code)
-
-    ehlo_response_handler = smtpd_mock_response_error_with_code_factory(
-        f"{ehlo_error_code} error",
-    )
-    monkeypatch.setattr(smtpd_class, "smtp_EHLO", ehlo_response_handler)
-
+async def test_ehlo_or_helo_if_needed_neither_succeeds(smtp_client: SMTP) -> None:
     async with smtp_client:
         assert smtp_client.is_ehlo_or_helo_needed is True
 
         with pytest.raises(SMTPHeloError) as exception_info:
             await smtp_client._ehlo_or_helo_if_needed()
-        assert exception_info.value.code == error_code
+        assert exception_info.value.code == SMTPStatus.unrecognized_command
 
 
 @pytest.mark.smtpd_mocks(smtp_EHLO=mock_response_unavailable)
@@ -204,19 +157,12 @@ async def test_rset_ok(smtp_client: SMTP) -> None:
         assert response.message == "OK"
 
 
-async def test_rset_error(
-    smtp_client: SMTP,
-    smtpd_class: type[SMTPD],
-    smtpd_mock_response_error_with_code: Callable,
-    monkeypatch: pytest.MonkeyPatch,
-    error_code: int,
-) -> None:
-    monkeypatch.setattr(smtpd_class, "smtp_RSET", smtpd_mock_response_error_with_code)
-
+@pytest.mark.smtpd_mocks(smtp_RSET=mock_response_bad_command_sequence)
+async def test_rset_error(smtp_client: SMTP) -> None:
     async with smtp_client:
         with pytest.raises(SMTPResponseException) as exception_info:
             await smtp_client.rset()
-        assert exception_info.value.code == error_code
+        assert exception_info.value.code == SMTPStatus.bad_command_sequence
 
 
 async def test_noop_ok(smtp_client: SMTP) -> None:
@@ -227,19 +173,12 @@ async def test_noop_ok(smtp_client: SMTP) -> None:
         assert response.message == "OK"
 
 
-async def test_noop_error(
-    smtp_client: SMTP,
-    smtpd_class: type[SMTPD],
-    smtpd_mock_response_error_with_code: Callable,
-    monkeypatch: pytest.MonkeyPatch,
-    error_code: int,
-) -> None:
-    monkeypatch.setattr(smtpd_class, "smtp_NOOP", smtpd_mock_response_error_with_code)
-
+@pytest.mark.smtpd_mocks(smtp_NOOP=mock_response_syntax_error)
+async def test_noop_error(smtp_client: SMTP) -> None:
     async with smtp_client:
         with pytest.raises(SMTPResponseException) as exception_info:
             await smtp_client.noop()
-        assert exception_info.value.code == error_code
+        assert exception_info.value.code == SMTPStatus.syntax_error
 
 
 async def test_vrfy_ok(smtp_client: SMTP) -> None:
@@ -313,34 +252,20 @@ async def test_help_ok(smtp_client: SMTP) -> None:
         assert "Supported commands" in help_message
 
 
-async def test_help_error(
-    smtp_client: SMTP,
-    smtpd_class: type[SMTPD],
-    smtpd_mock_response_error_with_code: Callable,
-    monkeypatch: pytest.MonkeyPatch,
-    error_code: int,
-) -> None:
-    monkeypatch.setattr(smtpd_class, "smtp_HELP", smtpd_mock_response_error_with_code)
-
+@pytest.mark.smtpd_mocks(smtp_HELP=mock_response_syntax_error)
+async def test_help_error(smtp_client: SMTP) -> None:
     async with smtp_client:
         with pytest.raises(SMTPResponseException) as exception_info:
             await smtp_client.help()
-        assert exception_info.value.code == error_code
+        assert exception_info.value.code == SMTPStatus.syntax_error
 
 
-async def test_quit_error(
-    smtp_client: SMTP,
-    smtpd_class: type[SMTPD],
-    smtpd_mock_response_error_with_code: Callable,
-    monkeypatch: pytest.MonkeyPatch,
-    error_code: int,
-) -> None:
-    monkeypatch.setattr(smtpd_class, "smtp_QUIT", smtpd_mock_response_error_with_code)
-
+@pytest.mark.smtpd_mocks(smtp_QUIT=mock_response_bad_command_sequence)
+async def test_quit_error(smtp_client: SMTP) -> None:
     async with smtp_client:
         with pytest.raises(SMTPResponseException) as exception_info:
             await smtp_client.quit()
-        assert exception_info.value.code == error_code
+        assert exception_info.value.code == SMTPStatus.bad_command_sequence
 
 
 async def test_supported_methods(smtp_client: SMTP) -> None:
@@ -361,19 +286,12 @@ async def test_mail_ok(smtp_client: SMTP) -> None:
         assert response.message == "OK"
 
 
-async def test_mail_error(
-    smtp_client: SMTP,
-    smtpd_class: type[SMTPD],
-    smtpd_mock_response_error_with_code: Callable,
-    monkeypatch: pytest.MonkeyPatch,
-    error_code: int,
-) -> None:
-    monkeypatch.setattr(smtpd_class, "smtp_MAIL", smtpd_mock_response_error_with_code)
-
+@pytest.mark.smtpd_mocks(smtp_MAIL=mock_response_bad_command_sequence)
+async def test_mail_error(smtp_client: SMTP) -> None:
     async with smtp_client:
         with pytest.raises(SMTPResponseException) as exception_info:
             await smtp_client.mail("test@example.com")
-        assert exception_info.value.code == error_code
+        assert exception_info.value.code == SMTPStatus.bad_command_sequence
 
 
 async def test_mail_options_not_implemented(smtp_client: SMTP) -> None:
@@ -430,21 +348,14 @@ async def test_rcpt_options_not_implemented(smtp_client: SMTP) -> None:
             assert err.value.code == SMTPStatus.syntax_error
 
 
-async def test_rcpt_error(
-    smtp_client: SMTP,
-    smtpd_class: type[SMTPD],
-    smtpd_mock_response_error_with_code: Callable,
-    monkeypatch: pytest.MonkeyPatch,
-    error_code: int,
-) -> None:
-    monkeypatch.setattr(smtpd_class, "smtp_RCPT", smtpd_mock_response_error_with_code)
-
+@pytest.mark.smtpd_mocks(smtp_RCPT=mock_response_syntax_error)
+async def test_rcpt_error(smtp_client: SMTP) -> None:
     async with smtp_client:
         await smtp_client.mail("j@example.com")
 
         with pytest.raises(SMTPResponseException) as exception_info:
             await smtp_client.rcpt("test@example.com")
-        assert exception_info.value.code == error_code
+        assert exception_info.value.code == SMTPStatus.syntax_error
 
 
 @pytest.mark.smtpd_options(smtputf8=True)
@@ -474,40 +385,29 @@ async def test_data_ok(smtp_client: SMTP) -> None:
         assert response.message == "OK"
 
 
-async def test_data_error_on_start_input(
-    smtp_client: SMTP,
-    smtpd_class: type[SMTPD],
-    smtpd_mock_response_error_with_code: Callable,
-    monkeypatch: pytest.MonkeyPatch,
-    error_code: int,
-) -> None:
-    monkeypatch.setattr(smtpd_class, "smtp_DATA", smtpd_mock_response_error_with_code)
-
+@pytest.mark.smtpd_mocks(smtp_DATA=mock_response_bad_command_sequence)
+async def test_data_error_on_start_input(smtp_client: SMTP) -> None:
     async with smtp_client:
         await smtp_client.mail("admin@example.com")
         await smtp_client.rcpt("test@example.com")
         with pytest.raises(SMTPDataError) as exception_info:
             await smtp_client.data("TEST MESSAGE")
-        assert exception_info.value.code == error_code
+        assert exception_info.value.code == SMTPStatus.bad_command_sequence
 
 
 async def test_data_complete_error(
     smtp_client: SMTP,
     smtpd_handler: RecordingHandler,
-    smtpd_mock_response_error_with_code: Callable,
     monkeypatch: pytest.MonkeyPatch,
-    error_code: int,
 ) -> None:
-    monkeypatch.setattr(
-        smtpd_handler, "handle_DATA", smtpd_mock_response_error_with_code
-    )
+    monkeypatch.setattr(smtpd_handler, "handle_DATA", mock_response_syntax_error)
 
     async with smtp_client:
         await smtp_client.mail("admin@example.com")
         await smtp_client.rcpt("test@example.com")
         with pytest.raises(SMTPDataError) as exception_info:
             await smtp_client.data("TEST MESSAGE")
-        assert exception_info.value.code == error_code
+        assert exception_info.value.code == SMTPStatus.syntax_error
 
 
 async def test_data_error_when_disconnected() -> None:

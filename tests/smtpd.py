@@ -13,6 +13,8 @@ from aiosmtpd.smtp import MISSING
 from aiosmtpd.smtp import SMTP as SMTPD
 from aiosmtpd.smtp import Envelope, Session, _Missing
 
+from aiosmtplib import SMTPStatus
+
 
 log = logging.getLogger("mail.log")
 
@@ -207,3 +209,25 @@ async def mock_response_disconnect(smtpd: SMTPD, *args: Any, **kwargs: Any) -> N
 
 async def mock_response_eof(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
     smtpd.transport.write_eof()
+
+
+async def mock_response_mailbox_unavailable(
+    smtpd: SMTPD, *args: Any, **kwargs: Any
+) -> None:
+    await smtpd.push(f"{SMTPStatus.mailbox_unavailable} error")
+
+
+async def mock_response_unrecognized_command(
+    smtpd: SMTPD, *args: Any, **kwargs: Any
+) -> None:
+    await smtpd.push(f"{SMTPStatus.unrecognized_command} error")
+
+
+async def mock_response_bad_command_sequence(
+    smtpd: SMTPD, *args: Any, **kwargs: Any
+) -> None:
+    await smtpd.push(f"{SMTPStatus.bad_command_sequence} error")
+
+
+async def mock_response_syntax_error(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
+    await smtpd.push(f"{SMTPStatus.syntax_error} error")

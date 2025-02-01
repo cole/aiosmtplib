@@ -4,10 +4,8 @@ TLS and STARTTLS handling.
 
 import copy
 import ssl
-from collections.abc import Callable
 
 import pytest
-from aiosmtpd.smtp import SMTP as SMTPD
 
 from aiosmtplib import (
     SMTP,
@@ -22,6 +20,7 @@ from .smtpd import (
     mock_response_ehlo_minimal,
     mock_response_tls_not_available,
     mock_response_tls_ready_disconnect,
+    mock_response_unrecognized_command,
 )
 
 
@@ -162,17 +161,8 @@ async def test_starttls_disconnect_before_upgrade(smtp_client: SMTP) -> None:
 
 
 @pytest.mark.smtpd_options(tls=False)
-async def test_starttls_invalid_responses(
-    smtp_client: SMTP,
-    smtpd_class: type[SMTPD],
-    smtpd_mock_response_error_with_code: Callable,
-    monkeypatch: pytest.MonkeyPatch,
-    error_code: int,
-) -> None:
-    monkeypatch.setattr(
-        smtpd_class, "smtp_STARTTLS", smtpd_mock_response_error_with_code
-    )
-
+@pytest.mark.smtpd_mocks(smtp_STARTTLS=mock_response_unrecognized_command)
+async def test_starttls_invalid_responses(smtp_client: SMTP) -> None:
     async with smtp_client:
         await smtp_client.ehlo()
 
@@ -181,7 +171,7 @@ async def test_starttls_invalid_responses(
         with pytest.raises(SMTPResponseException) as exception_info:
             await smtp_client.starttls()
 
-        assert exception_info.value.code == error_code
+        assert exception_info.value.code == SMTPStatus.unrecognized_command
         # Make sure our state has been _not_ been cleared
         assert smtp_client.esmtp_extensions == old_extensions
         assert smtp_client.supports_esmtp is True
