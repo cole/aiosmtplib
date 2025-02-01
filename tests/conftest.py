@@ -412,7 +412,9 @@ def smtpd_factory(
         monkeypatch.setattr(TestSMTPD, attr, mock_fn)
 
     smtpd_tls_context = (
-        server_tls_context if smtpd_options.get("starttls", True) else None
+        server_tls_context
+        if smtpd_options.get("starttls", True) or smtpd_options.get("tls", False)
+        else None
     )
 
     def factory() -> SMTPD:
@@ -433,6 +435,7 @@ def smtpd_server(
     request: pytest.FixtureRequest,
     event_loop: asyncio.AbstractEventLoop,
     bind_address: str,
+    server_tls_context: ssl.SSLContext,
     smtpd_factory: Callable[[], SMTPD],
 ) -> Generator[asyncio.AbstractServer, None, None]:
     smtpd_options_marker = request.node.get_closest_marker("smtpd_options")

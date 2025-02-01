@@ -25,12 +25,11 @@ from .smtpd import (
 
 
 @pytest.mark.smtpd_options(tls=True)
-@pytest.mark.smtp_client_options(use_tls=True)
 async def test_tls_connection(smtp_client: SMTP) -> None:
     """
     Use an explicit connect/quit here, as other tests use the context manager.
     """
-    await smtp_client.connect()
+    await smtp_client.connect(use_tls=True)
     assert smtp_client.is_connected
 
     await smtp_client.quit()
