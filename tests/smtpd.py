@@ -231,3 +231,14 @@ async def mock_response_bad_command_sequence(
 
 async def mock_response_syntax_error(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
     await smtpd.push(f"{SMTPStatus.syntax_error} error")
+
+
+async def mock_response_syntax_error_and_cleanup(
+    smtpd: SMTPD, *args: Any, **kwargs: Any
+) -> None:
+    await smtpd.push(f"{SMTPStatus.syntax_error} error")
+
+    if smtpd._handler_coroutine:
+        smtpd._handler_coroutine.cancel()
+    if smtpd.transport:
+        smtpd.transport.close()
