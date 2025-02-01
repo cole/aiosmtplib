@@ -226,7 +226,8 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
         return self._transport.get_extra_info(key)
 
     def set_transport(self, transport: asyncio.Transport) -> None:
-        assert self._transport is None, "Transport already set"
+        if self._transport is not None:
+            raise RuntimeError("Transport already set")
         self._transport = transport
 
     def _replace_transport(self, transport: asyncio.Transport) -> None:
