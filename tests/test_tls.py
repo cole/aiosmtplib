@@ -123,6 +123,18 @@ async def test_starttls_auto_connect_kwarg(
     await smtp_client.quit()
 
 
+@pytest.mark.smtp_client_options(start_tls=None)
+@pytest.mark.smtpd_options(tls=False)
+@pytest.mark.smtpd_mocks(smtp_EHLO=mock_response_ehlo_minimal)
+async def test_starttls_auto_connect_not_supported(smtp_client: SMTP) -> None:
+    async with smtp_client:
+        await smtp_client.ehlo()
+
+        # Make sure our connection was nul upgraded. ssl protocol transport is
+        # private in UVloop, so just check the class name.
+        assert "SSL" not in type(smtp_client.transport).__name__
+
+
 @pytest.mark.smtpd_options(tls=False)
 async def test_starttls_with_explicit_server_hostname(
     smtp_client: SMTP,
@@ -140,7 +152,7 @@ async def test_starttls_not_supported(smtp_client: SMTP) -> None:
     async with smtp_client:
         await smtp_client.ehlo()
 
-        with pytest.raises(SMTPException):
+        with pytest.raises(SMTPException, match="STARTTLS extension not supported"):
             await smtp_client.starttls()
 
 
@@ -333,9 +345,7 @@ async def test_tls_get_transport_info(
         assert sslobj is not None
 
 
-pytest.mark.smtpd_options(tls=False)
-
-
+@pytest.mark.smtpd_options(tls=False)
 async def test_tls_smtp_connect_to_non_tls_server(
     smtp_client: SMTP,
     smtpd_server_port: int,
@@ -345,14 +355,12 @@ async def test_tls_smtp_connect_to_non_tls_server(
     assert not smtp_client.is_connected
 
 
-pytest.mark.smtpd_options(tls=True)
-
-
+@pytest.mark.smtpd_options(tls=True)
 async def test_tls_connection_with_existing_sslcontext(
     smtp_client: SMTP,
     client_tls_context: ssl.SSLContext,
 ) -> None:
-    await smtp_client.connect(tls_context=client_tls_context)
+    await smtp_client.connect(use_tls=True, tls_context=client_tls_context)
     assert smtp_client.is_connected
 
     assert smtp_client.tls_context is client_tls_context
