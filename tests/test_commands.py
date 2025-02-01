@@ -27,6 +27,7 @@ from .smtpd import (
     mock_response_unrecognized_command,
     mock_response_bad_command_sequence,
     mock_response_syntax_error,
+    mock_response_syntax_error_and_cleanup,
 )
 
 
@@ -260,12 +261,12 @@ async def test_help_error(smtp_client: SMTP) -> None:
         assert exception_info.value.code == SMTPStatus.syntax_error
 
 
-@pytest.mark.smtpd_mocks(smtp_QUIT=mock_response_bad_command_sequence)
+@pytest.mark.smtpd_mocks(smtp_QUIT=mock_response_syntax_error_and_cleanup)
 async def test_quit_error(smtp_client: SMTP) -> None:
     async with smtp_client:
         with pytest.raises(SMTPResponseException) as exception_info:
             await smtp_client.quit()
-        assert exception_info.value.code == SMTPStatus.bad_command_sequence
+        assert exception_info.value.code == SMTPStatus.syntax_error
 
 
 async def test_supported_methods(smtp_client: SMTP) -> None:
