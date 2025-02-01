@@ -176,8 +176,6 @@ async def test_send_via_socket(
         assert not errors
         assert len(received_messages) == 1
 
-        assert sock.fileno() > 0, "Socket unexpectedly closed"
-
 
 async def test_send_via_socket_path(
     smtpd_server_socket_path: asyncio.AbstractServer,

@@ -5,8 +5,10 @@ Changelog
 ------------------
 
 - **BREAKING**: Drop Python 3.8 support
-- Bugfix: Run `socket.getfqdn` in thread to avoid blocking event loop
-  if `local_hostname` not provided (thanks @Raidzin)
+- Feature: Added `SMTP.wait_closed` method to wait for the connection to close
+- Change: Refactored and updated protocol logic
+- Bugfix: Run `socket.getfqdn` in thread to avoid blocking event loop if
+  `local_hostname` not provided (thanks @Raidzin)
 
 3.0.2
 -----

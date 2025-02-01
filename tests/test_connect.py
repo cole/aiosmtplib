@@ -70,8 +70,7 @@ async def test_bad_connect_response_raises_error(smtp_client: SMTP) -> None:
     with pytest.raises(SMTPConnectError):
         await smtp_client.connect()
 
-    assert smtp_client.transport is None
-    assert smtp_client.protocol is None
+    assert not smtp_client.is_connected
 
 
 @pytest.mark.smtpd_mocks(_handle_client=mock_response_eof)
@@ -79,8 +78,7 @@ async def test_eof_on_connect_raises_connect_error(smtp_client: SMTP) -> None:
     with pytest.raises(SMTPConnectError):
         await smtp_client.connect()
 
-    assert smtp_client.transport is None
-    assert smtp_client.protocol is None
+    assert not smtp_client.is_connected
 
 
 @pytest.mark.smtpd_mocks(_handle_client=mock_response_disconnect)
@@ -217,6 +215,7 @@ async def test_context_manager_exception_quits(
         async with smtp_client:
             1 / 0  # noqa
 
+    assert len(received_commands) >= 1
     assert received_commands[-1][0] == "QUIT"
 
 
@@ -308,7 +307,7 @@ async def test_connect_with_no_starttls_support(smtp_client: SMTP) -> None:
     await smtp_client.connect()
 
     assert smtp_client.is_connected
-    assert not smtp_client.protocol._over_ssl
+    assert smtp_client.get_transport_info("sslcontext") is None
 
     await smtp_client.quit()
 

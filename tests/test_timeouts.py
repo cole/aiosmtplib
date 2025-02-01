@@ -17,10 +17,13 @@ from aiosmtplib import (
 from aiosmtplib.protocol import SMTPProtocol
 
 from .compat import cleanup_server
-from .smtpd import mock_response_delayed_ok, mock_response_delayed_read
+from .smtpd import (
+    mock_response_delayed_ok_with_cleanup,
+    mock_response_delayed_read_with_cleanup,
+)
 
 
-@pytest.mark.smtpd_mocks(smtp_EHLO=mock_response_delayed_ok)
+@pytest.mark.smtpd_mocks(smtp_EHLO=mock_response_delayed_ok_with_cleanup)
 async def test_command_timeout_error(smtp_client: SMTP) -> None:
     await smtp_client.connect()
 
@@ -28,7 +31,7 @@ async def test_command_timeout_error(smtp_client: SMTP) -> None:
         await smtp_client.ehlo(hostname="example.com", timeout=0.0)
 
 
-@pytest.mark.smtpd_mocks(smtp_DATA=mock_response_delayed_ok)
+@pytest.mark.smtpd_mocks(smtp_DATA=mock_response_delayed_ok_with_cleanup)
 async def test_data_timeout_error(smtp_client: SMTP) -> None:
     await smtp_client.connect()
     await smtp_client.ehlo()
@@ -38,50 +41,28 @@ async def test_data_timeout_error(smtp_client: SMTP) -> None:
         await smtp_client.data("HELLO WORLD", timeout=0.0)
 
 
-@pytest.mark.smtpd_mocks(_handle_client=mock_response_delayed_ok)
+@pytest.mark.smtpd_mocks(_handle_client=mock_response_delayed_ok_with_cleanup)
 async def test_timeout_error_on_connect(smtp_client: SMTP) -> None:
     with pytest.raises(SMTPTimeoutError):
         await smtp_client.connect(timeout=0.0)
 
-    assert smtp_client.transport is None
     assert smtp_client.protocol is None
 
 
-@pytest.mark.smtpd_mocks(_handle_client=mock_response_delayed_read)
+@pytest.mark.smtpd_mocks(_handle_client=mock_response_delayed_read_with_cleanup)
 async def test_timeout_on_initial_read(smtp_client: SMTP) -> None:
     with pytest.raises(SMTPTimeoutError):
         # We need to use a timeout > 0 here to avoid timing out on connect
         await smtp_client.connect(timeout=0.01)
 
 
-@pytest.mark.smtpd_mocks(smtp_STARTTLS=mock_response_delayed_ok)
+@pytest.mark.smtpd_mocks(smtp_STARTTLS=mock_response_delayed_ok_with_cleanup)
 async def test_timeout_on_starttls(smtp_client: SMTP) -> None:
     await smtp_client.connect()
     await smtp_client.ehlo()
 
     with pytest.raises(SMTPTimeoutError):
         await smtp_client.starttls(timeout=0.0)
-
-
-async def test_protocol_read_response_with_timeout_times_out(
-    echo_server: asyncio.AbstractServer,
-    hostname: str,
-    echo_server_port: int,
-) -> None:
-    event_loop = asyncio.get_running_loop()
-
-    connect_future = event_loop.create_connection(
-        SMTPProtocol, host=hostname, port=echo_server_port
-    )
-
-    transport, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
-
-    with pytest.raises(SMTPTimeoutError) as exc:
-        await protocol.read_response(timeout=0.0)  # type: ignore
-
-    transport.close()
-
-    assert str(exc.value) == "Timed out waiting for server response"
 
 
 async def test_connect_timeout_error(hostname: str, unused_tcp_port: int) -> None:

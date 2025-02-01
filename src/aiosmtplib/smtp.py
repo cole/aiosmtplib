@@ -141,7 +141,6 @@ class SMTP:
         :raises ValueError: mutually exclusive options provided
         """
         self.protocol: Optional[SMTPProtocol] = None
-        self.transport: Optional[asyncio.BaseTransport] = None
 
         # Kwarg defaults are provided here, and saved for connect.
         self.hostname = hostname
@@ -179,16 +178,20 @@ class SMTP:
         return self
 
     async def __aexit__(
-        self, exc_type: type[BaseException], exc: BaseException, traceback: Any
+        self,
+        exc_type: type[BaseException],
+        exc: Optional[BaseException],
+        traceback: Any,
     ) -> None:
         if isinstance(exc, (ConnectionError, TimeoutError)):
             self.close()
             return
 
-        try:
-            await self.quit()
-        except (SMTPServerDisconnected, SMTPResponseException, SMTPTimeoutError):
-            pass
+        if self.protocol is not None:
+            try:
+                await self.quit()
+            except (SMTPServerDisconnected, SMTPResponseException, SMTPTimeoutError):
+                pass
 
     @property
     def is_connected(self) -> bool:
@@ -443,7 +446,8 @@ class SMTP:
             await self._maybe_start_tls_on_connect()
             await self._maybe_login_on_connect()
         except Exception as exc:
-            self.close()  # Reset our state to disconnected
+            # Reset our state to disconnected
+            self.close()
             raise exc
 
         return response
@@ -490,7 +494,7 @@ class SMTP:
             )
 
         try:
-            transport, _ = await asyncio.wait_for(connect_coro, timeout=timeout)
+            await asyncio.wait_for(connect_coro, timeout=timeout)
         except (TimeoutError, asyncio.TimeoutError) as exc:
             raise SMTPConnectTimeoutError(
                 f"Timed out connecting to {self.hostname} on port {self.port}"
@@ -501,10 +505,9 @@ class SMTP:
             ) from exc
 
         self.protocol = protocol
-        self.transport = transport
 
         try:
-            response = await protocol.read_response(timeout=timeout)
+            response = await asyncio.wait_for(protocol.read_response(), timeout)
         except SMTPServerDisconnected as exc:
             raise SMTPConnectError(
                 f"Error connecting to {self.hostname} on port {self.port}: {exc}"
@@ -595,17 +598,23 @@ class SMTP:
         """
         Closes the connection.
         """
-        if self.transport is not None and not self.transport.is_closing():
-            self.transport.close()
+        if self.protocol is not None and not self.protocol.is_closing():
+            self.protocol.close()
 
         if self._connect_lock is not None and self._connect_lock.locked():
             self._connect_lock.release()
 
-        self.protocol = None
-        self.transport = None
-
         # Reset ESMTP state
         self._reset_server_state()
+
+    async def wait_closed(self) -> None:
+        """
+        Wait for the connection to close.
+        """
+        if self.protocol is not None:
+            await self.protocol.wait_closed()
+
+            self.protocol = None
 
     def get_transport_info(self, key: str) -> Any:
         """
@@ -623,10 +632,10 @@ class SMTP:
 
         :raises SMTPServerDisconnected: connection lost
         """
-        if not (self.is_connected and self.transport):
+        if not (self.is_connected and self.protocol):
             raise SMTPServerDisconnected("Server not connected")
 
-        return self.transport.get_extra_info(key)
+        return self.protocol.get_transport_info(key)
 
     # Base SMTP commands #
 
@@ -799,11 +808,20 @@ class SMTP:
 
         :raises SMTPResponseException: on unexpected server response code
         """
-        response = await self.execute_command(b"QUIT", timeout=timeout)
+
+        if self.protocol is None:
+            raise SMTPServerDisconnected("Server not connected")
+
+        timeout = self.timeout if timeout is Default.token else timeout
+        response = await self.protocol.execute_command(
+            b"QUIT", timeout=timeout, quit=True
+        )
         if response.code != SMTPStatus.closing:
             raise SMTPResponseException(response.code, response.message)
 
         self.close()
+
+        await self.wait_closed()
 
         return response
 
@@ -1027,9 +1045,6 @@ class SMTP:
         response = await self.protocol.start_tls(
             tls_context, server_hostname=server_hostname, timeout=timeout
         )
-
-        # Update our transport reference
-        self.transport = self.protocol.transport
 
         # RFC 3207 part 4.2:
         # The client MUST discard any knowledge obtained from the server, such

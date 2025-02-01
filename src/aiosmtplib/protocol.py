@@ -6,11 +6,10 @@ import asyncio
 import collections
 import re
 import ssl
-from typing import Optional, cast
+from typing import Any, Optional, cast
 
 from .errors import (
     SMTPDataError,
-    SMTPReadTimeoutError,
     SMTPResponseException,
     SMTPServerDisconnected,
     SMTPTimeoutError,
@@ -25,6 +24,60 @@ __all__ = ("SMTPProtocol",)
 MAX_LINE_LENGTH = 8192
 LINE_ENDINGS_REGEX = re.compile(rb"(?:\r\n|\n|\r(?!\n))")
 PERIOD_REGEX = re.compile(rb"(?m)^\.")
+
+
+def format_data_message(message: bytes) -> bytes:
+    message = LINE_ENDINGS_REGEX.sub(b"\r\n", message)
+    message = PERIOD_REGEX.sub(b"..", message)
+    if not message.endswith(b"\r\n"):
+        message += b"\r\n"
+    message += b".\r\n"
+
+    return message
+
+
+def read_response_from_buffer(data: bytearray) -> Optional[SMTPResponse]:
+    """Parse the actual SMTP response (if any) from the data buffer"""
+    code = -1
+    message = bytearray()
+    offset = 0
+    message_complete = False
+
+    while True:
+        line_end_index = data.find(b"\n", offset)
+        if line_end_index == -1:
+            break
+
+        line = bytes(data[offset : line_end_index + 1])
+
+        if len(line) > MAX_LINE_LENGTH:
+            raise SMTPResponseException(
+                SMTPStatus.unrecognized_command, "Response too long"
+            )
+
+        try:
+            code = int(line[:3])
+        except ValueError:
+            error_text = line.decode("utf-8", errors="ignore")
+            raise SMTPResponseException(
+                SMTPStatus.invalid_response.value,
+                f"Malformed SMTP response line: {error_text}",
+            ) from None
+
+        offset += len(line)
+        if len(message):
+            message.extend(b"\n")
+        message.extend(line[4:].strip(b" \t\r\n"))
+        if line[3:4] != b"-":
+            message_complete = True
+            break
+
+    if message_complete:
+        response = SMTPResponse(code, bytes(message).decode("utf-8", "surrogateescape"))
+        del data[:offset]
+        return response
+
+    return None
 
 
 class FlowControlMixin(asyncio.Protocol):
@@ -86,7 +139,9 @@ class FlowControlMixin(asyncio.Protocol):
         finally:
             self._drain_waiters.remove(waiter)
 
-    def _get_close_waiter(self, stream: asyncio.StreamWriter) -> "asyncio.Future[None]":
+    def _get_close_waiter(
+        self, stream: Optional[asyncio.StreamWriter]
+    ) -> "asyncio.Future[None]":
         raise NotImplementedError
 
 
@@ -98,58 +153,47 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
         super().__init__(loop=loop)
         self._over_ssl = False
         self._buffer = bytearray()
-        self._response_waiter: Optional[asyncio.Future[SMTPResponse]] = None
+        self._response: Optional[SMTPResponse] = None
+        self._response_waiter: Optional[asyncio.Future[None]] = None
+        self._exception: Optional[Exception] = None
+        self._closed: "asyncio.Future[None]" = self._loop.create_future()
+        self._transport: Optional[asyncio.Transport] = None
 
-        self.transport: Optional[asyncio.BaseTransport] = None
         self._command_lock: Optional[asyncio.Lock] = None
-        self._closed_future: "asyncio.Future[None]" = self._loop.create_future()
         self._quit_sent = False
 
-    def _get_close_waiter(self, stream: asyncio.StreamWriter) -> "asyncio.Future[None]":
-        return self._closed_future
-
-    def __del__(self) -> None:
-        # Avoid 'Future exception was never retrieved' warnings
-        # Some unknown race conditions can sometimes trigger these :(
-        self._retrieve_response_exception()
-
-    @property
-    def is_connected(self) -> bool:
-        """
-        Check if our transport is still connected.
-        """
-        return bool(self.transport is not None and not self.transport.is_closing())
+    # Core state methods. These are called in order of:
+    # connection_made -> data_received* -> eof_received? -> connection_lost
 
     def connection_made(self, transport: asyncio.BaseTransport) -> None:
-        self.transport = cast(asyncio.Transport, transport)
+        self._transport = cast(asyncio.Transport, transport)
         self._over_ssl = transport.get_extra_info("sslcontext") is not None
         self._response_waiter = self._loop.create_future()
         self._command_lock = asyncio.Lock()
         self._quit_sent = False
 
     def connection_lost(self, exc: Optional[Exception]) -> None:
-        super().connection_lost(exc)
-
-        if not self._quit_sent:
+        smtp_exc = None
+        if exc:
             smtp_exc = SMTPServerDisconnected("Connection lost")
             if exc:
                 smtp_exc.__cause__ = exc
 
-            if self._response_waiter and not self._response_waiter.done():
-                self._response_waiter.set_exception(smtp_exc)
+        if smtp_exc and not self._quit_sent:
+            self._set_exception(smtp_exc)
 
-        self.transport = None
+        if self._closed and not self._closed.done():
+            if smtp_exc is None:
+                self._closed.set_result(None)
+            else:
+                self._closed.set_exception(smtp_exc)
+
+        super().connection_lost(exc)
+
         self._command_lock = None
+        self._transport = None
 
     def data_received(self, data: bytes) -> None:
-        if self._response_waiter is None:
-            raise RuntimeError(
-                f"data_received called without a response waiter set: {data!r}"
-            )
-        elif self._response_waiter.done():
-            # We got a response without issuing a command; ignore it.
-            return
-
         self._buffer.extend(data)
 
         # If we got an obvious partial message, don't try to parse the buffer
@@ -161,82 +205,91 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
             return
 
         try:
-            response = self._read_response_from_buffer()
+            response = read_response_from_buffer(self._buffer)
         except Exception as exc:
-            self._response_waiter.set_exception(exc)
+            self._set_exception(exc)
         else:
             if response is not None:
-                self._response_waiter.set_result(response)
+                self._set_response(response)
 
     def eof_received(self) -> bool:
-        exc = SMTPServerDisconnected("Unexpected EOF received")
-        if self._response_waiter and not self._response_waiter.done():
-            self._response_waiter.set_exception(exc)
+        self._set_exception(SMTPServerDisconnected("Unexpected EOF received"))
 
         # Returning false closes the transport
         return False
 
-    def _retrieve_response_exception(self) -> Optional[BaseException]:
-        """
-        Return any exception that has been set on the response waiter.
+    # Transport wrappers
 
-        Used to avoid 'Future exception was never retrieved' warnings
-        """
-        if (
-            self._response_waiter
-            and self._response_waiter.done()
-            and not self._response_waiter.cancelled()
-        ):
-            return self._response_waiter.exception()
-
-        return None
-
-    def _read_response_from_buffer(self) -> Optional[SMTPResponse]:
-        """Parse the actual response (if any) from the data buffer"""
-        code = -1
-        message = bytearray()
-        offset = 0
-        message_complete = False
-
-        while True:
-            line_end_index = self._buffer.find(b"\n", offset)
-            if line_end_index == -1:
-                break
-
-            line = bytes(self._buffer[offset : line_end_index + 1])
-
-            if len(line) > MAX_LINE_LENGTH:
-                raise SMTPResponseException(
-                    SMTPStatus.unrecognized_command, "Response too long"
-                )
-
-            try:
-                code = int(line[:3])
-            except ValueError:
-                error_text = line.decode("utf-8", errors="ignore")
-                raise SMTPResponseException(
-                    SMTPStatus.invalid_response.value,
-                    f"Malformed SMTP response line: {error_text}",
-                ) from None
-
-            offset += len(line)
-            if len(message):
-                message.extend(b"\n")
-            message.extend(line[4:].strip(b" \t\r\n"))
-            if line[3:4] != b"-":
-                message_complete = True
-                break
-
-        if message_complete:
-            response = SMTPResponse(
-                code, bytes(message).decode("utf-8", "surrogateescape")
-            )
-            del self._buffer[:offset]
-            return response
-        else:
+    def get_transport_info(self, key: str) -> Any:
+        if self._transport is None:
             return None
+        return self._transport.get_extra_info(key)
 
-    async def read_response(self, timeout: Optional[float] = None) -> SMTPResponse:
+    def set_transport(self, transport: asyncio.Transport) -> None:
+        assert self._transport is None, "Transport already set"
+        self._transport = transport
+
+    def _replace_transport(self, transport: asyncio.Transport) -> None:
+        self._transport = transport
+        self._over_ssl = transport.get_extra_info("sslcontext") is not None
+
+    def close(self) -> None:
+        if self._transport is not None:
+            self._transport.close()
+
+    def is_closing(self) -> bool:
+        return bool(self._transport and self._transport.is_closing())
+
+    # Helper methods similar to those on asyncio.StreamWriter/StreamReader
+
+    def _get_close_waiter(
+        self, stream: Optional[asyncio.StreamWriter]
+    ) -> "asyncio.Future[None]":
+        return self._closed
+
+    def __del__(self) -> None:
+        # Avoid 'Future exception was never retrieved' warnings
+        try:
+            closed = self._closed
+        except AttributeError:
+            pass  # failed constructor
+        else:
+            if closed.done() and not closed.cancelled():
+                closed.exception()
+
+    async def wait_closed(self) -> None:
+        await self._get_close_waiter(None)
+
+    def _set_exception(self, exc: Exception) -> None:
+        self._exception = exc
+
+        waiter = self._response_waiter
+        if waiter is not None:
+            self._response_waiter = None
+            if not waiter.cancelled():
+                waiter.set_exception(exc)
+
+    def _set_response(self, response: Optional[SMTPResponse]) -> None:
+        self._response = response
+        self._wakeup_waiter()
+
+    def _wakeup_waiter(self) -> None:
+        waiter = self._response_waiter
+        if waiter is not None:
+            self._response_waiter = None
+            if not waiter.cancelled():
+                waiter.set_result(None)
+
+    # SMTP specific methods
+
+    @property
+    def is_connected(self) -> bool:
+        """
+        Check if our transport is still connected.
+        """
+        return bool(self._transport is not None and not self.is_closing())
+
+    async def read_response(self) -> SMTPResponse:
         """
         Get a status response from the server.
 
@@ -252,32 +305,37 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
             raise SMTPServerDisconnected("Connection lost")
 
         try:
-            result = await asyncio.wait_for(self._response_waiter, timeout)
-        except (TimeoutError, asyncio.TimeoutError) as exc:
-            raise SMTPReadTimeoutError("Timed out waiting for server response") from exc
-        finally:
-            # If we were disconnected, don't create a new waiter
-            if self.transport is None:
-                self._response_waiter = None
-            else:
-                self._response_waiter = self._loop.create_future()
+            await self._response_waiter
+        except asyncio.CancelledError as exc:
+            raise SMTPTimeoutError("Timed out while waiting for response") from exc
+        response = self._response
+        self._response = None
 
-        return result
+        # If we were disconnected, don't create a new waiter
+        if self._transport is None or self.is_closing():
+            self._response_waiter = None
+        else:
+            self._response_waiter = self._loop.create_future()
+
+        if response is None:
+            raise RuntimeError("Invalid state: missing response")
+
+        return response
 
     def write(self, data: bytes) -> None:
-        if self.transport is None or self.transport.is_closing():
+        if self._transport is None or self.is_closing():
             raise SMTPServerDisconnected("Connection lost")
 
         try:
-            cast(asyncio.WriteTransport, self.transport).write(data)
+            cast(asyncio.WriteTransport, self._transport).write(data)
         # uvloop raises NotImplementedError, asyncio doesn't have a write method
         except (AttributeError, NotImplementedError):
             raise RuntimeError(
-                f"Transport {self.transport!r} does not support writing."
+                f"Transport {self._transport!r} does not support writing."
             ) from None
 
     async def execute_command(
-        self, *args: bytes, timeout: Optional[float] = None
+        self, *args: bytes, timeout: Optional[float] = None, quit: bool = False
     ) -> SMTPResponse:
         """
         Sends an SMTP command along with any args to the server, and returns
@@ -290,10 +348,13 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
         async with self._command_lock:
             self.write(command)
 
-            if command == b"QUIT\r\n":
+            if quit:
                 self._quit_sent = True
 
-            response = await self.read_response(timeout=timeout)
+            try:
+                response = await asyncio.wait_for(self.read_response(), timeout)
+            except asyncio.TimeoutError as exc:
+                raise SMTPTimeoutError("Timed out while waiting for response") from exc
 
         return response
 
@@ -310,20 +371,22 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
         if self._command_lock is None:
             raise SMTPServerDisconnected("Server not connected")
 
-        message = LINE_ENDINGS_REGEX.sub(b"\r\n", message)
-        message = PERIOD_REGEX.sub(b"..", message)
-        if not message.endswith(b"\r\n"):
-            message += b"\r\n"
-        message += b".\r\n"
+        formatted_message = format_data_message(message)
 
         async with self._command_lock:
             self.write(b"DATA\r\n")
-            start_response = await self.read_response(timeout=timeout)
+            try:
+                start_response = await asyncio.wait_for(self.read_response(), timeout)
+            except asyncio.TimeoutError as exc:
+                raise SMTPTimeoutError("Timed out while waiting for response") from exc
             if start_response.code != SMTPStatus.start_input:
                 raise SMTPDataError(start_response.code, start_response.message)
 
-            self.write(message)
-            response = await self.read_response(timeout=timeout)
+            self.write(formatted_message)
+            try:
+                response = await asyncio.wait_for(self.read_response(), timeout)
+            except asyncio.TimeoutError as exc:
+                raise SMTPTimeoutError("Timed out while waiting for response") from exc
             if response.code != SMTPStatus.completed:
                 raise SMTPDataError(response.code, response.message)
 
@@ -340,22 +403,25 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
         """
         if self._over_ssl:
             raise RuntimeError("Already using TLS.")
-        if self._command_lock is None:
+        if self._transport is None or self._command_lock is None:
             raise SMTPServerDisconnected("Server not connected")
 
         async with self._command_lock:
             self.write(b"STARTTLS\r\n")
-            response = await self.read_response(timeout=timeout)
+            try:
+                response = await asyncio.wait_for(self.read_response(), timeout)
+            except asyncio.TimeoutError as exc:
+                raise SMTPTimeoutError("Timed out while waiting for response") from exc
             if response.code != SMTPStatus.ready:
                 raise SMTPResponseException(response.code, response.message)
 
             # Check for disconnect after response
-            if self.transport is None or self.transport.is_closing():
+            if self.is_closing():
                 raise SMTPServerDisconnected("Connection lost")
 
             try:
                 tls_transport = await self._loop.start_tls(
-                    cast(asyncio.WriteTransport, self.transport),
+                    cast(asyncio.WriteTransport, self._transport),
                     self,
                     tls_context,
                     server_side=False,
@@ -374,6 +440,9 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
                     "Connection reset while upgrading transport"
                 ) from exc
 
-            self.transport = tls_transport
+            if tls_transport is None:
+                raise SMTPServerDisconnected("Failed to upgrade transport")
+
+            self._replace_transport(tls_transport)
 
         return response

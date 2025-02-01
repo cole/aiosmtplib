@@ -23,7 +23,7 @@ async def test_protocol_connect(hostname: str, echo_server_port: int) -> None:
     )
     transport, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
 
-    assert getattr(protocol, "transport", None) is transport
+    assert getattr(protocol, "_transport", None) is transport
     assert not transport.is_closing()
 
     transport.close()
@@ -74,10 +74,10 @@ async def test_protocol_connected_check_on_read_response(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     protocol = SMTPProtocol()
-    monkeypatch.setattr(protocol, "transport", None)
+    monkeypatch.setattr(protocol, "_transport", None)
 
     with pytest.raises(SMTPServerDisconnected):
-        await protocol.read_response(timeout=1.0)
+        await protocol.read_response()
 
 
 async def test_protocol_read_only_transport_error() -> None:
@@ -87,7 +87,7 @@ async def test_protocol_read_only_transport_error() -> None:
     connect_future = event_loop.connect_read_pipe(SMTPProtocol, read_pipe)
     transport, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
 
-    assert getattr(protocol, "transport", None) is transport
+    assert getattr(protocol, "_transport", None) is transport
 
     with pytest.raises(RuntimeError, match="does not support writing"):
         protocol.write(b"TEST\n")
@@ -187,7 +187,7 @@ async def test_error_on_readline_with_partial_line(
     _, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
 
     with pytest.raises(SMTPServerDisconnected):
-        await protocol.read_response(timeout=1.0)  # type: ignore
+        await asyncio.wait_for(protocol.read_response(), 1.0)
 
     server.close()
     await cleanup_server(server)
@@ -220,7 +220,7 @@ async def test_protocol_error_on_readline_with_malformed_response(
     with pytest.raises(
         SMTPResponseException, match="Malformed SMTP response line: ERROR"
     ):
-        await protocol.read_response(timeout=1.0)  # type: ignore
+        await asyncio.wait_for(protocol.read_response(), 1.0)
 
     server.close()
     await cleanup_server(server)
