@@ -26,6 +26,7 @@ async def test_send(
         hostname=hostname,
         port=smtpd_server_port,
         tls_context=client_tls_context,
+        timeout=1.0,
     )
 
     assert not errors
@@ -47,6 +48,7 @@ async def test_send_with_str(
         sender=sender_str,
         recipients=[recipient_str],
         start_tls=False,
+        timeout=1.0,
     )
 
     assert not errors
@@ -68,6 +70,7 @@ async def test_send_with_bytes(
         sender=sender_str,
         recipients=[recipient_str],
         start_tls=False,
+        timeout=1.0,
     )
 
     assert not errors
@@ -107,6 +110,7 @@ async def test_send_without_recipients(
             sender=sender_str,
             recipients=[],
             start_tls=False,
+            timeout=1.0,
         )
 
 
@@ -124,6 +128,7 @@ async def test_send_with_start_tls(
         port=smtpd_server_port,
         start_tls=True,
         tls_context=client_tls_context,
+        timeout=1.0,
     )
 
     assert not errors
@@ -149,6 +154,7 @@ async def test_send_with_login(
         tls_context=client_tls_context,
         username=auth_username,
         password=auth_password,
+        timeout=1.0,
     )
 
     assert not errors
@@ -171,6 +177,7 @@ async def test_send_via_socket(
             port=None,
             sock=sock,
             start_tls=False,
+            timeout=1.0,
         )
 
         assert not errors
@@ -189,6 +196,7 @@ async def test_send_via_socket_path(
         port=None,
         socket_path=socket_path,
         start_tls=False,
+        timeout=1.0,
     )
 
     assert not errors
@@ -211,6 +219,7 @@ async def test_send_with_mail_options(
         recipients=[recipient_str],
         mail_options=["BODY=8BITMIME"],
         start_tls=False,
+        timeout=1.0,
     )
 
     assert not errors
@@ -234,6 +243,7 @@ async def test_send_with_rcpt_options(
         # RCPT params are not supported by the server; just check that the kwarg works
         rcpt_options=[],
         start_tls=False,
+        timeout=1.0,
     )
 
     assert not errors

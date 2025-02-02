@@ -187,7 +187,7 @@ class SMTP:
             self.close()
             return
 
-        if self.protocol is not None:
+        if not (self.protocol is None or self.protocol.is_closing()):
             try:
                 await self.quit()
             except (SMTPServerDisconnected, SMTPResponseException, SMTPTimeoutError):
@@ -508,13 +508,13 @@ class SMTP:
 
         try:
             response = await asyncio.wait_for(protocol.read_response(), timeout)
+        except (TimeoutError, asyncio.TimeoutError) as exc:
+            raise SMTPConnectTimeoutError(
+                "Timed out waiting for server ready message"
+            ) from exc
         except SMTPServerDisconnected as exc:
             raise SMTPConnectError(
                 f"Error connecting to {self.hostname} on port {self.port}: {exc}"
-            ) from exc
-        except SMTPTimeoutError as exc:
-            raise SMTPConnectTimeoutError(
-                "Timed out waiting for server ready message"
             ) from exc
 
         if response.code != SMTPStatus.ready:
@@ -561,9 +561,14 @@ class SMTP:
         if self.protocol is None:
             raise SMTPServerDisconnected("Server not connected")
 
-        response = await self.protocol.execute_command(
-            *args, timeout=self.timeout if timeout is Default.token else timeout
-        )
+        timeout = self.timeout if timeout is Default.token else timeout
+
+        try:
+            response = await asyncio.wait_for(
+                self.protocol.execute_command(*args), timeout
+            )
+        except (TimeoutError, asyncio.TimeoutError) as exc:
+            raise SMTPTimeoutError("Timed out waiting for response") from exc
 
         # If the server is unavailable, be nice and close the connection
         if response.code == SMTPStatus.domain_unavailable:
@@ -599,7 +604,7 @@ class SMTP:
         Closes the connection.
         """
         if self.protocol is not None and not self.protocol.is_closing():
-            self.protocol.close()
+            self.protocol.close(self._unset_protocol)
 
         if self._connect_lock is not None and self._connect_lock.locked():
             self._connect_lock.release()
@@ -607,14 +612,15 @@ class SMTP:
         # Reset ESMTP state
         self._reset_server_state()
 
+    def _unset_protocol(self, future: asyncio.Future[None]) -> None:
+        self.protocol = None
+
     async def wait_closed(self) -> None:
         """
-        Wait for the connection to close.
+        Wait for the connection to finish closing. To be awaited after calling `close`.
         """
         if self.protocol is not None:
             await self.protocol.wait_closed()
-
-            self.protocol = None
 
     def get_transport_info(self, key: str) -> Any:
         """
@@ -813,14 +819,18 @@ class SMTP:
             raise SMTPServerDisconnected("Server not connected")
 
         timeout = self.timeout if timeout is Default.token else timeout
-        response = await self.protocol.execute_command(
-            b"QUIT", timeout=timeout, quit=True
-        )
+
+        try:
+            response = await asyncio.wait_for(
+                self.protocol.execute_command(b"QUIT", quit=True), timeout
+            )
+        except (TimeoutError, asyncio.TimeoutError) as exc:
+            raise SMTPTimeoutError("Timed out waiting for response") from exc
+
         if response.code != SMTPStatus.closing:
             raise SMTPResponseException(response.code, response.message)
 
         self.close()
-
         await self.wait_closed()
 
         return response
@@ -917,7 +927,14 @@ class SMTP:
         if isinstance(message, str):
             message = message.encode("ascii")
 
-        return await self.protocol.execute_data_command(message, timeout=timeout)
+        try:
+            response = await asyncio.wait_for(
+                self.protocol.execute_data_command(message), timeout
+            )
+        except (TimeoutError, asyncio.TimeoutError) as exc:
+            raise SMTPTimeoutError("Timed out waiting for response") from exc
+
+        return response
 
     # ESMTP commands #
 
@@ -1042,9 +1059,15 @@ class SMTP:
         if not self.supports_extension("starttls"):
             raise SMTPException("SMTP STARTTLS extension not supported by server.")
 
-        response = await self.protocol.start_tls(
-            tls_context, server_hostname=server_hostname, timeout=timeout
-        )
+        try:
+            response = await asyncio.wait_for(
+                self.protocol.start_tls(
+                    tls_context, server_hostname=server_hostname, timeout=timeout
+                ),
+                timeout,
+            )
+        except (TimeoutError, asyncio.TimeoutError) as exc:
+            raise SMTPTimeoutError("Timed out waiting for response") from exc
 
         # RFC 3207 part 4.2:
         # The client MUST discard any knowledge obtained from the server, such

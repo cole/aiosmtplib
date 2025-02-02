@@ -47,9 +47,7 @@ async def test_plain_smtp_connect(
     assert not smtp_client.is_connected
 
 
-async def test_quit_then_connect_ok(
-    smtp_client: SMTP, smtpd_server: asyncio.AbstractServer
-) -> None:
+async def test_quit_then_connect_ok(smtp_client: SMTP) -> None:
     async with smtp_client:
         response = await smtp_client.quit()
         assert response.code == SMTPStatus.closing
@@ -114,7 +112,7 @@ async def test_connect_error_with_no_server(
 async def test_disconnected_server_raises_on_client_read(smtp_client: SMTP) -> None:
     await smtp_client.connect()
 
-    with pytest.raises(SMTPServerDisconnected):
+    with pytest.raises(SMTPServerDisconnected, match="Server disconnected"):
         await smtp_client.execute_command(b"NOOP")
 
     assert not smtp_client.is_connected

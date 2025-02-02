@@ -144,7 +144,6 @@ async def mock_response_done_then_close(
     if args and args[0]:
         smtpd.session.host_name = args[0]
     await smtpd.push("250 done")
-    await smtpd.push("221 bye now")
     smtpd.transport.close()
 
 
