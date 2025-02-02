@@ -85,9 +85,10 @@ async def send(
         Mutually exclusive with ``client_cert``/``client_key``.
     :keyword cert_bundle: Path to certificate bundle, for TLS verification.
     :keyword socket_path: Path to a Unix domain socket. Not compatible with
-        hostname or port. Accepts str, bytes, or a pathlike object.
-    :keyword sock: An existing, connected socket object. If given, none of
-        hostname, port, or socket_path should be provided.
+        `port` or `sock`. Accepts str, bytes, or a pathlike object.
+    :keyword sock: An existing, connected socket object. Not compatible with `port`,
+        or `socket_path`. Passing a socket object will transfer control of it to the
+        asyncio connection, and it will be closed when the client disconnects.
 
     :raises ValueError: required arguments missing or mutually exclusive options
         provided

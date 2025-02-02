@@ -296,15 +296,16 @@ class SMTP:
                 "Either a TLS context or a certificate/key must be provided"
             )
 
-        if self.sock is not None and any([self.hostname, self.port, self.socket_path]):
+        if self.sock is not None and self.socket_path is not None:
             raise ValueError(
-                "The socket option is not compatible with hostname, port or socket_path"
+                "Either a socket or a socket path must be provided, not both"
             )
 
-        if self.socket_path is not None and any([self.hostname, self.port]):
-            raise ValueError(
-                "The socket_path option is not compatible with hostname/port"
-            )
+        if (self.sock or self.socket_path) and self.port is not None:
+            raise ValueError("If using a socket, port is not required")
+
+        if (self.sock or self.socket_path) and self.use_tls and self.hostname is None:
+            raise ValueError("If using a socket with TLS, hostname is required")
 
         if self.local_hostname is not None and (
             "\r" in self.local_hostname or "\n" in self.local_hostname
@@ -395,9 +396,11 @@ class SMTP:
             Mutually exclusive with ``client_cert``/``client_key``.
         :keyword cert_bundle: Path to certificate bundle, for TLS verification.
         :keyword socket_path: Path to a Unix domain socket. Not compatible with
-            hostname or port. Accepts str, bytes, or a pathlike object.
-        :keyword sock: An existing, connected socket object. If given, none of
-            hostname, port, or socket_path should be provided.
+            `port` or `sock`. Accepts str, bytes, or a pathlike object.
+        :keyword sock: An existing, connected socket object. Not compatible with
+            `port`, or `socket_path`. Passing a socket object will transfer
+            control of it to the asyncio connection, and it will be closed when
+            the client disconnects.
 
         :raises ValueError: mutually exclusive options provided
         """
@@ -456,15 +459,18 @@ class SMTP:
 
         tls_context: Optional[ssl.SSLContext] = None
         ssl_handshake_timeout: Optional[float] = None
+        server_hostname: Optional[str] = None
         if self.use_tls:
             tls_context = self._get_tls_context()
             ssl_handshake_timeout = timeout
+            server_hostname = self.hostname
 
         if self.sock is not None:
             connect_coro = self.loop.create_connection(
                 lambda: protocol,
                 sock=self.sock,
                 ssl=tls_context,
+                server_hostname=server_hostname,
                 ssl_handshake_timeout=ssl_handshake_timeout,
             )
         elif self.socket_path is not None:
@@ -472,6 +478,7 @@ class SMTP:
                 lambda: protocol,
                 path=self.socket_path,  # type: ignore
                 ssl=tls_context,
+                server_hostname=server_hostname,
                 ssl_handshake_timeout=ssl_handshake_timeout,
             )
         else:
