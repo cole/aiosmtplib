@@ -7,6 +7,7 @@ Changelog
 - **BREAKING**: Drop Python 3.8 support
 - Bugfix: Run `socket.getfqdn` in thread to avoid blocking event loop
   if `local_hostname` not provided (thanks @Raidzin)
+- Bugfix: Clear connect lock on connection lost, allowing client reconnect
 
 3.0.2
 -----

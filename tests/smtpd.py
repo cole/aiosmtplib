@@ -203,6 +203,13 @@ async def mock_response_tls_ready_disconnect(
     smtpd.transport.close()
 
 
+async def mock_response_start_data_disconnect(
+    smtpd: SMTPD, *args: Any, **kwargs: Any
+) -> None:
+    await smtpd.push("354 ok")
+    smtpd.transport.close()
+
+
 async def mock_response_disconnect(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
     smtpd.transport.close()
 

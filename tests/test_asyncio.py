@@ -186,10 +186,7 @@ async def test_close_works_on_stopped_loop(
 
 
 async def test_context_manager_entry_multiple_times_with_gather(
-    smtp_client: SMTP,
-    smtpd_server: asyncio.AbstractServer,
-    sender_str: str,
-    message_str: str,
+    smtp_client: SMTP, sender_str: str, message_str: str
 ) -> None:
     async def connect_and_send(
         *args: Any, **kwargs: Any
@@ -200,7 +197,7 @@ async def test_context_manager_entry_multiple_times_with_gather(
         return response
 
     tasks = [
-        connect_and_send(sender_str, [recipient], message_str)
+        asyncio.wait_for(connect_and_send(sender_str, [recipient], message_str), 2.0)
         for recipient in RECIPIENTS
     ]
     results = await asyncio.gather(*tasks)
