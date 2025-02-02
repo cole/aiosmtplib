@@ -368,6 +368,17 @@ async def test_protocol_get_close_waiter() -> None:
     assert close_waiter is not None
 
 
+async def test_protocol_missing_command_lock_disconnected() -> None:
+    event_loop = asyncio.get_running_loop()
+    protocol = SMTPProtocol(event_loop)
+
+    with pytest.raises(SMTPServerDisconnected):
+        await protocol.execute_command(b"TEST\n")
+
+    with pytest.raises(SMTPServerDisconnected):
+        await protocol.execute_data_command(b"TEST\n")
+
+
 async def test_flow_control_mixin_drain():
     event_loop = asyncio.get_running_loop()
 
