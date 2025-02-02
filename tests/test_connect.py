@@ -23,6 +23,8 @@ from .smtpd import (
     mock_response_unavailable,
     mock_response_disconnect,
     mock_response_eof,
+    mock_response_start_data_disconnect,
+    mock_response_tls_ready_disconnect,
 )
 
 
@@ -276,12 +278,59 @@ async def test_connect_error_second_attempt(
 
 
 @pytest.mark.smtpd_mocks(smtp_EHLO=mock_response_done_then_close)
-async def test_server_unexpected_disconnect(smtp_client: SMTP) -> None:
+async def test_server_unexpected_disconnect_on_command_then_reconnect(
+    smtp_client: SMTP,
+) -> None:
     await smtp_client.connect()
     await smtp_client.ehlo()
 
     with pytest.raises(SMTPServerDisconnected):
         await smtp_client.noop()
+
+    assert not smtp_client.is_connected
+    assert not smtp_client._connect_lock.locked()
+
+    await asyncio.wait_for(smtp_client.connect(), 1.0)
+
+    assert smtp_client.is_connected
+
+
+@pytest.mark.smtpd_mocks(smtp_STARTTLS=mock_response_tls_ready_disconnect)
+async def test_server_unexpected_disconnect_on_starttls_then_reconnect(
+    smtp_client: SMTP,
+) -> None:
+    await smtp_client.connect()
+    await smtp_client.ehlo()
+
+    with pytest.raises(SMTPServerDisconnected):
+        await smtp_client.starttls()
+
+    assert not smtp_client.is_connected
+    assert not smtp_client._connect_lock.locked()
+
+    await asyncio.wait_for(smtp_client.connect(), 1.0)
+
+    assert smtp_client.is_connected
+
+
+@pytest.mark.smtpd_mocks(smtp_DATA=mock_response_start_data_disconnect)
+async def test_server_unexpected_disconnect_on_data_then_reconnect(
+    smtp_client: SMTP,
+) -> None:
+    await smtp_client.connect()
+    await smtp_client.ehlo()
+    await smtp_client.mail("j@example.com")
+    await smtp_client.rcpt("test@example.com")
+
+    with pytest.raises(SMTPServerDisconnected):
+        await smtp_client.data(b"Test message")
+
+    assert not smtp_client.is_connected
+    assert not smtp_client._connect_lock.locked()
+
+    await asyncio.wait_for(smtp_client.connect(), 1.0)
+
+    assert smtp_client.is_connected
 
 
 async def test_connect_with_login(

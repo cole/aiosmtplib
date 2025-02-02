@@ -558,9 +558,13 @@ class SMTP:
         if self.protocol is None:
             raise SMTPServerDisconnected("Server not connected")
 
-        response = await self.protocol.execute_command(
-            *args, timeout=self.timeout if timeout is Default.token else timeout
-        )
+        try:
+            response = await self.protocol.execute_command(
+                *args, timeout=self.timeout if timeout is Default.token else timeout
+            )
+        except SMTPServerDisconnected:
+            self.close()
+            raise
 
         # If the server is unavailable, be nice and close the connection
         if response.code == SMTPStatus.domain_unavailable:
@@ -899,7 +903,11 @@ class SMTP:
         if isinstance(message, str):
             message = message.encode("ascii")
 
-        return await self.protocol.execute_data_command(message, timeout=timeout)
+        try:
+            return await self.protocol.execute_data_command(message, timeout=timeout)
+        except SMTPServerDisconnected:
+            self.close()
+            raise
 
     # ESMTP commands #
 
@@ -1024,9 +1032,13 @@ class SMTP:
         if not self.supports_extension("starttls"):
             raise SMTPException("SMTP STARTTLS extension not supported by server.")
 
-        response = await self.protocol.start_tls(
-            tls_context, server_hostname=server_hostname, timeout=timeout
-        )
+        try:
+            response = await self.protocol.start_tls(
+                tls_context, server_hostname=server_hostname, timeout=timeout
+            )
+        except SMTPServerDisconnected:
+            self.close()
+            raise
 
         # Update our transport reference
         self.transport = self.protocol.transport
