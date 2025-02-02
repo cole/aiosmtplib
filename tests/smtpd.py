@@ -104,14 +104,32 @@ class TestSMTPD(SMTPD):
         self.event_handler.record_command("STARTTLS", arg)
 
 
-async def mock_response_delayed_ok(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
+async def mock_response_delayed_ok_with_cleanup(
+    smtpd: SMTPD, *args: Any, **kwargs: Any
+) -> None:
     await asyncio.sleep(1.0)
     await smtpd.push("250 all done")
 
+    if smtpd._handler_coroutine:
+        handler = smtpd._handler_coroutine
+        handler.cancel()
+        await handler
+    if smtpd.transport:
+        smtpd.transport.close()
 
-async def mock_response_delayed_read(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
+
+async def mock_response_delayed_read_with_cleanup(
+    smtpd: SMTPD, *args: Any, **kwargs: Any
+) -> None:
     await smtpd.push("220-hi")
     await asyncio.sleep(1.0)
+
+    if smtpd._handler_coroutine:
+        handler = smtpd._handler_coroutine
+        handler.cancel()
+        await handler
+    if smtpd.transport:
+        smtpd.transport.close()
 
 
 async def mock_response_done(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
@@ -126,7 +144,6 @@ async def mock_response_done_then_close(
     if args and args[0]:
         smtpd.session.host_name = args[0]
     await smtpd.push("250 done")
-    await smtpd.push("221 bye now")
     smtpd.transport.close()
 
 
@@ -239,6 +256,8 @@ async def mock_response_syntax_error_and_cleanup(
     await smtpd.push(f"{SMTPStatus.syntax_error} error")
 
     if smtpd._handler_coroutine:
-        smtpd._handler_coroutine.cancel()
+        handler = smtpd._handler_coroutine
+        handler.cancel()
+        await handler
     if smtpd.transport:
         smtpd.transport.close()

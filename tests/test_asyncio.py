@@ -177,7 +177,7 @@ async def test_close_works_on_stopped_loop(
 
     await client.connect()
     assert client.is_connected
-    assert client.transport is not None
+    assert client.protocol is not None
 
     event_loop.stop()
 

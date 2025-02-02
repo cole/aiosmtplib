@@ -48,9 +48,7 @@ async def test_starttls(smtp_client: SMTP) -> None:
         assert not smtp_client.supported_auth_methods
         assert not smtp_client.supports_esmtp
 
-        # Make sure our connection was actually upgraded. ssl protocol transport is
-        # private in UVloop, so just check the class name.
-        assert "SSL" in type(smtp_client.transport).__name__
+        assert smtp_client.get_transport_info("sslcontext") is not None
 
         response = await smtp_client.ehlo()
         assert response.code == SMTPStatus.completed
@@ -68,18 +66,14 @@ async def test_starttls_init_kwarg(
     )
 
     async with smtp_client:
-        # Make sure our connection was actually upgraded. ssl protocol transport is
-        # private in UVloop, so just check the class name.
-        assert "SSL" in type(smtp_client.transport).__name__
+        assert smtp_client.get_transport_info("sslcontext") is not None
 
 
 @pytest.mark.smtpd_options(tls=False)
 async def test_starttls_connect_kwarg(smtp_client: SMTP) -> None:
     await smtp_client.connect(start_tls=True)
 
-    # Make sure our connection was actually upgraded. ssl protocol transport is
-    # private in UVloop, so just check the class name.
-    assert "SSL" in type(smtp_client.transport).__name__
+    assert smtp_client.get_transport_info("sslcontext") is not None
 
     await smtp_client.quit()
 
@@ -96,9 +90,7 @@ async def test_starttls_auto(
     )
 
     async with smtp_client:
-        # Make sure our connection was actually upgraded. ssl protocol transport is
-        # private in UVloop, so just check the class name.
-        assert "SSL" in type(smtp_client.transport).__name__
+        assert smtp_client.get_transport_info("sslcontext") is not None
 
 
 async def test_starttls_auto_connect_kwarg(
@@ -116,9 +108,7 @@ async def test_starttls_auto_connect_kwarg(
 
     await smtp_client.connect(start_tls=None)
 
-    # Make sure our connection was actually upgraded. ssl protocol transport is
-    # private in UVloop, so just check the class name.
-    assert "SSL" in type(smtp_client.transport).__name__
+    assert smtp_client.get_transport_info("sslcontext") is not None
 
     await smtp_client.quit()
 
@@ -130,9 +120,7 @@ async def test_starttls_auto_connect_not_supported(smtp_client: SMTP) -> None:
     async with smtp_client:
         await smtp_client.ehlo()
 
-        # Make sure our connection was nul upgraded. ssl protocol transport is
-        # private in UVloop, so just check the class name.
-        assert "SSL" not in type(smtp_client.transport).__name__
+        assert smtp_client.get_transport_info("sslcontext") is None
 
 
 @pytest.mark.smtpd_options(tls=False)
@@ -190,9 +178,7 @@ async def test_starttls_invalid_responses(smtp_client: SMTP) -> None:
         assert smtp_client.esmtp_extensions == old_extensions
         assert smtp_client.supports_esmtp is True
 
-        # Make sure our connection was not upgraded. ssl protocol transport is
-        # private in UVloop, so just check the class name.
-        assert "SSL" not in type(smtp_client.transport).__name__
+        assert smtp_client.get_transport_info("sslcontext") is None
 
 
 @pytest.mark.smtpd_options(tls=False)

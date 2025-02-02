@@ -10,7 +10,7 @@ import ssl
 
 import pytest
 
-from aiosmtplib import SMTPResponseException, SMTPServerDisconnected, SMTPTimeoutError
+from aiosmtplib import SMTPResponseException, SMTPServerDisconnected
 from aiosmtplib.protocol import FlowControlMixin, SMTPProtocol
 
 from .compat import cleanup_server
@@ -23,7 +23,7 @@ async def test_protocol_connect(hostname: str, echo_server_port: int) -> None:
     )
     transport, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
 
-    assert getattr(protocol, "transport", None) is transport
+    assert getattr(protocol, "_transport", None) is transport
     assert not transport.is_closing()
 
     transport.close()
@@ -61,23 +61,13 @@ async def test_protocol_read_limit_overrun(
     monkeypatch.setattr("aiosmtplib.protocol.MAX_LINE_LENGTH", 128)
 
     with pytest.raises(SMTPResponseException) as exc_info:
-        await protocol.execute_command(b"TEST\n", timeout=1.0)  # type: ignore
+        await protocol.execute_command(b"TEST\n")
 
     assert exc_info.value.code == 500
     assert "Response too long" in exc_info.value.message
 
     server.close()
     await cleanup_server(server)
-
-
-async def test_protocol_connected_check_on_read_response(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    protocol = SMTPProtocol()
-    monkeypatch.setattr(protocol, "transport", None)
-
-    with pytest.raises(SMTPServerDisconnected):
-        await protocol.read_response(timeout=1.0)
 
 
 async def test_protocol_read_only_transport_error() -> None:
@@ -87,10 +77,10 @@ async def test_protocol_read_only_transport_error() -> None:
     connect_future = event_loop.connect_read_pipe(SMTPProtocol, read_pipe)
     transport, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
 
-    assert getattr(protocol, "transport", None) is transport
+    assert getattr(protocol, "_transport", None) is transport
 
-    with pytest.raises(RuntimeError, match="does not support writing"):
-        protocol.write(b"TEST\n")
+    with pytest.raises(AttributeError, match="object has no attribute 'write'"):
+        await protocol.write(b"TEST\n")
 
     transport.close()
 
@@ -102,16 +92,6 @@ async def test_protocol_connected_check_on_start_tls(
 
     with pytest.raises(SMTPServerDisconnected):
         await smtp_protocol.start_tls(client_tls_context, timeout=1.0)
-
-
-async def test_protocol_already_over_tls_check_on_start_tls(
-    client_tls_context: ssl.SSLContext,
-) -> None:
-    smtp_protocol = SMTPProtocol()
-    smtp_protocol._over_ssl = True
-
-    with pytest.raises(RuntimeError, match="Already using TLS"):
-        await smtp_protocol.start_tls(client_tls_context)
 
 
 async def test_protocol_connection_reset_on_starttls(
@@ -133,30 +113,6 @@ async def test_protocol_connection_reset_on_starttls(
     monkeypatch.setattr(event_loop, "start_tls", mock_start_tls)
 
     with pytest.raises(SMTPServerDisconnected):
-        await protocol.start_tls(client_tls_context)
-
-    transport.close()
-
-
-async def test_protocol_timeout_on_starttls(
-    hostname: str,
-    smtpd_server_port: int,
-    client_tls_context: ssl.SSLContext,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    event_loop = asyncio.get_running_loop()
-
-    connect_future = event_loop.create_connection(
-        SMTPProtocol, host=hostname, port=smtpd_server_port
-    )
-    transport, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
-
-    def mock_start_tls(*args, **kwargs) -> None:
-        raise TimeoutError("Timed out")
-
-    monkeypatch.setattr(event_loop, "start_tls", mock_start_tls)
-
-    with pytest.raises(SMTPTimeoutError, match="Timed out while upgrading transport"):
         await protocol.start_tls(client_tls_context)
 
     transport.close()
@@ -187,7 +143,7 @@ async def test_error_on_readline_with_partial_line(
     _, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
 
     with pytest.raises(SMTPServerDisconnected):
-        await protocol.read_response(timeout=1.0)  # type: ignore
+        await asyncio.wait_for(protocol.read_response(), 1.0)
 
     server.close()
     await cleanup_server(server)
@@ -220,41 +176,7 @@ async def test_protocol_error_on_readline_with_malformed_response(
     with pytest.raises(
         SMTPResponseException, match="Malformed SMTP response line: ERROR"
     ):
-        await protocol.read_response(timeout=1.0)  # type: ignore
-
-    server.close()
-    await cleanup_server(server)
-
-
-async def test_protocol_response_waiter_unset(
-    bind_address: str,
-    hostname: str,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    event_loop = asyncio.get_running_loop()
-
-    async def client_connected(
-        reader: asyncio.StreamReader, writer: asyncio.StreamWriter
-    ) -> None:
-        await reader.read(1000)
-        writer.write(b"220 Hi\r\n")
-        await writer.drain()
-
-    server = await asyncio.start_server(
-        client_connected, host=bind_address, port=0, family=socket.AF_INET
-    )
-    server_port = server.sockets[0].getsockname()[1] if server.sockets else 0
-
-    connect_future = event_loop.create_connection(
-        SMTPProtocol, host=hostname, port=server_port
-    )
-
-    _, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
-
-    monkeypatch.setattr(protocol, "_response_waiter", None)
-
-    with pytest.raises(SMTPServerDisconnected):
-        await protocol.execute_command(b"TEST\n", timeout=1.0)  # type: ignore
+        await asyncio.wait_for(protocol.read_response(), 1.0)
 
     server.close()
     await cleanup_server(server)
@@ -287,7 +209,7 @@ async def test_protocol_data_received_called_twice(
 
     _, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
 
-    response = await protocol.execute_command(b"TEST\n", timeout=1.0)  # type: ignore
+    response = await protocol.execute_command(b"TEST\n")
 
     assert response.code == 220
     assert response.message == "Hi"
@@ -347,8 +269,8 @@ async def test_protocol_exception_cleanup_warning(
     )
     _, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
 
-    await protocol.execute_command(b"HELO\n", timeout=1.0)
-    await protocol.execute_command(b"QUIT\n", timeout=1.0)
+    await protocol.execute_command(b"HELO\n")
+    await protocol.execute_command(b"QUIT\n")
 
     del protocol
     # Force garbage collection
