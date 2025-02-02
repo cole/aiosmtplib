@@ -484,13 +484,22 @@ def echo_server(
 
 @pytest.fixture(scope="function")
 def smtpd_server_socket_path(
+    request: pytest.FixtureRequest,
     event_loop: asyncio.AbstractEventLoop,
     socket_path: Union[str, bytes, Path],
+    server_tls_context: ssl.SSLContext,
     smtpd_factory: Callable[[], SMTPD],
 ) -> Generator[asyncio.AbstractServer, None, None]:
+    smtpd_options_marker = request.node.get_closest_marker("smtpd_options")
+    if smtpd_options_marker is None:
+        smtpd_options = {}
+    else:
+        smtpd_options = smtpd_options_marker.kwargs
+
     create_server_coro = event_loop.create_unix_server(
         smtpd_factory,
         path=socket_path,  # type: ignore
+        ssl=server_tls_context if smtpd_options.get("tls", False) else None,
     )
     server = event_loop.run_until_complete(create_server_coro)
 

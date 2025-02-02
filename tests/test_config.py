@@ -47,11 +47,6 @@ async def test_use_tls_and_start_tls_to_connect_raises() -> None:
         await client.connect(start_tls=True)
 
 
-async def test_socket_and_hostname_raises() -> None:
-    with pytest.raises(ValueError):
-        SMTP(hostname="example.com", sock=socket.socket(socket.AF_INET))
-
-
 async def test_socket_and_port_raises() -> None:
     with pytest.raises(ValueError):
         SMTP(port=1, sock=socket.socket(socket.AF_INET))
@@ -62,9 +57,14 @@ async def test_socket_and_socket_path_raises() -> None:
         SMTP(socket_path="/tmp/test", sock=socket.socket(socket.AF_INET))  # nosec
 
 
-async def test_hostname_and_socket_path_raises() -> None:
+async def test_tls_socket_with_no_hostname_raises() -> None:
     with pytest.raises(ValueError):
-        SMTP(hostname="example.com", socket_path="/tmp/test")  # nosec
+        SMTP(hostname=None, sock=socket.socket(socket.AF_INET), use_tls=True)  # nosec
+
+
+async def test_tls_socket_path_with_no_hostname_raises() -> None:
+    with pytest.raises(ValueError):
+        SMTP(hostname=None, socket_path="/tmp/test", use_tls=True)  # nosec
 
 
 async def test_port_and_socket_path_raises() -> None:

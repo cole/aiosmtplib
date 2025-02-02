@@ -8,6 +8,8 @@ Changelog
 - Bugfix: Run `socket.getfqdn` in thread to avoid blocking event loop
   if `local_hostname` not provided (thanks @Raidzin)
 - Bugfix: Clear connect lock on connection lost, allowing client reconnect
+- Bugfix: Allow socket connections to use TLS by providing `hostname` and
+  `use_tls=True`
 
 3.0.2
 -----
