@@ -1,8 +1,8 @@
 Changelog
 =========
 
-4.0.0 (unreleased)
-------------------
+4.0.0
+-----
 
 - **BREAKING**: Drop Python 3.8 support
 - Bugfix: Run `socket.getfqdn` in thread to avoid blocking event loop
