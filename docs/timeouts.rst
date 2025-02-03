@@ -3,10 +3,12 @@
 Timeouts
 ========
 
-The :func:`send` coroutine and :meth:`SMTP.__init__`  accept a ``timeout``
-keyword argument of a numerical value in seconds. This value is used for all
-socket operations (initial connection, STARTTLS, each command/response, etc),
-and will raise :exc:`.SMTPTimeoutError` if exceeded.
+The :func:`send` coroutine and most :class:`SMTP` operations (
+:meth:`SMTP.__init__`, :meth:`SMTP.connect`, and most command operations, e.g.
+:meth:`SMTP.ehlo`) accept a ``timeout`` keyword argument of a numerical value
+in seconds. This value is used for all socket operations (initial connection,
+STARTTLS, each command/response, etc), and will raise :exc:`.SMTPTimeoutError`
+if exceeded.
 
 .. warning:: Note that because the timeout is on socket operations, as long as
     there is no period of inactivity that exceeds it (meaning no individual bytes

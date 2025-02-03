@@ -377,8 +377,7 @@ class SMTP:
         :keyword source_address: Takes a 2-tuple (host, port) for the socket to bind to
             as its source address before connecting. If the host is '' and port is 0,
             the OS default behavior will be used.
-        :keyword timeout: Literal[Default.token] timeout value for the connection, in seconds.
-            defaults to 60.
+        :keyword timeout: timeout value for the connection, in seconds. Defaults to 60.
         :keyword use_tls: If True, make the initial connection to the server
             over TLS/SSL. Mutually exclusive with ``start_tls``; if the server uses
             STARTTLS, ``use_tls`` should be ``False``.

@@ -14,14 +14,14 @@ Table of Contents
    :maxdepth: 2
 
    quickstart
-   requirements
    usage
    client
    encryption
    timeouts
+   proxies
+   trio
    reference
    bug-reporting
-   trio
 
 
 Release History

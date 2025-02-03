@@ -3,15 +3,16 @@
 The send Coroutine
 ==================
 
-The :func:`send` coroutine is the main entry point for sending email, and should is
-recommended for most use cases over instantiating an :py:class:`SMTP` object directly.
+The :func:`send` coroutine is the main entry point for sending email, and is
+recommended for most use cases. If you need more direct control over connection,
+disconnection, etc, consider instantiating an :class:`SMTP` object directly.
 
 Sending Messages
 ----------------
 
 To send a message, create an :py:class:`email.message.EmailMessage` object, set
-appropriate headers ("From" and one of "To", "Cc" or "Bcc", at minimum), then
-pass it to :func:`send` with the hostname and port of an SMTP server.
+appropriate headers (``From``, and one of ``To``, ``Cc`` or ``Bcc``, at minimum),
+then pass it to :func:`send` with the hostname and port of an SMTP server.
 
 For details on creating :py:class:`email.message.EmailMessage` objects, see
 `the stdlib documentation examples
@@ -72,7 +73,8 @@ Sending Raw Messages
 --------------------
 
 You can also send a ``str`` or ``bytes`` message, by providing the ``sender``
-and ``recipients`` keyword arguments.
+and ``recipients`` keyword arguments. Note that you must provide any headers
+as part of the message text.
 
 .. testcode::
 
