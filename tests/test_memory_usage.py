@@ -1,3 +1,4 @@
+import asyncio
 import email.message
 import ssl
 import sys
@@ -34,11 +35,14 @@ async def test_send_memory_leaks(
     client_tls_context: ssl.SSLContext,
 ) -> None:
     for _ in range(100):
-        errors, response = await send(
-            mime_message,
-            hostname=hostname,
-            port=smtpd_server_port,
-            tls_context=client_tls_context,
+        errors, response = await asyncio.wait_for(
+            send(
+                mime_message,
+                hostname=hostname,
+                port=smtpd_server_port,
+                tls_context=client_tls_context,
+            ),
+            1.0,
         )
 
         assert not errors
