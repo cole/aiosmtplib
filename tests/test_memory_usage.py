@@ -1,14 +1,16 @@
 import email.message
 import ssl
+import sys
 from typing import Any
 
 import pytest
-import pytest_memray
 
 from aiosmtplib import send
 
+IS_PYPY = hasattr(sys, "pypy_version_info")
 
-def filter_leaks(stack: pytest_memray.Stack) -> bool:
+
+def filter_leaks(stack) -> bool:
     leaker_filenames = ["aiosmtpd", "ssl.py", "sslproto.py"]
     for frame in stack.frames:
         if any([leaker in frame.filename for leaker in leaker_filenames]):
@@ -19,6 +21,8 @@ def filter_leaks(stack: pytest_memray.Stack) -> bool:
     return True
 
 
+@pytest.mark.slow
+@pytest.mark.skipif(IS_PYPY, reason="PyPy is not supported")
 @pytest.mark.limit_leaks("64 KB", filter_fn=filter_leaks)
 async def test_send_memory_leaks(
     hostname: str,
