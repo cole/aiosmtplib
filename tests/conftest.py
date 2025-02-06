@@ -144,6 +144,11 @@ def message_str(recipient_str: str, sender_str: str) -> str:
 
 
 @pytest.fixture(scope="session")
+def message_bytes(message_str: str) -> bytes:
+    return message_str.encode("ascii")
+
+
+@pytest.fixture(scope="session")
 def smtpd_class() -> type[SMTPD]:
     return TestSMTPD
 
@@ -307,16 +312,39 @@ def mime_message(
     return message
 
 
-@pytest.fixture(scope="function", params=["mime_multipart", "compat32"])
+@pytest.fixture(scope="function")
+def email_message(recipient_str: str, sender_str: str) -> email.message.EmailMessage:
+    message = email.message.EmailMessage()
+    message["To"] = recipient_str
+    message["From"] = sender_str
+    message["Subject"] = "A message"
+    message.set_payload("Hello World")
+
+    return message
+
+
+@pytest.fixture(scope="function")
 def message(
-    request: ParamFixtureRequest,
+    request: pytest.FixtureRequest,
+    email_message: email.message.EmailMessage,
     compat32_message: email.message.Message,
-    mime_message: email.message.EmailMessage,
-) -> Union[email.message.Message, email.message.EmailMessage]:
-    if request.param == "compat32":
+    mime_message: email.mime.multipart.MIMEMultipart,
+    message_str: str,
+    message_bytes: bytes,
+) -> Union[email.message.EmailMessage, email.message.Message, str, bytes]:
+    if not hasattr(request, "param"):
+        return email_message
+
+    if request.param == "compat32_message":
         return compat32_message
-    else:
+    elif request.param == "mime_message":
         return mime_message
+    elif request.param == "str":
+        return message_str
+    elif request.param == "bytes":
+        return message_bytes
+    else:
+        return email_message
 
 
 # Server helpers and factories #
