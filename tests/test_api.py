@@ -202,9 +202,15 @@ async def test_send_via_socket_tls_and_hostname(
         assert len(received_messages) == 1
 
 
+@pytest.mark.parametrize(
+    "socket_path_type",
+    [str, pathlib.Path, bytes],
+    ids=["str", "Path", "bytes"],
+)
 async def test_send_via_socket_path(
     smtpd_server_socket_path: asyncio.AbstractServer,
-    socket_path: Union[pathlib.Path, str, bytes],
+    socket_path: pathlib.Path,
+    socket_path_type: Union[type[str], type[pathlib.Path], type[bytes]],
     mime_message: email.message.EmailMessage,
     received_messages: list[email.message.EmailMessage],
 ) -> None:
@@ -212,7 +218,7 @@ async def test_send_via_socket_path(
         mime_message,
         hostname=None,
         port=None,
-        socket_path=socket_path,
+        socket_path=socket_path_type(socket_path),
         start_tls=False,
     )
 
@@ -223,7 +229,7 @@ async def test_send_via_socket_path(
 @pytest.mark.smtpd_options(tls=True)
 async def test_send_via_socket_path_with_tls(
     smtpd_server_socket_path: asyncio.AbstractServer,
-    socket_path: Union[pathlib.Path, str, bytes],
+    socket_path: pathlib.Path,
     hostname: str,
     client_tls_context: ssl.SSLContext,
     mime_message: email.message.EmailMessage,

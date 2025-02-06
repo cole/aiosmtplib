@@ -359,14 +359,8 @@ def smtpd_auth_callback(
     return auth_callback
 
 
-@pytest.fixture(
-    scope="function",
-    params=(str, bytes, Path),
-    ids=("str", "bytes", "pathlike"),
-)
-def socket_path(
-    request: ParamFixtureRequest, tmp_path: Path
-) -> Union[str, bytes, Path]:
+@pytest.fixture(scope="function")
+def socket_path(tmp_path: Path) -> Path:
     if sys.platform.startswith("darwin"):
         # Work around OSError: AF_UNIX path too long
         tmp_dir = Path("/tmp")  # nosec
@@ -379,9 +373,7 @@ def socket_path(
         index += 1
         socket_path = tmp_dir / f"aiosmtplib-test{index}"
 
-    typed_socket_path: Union[str, bytes, Path] = request.param(socket_path)
-
-    return typed_socket_path
+    return socket_path
 
 
 # Servers #
