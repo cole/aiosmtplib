@@ -15,14 +15,17 @@ import pytest
 from aiosmtplib import send
 
 
+@pytest.mark.parametrize(
+    "message", ["message", "compat32_message", "mime_message"], indirect=True
+)
 async def test_send(
     hostname: str,
     smtpd_server_port: int,
-    message: email.message.Message,
+    message: Union[email.message.EmailMessage, email.message.Message],
     received_messages: list[email.message.EmailMessage],
     client_tls_context: ssl.SSLContext,
 ) -> None:
-    errors, response = await send(
+    errors, _ = await send(
         message,
         hostname=hostname,
         port=smtpd_server_port,
@@ -33,37 +36,17 @@ async def test_send(
     assert len(received_messages) == 1
 
 
-async def test_send_with_str(
+@pytest.mark.parametrize("message", ["message_str", "message_bytes"], indirect=True)
+async def test_send_with_raw_message(
     hostname: str,
     smtpd_server_port: int,
     recipient_str: str,
     sender_str: str,
-    message_str: str,
+    message: Union[str, bytes],
     received_messages: list[email.message.EmailMessage],
 ) -> None:
-    errors, response = await send(
-        message_str,
-        hostname=hostname,
-        port=smtpd_server_port,
-        sender=sender_str,
-        recipients=[recipient_str],
-        start_tls=False,
-    )
-
-    assert not errors
-    assert len(received_messages) == 1
-
-
-async def test_send_with_bytes(
-    hostname: str,
-    smtpd_server_port: int,
-    recipient_str: str,
-    sender_str: str,
-    message_str: str,
-    received_messages: list[email.message.EmailMessage],
-) -> None:
-    errors, response = await send(
-        bytes(message_str, "ascii"),
+    errors, _ = await send(
+        message,
         hostname=hostname,
         port=smtpd_server_port,
         sender=sender_str,
@@ -80,10 +63,9 @@ async def test_send_without_sender(
     smtpd_server_port: int,
     recipient_str: str,
     message_str: str,
-    received_messages: list[email.message.EmailMessage],
 ) -> None:
     with pytest.raises(ValueError):
-        errors, response = await send(
+        await send(
             message_str,
             hostname=hostname,
             port=smtpd_server_port,
@@ -98,10 +80,9 @@ async def test_send_without_recipients(
     smtpd_server_port: int,
     sender_str: str,
     message_str: str,
-    received_messages: list[email.message.EmailMessage],
 ) -> None:
     with pytest.raises(ValueError):
-        errors, response = await send(
+        await send(
             message_str,
             hostname=hostname,
             port=smtpd_server_port,
@@ -115,11 +96,11 @@ async def test_send_with_start_tls(
     hostname: str,
     smtpd_server_port: int,
     client_tls_context: ssl.SSLContext,
-    message: email.message.Message,
+    message: email.message.EmailMessage,
     received_messages: list[email.message.EmailMessage],
     received_commands: list[tuple[str, tuple[Any, ...]]],
 ) -> None:
-    errors, response = await send(
+    errors, _ = await send(
         message,
         hostname=hostname,
         port=smtpd_server_port,
@@ -135,14 +116,14 @@ async def test_send_with_start_tls(
 async def test_send_with_login(
     hostname: str,
     smtpd_server_port: int,
-    message: email.message.Message,
+    message: email.message.EmailMessage,
     received_messages: list[email.message.EmailMessage],
     received_commands: list[tuple[str, tuple[Any, ...]]],
     auth_username: str,
     auth_password: str,
     client_tls_context: ssl.SSLContext,
 ) -> None:
-    errors, response = await send(
+    errors, _ = await send(
         message,
         hostname=hostname,
         port=smtpd_server_port,
@@ -160,14 +141,14 @@ async def test_send_with_login(
 async def test_send_via_socket(
     hostname: str,
     smtpd_server_port: int,
-    mime_message: email.message.EmailMessage,
+    message: email.message.EmailMessage,
     received_messages: list[email.message.EmailMessage],
 ) -> None:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.connect((hostname, smtpd_server_port))
 
         errors, _ = await send(
-            mime_message,
+            message,
             hostname=None,
             port=None,
             sock=sock,
@@ -183,14 +164,14 @@ async def test_send_via_socket_tls_and_hostname(
     hostname: str,
     client_tls_context: ssl.SSLContext,
     smtpd_server_port: int,
-    mime_message: email.message.EmailMessage,
+    message: email.message.EmailMessage,
     received_messages: list[email.message.EmailMessage],
 ) -> None:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.connect((hostname, smtpd_server_port))
 
         errors, _ = await send(
-            mime_message,
+            message,
             hostname=hostname,
             port=None,
             sock=sock,
@@ -211,11 +192,11 @@ async def test_send_via_socket_path(
     smtpd_server_socket_path: asyncio.AbstractServer,
     socket_path: pathlib.Path,
     socket_path_type: Union[type[str], type[pathlib.Path], type[bytes]],
-    mime_message: email.message.EmailMessage,
+    message: email.message.EmailMessage,
     received_messages: list[email.message.EmailMessage],
 ) -> None:
     errors, _ = await send(
-        mime_message,
+        message,
         hostname=None,
         port=None,
         socket_path=socket_path_type(socket_path),
@@ -232,11 +213,11 @@ async def test_send_via_socket_path_with_tls(
     socket_path: pathlib.Path,
     hostname: str,
     client_tls_context: ssl.SSLContext,
-    mime_message: email.message.EmailMessage,
+    message: email.message.EmailMessage,
     received_messages: list[email.message.EmailMessage],
 ) -> None:
     errors, _ = await send(
-        mime_message,
+        message,
         hostname=hostname,
         port=None,
         socket_path=socket_path,

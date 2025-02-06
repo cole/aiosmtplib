@@ -6,7 +6,7 @@ import copy
 import email.generator
 import email.header
 import email.message
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 import pytest
 
@@ -248,7 +248,7 @@ async def test_send_message(smtp_client: SMTP, message: email.message.Message) -
 
 async def test_send_message_with_sender_and_recipient_args(
     smtp_client: SMTP,
-    message: email.message.Message,
+    message: email.message.EmailMessage,
     received_messages: list[email.message.EmailMessage],
 ) -> None:
     sender = "sender2@example.com"
@@ -270,7 +270,7 @@ async def test_send_message_with_sender_and_recipient_args(
 async def test_send_message_with_cc_recipients(
     smtp_client: SMTP,
     recipient_str: str,
-    message: email.message.Message,
+    message: email.message.EmailMessage,
     received_messages: list[email.message.EmailMessage],
     received_commands: list[tuple[str, tuple[Any, ...]]],
 ) -> None:
@@ -299,7 +299,7 @@ async def test_send_message_with_cc_recipients(
 async def test_send_message_with_bcc_recipients(
     smtp_client: SMTP,
     recipient_str: str,
-    message: email.message.Message,
+    message: email.message.EmailMessage,
     received_messages: list[email.message.EmailMessage],
     received_commands: list[tuple[str, tuple[Any, ...]]],
 ) -> None:
@@ -324,7 +324,7 @@ async def test_send_message_with_bcc_recipients(
 async def test_send_message_with_cc_and_bcc_recipients(
     smtp_client: SMTP,
     recipient_str: str,
-    message: email.message.Message,
+    message: email.message.EmailMessage,
     received_messages: list[email.message.EmailMessage],
     received_commands: list[tuple[str, tuple[Any, ...]]],
 ) -> None:
@@ -354,7 +354,7 @@ async def test_send_message_with_cc_and_bcc_recipients(
 
 async def test_send_message_recipient_str(
     smtp_client: SMTP,
-    message: email.message.Message,
+    message: email.message.EmailMessage,
     received_commands: list[tuple[str, tuple[Any, ...]]],
 ) -> None:
     recipient_str = "1234@example.org"
@@ -371,7 +371,7 @@ async def test_send_message_recipient_str(
 
 async def test_send_message_mail_options(
     smtp_client: SMTP,
-    message: email.message.Message,
+    message: email.message.EmailMessage,
 ) -> None:
     async with smtp_client:
         errors, response = await smtp_client.send_message(
@@ -384,7 +384,7 @@ async def test_send_message_mail_options(
 
 
 async def test_send_multiple_messages_in_sequence(
-    smtp_client: SMTP, message: email.message.Message
+    smtp_client: SMTP, message: email.message.EmailMessage
 ) -> None:
     message1 = copy.copy(message)
 
@@ -407,7 +407,7 @@ async def test_send_multiple_messages_in_sequence(
 
 
 async def test_send_message_without_recipients(
-    smtp_client: SMTP, message: email.message.Message
+    smtp_client: SMTP, message: email.message.EmailMessage
 ) -> None:
     del message["To"]
 
@@ -417,7 +417,7 @@ async def test_send_message_without_recipients(
 
 
 async def test_send_message_without_sender(
-    smtp_client: SMTP, message: email.message.Message
+    smtp_client: SMTP, message: email.message.EmailMessage
 ) -> None:
     del message["From"]
 
@@ -426,10 +426,13 @@ async def test_send_message_without_sender(
             await smtp_client.send_message(message)
 
 
+@pytest.mark.parametrize(
+    "message", ["message", "compat32_message", "mime_message"], indirect=True
+)
 @pytest.mark.smtpd_options(smtputf8=True)
 async def test_send_message_smtputf8_sender(
     smtp_client: SMTP,
-    message: email.message.Message,
+    message: Union[email.message.EmailMessage, email.message.Message],
     received_commands: list[tuple[str, tuple[Any, ...]]],
     received_messages: list[email.message.EmailMessage],
 ) -> None:
@@ -510,8 +513,9 @@ async def test_send_compat32_message_smtputf8_recipient(
 
 @pytest.mark.smtpd_options(smtputf8=False)
 async def test_send_message_smtputf8_not_supported(
-    smtp_client: SMTP, message: email.message.Message
+    smtp_client: SMTP, message: email.message.EmailMessage
 ) -> None:
+    del message["To"]
     message["To"] = "reçipïént2@exåmple.com"
 
     async with smtp_client:
@@ -581,10 +585,13 @@ async def test_send_mime_message_utf8_text_without_smtputf8(
     ]
 
 
+@pytest.mark.parametrize(
+    "message", ["message", "compat32_message", "mime_message"], indirect=True
+)
 @pytest.mark.smtpd_options(**{"smtputf8": False, "7bit": True})
 async def test_send_message_7bit(
     smtp_client: SMTP,
-    message: email.message.Message,
+    message: Union[email.message.EmailMessage, email.message.Message],
     received_commands: list[tuple[str, tuple[Any, ...]]],
 ) -> None:
     async with smtp_client:

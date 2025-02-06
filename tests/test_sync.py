@@ -24,7 +24,7 @@ def test_sendmail_sync(
 
 def test_send_message_sync(
     smtp_client_threaded: SMTP,
-    message: email.message.Message,
+    message: email.message.EmailMessage,
 ) -> None:
     errors, response = smtp_client_threaded.send_message_sync(message)
 
