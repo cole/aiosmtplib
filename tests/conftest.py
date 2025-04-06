@@ -64,6 +64,7 @@ def pytest_addoption(parser: Any) -> None:
     parser.addoption(
         "--event-loop",
         action="store",
+        dest="event_loop_type",
         default="asyncio",
         choices=["asyncio", "uvloop"],
         help="event loop to run tests on",
@@ -81,12 +82,22 @@ original_event_loop_policy = None
 
 def pytest_sessionstart(session: pytest.Session) -> None:
     # Install the uvloop event loop policy globally, per session
-    loop_type = session.config.getoption("--event-loop")
+    loop_type = session.config.getoption("event_loop_type")
     if loop_type == "uvloop":
         if not HAS_UVLOOP:
             raise RuntimeError("uvloop not installed.")
 
         uvloop.install()  # type: ignore
+
+
+def pytest_collection_modifyitems(
+    config: pytest.Config, items: list[pytest.Item]
+) -> None:
+    if config.getoption("event_loop_type") == "uvloop":
+        for item in items:
+            if "skip_if_uvloop" in item.keywords:
+                marker = pytest.mark.skip(reason="skipped on uvloop")
+                item.add_marker(marker)
 
 
 @pytest_asyncio.fixture

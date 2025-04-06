@@ -51,7 +51,12 @@ minversion = "6.0"
 junit_family = "xunit2"
 addopts = ["--import-mode=importlib", "--strict-markers"]
 testpaths = ["tests"]
-markers = ["smtpd_options", "smtpd_mocks", "smtp_client_options"]
+markers = [
+    "smtpd_options",
+    "smtpd_mocks",
+    "smtp_client_options",
+    "skip_if_uvloop",
+]
 
 [tool.ruff]
 target-version = "py38"

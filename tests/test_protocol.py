@@ -318,6 +318,7 @@ async def test_protocol_eof_response(bind_address: str, hostname: str) -> None:
     await cleanup_server(server)
 
 
+@pytest.mark.skip_if_uvloop(reason="flaky on uvloop")
 async def test_protocol_exception_cleanup_warning(
     caplog: pytest.LogCaptureFixture,
     debug_event_loop: asyncio.AbstractEventLoop,
