@@ -162,13 +162,13 @@ class SMTP:
         self.source_address = source_address
 
         self.loop: Optional[asyncio.AbstractEventLoop] = None
-        self._connect_lock: Optional[asyncio.Lock] = None
         self.last_helo_response: Optional[SMTPResponse] = None
         self._last_ehlo_response: Optional[SMTPResponse] = None
         self.esmtp_extensions: dict[str, str] = {}
         self.supports_esmtp = False
         self.server_auth_methods: list[str] = []
-        self._sendmail_lock: Optional[asyncio.Lock] = None
+        self._connect_lock: asyncio.Lock = asyncio.Lock()
+        self._sendmail_lock: asyncio.Lock = asyncio.Lock()
 
         self._validate_config()
 
@@ -423,8 +423,6 @@ class SMTP:
         self._validate_config()
 
         self.loop = asyncio.get_running_loop()
-        if self._connect_lock is None:
-            self._connect_lock = asyncio.Lock()
         await self._connect_lock.acquire()
 
         # If we're not using a socket, default to port and hostname
@@ -454,7 +452,7 @@ class SMTP:
         if self.loop is None:
             raise RuntimeError("No event loop set")
 
-        protocol = SMTPProtocol(loop=self.loop)
+        protocol = SMTPProtocol(loop=self.loop, connection_lost_callback=self.close)
 
         tls_context: Optional[ssl.SSLContext] = None
         ssl_handshake_timeout: Optional[float] = None
@@ -608,14 +606,14 @@ class SMTP:
         if self.transport is not None and not self.transport.is_closing():
             self.transport.close()
 
-        if self._connect_lock is not None and self._connect_lock.locked():
-            self._connect_lock.release()
-
         self.protocol = None
         self.transport = None
 
         # Reset ESMTP state
         self._reset_server_state()
+
+        if self._connect_lock.locked():
+            self._connect_lock.release()
 
     def get_transport_info(self, key: str) -> Any:
         """
@@ -1312,9 +1310,6 @@ class SMTP:
             mailbox_encoding = "utf-8"
         else:
             mailbox_encoding = "ascii"
-
-        if self._sendmail_lock is None:
-            self._sendmail_lock = asyncio.Lock()
 
         async with self._sendmail_lock:
             # Make sure we've done an EHLO for extension checks
