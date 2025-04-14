@@ -139,14 +139,12 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
 
             if self._response_waiter and not self._response_waiter.done():
                 self._response_waiter.set_exception(smtp_exc)
-            else:
-                # Connection lost while not waiting for a response
-                # (possibly an idle timeout)
-                if self._connection_lost_callback:
-                    self._connection_lost_callback()
 
         self.transport = None
         self._command_lock = None
+
+        if self._connection_lost_callback:
+            self._connection_lost_callback()
 
     def data_received(self, data: bytes) -> None:
         if self._response_waiter is None:
