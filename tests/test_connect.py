@@ -20,6 +20,7 @@ from aiosmtplib import (
 
 from .smtpd import (
     mock_response_done_then_close,
+    mock_response_delayed_close,
     mock_response_unavailable,
     mock_response_disconnect,
     mock_response_eof,
@@ -324,6 +325,24 @@ async def test_server_unexpected_disconnect_on_data_then_reconnect(
 
     with pytest.raises(SMTPServerDisconnected):
         await smtp_client.data(b"Test message")
+
+    assert not smtp_client.is_connected
+    assert not smtp_client._connect_lock.locked()
+
+    await asyncio.wait_for(smtp_client.connect(), 1.0)
+
+    assert smtp_client.is_connected
+
+
+@pytest.mark.smtpd_mocks(smtp_EHLO=mock_response_delayed_close)
+async def test_server_unexpected_disconnect_with_delay(
+    smtp_client: SMTP,
+) -> None:
+    await smtp_client.connect()
+    await smtp_client.ehlo()
+
+    # Wait for the delayed close
+    await asyncio.sleep(0.2)
 
     assert not smtp_client.is_connected
     assert not smtp_client._connect_lock.locked()

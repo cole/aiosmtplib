@@ -6,7 +6,7 @@ import asyncio
 import collections
 import re
 import ssl
-from typing import Optional, cast
+from typing import Callable, Optional, cast
 
 from .errors import (
     SMTPDataError,
@@ -94,6 +94,7 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
     def __init__(
         self,
         loop: Optional[asyncio.AbstractEventLoop] = None,
+        connection_lost_callback: Optional[Callable[[], None]] = None,
     ) -> None:
         super().__init__(loop=loop)
         self._over_ssl = False
@@ -104,6 +105,7 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
         self._command_lock: Optional[asyncio.Lock] = None
         self._closed_future: "asyncio.Future[None]" = self._loop.create_future()
         self._quit_sent = False
+        self._connection_lost_callback = connection_lost_callback
 
     def _get_close_waiter(self, stream: asyncio.StreamWriter) -> "asyncio.Future[None]":
         return self._closed_future
@@ -140,6 +142,9 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
 
         self.transport = None
         self._command_lock = None
+
+        if self._connection_lost_callback:
+            self._connection_lost_callback()
 
     def data_received(self, data: bytes) -> None:
         if self._response_waiter is None:

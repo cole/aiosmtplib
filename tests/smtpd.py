@@ -130,6 +130,14 @@ async def mock_response_done_then_close(
     smtpd.transport.close()
 
 
+async def mock_response_delayed_close(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
+    if args and args[0]:
+        smtpd.session.host_name = args[0]
+    await smtpd.push("250 done")
+
+    smtpd.loop.call_later(0.1, smtpd.transport.close)
+
+
 async def mock_response_error_disconnect(
     smtpd: SMTPD, *args: Any, **kwargs: Any
 ) -> None:
