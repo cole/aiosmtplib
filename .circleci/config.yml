@@ -133,12 +133,12 @@ jobs:
           report_type: test_results
           disable_search: true
           files: "test-results/junit-cpython<<parameters.python_version>>-<<parameters.event_loop>>.xml"
-          flags: cpython<<parameters.python_version>>-<<parameters.event_loop>>
+          flags: "cpython<<parameters.python_version>>,<<parameters.event_loop>>"
       - codecov/upload:
           report_type: coverage
           disable_search: true
           files: "coverage-results/coverage-cpython<<parameters.python_version>>-<<parameters.event_loop>>.xml"
-          flags: cpython<<parameters.python_version>>-<<parameters.event_loop>>
+          flags: "cpython<<parameters.python_version>>,<<parameters.event_loop>>"
 
   test-pypy:
     executor:
@@ -174,12 +174,12 @@ jobs:
           report_type: test_results
           disable_search: true
           files: "test-results/junit-pypy3.10-asyncio.xml"
-          flags: pypy3.10-asyncio
+          flags: "pypy3.10,asyncio"
       - codecov/upload:
           report_type: coverage
           disable_search: true
           files: "coverage-results/coverage-pypy3.10-asyncio.xml"
-          flags: pypy3.10-asyncio
+          flags: "pypy3.10,asyncio"
 
   coverage:
     executor:
