@@ -1,7 +1,7 @@
 version: 2.1
 
 orbs:
-  codecov: codecov/codecov@4.1.0
+  codecov: codecov/codecov@5.3.0
 
 executors:
   cpython_executor:
@@ -178,7 +178,9 @@ jobs:
       - store_artifacts:
           path: htmlcov
       - codecov/upload:
-          file: coverage.xml
+          fail_on_error: true
+          handle_no_reports_found: true
+          files: coverage.xml
 
   deploy:
     executor:
