@@ -1,6 +1,12 @@
 Changelog
 =========
 
+4.0.1
+-----
+
+- Bugfix: Always clear the connect lock on connection lost, allowing client reconnect
+
+
 4.0.0
 -----
 
@@ -10,6 +16,7 @@ Changelog
 - Bugfix: Clear connect lock on connection lost, allowing client reconnect
 - Bugfix: Allow socket connections to use TLS by providing `hostname` and
   `use_tls=True`
+
 
 3.0.2
 -----
