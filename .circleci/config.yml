@@ -93,6 +93,8 @@ jobs:
         enum: ["asyncio", "uvloop"]
     environment:
       COVERAGE_FILE: "coverage-results/.coverage.cpython<<parameters.python_version>>-<<parameters.event_loop>>"
+      COVERAGE_REPORT_FILE: "coverage-results/coverage-cpython<<parameters.python_version>>-<<parameters.event_loop>>.xml"
+      JUNIT_FILE: "test-results/junit-cpython<<parameters.python_version>>-<<parameters.event_loop>>.xml"
       HYPOTHESIS_PROFILE: "ci"
       BIND_ADDR: "127.0.0.1"
     steps:
@@ -114,9 +116,9 @@ jobs:
       - run: |
           uv run --with aiosmtplib --no-project -- python -m pytest \
             --cov \
-            --cov-report= \
+            --cov-report=xml:$COVERAGE_REPORT_FILE \
             --cov-config=pyproject.toml \
-            --junitxml=test-results/$CIRCLE_JOB/results.xml \
+            --junitxml=$JUNIT_FILE \
             --override-ini=pythonpath= \
             --event-loop=<<parameters.event_loop>> \
             --bind-addr=$BIND_ADDR \
@@ -129,11 +131,22 @@ jobs:
           root: coverage-results
           paths:
             - .coverage.*
+      - codecov/upload:
+          report_type: test_results
+          files: $JUNIT_FILE
+          flags: cpython<<parameters.python_version>>-<<parameters.event_loop>>
+      - codecov/upload:
+          report_type: coverage
+          files: $COVERAGE_REPORT_FILE
+          flags: cpython<<parameters.python_version>>-<<parameters.event_loop>>
+
   test-pypy:
     executor:
       name: pypy_executor
     environment:
-      COVERAGE_FILE: "coverage-results/.coverage.pypyn3.10-asyncio"
+      COVERAGE_FILE: "coverage-results/.coverage.pypy3.10-asyncio"
+      COVERAGE_REPORT_FILE: "coverage-results/coverage-pypy3.10-asyncio.xml"
+      JUNIT_FILE: "test-results/junit-pypy3.10-asyncio.xml"
       HYPOTHESIS_PROFILE: "ci"
       BIND_ADDR: "127.0.0.1"
     steps:
@@ -143,9 +156,9 @@ jobs:
       - run: python -m pip install -r requirements-dev.txt
       - run: python -m pip install dist/*.whl
       - run: |
-          python -m pytest --cov --cov-report= \
+          python -m pytest --cov --cov-report=xml \
             --cov-config=pyproject.toml \
-            --junitxml=test-results/$CIRCLE_JOB/results.xml \
+            --junitxml=$JUNIT_FILE \
             --override-ini=pythonpath= \
             --event-loop=asyncio \
             --bind-addr=$BIND_ADDR \
@@ -158,6 +171,14 @@ jobs:
           root: coverage-results
           paths:
             - .coverage.*
+      - codecov/upload:
+          report_type: test_results
+          files: $JUNIT_FILE
+          flags: cpython<<parameters.python_version>>-<<parameters.event_loop>>
+      - codecov/upload:
+          report_type: coverage
+          files: $COVERAGE_REPORT_FILE
+          flags: cpython<<parameters.python_version>>-<<parameters.event_loop>>
 
   coverage:
     executor:
@@ -172,7 +193,7 @@ jobs:
       - run: uv tool run coverage combine
       - run: uv tool run coverage xml
       - run: uv tool run coverage html
-      - run: uv tool run coverage report --fail-under=90
+      - run: uv tool run coverage report --fail-under=100
       - store_artifacts:
           path: coverage.xml
       - store_artifacts:
@@ -261,5 +282,4 @@ workflows:
           <<: *base-job
       - security:
           <<: *base-job
-
 # VS Code Extension Version: 1.5.1
