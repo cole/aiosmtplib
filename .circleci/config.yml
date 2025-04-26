@@ -174,11 +174,11 @@ jobs:
       - codecov/upload:
           report_type: test_results
           files: $JUNIT_FILE
-          flags: cpython<<parameters.python_version>>-<<parameters.event_loop>>
+          flags: pypy3.10-asyncio
       - codecov/upload:
           report_type: coverage
           files: $COVERAGE_REPORT_FILE
-          flags: cpython<<parameters.python_version>>-<<parameters.event_loop>>
+          flags: pypy3.10-asyncio
 
   coverage:
     executor:
