@@ -12,16 +12,24 @@ repos:
       - id: trailing-whitespace
       - id: end-of-file-fixer
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: 'v0.11.6'
+    rev: "v0.11.6"
     hooks:
       - id: ruff
       - id: ruff-format
   - repo: local
     hooks:
-    -   id: pyright
+      - id: pyright
         name: pyright
         entry: pyright
         language: node
         args: []
         files: '\.py$'
         additional_dependencies: ["pyright@1.1.383"]
+ci:
+  autofix_commit_msg: |
+    lint: auto fixes from pre-commit hooks
+
+    for more information, see https://pre-commit.ci
+  autofix_prs: true
+  autoupdate_commit_msg: "ci: pre-commit autoupdate"
+  autoupdate_schedule: monthly
