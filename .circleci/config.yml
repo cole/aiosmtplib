@@ -93,8 +93,6 @@ jobs:
         enum: ["asyncio", "uvloop"]
     environment:
       COVERAGE_FILE: "coverage-results/.coverage.cpython<<parameters.python_version>>-<<parameters.event_loop>>"
-      COVERAGE_REPORT_FILE: "coverage-results/coverage-cpython<<parameters.python_version>>-<<parameters.event_loop>>.xml"
-      JUNIT_FILE: "test-results/junit-cpython<<parameters.python_version>>-<<parameters.event_loop>>.xml"
       HYPOTHESIS_PROFILE: "ci"
       BIND_ADDR: "127.0.0.1"
     steps:
@@ -116,9 +114,9 @@ jobs:
       - run: |
           uv run --with aiosmtplib --no-project -- python -m pytest \
             --cov \
-            --cov-report=xml:$COVERAGE_REPORT_FILE \
+            --cov-report=xml:coverage-results/coverage-cpython<<parameters.python_version>>-<<parameters.event_loop>>.xml \
             --cov-config=pyproject.toml \
-            --junitxml=$JUNIT_FILE \
+            --junitxml=test-results/junit-cpython<<parameters.python_version>>-<<parameters.event_loop>>.xml \
             --override-ini=pythonpath= \
             --event-loop=<<parameters.event_loop>> \
             --bind-addr=$BIND_ADDR \
@@ -133,11 +131,13 @@ jobs:
             - .coverage.*
       - codecov/upload:
           report_type: test_results
-          files: $JUNIT_FILE
+          disable_search: true
+          files: "test-results/junit-cpython<<parameters.python_version>>-<<parameters.event_loop>>.xml"
           flags: cpython<<parameters.python_version>>-<<parameters.event_loop>>
       - codecov/upload:
           report_type: coverage
-          files: $COVERAGE_REPORT_FILE
+          disable_search: true
+          files: "coverage-results/coverage-cpython<<parameters.python_version>>-<<parameters.event_loop>>.xml"
           flags: cpython<<parameters.python_version>>-<<parameters.event_loop>>
 
   test-pypy:
@@ -145,8 +145,6 @@ jobs:
       name: pypy_executor
     environment:
       COVERAGE_FILE: "coverage-results/.coverage.pypy3.10-asyncio"
-      COVERAGE_REPORT_FILE: "coverage-results/coverage-pypy3.10-asyncio.xml"
-      JUNIT_FILE: "test-results/junit-pypy3.10-asyncio.xml"
       HYPOTHESIS_PROFILE: "ci"
       BIND_ADDR: "127.0.0.1"
     steps:
@@ -156,9 +154,10 @@ jobs:
       - run: python -m pip install -r requirements-dev.txt
       - run: python -m pip install dist/*.whl
       - run: |
-          python -m pytest --cov --cov-report=xml \
+          python -m pytest --cov \
+            --cov-report=xml:coverage-results/coverage-pypy3.10-asyncio.xml \
             --cov-config=pyproject.toml \
-            --junitxml=$JUNIT_FILE \
+            --junitxml=test-results/junit-pypy3.10-asyncio.xml \
             --override-ini=pythonpath= \
             --event-loop=asyncio \
             --bind-addr=$BIND_ADDR \
@@ -173,11 +172,13 @@ jobs:
             - .coverage.*
       - codecov/upload:
           report_type: test_results
-          files: $JUNIT_FILE
+          disable_search: true
+          files: "test-results/junit-pypy3.10-asyncio.xml"
           flags: pypy3.10-asyncio
       - codecov/upload:
           report_type: coverage
-          files: $COVERAGE_REPORT_FILE
+          disable_search: true
+          files: "coverage-results/coverage-pypy3.10-asyncio.xml"
           flags: pypy3.10-asyncio
 
   coverage:
