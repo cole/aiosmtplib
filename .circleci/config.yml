@@ -194,16 +194,11 @@ jobs:
       - run: uv tool run coverage combine
       - run: uv tool run coverage xml
       - run: uv tool run coverage html
-      - run: uv tool run coverage report --fail-under=100
       - store_artifacts:
           path: coverage.xml
       - store_artifacts:
           path: htmlcov
-      - codecov/upload:
-          fail_on_error: true
-          handle_no_reports_found: true
-          files: coverage.xml
-          flags: combined
+      - run: uv tool run coverage report --fail-under=100
 
   deploy:
     executor:
