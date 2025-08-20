@@ -179,7 +179,10 @@ class SMTP:
         return self
 
     async def __aexit__(
-        self, exc_type: type[BaseException], exc: BaseException, traceback: Any
+        self,
+        exc_type: Optional[type[BaseException]],
+        exc: Optional[BaseException],
+        traceback: Any,
     ) -> None:
         if isinstance(exc, (ConnectionError, TimeoutError)):
             self.close()
