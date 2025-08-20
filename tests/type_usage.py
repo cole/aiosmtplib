@@ -8,16 +8,16 @@ import ssl
 import aiosmtplib
 
 
-async def send_str():
+async def send_str() -> None:
     await aiosmtplib.send("test")
 
 
-async def send_message():
+async def send_message() -> None:
     message = email.message.EmailMessage()
     await aiosmtplib.send(message)
 
 
-async def send_all_options():
+async def send_all_options() -> None:
     await aiosmtplib.send(
         "test",
         sender="test@example.com",
@@ -41,3 +41,9 @@ async def send_all_options():
         socket_path=pathlib.PurePath("/tmp/foo"),
         sock=socket.socket(),
     )
+
+
+async def send_message_async_context_manager() -> None:
+    message = email.message.EmailMessage()
+    async with aiosmtplib.SMTP(hostname="smtp.example.com") as smtp:
+        await smtp.send_message(message)

@@ -14,17 +14,8 @@ repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: "v0.12.7"
     hooks:
-      - id: ruff
+      - id: ruff-check
       - id: ruff-format
-  - repo: local
-    hooks:
-      - id: pyright
-        name: pyright
-        entry: pyright
-        language: node
-        args: []
-        files: '\.py$'
-        additional_dependencies: ["pyright@1.1.383"]
 ci:
   autofix_commit_msg: |
     lint: auto fixes from pre-commit hooks
