@@ -56,11 +56,11 @@ jobs:
     steps:
       - checkout
       - run: uv tool run mypy src/aiosmtplib
-      - run: uv tool run mypy tests/type_usage.py
+      - run: uv tool run --with . mypy tests/type_usage.py
       - run: uv tool run pyright src/aiosmtplib
-      - run: uv tool run pyright tests/type_usage.py
+      - run: uv tool run --with . pyright tests/type_usage.py
       - run: uv tool run ty check src/aiosmtplib
-      - run: uv tool run ty check tests/type_usage.py
+      - run: uv tool run --with . ty check tests/type_usage.py
 
   security:
     executor:
