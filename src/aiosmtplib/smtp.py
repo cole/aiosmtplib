@@ -9,6 +9,7 @@ import email.message
 import socket
 import ssl
 from collections.abc import Iterable, Sequence
+from types import TracebackType
 from typing import (
     Any,
     Literal,
@@ -182,7 +183,7 @@ class SMTP:
         self,
         exc_type: Optional[type[BaseException]],
         exc: Optional[BaseException],
-        traceback: Any,
+        traceback: Optional[TracebackType],
     ) -> None:
         if isinstance(exc, (ConnectionError, TimeoutError)):
             self.close()
