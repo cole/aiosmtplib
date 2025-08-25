@@ -1,6 +1,13 @@
 Changelog
 =========
 
+4.0.2
+-----
+
+- Bugfix: correct aexit signature to comply with async context manager protocol
+  (thanks @oliverlambson)
+
+
 4.0.1
 -----
 
