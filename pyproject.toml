@@ -76,6 +76,7 @@ unfixable = ["B"]
 source = ["aiosmtplib"]
 branch = true
 parallel = true
+patch = ["subprocess"]
 
 [tool.coverage.report]
 show_missing = true
@@ -83,7 +84,6 @@ exclude_lines = [
     "pass",
     "pragma: no cover",
     "raise NotImplementedError",
-    "if __name__ == .__main__.:",
 ]
 
 [tool.coverage.paths]
