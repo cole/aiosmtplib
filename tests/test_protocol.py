@@ -414,9 +414,9 @@ async def test_flow_control_mixin_drain_incomplete():
     assert not waiter.cancelled()
 
 
-def test_flow_control_mixin_connection_lost_exception(
-    event_loop: asyncio.AbstractEventLoop,
-) -> None:
+async def test_flow_control_mixin_connection_lost_exception() -> None:
+    event_loop = asyncio.get_running_loop()
+
     flow_control = FlowControlMixin(event_loop)
     flow_control.pause_writing()
     waiter = event_loop.create_future()
@@ -431,9 +431,9 @@ def test_flow_control_mixin_connection_lost_exception(
     assert waiter.exception() is exc
 
 
-def test_flow_control_mixin_connection_lost_no_exception(
-    event_loop: asyncio.AbstractEventLoop,
-) -> None:
+async def test_flow_control_mixin_connection_lost_no_exception() -> None:
+    event_loop = asyncio.get_running_loop()
+
     flow_control = FlowControlMixin(event_loop)
     flow_control.pause_writing()
     waiter = event_loop.create_future()
@@ -447,9 +447,9 @@ def test_flow_control_mixin_connection_lost_no_exception(
     assert waiter.exception() is None
 
 
-def test_flow_control_mixin_connection_lost_done(
-    event_loop: asyncio.AbstractEventLoop,
-) -> None:
+async def test_flow_control_mixin_connection_lost_done() -> None:
+    event_loop = asyncio.get_running_loop()
+
     flow_control = FlowControlMixin(event_loop)
     flow_control.pause_writing()
     waiter = event_loop.create_future()

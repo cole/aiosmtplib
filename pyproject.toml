@@ -46,7 +46,7 @@ path = "src/aiosmtplib/__init__.py"
 [tool.pytest.ini_options]
 pythonpath = "src"
 asyncio_mode = "auto"
-asyncio_default_fixture_loop_scope = "session"
+asyncio_default_fixture_loop_scope = "function"
 minversion = "6.0"
 junit_family = "xunit2"
 addopts = ["--import-mode=importlib", "--strict-markers"]
