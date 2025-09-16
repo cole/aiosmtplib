@@ -165,12 +165,11 @@ async def test_many_commands_with_gather(smtp_client: SMTP) -> None:
     assert "Supported commands" in results[-1]
 
 
-async def test_close_works_on_stopped_loop(
+async def test_close_works_on_closing_transport(
     hostname: str,
     smtpd_server_port: int,
     client_tls_context: ssl.SSLContext,
 ) -> None:
-    event_loop = asyncio.get_running_loop()
     client = SMTP(
         hostname=hostname, port=smtpd_server_port, tls_context=client_tls_context
     )
@@ -179,7 +178,10 @@ async def test_close_works_on_stopped_loop(
     assert client.is_connected
     assert client.transport is not None
 
-    event_loop.stop()
+    # Ideally we'd test with a stopped event loop, but that breaks
+    # pytest-asyncio's finalizer.  Closing the client's transport is the
+    # next best thing.
+    client.transport.close()
 
     client.close()
     assert not client.is_connected
