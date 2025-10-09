@@ -9,7 +9,7 @@ description = "asyncio SMTP client"
 authors = [{ name = "Cole Maclean", email = "hi@colemaclean.dev" }]
 license = { text = "MIT" }
 readme = "README.rst"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 keywords = ["smtp", "email", "asyncio"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",

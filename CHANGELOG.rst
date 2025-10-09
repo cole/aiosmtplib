@@ -1,6 +1,12 @@
 Changelog
 =========
 
+5.0.0
+-----
+
+- **BREAKING**: Drop Python 3.9 support
+
+
 4.0.2
 -----
 
