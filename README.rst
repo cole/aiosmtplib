@@ -40,7 +40,7 @@ Requirements
 ..
   start requirements
 
-Python 3.9+ is required.
+Python 3.10+ is required.
 
 ..
   end requirements
