@@ -77,19 +77,6 @@ def pytest_addoption(parser: Any) -> None:
     )
 
 
-original_event_loop_policy = None
-
-
-def pytest_sessionstart(session: pytest.Session) -> None:
-    # Install the uvloop event loop policy globally, per session
-    loop_type = session.config.getoption("event_loop_type")
-    if loop_type == "uvloop":
-        if not HAS_UVLOOP:
-            raise RuntimeError("uvloop not installed.")
-
-        uvloop.install()  # type: ignore
-
-
 def pytest_collection_modifyitems(
     config: pytest.Config, items: list[pytest.Item]
 ) -> None:
@@ -109,6 +96,18 @@ async def debug_event_loop() -> AsyncGenerator[asyncio.AbstractEventLoop]:
     yield event_loop
 
     event_loop.set_debug(previous_debug)
+
+
+@pytest.fixture(scope="session")
+def event_loop_policy(
+    request: pytest.FixtureRequest,
+) -> Optional[asyncio.AbstractEventLoopPolicy]:
+    if request.config.getoption("event_loop_type") == "uvloop":
+        if not HAS_UVLOOP:
+            raise RuntimeError("uvloop not installed.")
+        return uvloop.EventLoopPolicy()
+
+    return asyncio.get_event_loop_policy()
 
 
 # Session scoped static values #
