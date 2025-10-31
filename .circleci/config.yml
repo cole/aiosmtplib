@@ -280,7 +280,7 @@ workflows:
           <<: *base-job
           name: "test-asyncio-<< matrix.python_version >>"
           matrix:
-            alias: "test-asyncio-t"
+            alias: "test-freethreading-asyncio"
             parameters:
               event_loop: ["asyncio"]
               python_version: ["3.13t", "3.14t"]
@@ -301,7 +301,7 @@ workflows:
           <<: *base-job
           name: "test-uvloop-<< matrix.python_version >>"
           matrix:
-            alias: "test-uvloop-t"
+            alias: "test-freethreading-uvloop"
             parameters:
               event_loop: ["uvloop"]
               python_version: ["3.13t", "3.14t"]
