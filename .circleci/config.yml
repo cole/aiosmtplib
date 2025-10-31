@@ -11,7 +11,7 @@ executors:
         type: enum
         enum: ["3.10", "3.11", "3.12", "3.13", "3.14"]
     docker:
-      - image: "ghcr.io/astral-sh/uv:python<<parameters.version>>-bookworm"
+      - image: "ghcr.io/astral-sh/uv:python<<parameters.version>>-trixie"
     resource_class: small
     environment:
       FORCE_COLOR: "1"
