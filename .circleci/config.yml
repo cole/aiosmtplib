@@ -15,17 +15,6 @@ executors:
     resource_class: small
     environment:
       FORCE_COLOR: "1"
-  freethreading_executor:
-    parameters:
-      version:
-        default: "3.14t"
-        type: enum
-        enum: ["3.13t", "3.14t"]
-    docker:
-      - image: "quay.io/pypa/manylinux_2_28_x86_64_python<<parameters.version>>"
-    resource_class: small
-    environment:
-      FORCE_COLOR: "1"
   pypy_executor:
     docker:
       - image: "pypy:3.11-bookworm"
@@ -111,7 +100,7 @@ jobs:
       COVERAGE_FILE: "coverage-results/.coverage.cpython<<parameters.python_version>>-<<parameters.event_loop>>"
       HYPOTHESIS_PROFILE: "ci"
       BIND_ADDR: "127.0.0.1"
-    steps: &test-steps
+    steps:
       - checkout
       - attach_workspace:
           at: dist
@@ -156,24 +145,68 @@ jobs:
           files: "coverage-results/coverage-cpython<<parameters.python_version>>-<<parameters.event_loop>>.xml"
           flags: "cpython<<parameters.python_version>>,<<parameters.event_loop>>"
 
-  test-freethreading:
+  test-freethreaded:
     executor:
-      name: freethreading_executor
+      name: cpython_executor
       version: <<parameters.python_version>>
     parameters:
       python_version:
         type: enum
         description: "python version"
-        enum: ["3.13t", "3.14t"]
+        enum: ["3.13", "3.14"]
       event_loop:
         type: enum
         description: "event loop type"
         enum: ["asyncio", "uvloop"]
     environment:
-      COVERAGE_FILE: "coverage-results/.coverage.cpython<<parameters.python_version>>-<<parameters.event_loop>>"
+      COVERAGE_FILE: "coverage-results/.coverage.cpython<<parameters.python_version>>t-<<parameters.event_loop>>"
       HYPOTHESIS_PROFILE: "ci"
       BIND_ADDR: "127.0.0.1"
-    steps: *test-steps
+    steps:
+      - checkout
+      - attach_workspace:
+          at: dist
+      - run: uv python install <<parameters.python_version>>t
+      - run: uv venv --python=<<parameters.python_version>>t
+      - run: uv pip install --python=<<parameters.python_version>>t -r requirements-dev.txt
+      - when:
+          condition:
+            equal: ["uvloop", <<parameters.event_loop>>]
+          steps:
+            - run: uv pip install $(find dist -name aiosmtplib-*.whl)[uvloop]
+      - unless:
+          condition:
+            equal: ["uvloop", <<parameters.event_loop>>]
+          steps:
+            - run: uv pip install $(find dist -name aiosmtplib-*.whl)
+      - run: |
+          uv run --python=<<parameters.python_version>>t --with aiosmtplib --no-project -- python -m pytest \
+            --cov \
+            --cov-report=xml:coverage-results/coverage-cpython<<parameters.python_version>>t-<<parameters.event_loop>>.xml \
+            --cov-config=pyproject.toml \
+            --junitxml=test-results/junit-cpython<<parameters.python_version>>t-<<parameters.event_loop>>.xml \
+            --override-ini=pythonpath= \
+            --event-loop=<<parameters.event_loop>> \
+            --bind-addr=$BIND_ADDR \
+            --hypothesis-profile $HYPOTHESIS_PROFILE
+      - store_artifacts:
+          path: test-results
+      - store_test_results:
+          path: test-results
+      - persist_to_workspace:
+          root: coverage-results
+          paths:
+            - .coverage.*
+      - codecov/upload:
+          report_type: test_results
+          disable_search: true
+          files: "test-results/junit-cpython<<parameters.python_version>>t-<<parameters.event_loop>>.xml"
+          flags: "cpython<<parameters.python_version>>t,<<parameters.event_loop>>"
+      - codecov/upload:
+          report_type: coverage
+          disable_search: true
+          files: "coverage-results/coverage-cpython<<parameters.python_version>>t-<<parameters.event_loop>>.xml"
+          flags: "cpython<<parameters.python_version>>t,<<parameters.event_loop>>"
 
   test-pypy:
     executor:
@@ -276,14 +309,14 @@ workflows:
               python_version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
           requires:
             - build
-      - test-freethreading:
+      - test-freethreaded:
           <<: *base-job
-          name: "test-asyncio-<< matrix.python_version >>"
+          name: "test-asyncio-<< matrix.python_version >>t"
           matrix:
-            alias: "test-freethreading-asyncio"
+            alias: "test-freethreaded-asyncio"
             parameters:
               event_loop: ["asyncio"]
-              python_version: ["3.13t", "3.14t"]
+              python_version: ["3.13", "3.14"]
           requires:
             - build
       - test:
@@ -297,14 +330,14 @@ workflows:
           requires:
             - build
             - "test-asyncio-<< matrix.python_version >>"
-      - test-freethreading:
+      - test-freethreaded:
           <<: *base-job
-          name: "test-uvloop-<< matrix.python_version >>"
+          name: "test-uvloop-<< matrix.python_version >>t"
           matrix:
-            alias: "test-freethreading-uvloop"
+            alias: "test-freethreaded-uvloop"
             parameters:
               event_loop: ["uvloop"]
-              python_version: ["3.13t", "3.14t"]
+              python_version: ["3.13", "3.14"]
           requires:
             - build
       - coverage:
@@ -312,8 +345,8 @@ workflows:
           requires:
             - test-cpython-asyncio
             - test-cpython-uvloop
-            - test-freethreading-asyncio
-            - test-freethreading-uvloop
+            - test-freethreaded-asyncio
+            - test-freethreaded-uvloop
             - test-asyncio-pypy3.11
       - deploy:
           requires:
@@ -322,8 +355,8 @@ workflows:
             - docs
             - test-cpython-asyncio
             - test-cpython-uvloop
-            - test-freethreading-asyncio
-            - test-freethreading-uvloop
+            - test-freethreaded-asyncio
+            - test-freethreaded-uvloop
             - test-asyncio-pypy3.11
           context:
             - docker-hub-credentials
