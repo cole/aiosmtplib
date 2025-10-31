@@ -15,6 +15,17 @@ executors:
     resource_class: small
     environment:
       FORCE_COLOR: "1"
+  freethreading_executor:
+    parameters:
+      version:
+        default: "3.14t"
+        type: enum
+        enum: ["3.13t", "3.14t"]
+    docker:
+      - image: "quay.io/pypa/manylinux_2_28_x86_64 python<<parameters.version>>"
+    resource_class: small
+    environment:
+      FORCE_COLOR: "1"
   pypy_executor:
     docker:
       - image: "pypy:3.11-bookworm"
@@ -91,7 +102,7 @@ jobs:
       python_version:
         type: enum
         description: "python version"
-        enum: ["3.10", "3.11", "3.12", "3.13", "3.13t", "3.14", "3.14t"]
+        enum: ["3.10", "3.11", "3.12", "3.13", "3.14"]
       event_loop:
         type: enum
         description: "event loop type"
@@ -100,7 +111,7 @@ jobs:
       COVERAGE_FILE: "coverage-results/.coverage.cpython<<parameters.python_version>>-<<parameters.event_loop>>"
       HYPOTHESIS_PROFILE: "ci"
       BIND_ADDR: "127.0.0.1"
-    steps:
+    steps: &test-steps
       - checkout
       - attach_workspace:
           at: dist
@@ -144,6 +155,25 @@ jobs:
           disable_search: true
           files: "coverage-results/coverage-cpython<<parameters.python_version>>-<<parameters.event_loop>>.xml"
           flags: "cpython<<parameters.python_version>>,<<parameters.event_loop>>"
+
+  test-freethreading:
+    executor:
+      name: freethreading_executor
+      version: <<parameters.python_version>>
+    parameters:
+      python_version:
+        type: enum
+        description: "python version"
+        enum: ["3.13t", "3.14t"]
+      event_loop:
+        type: enum
+        description: "event loop type"
+        enum: ["asyncio", "uvloop"]
+    environment:
+      COVERAGE_FILE: "coverage-results/.coverage.cpython<<parameters.python_version>>-<<parameters.event_loop>>"
+      HYPOTHESIS_PROFILE: "ci"
+      BIND_ADDR: "127.0.0.1"
+    steps: *test-steps
 
   test-pypy:
     executor:
@@ -243,7 +273,17 @@ workflows:
             alias: "test-cpython-asyncio"
             parameters:
               event_loop: ["asyncio"]
-              python_version: ["3.10", "3.11", "3.12", "3.13", "3.13t", "3.14", "3.14t"]
+              python_version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+          requires:
+            - build
+      - test-freethreading:
+          <<: *base-job
+          name: "test-freethreading-<< matrix.python_version >>"
+          matrix:
+            alias: "test-freethreading-asyncio"
+            parameters:
+              event_loop: ["asyncio"]
+              python_version: ["3.13t", "3.14t"]
           requires:
             - build
       - test:
@@ -253,15 +293,27 @@ workflows:
             alias: "test-cpython-uvloop"
             parameters:
               event_loop: ["uvloop"]
-              python_version: ["3.10", "3.11", "3.12", "3.13", "3.13t", "3.14", "3.14t"]
+              python_version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
           requires:
             - build
             - "test-asyncio-<< matrix.python_version >>"
+      - test-freethreading:
+          <<: *base-job
+          name: "test-freethreading-<< matrix.python_version >>"
+          matrix:
+            alias: "test-freethreading-uvloop"
+            parameters:
+              event_loop: ["uvloop"]
+              python_version: ["3.13t", "3.14t"]
+          requires:
+            - build
       - coverage:
           <<: *base-job
           requires:
             - test-cpython-asyncio
             - test-cpython-uvloop
+            - test-freethreading-asyncio
+            - test-freethreading-uvloop
             - test-asyncio-pypy3.11
       - deploy:
           requires:
@@ -270,6 +322,8 @@ workflows:
             - docs
             - test-cpython-asyncio
             - test-cpython-uvloop
+            - test-freethreading-asyncio
+            - test-freethreading-uvloop
             - test-asyncio-pypy3.11
           context:
             - docker-hub-credentials
