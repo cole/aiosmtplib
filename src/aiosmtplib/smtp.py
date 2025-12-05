@@ -10,10 +10,7 @@ import socket
 import ssl
 from collections.abc import Iterable, Sequence
 from types import TracebackType
-from typing import (
-    Any,
-    Literal
-)
+from typing import Any, Literal
 from .auth import auth_crammd5_verify, auth_login_encode, auth_plain_encode
 from .email import (
     extract_recipients,
