@@ -6,7 +6,7 @@ import asyncio
 import collections
 import re
 import ssl
-from typing import Callable, Optional, cast
+from typing import Callable, cast
 
 from .errors import (
     SMTPDataError,
@@ -39,7 +39,7 @@ class FlowControlMixin(asyncio.Protocol):
     Logging and asserts removed, type annotations added.
     """
 
-    def __init__(self, loop: Optional[asyncio.AbstractEventLoop] = None):
+    def __init__(self, loop: asyncio.AbstractEventLoop | None = None) -> None:
         if loop is None:
             self._loop = asyncio.get_event_loop()
         else:
@@ -61,7 +61,7 @@ class FlowControlMixin(asyncio.Protocol):
             if not waiter.done():
                 waiter.set_result(None)
 
-    def connection_lost(self, exc: Optional[Exception]) -> None:
+    def connection_lost(self, exc: Exception | None) -> None:
         self._connection_lost = True
         # Wake up the writer(s) if currently paused.
         if not self._paused:
@@ -93,16 +93,16 @@ class FlowControlMixin(asyncio.Protocol):
 class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
     def __init__(
         self,
-        loop: Optional[asyncio.AbstractEventLoop] = None,
-        connection_lost_callback: Optional[Callable[[], None]] = None,
+        loop: asyncio.AbstractEventLoop | None = None,
+        connection_lost_callback: Callable[[], None] | None = None,
     ) -> None:
         super().__init__(loop=loop)
         self._over_ssl = False
         self._buffer = bytearray()
-        self._response_waiter: Optional[asyncio.Future[SMTPResponse]] = None
+        self._response_waiter: asyncio.Future[SMTPResponse] | None = None
 
-        self.transport: Optional[asyncio.BaseTransport] = None
-        self._command_lock: Optional[asyncio.Lock] = None
+        self.transport: asyncio.BaseTransport | None = None
+        self._command_lock: asyncio.Lock | None = None
         self._closed_future: "asyncio.Future[None]" = self._loop.create_future()
         self._quit_sent = False
         self._connection_lost_callback = connection_lost_callback
@@ -129,7 +129,7 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
         self._command_lock = asyncio.Lock()
         self._quit_sent = False
 
-    def connection_lost(self, exc: Optional[Exception]) -> None:
+    def connection_lost(self, exc: Exception | None) -> None:
         super().connection_lost(exc)
 
         if not self._quit_sent:
@@ -181,7 +181,7 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
         # Returning false closes the transport
         return False
 
-    def _retrieve_response_exception(self) -> Optional[BaseException]:
+    def _retrieve_response_exception(self) -> BaseException | None:
         """
         Return any exception that has been set on the response waiter.
 
@@ -196,7 +196,7 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
 
         return None
 
-    def _read_response_from_buffer(self) -> Optional[SMTPResponse]:
+    def _read_response_from_buffer(self) -> SMTPResponse | None:
         """Parse the actual response (if any) from the data buffer"""
         code = -1
         message = bytearray()
@@ -241,7 +241,7 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
         else:
             return None
 
-    async def read_response(self, timeout: Optional[float] = None) -> SMTPResponse:
+    async def read_response(self, timeout: float | None = None) -> SMTPResponse:
         """
         Get a status response from the server.
 
@@ -282,7 +282,7 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
             ) from None
 
     async def execute_command(
-        self, *args: bytes, timeout: Optional[float] = None
+        self, *args: bytes, timeout: float | None = None
     ) -> SMTPResponse:
         """
         Sends an SMTP command along with any args to the server, and returns
@@ -303,7 +303,7 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
         return response
 
     async def execute_data_command(
-        self, message: bytes, timeout: Optional[float] = None
+        self, message: bytes, timeout: float | None = None
     ) -> SMTPResponse:
         """
         Sends an SMTP DATA command to the server, followed by encoded message content.
@@ -337,8 +337,8 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
     async def start_tls(
         self,
         tls_context: ssl.SSLContext,
-        server_hostname: Optional[str] = None,
-        timeout: Optional[float] = None,
+        server_hostname: str | None = None,
+        timeout: float | None = None,
     ) -> SMTPResponse:
         """
         Puts the connection to the SMTP server into TLS mode.

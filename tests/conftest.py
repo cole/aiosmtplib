@@ -12,7 +12,7 @@ import ssl
 import sys
 from collections.abc import AsyncGenerator, Callable, Generator
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any
 
 import hypothesis
 import pytest
@@ -101,7 +101,7 @@ async def debug_event_loop() -> AsyncGenerator[asyncio.AbstractEventLoop]:
 @pytest.fixture(scope="session")
 def event_loop_policy(
     request: pytest.FixtureRequest,
-) -> Optional[asyncio.AbstractEventLoopPolicy]:
+) -> asyncio.AbstractEventLoopPolicy | None:
     if request.config.getoption("event_loop_type") == "uvloop":
         if not HAS_UVLOOP:
             raise RuntimeError("uvloop not installed.")
@@ -340,7 +340,7 @@ def message(
     mime_message: email.mime.multipart.MIMEMultipart,
     message_str: str,
     message_bytes: bytes,
-) -> Union[email.message.EmailMessage, email.message.Message, str, bytes]:
+) -> email.message.EmailMessage | email.message.Message | str | bytes:
     if not hasattr(request, "param"):
         return email_message
 
@@ -511,7 +511,7 @@ async def echo_server(bind_address: str) -> AsyncGenerator[asyncio.AbstractServe
 @pytest_asyncio.fixture(scope="function")
 async def smtpd_server_socket_path(
     request: pytest.FixtureRequest,
-    socket_path: Union[str, bytes, Path],
+    socket_path: str | bytes | Path,
     server_tls_context: ssl.SSLContext,
     smtpd_factory: Callable[[], SMTPD],
 ) -> AsyncGenerator[asyncio.AbstractServer]:
@@ -544,7 +544,7 @@ def smtpd_controller(
     smtpd_handler: RecordingHandler,
 ) -> Generator[SMTPDController, None, None]:
     port = unused_tcp_port
-    controller: Optional[SMTPDController]
+    controller: SMTPDController | None
     controller = SMTPDController(smtpd_handler, hostname=bind_address, port=port)
     controller.start()
 
