@@ -5,7 +5,6 @@ Test message and address parsing/formatting functions.
 from email.header import Header
 from email.headerregistry import Address
 from email.message import EmailMessage, Message
-from typing import Union
 
 import pytest
 from hypothesis import example, given
@@ -111,7 +110,7 @@ This is a test\r
     ),
 )
 def test_flatten_message_utf8_options(
-    message_class: Union[type[EmailMessage], type[Message]],
+    message_class: type[EmailMessage] | type[Message],
     utf8: bool,
     cte_type: str,
     expected_chunk: bytes,
@@ -206,10 +205,10 @@ This is a test\r
     ids=("str", "ascii", "utf8_address", "utf8_display_name"),
 )
 def test_extract_recipients(
-    mime_to_header: Union[str, Address],
-    mime_cc_header: Union[str, Address],
-    compat32_to_header: Union[str, Header],
-    compat32_cc_header: Union[str, Header],
+    mime_to_header: str | Address,
+    mime_cc_header: str | Address,
+    compat32_to_header: str | Header,
+    compat32_cc_header: str | Header,
     expected_recipients: list[str],
 ) -> None:
     mime_message = EmailMessage()
@@ -313,8 +312,8 @@ def test_extract_recipients_valueerror_on_multiple_resent_message() -> None:
     ids=("str", "ascii", "utf8_address", "utf8_display_name"),
 )
 def test_extract_sender(
-    mime_header: Union[str, Address],
-    compat32_header: Union[str, Header],
+    mime_header: str | Address,
+    compat32_header: str | Header,
     expected_sender: str,
 ) -> None:
     mime_message = EmailMessage()

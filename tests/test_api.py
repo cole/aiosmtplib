@@ -8,7 +8,7 @@ import email.message
 import pathlib
 import socket
 import ssl
-from typing import Any, Union
+from typing import Any
 
 import pytest
 
@@ -21,7 +21,7 @@ from aiosmtplib import send
 async def test_send(
     hostname: str,
     smtpd_server_port: int,
-    message: Union[email.message.EmailMessage, email.message.Message],
+    message: email.message.EmailMessage | email.message.Message,
     received_messages: list[email.message.EmailMessage],
     client_tls_context: ssl.SSLContext,
 ) -> None:
@@ -42,7 +42,7 @@ async def test_send_with_raw_message(
     smtpd_server_port: int,
     recipient_str: str,
     sender_str: str,
-    message: Union[str, bytes],
+    message: str | bytes,
     received_messages: list[email.message.EmailMessage],
 ) -> None:
     errors, _ = await send(
@@ -191,7 +191,7 @@ async def test_send_via_socket_tls_and_hostname(
 async def test_send_via_socket_path(
     smtpd_server_socket_path: asyncio.AbstractServer,
     socket_path: pathlib.Path,
-    socket_path_type: Union[type[str], type[pathlib.Path], type[bytes]],
+    socket_path_type: type[str] | type[pathlib.Path] | type[bytes],
     message: email.message.EmailMessage,
     received_messages: list[email.message.EmailMessage],
 ) -> None:

@@ -6,7 +6,7 @@ import asyncio
 import logging
 from email.errors import HeaderParseError
 from email.message import EmailMessage, Message
-from typing import Any, AnyStr, Optional, Union
+from typing import Any, AnyStr
 
 from aiosmtpd.handlers import Message as MessageHandler
 from aiosmtpd.smtp import MISSING
@@ -22,10 +22,10 @@ log = logging.getLogger("mail.log")
 class RecordingHandler(MessageHandler):
     def __init__(
         self,
-        messages_list: list[Union[EmailMessage, Message]],
+        messages_list: list[EmailMessage | Message],
         commands_list: list[tuple[str, tuple[Any, ...]]],
         responses_list: list[str],
-    ):
+    ) -> None:
         self.messages = messages_list
         self.commands = commands_list
         self.responses = responses_list
@@ -37,7 +37,7 @@ class RecordingHandler(MessageHandler):
     def record_server_response(self, status: str) -> None:
         self.responses.append(status)
 
-    def handle_message(self, message: Union[EmailMessage, Message]) -> None:
+    def handle_message(self, message: EmailMessage | Message) -> None:
         self.messages.append(message)
 
     async def handle_EHLO(
@@ -57,14 +57,14 @@ class RecordingHandler(MessageHandler):
 
 
 class TestSMTPD(SMTPD):
-    transport: Optional[asyncio.BaseTransport]  # type: ignore
+    transport: asyncio.BaseTransport | None  # type: ignore
 
-    def _getaddr(self, arg: str) -> tuple[Optional[str], Optional[str]]:
+    def _getaddr(self, arg: str) -> tuple[str | None, str | None]:
         """
         Don't raise an exception on unparsable email address
         """
-        address: Optional[str] = None
-        rest: Optional[str] = ""
+        address: str | None = None
+        rest: str | None = ""
         try:
             address, rest = super()._getaddr(arg)
         except HeaderParseError:

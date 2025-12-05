@@ -380,13 +380,13 @@ async def test_protocol_missing_command_lock_disconnected() -> None:
         await protocol.execute_data_command(b"TEST\n")
 
 
-async def test_flow_control_mixin_drain():
+async def test_flow_control_mixin_drain() -> None:
     event_loop = asyncio.get_running_loop()
 
     # Adapted from stdlib
     drained = 0
 
-    async def drainer(stream):
+    async def drainer(stream) -> None:
         nonlocal drained
         await stream._drain_helper()
         drained += 1
@@ -398,7 +398,7 @@ async def test_flow_control_mixin_drain():
     assert drained == 10
 
 
-async def test_flow_control_mixin_drain_incomplete():
+async def test_flow_control_mixin_drain_incomplete() -> None:
     event_loop = asyncio.get_running_loop()
 
     flow_control = FlowControlMixin(event_loop)

@@ -3,7 +3,6 @@ Test error class imports, arguments, and inheritance.
 """
 
 import asyncio
-from typing import Union
 
 import pytest
 from hypothesis import given
@@ -82,7 +81,7 @@ def test_timeout_exceptions(
 def test_simple_response_exceptions(
     code: int,
     error_message: str,
-    error_class: type[Union[SMTPHeloError, SMTPDataError, SMTPAuthenticationError]],
+    error_class: type[SMTPHeloError | SMTPDataError | SMTPAuthenticationError],
 ) -> None:
     with pytest.raises(error_class) as excinfo:
         raise error_class(code, error_message)

@@ -5,7 +5,7 @@ Connectivity tests.
 import asyncio
 import pathlib
 import socket
-from typing import Any, Union
+from typing import Any
 
 import pytest
 from aiosmtpd.smtp import SMTP as SMTPD
@@ -396,7 +396,7 @@ async def test_connect_via_socket(
 async def test_connect_via_socket_path(
     smtp_client: SMTP,
     smtpd_server_socket_path: asyncio.AbstractServer,
-    socket_path: Union[pathlib.Path, str, bytes],
+    socket_path: pathlib.Path | str | bytes,
 ) -> None:
     await smtp_client.connect(hostname=None, port=None, socket_path=socket_path)
     response = await smtp_client.ehlo()

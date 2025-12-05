@@ -6,7 +6,7 @@ import copy
 import email.generator
 import email.header
 import email.message
-from typing import Any, Optional, Union
+from typing import Any
 
 import pytest
 
@@ -432,7 +432,7 @@ async def test_send_message_without_sender(
 @pytest.mark.smtpd_options(smtputf8=True)
 async def test_send_message_smtputf8_sender(
     smtp_client: SMTP,
-    message: Union[email.message.EmailMessage, email.message.Message],
+    message: email.message.EmailMessage | email.message.Message,
     received_commands: list[tuple[str, tuple[Any, ...]]],
     received_messages: list[email.message.EmailMessage],
 ) -> None:
@@ -466,7 +466,7 @@ async def test_send_mime_message_smtputf8_recipient(
     mime_message: email.message.EmailMessage,
     received_commands: list[tuple[str, tuple[Any, ...]]],
     received_messages: list[email.message.EmailMessage],
-    mail_options: Optional[list[str]],
+    mail_options: list[str] | None,
 ) -> None:
     mime_message["To"] = "reçipïént@exåmple.com"
 
@@ -591,7 +591,7 @@ async def test_send_mime_message_utf8_text_without_smtputf8(
 @pytest.mark.smtpd_options(**{"smtputf8": False, "7bit": True})
 async def test_send_message_7bit(
     smtp_client: SMTP,
-    message: Union[email.message.EmailMessage, email.message.Message],
+    message: email.message.EmailMessage | email.message.Message,
     received_commands: list[tuple[str, tuple[Any, ...]]],
 ) -> None:
     async with smtp_client:
