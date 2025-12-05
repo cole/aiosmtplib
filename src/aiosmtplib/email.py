@@ -13,7 +13,7 @@ import email.utils
 import io
 import re
 from collections.abc import Iterable
-from typing import Optional, Union, cast
+from typing import cast
 
 
 __all__ = (
@@ -48,7 +48,7 @@ def quote_address(address: str) -> str:
 
 
 def flatten_message(
-    message: Union[email.message.EmailMessage, email.message.Message],
+    message: email.message.EmailMessage | email.message.Message,
     /,
     *,
     utf8: bool = False,
@@ -86,7 +86,7 @@ def flatten_message(
 
 
 def extract_addresses(
-    header: Union[str, email.headerregistry.AddressHeader, email.header.Header],
+    header: str | email.headerregistry.AddressHeader | email.header.Header,
     /,
 ) -> list[str]:
     """
@@ -97,7 +97,7 @@ def extract_addresses(
     if isinstance(header, email.headerregistry.AddressHeader):
         # If the object has been assigned an iterable, it's possible to get a string here.
         header_addresses = cast(
-            Iterable[Union[str, email.headerregistry.Address]], header.addresses
+            Iterable[str | email.headerregistry.Address], header.addresses
         )
         for address in header_addresses:
             if isinstance(address, email.headerregistry.Address):
@@ -115,9 +115,9 @@ def extract_addresses(
 
 
 def extract_sender(
-    message: Union[email.message.EmailMessage, email.message.Message],
+    message: email.message.EmailMessage | email.message.Message,
     /,
-) -> Optional[str]:
+) -> str | None:
     """
     Extract the sender from the message object given.
     """
@@ -145,7 +145,7 @@ def extract_sender(
 
 
 def extract_recipients(
-    message: Union[email.message.EmailMessage, email.message.Message],
+    message: email.message.EmailMessage | email.message.Message,
     /,
 ) -> list[str]:
     """

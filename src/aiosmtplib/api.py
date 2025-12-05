@@ -6,7 +6,7 @@ import email.message
 import socket
 import ssl
 from collections.abc import Sequence
-from typing import Optional, Union, cast
+from typing import cast
 
 from .response import SMTPResponse
 from .smtp import DEFAULT_TIMEOUT, SMTP
@@ -17,29 +17,29 @@ __all__ = ("send",)
 
 
 async def send(
-    message: Union[email.message.EmailMessage, email.message.Message, str, bytes],
+    message: email.message.EmailMessage | email.message.Message | str | bytes,
     /,
     *,
-    sender: Optional[str] = None,
-    recipients: Optional[Union[str, Sequence[str]]] = None,
-    mail_options: Optional[Sequence[str]] = None,
-    rcpt_options: Optional[Sequence[str]] = None,
-    hostname: Optional[str] = "localhost",
-    port: Optional[int] = None,
-    username: Optional[Union[str, bytes]] = None,
-    password: Optional[Union[str, bytes]] = None,
-    local_hostname: Optional[str] = None,
-    source_address: Optional[tuple[str, int]] = None,
-    timeout: Optional[float] = DEFAULT_TIMEOUT,
+    sender: str | None = None,
+    recipients: str | Sequence[str] | None = None,
+    mail_options: Sequence[str] | None = None,
+    rcpt_options: Sequence[str] | None = None,
+    hostname: str | None = "localhost",
+    port: int | None = None,
+    username: str | bytes | None = None,
+    password: str | bytes | None = None,
+    local_hostname: str | None = None,
+    source_address: tuple[str, int] | None = None,
+    timeout: float | None = DEFAULT_TIMEOUT,
     use_tls: bool = False,
-    start_tls: Optional[bool] = None,
+    start_tls: bool | None = None,
     validate_certs: bool = True,
-    client_cert: Optional[str] = None,
-    client_key: Optional[str] = None,
-    tls_context: Optional[ssl.SSLContext] = None,
-    cert_bundle: Optional[str] = None,
-    socket_path: Optional[SocketPathType] = None,
-    sock: Optional[socket.socket] = None,
+    client_cert: str | None = None,
+    client_key: str | None = None,
+    tls_context: ssl.SSLContext | None = None,
+    cert_bundle: str | None = None,
+    socket_path: SocketPathType | None = None,
+    sock: socket.socket | None = None,
 ) -> tuple[dict[str, SMTPResponse], str]:
     """
     Send an email message. On await, connects to the SMTP server using the details
@@ -100,7 +100,7 @@ async def send(
             raise ValueError("Sender must be provided with raw messages.")
 
     sender = cast(str, sender)
-    recipients = cast(Union[str, Sequence[str]], recipients)
+    recipients = cast(str | Sequence[str], recipients)
 
     client = SMTP(
         hostname=hostname,

@@ -8,7 +8,7 @@ from aiosmtplib.smtp import SMTP
 class DummySMTPAuth(SMTP):
     transport = None
 
-    def __init__(self, *args: Any, **kwargs: Any):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
 
         self.received_commands: list[bytes] = []

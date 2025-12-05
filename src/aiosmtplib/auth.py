@@ -4,13 +4,11 @@ Authentication related methods.
 
 import base64
 import hmac
-from typing import Union
-
 
 __all__ = ("auth_crammd5_verify", "auth_plain_encode", "auth_login_encode")
 
 
-def _ensure_bytes(value: Union[str, bytes]) -> bytes:
+def _ensure_bytes(value: str | bytes) -> bytes:
     if isinstance(value, (bytes, bytearray, memoryview)):
         return value
 
@@ -18,9 +16,9 @@ def _ensure_bytes(value: Union[str, bytes]) -> bytes:
 
 
 def auth_crammd5_verify(
-    username: Union[str, bytes],
-    password: Union[str, bytes],
-    challenge: Union[str, bytes],
+    username: str | bytes,
+    password: str | bytes,
+    challenge: str | bytes,
     /,
 ) -> bytes:
     """
@@ -39,8 +37,8 @@ def auth_crammd5_verify(
 
 
 def auth_plain_encode(
-    username: Union[str, bytes],
-    password: Union[str, bytes],
+    username: str | bytes,
+    password: str | bytes,
     /,
 ) -> bytes:
     """
@@ -56,8 +54,8 @@ def auth_plain_encode(
 
 
 def auth_login_encode(
-    username: Union[str, bytes],
-    password: Union[str, bytes],
+    username: str | bytes,
+    password: str | bytes,
     /,
 ) -> tuple[bytes, bytes]:
     """
