@@ -8,7 +8,12 @@ import base64
 import pytest
 
 from aiosmtplib import SMTP
-from aiosmtplib.auth import auth_crammd5_verify, auth_login_encode, auth_plain_encode
+from aiosmtplib.auth import (
+    auth_crammd5_verify,
+    auth_login_encode,
+    auth_plain_encode,
+    auth_xoauth2_encode,
+)
 from aiosmtplib.errors import SMTPAuthenticationError, SMTPException
 from aiosmtplib.response import SMTPResponse
 from aiosmtplib.typing import SMTPStatus
@@ -224,3 +229,78 @@ async def test_login_without_starttls_exception(
             await smtp_client.login(auth_username, auth_password)
 
         assert "Try connecting via TLS" in excinfo.value.args[0]
+
+
+@pytest.mark.parametrize(
+    "username,token",
+    [
+        ("test@example.com", "ya29.token123"),
+        ("user@gmail.com", "access_token_here"),
+        ("føø@example.com", "bär€_token"),
+    ],
+    ids=["test user", "gmail user", "utf-8 user"],
+)
+async def test_auth_xoauth2_success(
+    mock_auth: DummySMTPAuth, username: str, token: str
+) -> None:
+    """Check that auth_xoauth2 base64 encodes the username/token correctly."""
+    mock_auth.responses.append(SUCCESS_RESPONSE)
+    await mock_auth.auth_xoauth2(username, token)
+
+    encoded = auth_xoauth2_encode(username, token)
+    assert mock_auth.received_commands == [b"AUTH XOAUTH2 " + encoded]
+
+
+async def test_auth_xoauth2_success_bytes(mock_auth: DummySMTPAuth) -> None:
+    """Check that auth_xoauth2 works with bytes input."""
+    username = b"user@example.com"
+    token = b"access_token_bytes"
+    mock_auth.responses.append(SUCCESS_RESPONSE)
+    await mock_auth.auth_xoauth2(username, token)
+
+    encoded = auth_xoauth2_encode(username, token)
+    assert mock_auth.received_commands == [b"AUTH XOAUTH2 " + encoded]
+
+
+async def test_auth_xoauth2_error(mock_auth: DummySMTPAuth) -> None:
+    """Check that auth_xoauth2 raises on failure response."""
+    mock_auth.responses.append(FAILURE_RESPONSE)
+
+    with pytest.raises(SMTPAuthenticationError):
+        await mock_auth.auth_xoauth2("user@example.com", "bad_token")
+
+
+async def test_auth_xoauth2_challenge_error(mock_auth: DummySMTPAuth) -> None:
+    """
+    Check that auth_xoauth2 handles the error challenge flow.
+
+    On failure, server sends 334 with base64-encoded error JSON,
+    client sends empty response, then gets the final 535 error.
+    """
+    # Server sends error challenge (334), then final error (535)
+    challenge_response = (SMTPStatus.auth_continue, "eyJzdGF0dXMiOiI0MDAifQ==")
+    mock_auth.responses.extend([challenge_response, FAILURE_RESPONSE])
+
+    with pytest.raises(SMTPAuthenticationError):
+        await mock_auth.auth_xoauth2("user@example.com", "expired_token")
+
+    # Verify we sent the initial auth and then empty response
+    encoded = auth_xoauth2_encode("user@example.com", "expired_token")
+    assert mock_auth.received_commands == [b"AUTH XOAUTH2 " + encoded, b""]
+
+
+async def test_maybe_login_with_oauth_token_generator(mock_auth: DummySMTPAuth) -> None:
+    """Test that _maybe_login_on_connect uses oauth_token_generator when provided."""
+    mock_auth.server_auth_methods = ["xoauth2", "plain", "login"]
+    mock_auth._login_username = "user@example.com"
+
+    async def get_token() -> str:
+        return "test_oauth_token"
+
+    mock_auth._oauth_token_generator = get_token
+    mock_auth.responses.append(SUCCESS_RESPONSE)
+
+    await mock_auth._maybe_login_on_connect()
+
+    encoded = auth_xoauth2_encode("user@example.com", "test_oauth_token")
+    assert mock_auth.received_commands == [b"AUTH XOAUTH2 " + encoded]

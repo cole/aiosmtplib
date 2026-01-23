@@ -8,7 +8,12 @@ import hmac
 from hypothesis import given
 from hypothesis.strategies import binary, text
 
-from aiosmtplib.auth import auth_crammd5_verify, auth_login_encode, auth_plain_encode
+from aiosmtplib.auth import (
+    auth_crammd5_verify,
+    auth_login_encode,
+    auth_plain_encode,
+    auth_xoauth2_encode,
+)
 
 
 @given(binary(), binary(), binary())
@@ -95,4 +100,42 @@ def test_auth_login_encode_str(
     assert auth_login_encode(username, password) == (
         base64.b64encode(username_bytes),
         base64.b64encode(password_bytes),
+    )
+
+
+@given(binary(), binary())
+def test_auth_xoauth2_encode_bytes(
+    username: bytes,
+    access_token: bytes,
+) -> None:
+    auth_string = b"user=" + username + b"\x01auth=Bearer " + access_token + b"\x01\x01"
+    assert auth_xoauth2_encode(username, access_token) == base64.b64encode(auth_string)
+
+
+@given(text(), text())
+def test_auth_xoauth2_encode_str(
+    username: str,
+    access_token: str,
+) -> None:
+    username_bytes = username.encode("utf-8")
+    token_bytes = access_token.encode("utf-8")
+
+    auth_string = (
+        b"user=" + username_bytes + b"\x01auth=Bearer " + token_bytes + b"\x01\x01"
+    )
+    assert auth_xoauth2_encode(username, access_token) == base64.b64encode(auth_string)
+
+
+def test_auth_xoauth2_encode_known_value() -> None:
+    """Test against the example from Google's XOAUTH2 documentation."""
+    username = "someuser@example.com"
+    token = "ya29.vF9dft4qmTc2Nvb3RlckBhdHRhdmlzdGEuY29tCg"
+
+    result = auth_xoauth2_encode(username, token)
+
+    # Decode and verify the structure
+    decoded = base64.b64decode(result)
+    assert decoded == (
+        b"user=someuser@example.com\x01"
+        b"auth=Bearer ya29.vF9dft4qmTc2Nvb3RlckBhdHRhdmlzdGEuY29tCg\x01\x01"
     )

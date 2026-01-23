@@ -131,8 +131,8 @@ To opt out of STARTTLS on connect, pass ``start_tls=False``.
 Authentication
 --------------
 
-To authenticate, pass the ``username`` and ``password`` keyword arguments to
-:func:`send`.
+To authenticate with a username and password, pass the ``username`` and
+``password`` keyword arguments to :func:`send`.
 
 .. code-block:: python
 
@@ -143,3 +143,6 @@ To authenticate, pass the ``username`` and ``password`` keyword arguments to
         username="test@gmail.com",
         password="test"
     )
+
+.. seealso:: For OAuth2 authentication (required by Gmail, Outlook, and other
+   providers), see :ref:`oauth`.

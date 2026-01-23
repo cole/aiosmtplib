@@ -13,6 +13,7 @@ from aiosmtpd.smtp import SMTP as SMTPD
 from aiosmtplib import (
     SMTP,
     SMTPConnectError,
+    SMTPException,
     SMTPResponseException,
     SMTPServerDisconnected,
     SMTPStatus,
@@ -451,3 +452,63 @@ async def test_create_connection_runtime_error_on_missing_port() -> None:
     client.loop = asyncio.get_running_loop()
     with pytest.raises(RuntimeError, match="No port provided"):
         await client._create_connection(1.0)
+
+
+def test_password_and_oauth_token_generator_mutually_exclusive() -> None:
+    """Test that password and oauth_token_generator cannot be used together."""
+
+    async def get_token() -> str:
+        return "token"
+
+    with pytest.raises(ValueError, match="mutually exclusive"):
+        SMTP(
+            hostname="localhost",
+            username="user@example.com",
+            password="password",
+            oauth_token_generator=get_token,
+        )
+
+
+def test_oauth_token_generator_without_username() -> None:
+    """Test that oauth_token_generator can be set without username (error on connect)."""
+
+    async def get_token() -> str:
+        return "token"
+
+    # This should not raise on init - only on connect when auth is attempted
+    client = SMTP(hostname="localhost", oauth_token_generator=get_token)
+    assert client._oauth_token_generator is not None
+
+
+async def test_connect_with_oauth_token_generator_no_xoauth2_support(
+    smtp_client: SMTP,
+    smtpd_server: asyncio.AbstractServer,
+) -> None:
+    """Test that oauth_token_generator raises when server doesn't support XOAUTH2."""
+
+    async def get_token() -> str:
+        return "test_token"
+
+    # Server doesn't advertise XOAUTH2
+    with pytest.raises(SMTPException, match="does not support XOAUTH2"):
+        await smtp_client.connect(
+            start_tls=True,
+            username="user@example.com",
+            oauth_token_generator=get_token,
+        )
+
+
+async def test_connect_with_oauth_token_generator_no_username(
+    smtp_client: SMTP,
+    smtpd_server: asyncio.AbstractServer,
+) -> None:
+    """Test that oauth_token_generator requires username."""
+
+    async def get_token() -> str:
+        return "test_token"
+
+    with pytest.raises(SMTPException, match="username is required"):
+        await smtp_client.connect(
+            start_tls=True,
+            oauth_token_generator=get_token,
+        )

@@ -10,7 +10,7 @@ from typing import cast
 
 from .response import SMTPResponse
 from .smtp import DEFAULT_TIMEOUT, SMTP
-from .typing import SocketPathType
+from .typing import SMTPTokenGenerator, SocketPathType
 
 
 __all__ = ("send",)
@@ -28,6 +28,7 @@ async def send(
     port: int | None = None,
     username: str | bytes | None = None,
     password: str | bytes | None = None,
+    oauth_token_generator: SMTPTokenGenerator | None = None,
     local_hostname: str | None = None,
     source_address: tuple[str, int] | None = None,
     timeout: float | None = DEFAULT_TIMEOUT,
@@ -59,7 +60,10 @@ async def send(
     :keyword port: Server port. Defaults ``465`` if ``use_tls`` is ``True``,
         ``587`` if ``start_tls`` is ``True``, or ``25`` otherwise.
     :keyword username:  Username to login as after connect.
-    :keyword password:  Password for login after connect.
+    :keyword password:  Password for login after connect. Mutually exclusive with
+        ``oauth_token_generator``.
+    :keyword oauth_token_generator: An async callable that returns an OAuth2 access
+        token for XOAUTH2 authentication. Mutually exclusive with ``password``.
     :keyword local_hostname: The hostname of the client.  If specified, used as the
         FQDN of the local host in the HELO/EHLO command. Otherwise, the result of
         :func:`socket.getfqdn`.
@@ -119,6 +123,7 @@ async def send(
         sock=sock,
         username=username,
         password=password,
+        oauth_token_generator=oauth_token_generator,
     )
 
     async with client:

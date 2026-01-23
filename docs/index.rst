@@ -17,6 +17,7 @@ Table of Contents
    usage
    client
    encryption
+   oauth
    timeouts
    proxies
    trio

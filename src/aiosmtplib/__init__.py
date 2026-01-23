@@ -30,7 +30,7 @@ from .errors import (
 )
 from .response import SMTPResponse
 from .smtp import SMTP
-from .typing import SMTPStatus
+from .typing import SMTPStatus, SMTPTokenGenerator
 
 
 __title__ = "aiosmtplib"
@@ -43,6 +43,7 @@ __all__ = (
     "SMTP",
     "SMTPResponse",
     "SMTPStatus",
+    "SMTPTokenGenerator",
     "SMTPAuthenticationError",
     "SMTPConnectError",
     "SMTPDataError",

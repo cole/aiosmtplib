@@ -1,8 +1,17 @@
 import enum
 import os
+from collections.abc import Awaitable, Callable
 
 
-__all__ = ("Default", "SMTPStatus", "SocketPathType", "_default")
+__all__ = (
+    "Default",
+    "SMTPStatus",
+    "SMTPTokenGenerator",
+    "SocketPathType",
+    "_default",
+)
+
+SMTPTokenGenerator = Callable[[], Awaitable[str]]
 
 SocketPathType = str | bytes | os.PathLike[str]
 

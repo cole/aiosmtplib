@@ -11,7 +11,12 @@ import ssl
 from collections.abc import Iterable, Sequence
 from types import TracebackType
 from typing import Any, Literal
-from .auth import auth_crammd5_verify, auth_login_encode, auth_plain_encode
+from .auth import (
+    auth_crammd5_verify,
+    auth_login_encode,
+    auth_plain_encode,
+    auth_xoauth2_encode,
+)
 from .email import (
     extract_recipients,
     extract_sender,
@@ -37,7 +42,7 @@ from .errors import (
 from .esmtp import parse_esmtp_extensions
 from .protocol import SMTPProtocol
 from .response import SMTPResponse
-from .typing import Default, SMTPStatus, SocketPathType
+from .typing import Default, SMTPStatus, SMTPTokenGenerator, SocketPathType
 
 
 __all__ = ("SMTP", "SMTP_PORT", "SMTP_TLS_PORT", "SMTP_STARTTLS_PORT")
@@ -85,6 +90,7 @@ class SMTP:
         port: int | None = None,
         username: str | bytes | None = None,
         password: str | bytes | None = None,
+        oauth_token_generator: SMTPTokenGenerator | None = None,
         local_hostname: str | None = None,
         source_address: tuple[str, int] | None = None,
         timeout: float | None = DEFAULT_TIMEOUT,
@@ -103,7 +109,11 @@ class SMTP:
         :keyword port: Server port. defaults ``465`` if ``use_tls`` is ``True``,
             ``587`` if ``start_tls`` is ``True``, or ``25`` otherwise.
         :keyword username:  Username to login as after connect.
-        :keyword password:  Password for login after connect.
+        :keyword password:  Password for login after connect. Mutually exclusive
+            with ``oauth_token_generator``.
+        :keyword oauth_token_generator: An async callable that returns an OAuth2
+            access token for XOAUTH2 authentication. Mutually exclusive with
+            ``password``.
         :keyword local_hostname: The hostname of the client.  If specified, used as the
             FQDN of the local host in the HELO/EHLO command. Otherwise, the result of
             :func:`socket.getfqdn`.
@@ -143,6 +153,7 @@ class SMTP:
         self.port = port
         self._login_username = username
         self._login_password = password
+        self._oauth_token_generator = oauth_token_generator
         self.local_hostname = local_hostname
         self.timeout = timeout
         self.use_tls = use_tls
@@ -231,6 +242,9 @@ class SMTP:
         port: int | Literal[Default.token] | None = Default.token,
         username: str | bytes | Literal[Default.token] | None = Default.token,
         password: str | bytes | Literal[Default.token] | None = Default.token,
+        oauth_token_generator: SMTPTokenGenerator
+        | Literal[Default.token]
+        | None = Default.token,
         local_hostname: str | Literal[Default.token] | None = Default.token,
         source_address: tuple[str, int] | Literal[Default.token] | None = Default.token,
         use_tls: bool | None = None,
@@ -261,6 +275,8 @@ class SMTP:
             self._login_username = username
         if password is not Default.token:
             self._login_password = password
+        if oauth_token_generator is not Default.token:
+            self._oauth_token_generator = oauth_token_generator
 
         if local_hostname is not Default.token:
             self.local_hostname = local_hostname
@@ -280,6 +296,11 @@ class SMTP:
             self.sock = sock
 
     def _validate_config(self) -> None:
+        if self._login_password is not None and self._oauth_token_generator is not None:
+            raise ValueError(
+                "password and oauth_token_generator are mutually exclusive"
+            )
+
         if self._start_tls_on_connect and self.use_tls:
             raise ValueError("The start_tls and use_tls options are not compatible.")
 
@@ -334,6 +355,9 @@ class SMTP:
         port: int | Literal[Default.token] | None = Default.token,
         username: str | bytes | Literal[Default.token] | None = Default.token,
         password: str | bytes | Literal[Default.token] | None = Default.token,
+        oauth_token_generator: SMTPTokenGenerator
+        | Literal[Default.token]
+        | None = Default.token,
         local_hostname: str | Literal[Default.token] | None = Default.token,
         source_address: tuple[str, int] | Literal[Default.token] | None = Default.token,
         timeout: float | Literal[Default.token] | None = Default.token,
@@ -356,7 +380,11 @@ class SMTP:
         :keyword port: Server port. defaults ``465`` if ``use_tls`` is ``True``,
             ``587`` if ``start_tls`` is ``True``, or ``25`` otherwise.
         :keyword username:  Username to login as after connect.
-        :keyword password:  Password for login after connect.
+        :keyword password:  Password for login after connect. Mutually exclusive
+            with ``oauth_token_generator``.
+        :keyword oauth_token_generator: An async callable that returns an OAuth2
+            access token for XOAUTH2 authentication. Mutually exclusive with
+            ``password``.
         :keyword local_hostname: The hostname of the client.  If specified, used as the
             FQDN of the local host in the HELO/EHLO command. Otherwise, the result of
             :func:`socket.getfqdn`.
@@ -405,6 +433,7 @@ class SMTP:
             sock=sock,
             username=username,
             password=password,
+            oauth_token_generator=oauth_token_generator,
         )
         self._validate_config()
 
@@ -530,7 +559,19 @@ class SMTP:
         """
         Depending on config, login after connecting.
         """
-        if self._login_username is not None:
+        if self._oauth_token_generator is not None:
+            if self._login_username is None:
+                raise SMTPException(
+                    "username is required when using oauth_token_generator"
+                )
+            await self._ehlo_or_helo_if_needed()
+            if "xoauth2" not in self.server_auth_methods:
+                raise SMTPException(
+                    "oauth_token_generator provided but server does not support XOAUTH2"
+                )
+            token = await self._oauth_token_generator()
+            await self.auth_xoauth2(self._login_username, token)
+        elif self._login_username is not None:
             login_password = (
                 self._login_password if self._login_password is not None else ""
             )
@@ -1202,6 +1243,44 @@ class SMTP:
             )
 
         response = await self.execute_command(encoded_password, timeout=timeout)
+
+        if response.code != SMTPStatus.auth_successful:
+            raise SMTPAuthenticationError(response.code, response.message)
+
+        return response
+
+    async def auth_xoauth2(
+        self,
+        username: str | bytes,
+        access_token: str | bytes,
+        /,
+        *,
+        timeout: float | Literal[Default.token] | None = Default.token,
+    ) -> SMTPResponse:
+        """
+        XOAUTH2 auth for OAuth2 access tokens (e.g., Gmail, Outlook).
+
+        See https://developers.google.com/gmail/imap/xoauth2-protocol
+
+        Example::
+
+            250 AUTH XOAUTH2
+            AUTH XOAUTH2 dXNlcj11c2VyQGV4YW1wbGUuY29tAWF1dGg9QmVhcmVyIHRva2VuAQE=
+            235 2.7.0 Accepted
+
+        On failure, the server sends a base64-encoded JSON error as a challenge.
+        We respond with an empty line to get the final error response.
+        """
+        await self._ehlo_or_helo_if_needed()
+
+        encoded = auth_xoauth2_encode(username, access_token)
+        response = await self.execute_command(
+            b"AUTH", b"XOAUTH2", encoded, timeout=timeout
+        )
+
+        if response.code == SMTPStatus.auth_continue:
+            # Server sent an error challenge; send empty response to get final error
+            response = await self.execute_command(b"", timeout=timeout)
 
         if response.code != SMTPStatus.auth_successful:
             raise SMTPAuthenticationError(response.code, response.message)
