@@ -1,6 +1,12 @@
 Changelog
 =========
 
+5.1.0
+-----
+
+- Feature: Add XOAUTH2 authentication support
+
+
 5.0.0
 -----
 
