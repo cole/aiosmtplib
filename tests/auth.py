@@ -12,6 +12,7 @@ class DummySMTPAuth(SMTP):
         super().__init__(*args, **kwargs)
 
         self.received_commands: list[bytes] = []
+        self.received_kwargs: list[dict[str, Any]] = []
         self.responses: deque[tuple[int, str]] = deque()
         self.esmtp_extensions = {"auth": ""}
         self.server_auth_methods = ["cram-md5", "login", "plain"]
@@ -19,6 +20,7 @@ class DummySMTPAuth(SMTP):
 
     async def execute_command(self, *args: Any, **kwargs: Any) -> SMTPResponse:
         self.received_commands.append(b" ".join(args))
+        self.received_kwargs.append(kwargs)
 
         response = self.responses.popleft()
 

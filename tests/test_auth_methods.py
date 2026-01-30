@@ -304,3 +304,22 @@ async def test_maybe_login_with_oauth_token_generator(mock_auth: DummySMTPAuth) 
 
     encoded = auth_xoauth2_encode("user@example.com", "test_oauth_token")
     assert mock_auth.received_commands == [b"AUTH XOAUTH2 " + encoded]
+
+
+async def test_auth_crammd5_passes_timeout(mock_auth: DummySMTPAuth) -> None:
+    """
+    Test that auth_crammd5 passes timeout to the verification command.
+
+    Both execute_command calls in auth_crammd5 should receive the timeout parameter.
+    """
+    continue_response = (
+        SMTPStatus.auth_continue,
+        base64.b64encode(b"challenge").decode("utf-8"),
+    )
+    mock_auth.responses.extend([continue_response, SUCCESS_RESPONSE])
+    await mock_auth.auth_crammd5("user", "pass", timeout=5.0)
+
+    # Both commands should have received the timeout
+    assert len(mock_auth.received_kwargs) == 2
+    assert mock_auth.received_kwargs[0].get("timeout") == 5.0
+    assert mock_auth.received_kwargs[1].get("timeout") == 5.0
