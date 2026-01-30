@@ -141,7 +141,11 @@ def extract_sender(
     if sender_header is None:
         return None
 
-    return extract_addresses(sender_header)[0]
+    addresses = extract_addresses(sender_header)
+    if not addresses:
+        return None
+
+    return addresses[0]
 
 
 def extract_recipients(
