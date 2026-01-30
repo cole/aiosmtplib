@@ -967,10 +967,11 @@ class SMTP:
         response = await self.execute_command(
             b"EHLO", hostname.encode("ascii"), timeout=timeout
         )
-        self.last_ehlo_response = response
 
         if response.code != SMTPStatus.completed:
             raise SMTPHeloError(response.code, response.message)
+
+        self.last_ehlo_response = response
 
         return response
 
