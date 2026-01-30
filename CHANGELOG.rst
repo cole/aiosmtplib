@@ -1,6 +1,14 @@
 Changelog
 =========
 
+5.1.2 (unreleased)
+------------------
+
+- Bugfix: Timeout ignored during CRAM-MD5 verification
+- Bugfix: Only parse EHLO response after validating success
+- Bugfix: return None from extract_sender when address list is empty
+
+
 5.1.1
 -----
 
@@ -15,7 +23,6 @@ Changelog
   peer drops the transport with an exception after ``QUIT`` is sent but
   before the 221 reply is parsed (e.g. AWS SES closing TLS without
   ``close_notify``).
-
 
 5.1.0
 -----
