@@ -362,3 +362,18 @@ def test_extract_sender_valueerror_on_multiple_resent_message() -> None:
 
     with pytest.raises(ValueError):
         extract_sender(message)
+
+
+def test_extract_sender_empty_address_returns_none() -> None:
+    """
+    Test that extract_sender returns None when the From header contains no valid addresses.
+
+    If extract_addresses() returns an empty list (e.g., malformed From header),
+    extract_sender should return None instead of raising IndexError.
+    """
+    message = EmailMessage()
+    # Use undisclosed-recipients which parses to an empty list
+    message["From"] = "undisclosed-recipients:;"
+
+    sender = extract_sender(message)
+    assert sender is None
