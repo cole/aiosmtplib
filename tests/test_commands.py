@@ -91,6 +91,25 @@ async def test_ehlo_error(smtp_client: SMTP) -> None:
         assert exception_info.value.code == SMTPStatus.unrecognized_command
 
 
+@pytest.mark.smtpd_mocks(smtp_EHLO=mock_response_unrecognized_command)
+async def test_ehlo_error_does_not_set_supports_esmtp(smtp_client: SMTP) -> None:
+    """
+    Test that a failed EHLO response does not set supports_esmtp to True.
+
+    The EHLO response should only be parsed for extensions after validating
+    that the response code indicates success.
+    """
+    async with smtp_client:
+        assert smtp_client.supports_esmtp is False
+
+        with pytest.raises(SMTPHeloError):
+            await smtp_client.ehlo()
+
+        assert smtp_client.supports_esmtp is False
+        assert smtp_client.last_ehlo_response is None
+        assert smtp_client.esmtp_extensions == {}
+
+
 @pytest.mark.smtpd_mocks(smtp_EHLO=mock_response_ehlo_full)
 async def test_ehlo_parses_esmtp_extensions(smtp_client: SMTP) -> None:
     async with smtp_client:
