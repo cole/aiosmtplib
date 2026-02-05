@@ -1,6 +1,14 @@
 Changelog
 =========
 
+5.1.1 (unreleased)
+------------------
+
+- Bugfix: Timeout ignored during CRAM-MD5 verification
+- Bugfix: Only parse EHLO response after validating success
+- Bugfix: return None from extract_sender when address list is empty
+
+
 5.1.0
 -----
 

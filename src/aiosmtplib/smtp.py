@@ -967,10 +967,11 @@ class SMTP:
         response = await self.execute_command(
             b"EHLO", hostname.encode("ascii"), timeout=timeout
         )
-        self.last_ehlo_response = response
 
         if response.code != SMTPStatus.completed:
             raise SMTPHeloError(response.code, response.message)
+
+        self.last_ehlo_response = response
 
         return response
 
@@ -1165,7 +1166,7 @@ class SMTP:
         verification_bytes = auth_crammd5_verify(
             username, password, initial_response.message
         )
-        response = await self.execute_command(verification_bytes)
+        response = await self.execute_command(verification_bytes, timeout=timeout)
 
         if response.code != SMTPStatus.auth_successful:
             raise SMTPAuthenticationError(response.code, response.message)
