@@ -480,3 +480,60 @@ async def test_flow_control_mixin_drain_helper_connection_lost() -> None:
 
     with pytest.raises(ConnectionResetError):
         await flow_control._drain_helper()
+
+
+class _FakeTransport(asyncio.Transport):
+    """Minimal transport stub for driving SMTPProtocol callbacks directly."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._extra: dict[str, object] = {"sslcontext": object()}
+
+    def get_extra_info(self, name: str, default: object = None) -> object:
+        return self._extra.get(name, default)
+
+    def is_closing(self) -> bool:
+        return False
+
+
+async def test_protocol_connection_lost_after_quit_resolves_waiter() -> None:
+    """
+    Regression test for https://github.com/cole/aiosmtplib/issues/345.
+
+    When the peer drops the transport with an exception after ``QUIT\\r\\n``
+    has been written but before the 221 reply is parsed (e.g. AWS SES closes
+    TLS without ``close_notify``, surfaced as ``connection_lost(SSLEOFError)``),
+    the response waiter must be resolved so that ``SMTP.quit()`` returns
+    promptly instead of blocking until the read timeout.
+    """
+    protocol = SMTPProtocol()
+    protocol.connection_made(_FakeTransport())
+
+    protocol._quit_sent = True
+    waiter = protocol._response_waiter
+    assert waiter is not None and not waiter.done()
+
+    protocol.connection_lost(ssl.SSLEOFError("EOF occurred in violation of protocol"))
+
+    assert waiter.done()
+    assert waiter.exception() is None
+    response = waiter.result()
+    assert response.code == 221
+
+
+async def test_protocol_connection_lost_without_quit_raises() -> None:
+    """
+    Without an outstanding QUIT, ``connection_lost`` must continue to
+    surface ``SMTPServerDisconnected`` on the response waiter.
+    """
+    protocol = SMTPProtocol()
+    protocol.connection_made(_FakeTransport())
+
+    waiter = protocol._response_waiter
+    assert waiter is not None and not waiter.done()
+
+    protocol.connection_lost(ConnectionResetError("boom"))
+
+    assert waiter.done()
+    exc = waiter.exception()
+    assert isinstance(exc, SMTPServerDisconnected)

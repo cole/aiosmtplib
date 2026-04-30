@@ -1,6 +1,15 @@
 Changelog
 =========
 
+Unreleased
+----------
+
+- Bugfix: ``SMTP.quit()`` no longer hangs until the read timeout when the
+  peer drops the transport with an exception after ``QUIT`` is sent but
+  before the 221 reply is parsed (e.g. AWS SES closing TLS without
+  ``close_notify``).
+
+
 5.1.0
 -----
 
