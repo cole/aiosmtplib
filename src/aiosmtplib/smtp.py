@@ -10,7 +10,7 @@ import socket
 import ssl
 from collections.abc import Iterable, Sequence
 from types import TracebackType
-from typing import Any, Literal
+from typing import Any, Literal, cast
 from .auth import (
     auth_crammd5_verify,
     auth_login_encode,
@@ -41,6 +41,7 @@ from .errors import (
 )
 from .esmtp import parse_esmtp_extensions
 from .protocol import SMTPProtocol
+from .proxy import ProxyConfig
 from .response import SMTPResponse
 from .typing import Default, SMTPStatus, SMTPTokenGenerator, SocketPathType
 
@@ -103,6 +104,7 @@ class SMTP:
         cert_bundle: str | None = None,
         socket_path: SocketPathType | None = None,
         sock: socket.socket | None = None,
+        proxy_protocol: ProxyConfig | None = None,
     ) -> None:
         """
         :keyword hostname:  Server name (or IP) to connect to. defaults to "localhost".
@@ -166,6 +168,7 @@ class SMTP:
         self.socket_path = socket_path
         self.sock = sock
         self.source_address = source_address
+        self.proxy_protocol = proxy_protocol
 
         self.loop: asyncio.AbstractEventLoop | None = None
         self._connect_lock: asyncio.Lock | None = None
@@ -256,6 +259,7 @@ class SMTP:
         cert_bundle: str | Literal[Default.token] | None = Default.token,
         socket_path: SocketPathType | Literal[Default.token] | None = Default.token,
         sock: socket.socket | Literal[Default.token] | None = Default.token,
+        proxy_protocol: ProxyConfig | Literal[Default.token] | None = Default.token,
     ) -> None:
         """Update our configuration from the kwargs provided.
 
@@ -294,6 +298,8 @@ class SMTP:
             self.socket_path = socket_path
         if sock is not Default.token:
             self.sock = sock
+        if proxy_protocol is not Default.token:
+            self.proxy_protocol = proxy_protocol
 
     def _validate_config(self) -> None:
         if self._login_password is not None and self._oauth_token_generator is not None:
@@ -370,6 +376,7 @@ class SMTP:
         cert_bundle: str | Literal[Default.token] | None = Default.token,
         socket_path: SocketPathType | Literal[Default.token] | None = Default.token,
         sock: socket.socket | Literal[Default.token] | None = Default.token,
+        proxy_protocol: ProxyConfig | Literal[Default.token] | None = Default.token,
     ) -> SMTPResponse:
         """
         Initialize a connection to the server. Options provided to
@@ -434,6 +441,7 @@ class SMTP:
             username=username,
             password=password,
             oauth_token_generator=oauth_token_generator,
+            proxy_protocol=proxy_protocol,
         )
         self._validate_config()
 
@@ -469,12 +477,24 @@ class SMTP:
         if self.loop is None:
             raise RuntimeError("No event loop set")
 
-        protocol = SMTPProtocol(loop=self.loop, connection_lost_callback=self.close)
+        proxy_header = (
+            self.proxy_protocol.encode() if self.proxy_protocol is not None else None
+        )
+        protocol = SMTPProtocol(
+            loop=self.loop,
+            connection_lost_callback=self.close,
+            proxy_header=proxy_header,
+        )
+
+        # When sending a PROXY header with implicit TLS, defer the TLS upgrade
+        # until after the header is on the wire — the spec requires the header
+        # to be sent in plaintext before the TLS handshake.
+        defer_tls = self.use_tls and proxy_header is not None
 
         tls_context: ssl.SSLContext | None = None
         ssl_handshake_timeout: float | None = None
         server_hostname: str | None = None
-        if self.use_tls:
+        if self.use_tls and not defer_tls:
             tls_context = self._get_tls_context()
             ssl_handshake_timeout = timeout
             server_hostname = self.hostname
@@ -523,6 +543,31 @@ class SMTP:
 
         self.protocol = protocol
         self.transport = transport
+
+        if defer_tls:
+            try:
+                tls_transport = await self.loop.start_tls(
+                    cast("asyncio.WriteTransport", transport),
+                    protocol,
+                    self._get_tls_context(),
+                    server_side=False,
+                    server_hostname=self.hostname,
+                    ssl_handshake_timeout=timeout,
+                )
+            except (TimeoutError, asyncio.TimeoutError) as exc:
+                raise SMTPConnectTimeoutError(
+                    "Timed out while upgrading transport"
+                ) from exc
+            except ConnectionAbortedError as exc:
+                raise SMTPConnectTimeoutError(
+                    "Connection aborted while upgrading transport"
+                ) from exc
+            except ConnectionError as exc:
+                raise SMTPConnectError(
+                    "Connection reset while upgrading transport"
+                ) from exc
+            protocol.transport = tls_transport
+            self.transport = tls_transport
 
         try:
             response = await protocol.read_response(timeout=timeout)

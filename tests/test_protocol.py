@@ -488,12 +488,16 @@ class _FakeTransport(asyncio.Transport):
     def __init__(self) -> None:
         super().__init__()
         self._extra: dict[str, object] = {"sslcontext": object()}
+        self.writes: list[bytes] = []
 
     def get_extra_info(self, name: str, default: object = None) -> object:
         return self._extra.get(name, default)
 
     def is_closing(self) -> bool:
         return False
+
+    def write(self, data: bytes) -> None:
+        self.writes.append(bytes(data))
 
 
 async def test_protocol_connection_lost_after_quit_resolves_waiter() -> None:
@@ -537,3 +541,22 @@ async def test_protocol_connection_lost_without_quit_raises() -> None:
     assert waiter.done()
     exc = waiter.exception()
     assert isinstance(exc, SMTPServerDisconnected)
+
+
+async def test_protocol_writes_proxy_header_on_connection_made() -> None:
+    header = b"PROXY TCP4 192.0.2.1 203.0.113.5 51234 25\r\n"
+    protocol = SMTPProtocol(proxy_header=header)
+    transport = _FakeTransport()
+
+    protocol.connection_made(transport)
+
+    assert transport.writes == [header]
+
+
+async def test_protocol_no_writes_without_proxy_header() -> None:
+    protocol = SMTPProtocol()
+    transport = _FakeTransport()
+
+    protocol.connection_made(transport)
+
+    assert transport.writes == []
