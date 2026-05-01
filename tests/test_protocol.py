@@ -12,6 +12,7 @@ import pytest
 
 from aiosmtplib import SMTPResponseException, SMTPServerDisconnected, SMTPTimeoutError
 from aiosmtplib.protocol import FlowControlMixin, SMTPProtocol
+from aiosmtplib.response import SMTPResponse
 
 from .compat import cleanup_server
 
@@ -482,7 +483,7 @@ async def test_flow_control_mixin_drain_helper_connection_lost() -> None:
         await flow_control._drain_helper()
 
 
-class _FakeTransport(asyncio.Transport):
+class FakeTransport(asyncio.Transport):
     """Minimal transport stub for driving SMTPProtocol callbacks directly."""
 
     def __init__(self) -> None:
@@ -511,7 +512,7 @@ async def test_protocol_connection_lost_after_quit_resolves_waiter() -> None:
     promptly instead of blocking until the read timeout.
     """
     protocol = SMTPProtocol()
-    protocol.connection_made(_FakeTransport())
+    protocol.connection_made(FakeTransport())
 
     protocol._quit_sent = True
     waiter = protocol._response_waiter
@@ -531,7 +532,7 @@ async def test_protocol_connection_lost_without_quit_raises() -> None:
     surface ``SMTPServerDisconnected`` on the response waiter.
     """
     protocol = SMTPProtocol()
-    protocol.connection_made(_FakeTransport())
+    protocol.connection_made(FakeTransport())
 
     waiter = protocol._response_waiter
     assert waiter is not None and not waiter.done()
@@ -543,10 +544,92 @@ async def test_protocol_connection_lost_without_quit_raises() -> None:
     assert isinstance(exc, SMTPServerDisconnected)
 
 
+async def test_protocol_read_response_clears_waiter_on_disconnect() -> None:
+    """
+    If the transport is gone by the time ``read_response`` returns, the
+    response waiter must be cleared rather than replaced.
+    """
+    protocol = SMTPProtocol()
+    protocol.connection_made(FakeTransport())
+    protocol._quit_sent = True
+
+    async def disconnect() -> None:
+        await asyncio.sleep(0)
+        protocol.connection_lost(None)
+
+    disconnector = asyncio.create_task(disconnect())
+    try:
+        response = await protocol.read_response(timeout=1.0)
+    finally:
+        await disconnector
+
+    assert response.code == 221
+    assert protocol.transport is None
+    assert protocol._response_waiter is None
+
+
+async def test_protocol_data_received_after_waiter_done() -> None:
+    """
+    If extra data arrives after the response waiter has been resolved,
+    ``data_received`` should silently ignore it.
+    """
+    protocol = SMTPProtocol()
+    protocol.connection_made(FakeTransport())
+
+    waiter = protocol._response_waiter
+    assert waiter is not None
+    waiter.set_result(SMTPResponse(220, "Hi"))
+
+    protocol.data_received(b"221 Bye\r\n")
+
+    assert protocol._response_waiter is waiter
+    assert waiter.result().code == 220
+
+
+async def test_protocol_disconnect_after_starttls_response(
+    client_tls_context: ssl.SSLContext,
+) -> None:
+    """
+    If the server replies 220 to STARTTLS but the transport is closing by the
+    time we go to upgrade, ``start_tls`` must raise ``SMTPServerDisconnected``.
+    """
+
+    class ClosingTransport(asyncio.Transport):
+        def __init__(self) -> None:
+            super().__init__()
+            self.writes: list[bytes] = []
+            self.closing = False
+
+        def get_extra_info(self, name: str, default: object = None) -> object:
+            return default
+
+        def is_closing(self) -> bool:
+            return self.closing
+
+        def write(self, data: bytes) -> None:
+            self.writes.append(bytes(data))
+
+    protocol = SMTPProtocol()
+    transport = ClosingTransport()
+    protocol.connection_made(transport)
+
+    async def feed_response() -> None:
+        await asyncio.sleep(0)
+        transport.closing = True
+        protocol.data_received(b"220 Ready to start TLS\r\n")
+
+    feeder = asyncio.create_task(feed_response())
+    try:
+        with pytest.raises(SMTPServerDisconnected, match="Connection lost"):
+            await protocol.start_tls(client_tls_context, timeout=1.0)
+    finally:
+        await feeder
+
+
 async def test_protocol_writes_proxy_header_on_connection_made() -> None:
     header = b"PROXY TCP4 192.0.2.1 203.0.113.5 51234 25\r\n"
     protocol = SMTPProtocol(proxy_header=header)
-    transport = _FakeTransport()
+    transport = FakeTransport()
 
     protocol.connection_made(transport)
 
@@ -555,7 +638,7 @@ async def test_protocol_writes_proxy_header_on_connection_made() -> None:
 
 async def test_protocol_no_writes_without_proxy_header() -> None:
     protocol = SMTPProtocol()
-    transport = _FakeTransport()
+    transport = FakeTransport()
 
     protocol.connection_made(transport)
 
