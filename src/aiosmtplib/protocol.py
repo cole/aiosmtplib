@@ -95,6 +95,7 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
         self,
         loop: asyncio.AbstractEventLoop | None = None,
         connection_lost_callback: Callable[[], None] | None = None,
+        proxy_header: bytes | None = None,
     ) -> None:
         super().__init__(loop=loop)
         self._over_ssl = False
@@ -106,6 +107,7 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
         self._closed_future: "asyncio.Future[None]" = self._loop.create_future()
         self._quit_sent = False
         self._connection_lost_callback = connection_lost_callback
+        self._proxy_header = proxy_header
 
     def _get_close_waiter(self, stream: asyncio.StreamWriter) -> "asyncio.Future[None]":
         return self._closed_future
@@ -128,6 +130,9 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
         self._response_waiter = self._loop.create_future()
         self._command_lock = asyncio.Lock()
         self._quit_sent = False
+
+        if self._proxy_header is not None:
+            cast(asyncio.WriteTransport, self.transport).write(self._proxy_header)
 
     def connection_lost(self, exc: Exception | None) -> None:
         super().connection_lost(exc)

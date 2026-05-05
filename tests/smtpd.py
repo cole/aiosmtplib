@@ -9,6 +9,7 @@ from email.message import EmailMessage, Message
 from typing import Any, AnyStr
 
 from aiosmtpd.handlers import Message as MessageHandler
+from aiosmtpd.proxy_protocol import ProxyData
 from aiosmtpd.smtp import MISSING
 from aiosmtpd.smtp import SMTP as SMTPD
 from aiosmtpd.smtp import Envelope, Session, _Missing
@@ -29,6 +30,7 @@ class RecordingHandler(MessageHandler):
         self.messages = messages_list
         self.commands = commands_list
         self.responses = responses_list
+        self.proxy_data: ProxyData | None = None
         super().__init__(message_class=EmailMessage)
 
     def record_command(self, command: str, *args: Any) -> None:
@@ -54,6 +56,16 @@ class RecordingHandler(MessageHandler):
             return ["250-AUTH LOGIN"] + responses
         else:
             return responses
+
+    async def handle_PROXY(
+        self,
+        server: SMTPD,
+        session: Session,
+        envelope: Envelope,
+        proxy_data: ProxyData,
+    ) -> bool:
+        self.proxy_data = proxy_data
+        return True
 
 
 class TestSMTPD(SMTPD):

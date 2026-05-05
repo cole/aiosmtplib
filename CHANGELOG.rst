@@ -4,6 +4,10 @@ Changelog
 Unreleased
 ----------
 
+- Feature: Support sending the HAProxy PROXY protocol header on connect, via a
+  new ``proxy_protocol`` keyword on ``SMTP``. Both v1 (text) and v2 (binary)
+  are supported, with v2 the default. Header bytes are written before the SMTP
+  banner is read, including ahead of the TLS handshake when ``use_tls=True``.
 - Bugfix: ``SMTP.quit()`` no longer hangs until the read timeout when the
   peer drops the transport with an exception after ``QUIT`` is sent but
   before the 221 reply is parsed (e.g. AWS SES closing TLS without
