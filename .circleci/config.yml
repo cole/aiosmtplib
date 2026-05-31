@@ -45,6 +45,7 @@ jobs:
     executor:
       name: cpython_executor
     steps:
+      - checkout
       - attach_workspace:
           at: dist
       - run: uv tool run --from poethepoet poe buildcheck
