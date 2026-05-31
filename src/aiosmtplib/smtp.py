@@ -600,7 +600,10 @@ class SMTP:
             response = await self.protocol.execute_command(
                 *args, timeout=self.timeout if timeout is Default.token else timeout
             )
-        except SMTPServerDisconnected:
+        except (SMTPServerDisconnected, SMTPTimeoutError):
+            # A read timeout leaves the protocol desynced (a partial buffer and
+            # a server response we gave up on), so close rather than risk
+            # mispairing that response with a later command.
             self.close()
             raise
 
@@ -943,7 +946,7 @@ class SMTP:
 
         try:
             return await self.protocol.execute_data_command(message, timeout=timeout)
-        except SMTPServerDisconnected:
+        except (SMTPServerDisconnected, SMTPTimeoutError):
             self.close()
             raise
 
@@ -1073,7 +1076,7 @@ class SMTP:
             response = await self.protocol.start_tls(
                 tls_context, server_hostname=server_hostname, timeout=timeout
             )
-        except SMTPServerDisconnected:
+        except (SMTPServerDisconnected, SMTPTimeoutError):
             self.close()
             raise
 

@@ -16,6 +16,9 @@ Changelog
   continuation lines
 - Bugfix: Use the invalid_response status code (-1) instead of 500 when a
   server response line exceeds the maximum length
+- Bugfix: A read timeout now closes the connection instead of leaving it in a
+  desynced state, where a late server response could be mispaired with a
+  subsequent command
 
 
 5.1.1
