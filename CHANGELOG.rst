@@ -7,6 +7,11 @@ Changelog
 - Bugfix: Timeout ignored during CRAM-MD5 verification
 - Bugfix: Only parse EHLO response after validating success
 - Bugfix: return None from extract_sender when address list is empty
+- Bugfix: Enforce a maximum total response size, preventing unbounded memory
+  use if a server streams data with no line ending or endless multiline
+  continuation lines
+- Bugfix: Use the invalid_response status code (-1) instead of 500 when a
+  server response line exceeds the maximum length
 
 
 5.1.1

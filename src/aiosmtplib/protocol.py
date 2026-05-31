@@ -23,6 +23,10 @@ __all__ = ("SMTPProtocol",)
 
 
 MAX_LINE_LENGTH = 8192
+# A whole response (including multiline continuations) may not exceed this.
+# Bounds memory if a server streams data with no line ending or endless
+# continuation lines; generous over any real EHLO, which is a few KB.
+MAX_RESPONSE_LENGTH = MAX_LINE_LENGTH * 4
 LINE_ENDINGS_REGEX = re.compile(rb"(?:\r\n|\n|\r(?!\n))")
 PERIOD_REGEX = re.compile(rb"(?m)^\.")
 # Reject all C0 controls + DEL; CR/LF/NUL in particular enable injection.
@@ -162,6 +166,15 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
 
         self._buffer.extend(data)
 
+        if len(self._buffer) > MAX_RESPONSE_LENGTH:
+            del self._buffer[:]
+            self._response_waiter.set_exception(
+                SMTPResponseException(
+                    SMTPStatus.invalid_response.value, "Response too long"
+                )
+            )
+            return
+
         # If we got an obvious partial message, don't try to parse the buffer
         last_linebreak = data.rfind(b"\n")
         if (
@@ -217,7 +230,7 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
 
             if len(line) > MAX_LINE_LENGTH:
                 raise SMTPResponseException(
-                    SMTPStatus.unrecognized_command, "Response too long"
+                    SMTPStatus.invalid_response.value, "Response too long"
                 )
 
             try:
