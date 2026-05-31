@@ -27,8 +27,5 @@ class SMTPResponse(NamedTuple):
     code: int
     message: str
 
-    def __repr__(self) -> str:
-        return f"({self.code}, {self.message})"
-
     def __str__(self) -> str:
         return f"{self.code} {self.message}"

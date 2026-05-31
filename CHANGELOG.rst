@@ -4,6 +4,8 @@ Changelog
 5.1.2 (unreleased)
 ------------------
 
+- Bugfix: Corrected SMTPResonse `__repr__` result
+- Feature: Poe command runner for dev tasks
 - Bugfix: Timeout ignored during CRAM-MD5 verification
 - Bugfix: Only parse EHLO response after validating success
 - Bugfix: return None from extract_sender when address list is empty
