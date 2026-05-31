@@ -43,6 +43,45 @@ docs = [
 [tool.hatch.version]
 path = "src/aiosmtplib/__init__.py"
 
+[tool.poe.tasks]
+lint = { cmd = "uvx ruff check src tests", help = "Lint with ruff" }
+format = { cmd = "uvx ruff format src tests", help = "Format with ruff" }
+format-check = { cmd = "uvx ruff format --check src tests", help = "Check formatting (no writes)" }
+security = { cmd = "uvx bandit -n 10 -x tests -r src/aiosmtplib", help = "Scan for security issues with bandit" }
+test = { cmd = "pytest", help = "Run the test suite" }
+coverage-report = { cmd = "uvx coverage report --fail-under=100", help = "Report coverage (fails under 100%)" }
+docs = { cmd = "uv run --with-requirements docs/requirements.txt --with . python -m sphinx -nWT -b html docs docs/build/html", help = "Build the HTML docs" }
+
+[tool.poe.tasks.typecheck-mypy]
+help = "Type check with mypy"
+default_item_type = "cmd"
+sequence = ["uvx mypy src/aiosmtplib", "uvx --with . mypy tests/type_usage.py"]
+
+[tool.poe.tasks.typecheck-pyright]
+help = "Type check with pyright"
+default_item_type = "cmd"
+sequence = ["uvx pyright src/aiosmtplib", "uvx --with . pyright tests/type_usage.py"]
+
+[tool.poe.tasks.typecheck-ty]
+help = "Type check with ty"
+default_item_type = "cmd"
+sequence = ["uvx ty check src/aiosmtplib", "uvx --with . ty check tests/type_usage.py"]
+
+[tool.poe.tasks.typecheck]
+help = "Run all type checkers (mypy, pyright, ty)"
+default_item_type = "ref"
+sequence = ["typecheck-mypy", "typecheck-pyright", "typecheck-ty"]
+
+[tool.poe.tasks.buildcheck]
+help = "Validate built artifacts (run `uv build` first)"
+default_item_type = "cmd"
+sequence = ["uvx check-wheel-contents dist", "uvx twine check --strict dist/*"]
+
+[tool.poe.tasks.check]
+help = "Run all lint/type/security/test checks"
+default_item_type = "ref"
+sequence = ["lint", "format-check", "typecheck", "security", "test"]
+
 [tool.pytest.ini_options]
 pythonpath = "src"
 asyncio_mode = "auto"
