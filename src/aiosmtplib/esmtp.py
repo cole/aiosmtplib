@@ -9,7 +9,6 @@ __all__ = ("parse_esmtp_extensions",)
 
 
 OLDSTYLE_AUTH_REGEX = re.compile(r"auth=(?P<auth>.*)", flags=re.I)
-EXTENSIONS_REGEX = re.compile(r"(?P<ext>[A-Za-z0-9][A-Za-z0-9\-]*) ?")
 
 
 def parse_esmtp_extensions(message: str) -> tuple[dict[str, str], list[str]]:
@@ -41,32 +40,32 @@ def parse_esmtp_extensions(message: str) -> tuple[dict[str, str], list[str]]:
     esmtp_extensions: dict[str, str] = {}
     auth_types: list[str] = []
 
-    response_lines = message.split("\n")
+    # Skip the greeting line; each remaining line is "KEYWORD [params]".
+    for line in message.split("\n")[1:]:
+        line = line.strip()
+        if not line:
+            continue
 
-    # ignore the first line
-    for line in response_lines[1:]:
         # To be able to communicate with as many SMTP servers as possible,
-        # we have to take the old-style auth advertisement into account,
-        # because:
-        # 1) Else our SMTP feature parser gets confused.
-        # 2) There are some servers that only advertise the auth methods we
-        #    support using the old style.
-        auth_match = OLDSTYLE_AUTH_REGEX.match(line)
-        if auth_match is not None:
-            auth_type = auth_match.group("auth")
-            auth_types.append(auth_type.lower().strip())
+        # we have to take the old-style "AUTH=method[ method...]" advertisement
+        # into account. Some servers only advertise the auth methods we support
+        # using the old style, so register the extension here too (not just the
+        # methods) to keep supports_extension("auth") accurate.
+        oldstyle_auth = OLDSTYLE_AUTH_REGEX.fullmatch(line)
+        if oldstyle_auth is not None:
+            params = oldstyle_auth["auth"]
+            esmtp_extensions["auth"] = params
+            auth_types.extend(method.lower() for method in params.split())
+            continue
 
-        # RFC 1869 requires a space between ehlo keyword and parameters.
-        # It's actually stricter, in that only spaces are allowed between
-        # parameters, but were not going to check for that here.  Note
-        # that the space isn't present if there are no parameters.
-        extensions = EXTENSIONS_REGEX.match(line)
-        if extensions is not None:
-            extension = extensions.group("ext").lower()
-            params = extensions.string[extensions.end("ext") :].strip()
-            esmtp_extensions[extension] = params
+        # RFC 1869 requires a space between the ehlo keyword and its parameters
+        # (and only spaces between parameters, though we don't enforce that).
+        # The space isn't present when there are no parameters.
+        keyword, _, params = line.partition(" ")
+        keyword = keyword.lower()
+        esmtp_extensions[keyword] = params
 
-            if extension == "auth":
-                auth_types.extend([param.strip().lower() for param in params.split()])
+        if keyword == "auth":
+            auth_types.extend(method.lower() for method in params.split())
 
     return esmtp_extensions, auth_types
