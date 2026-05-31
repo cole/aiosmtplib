@@ -19,6 +19,11 @@ Changelog
 - Bugfix: A read timeout now closes the connection instead of leaving it in a
   desynced state, where a late server response could be mispaired with a
   subsequent command
+- Bugfix: Correctly parse old-style ``AUTH=`` extension advertisements; all
+  advertised methods are now kept (e.g. both PLAIN and LOGIN from
+  ``AUTH=PLAIN LOGIN``)
+- Bugfix: ESMTP extension lines with leading whitespace are no
+  longer ignored
 
 
 5.1.1
