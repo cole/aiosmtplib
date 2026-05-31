@@ -4,7 +4,9 @@ Changelog
 5.1.2 (unreleased)
 ------------------
 
-- Bugfix: Corrected SMTPResonse `__repr__` result
+- Bugfix: Corrected SMTPResponse ``__repr__`` result
+- Bugfix: Calling ``connect()`` on an already-connected client now raises
+  ``SMTPException`` instead of deadlocking on the connection lock
 - Feature: Poe command runner for dev tasks
 - Bugfix: Timeout ignored during CRAM-MD5 verification
 - Bugfix: Only parse EHLO response after validating success
