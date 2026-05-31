@@ -27,6 +27,24 @@ async def test_command_timeout_error(smtp_client: SMTP) -> None:
     with pytest.raises(SMTPTimeoutError):
         await smtp_client.ehlo(hostname="example.com", timeout=0.0)
 
+    # A read timeout closes the connection, since the protocol is now desynced.
+    assert smtp_client.protocol is None
+    assert smtp_client.transport is None
+    assert not smtp_client.is_connected
+
+
+@pytest.mark.smtpd_mocks(smtp_EHLO=mock_response_delayed_ok)
+async def test_command_timeout_closes_connection(smtp_client: SMTP) -> None:
+    await smtp_client.connect()
+
+    with pytest.raises(SMTPTimeoutError):
+        await smtp_client.ehlo(hostname="example.com", timeout=0.0)
+
+    # Reusing a timed-out connection must fail cleanly rather than mispair a
+    # late server response with the next command.
+    with pytest.raises(SMTPServerDisconnected):
+        await smtp_client.noop()
+
 
 @pytest.mark.smtpd_mocks(smtp_DATA=mock_response_delayed_ok)
 async def test_data_timeout_error(smtp_client: SMTP) -> None:
@@ -36,6 +54,10 @@ async def test_data_timeout_error(smtp_client: SMTP) -> None:
     await smtp_client.rcpt("test@example.com")
     with pytest.raises(SMTPTimeoutError):
         await smtp_client.data("HELLO WORLD", timeout=0.0)
+
+    assert smtp_client.protocol is None
+    assert smtp_client.transport is None
+    assert not smtp_client.is_connected
 
 
 @pytest.mark.smtpd_mocks(_handle_client=mock_response_delayed_ok)
@@ -61,6 +83,10 @@ async def test_timeout_on_starttls(smtp_client: SMTP) -> None:
 
     with pytest.raises(SMTPTimeoutError):
         await smtp_client.starttls(timeout=0.0)
+
+    assert smtp_client.protocol is None
+    assert smtp_client.transport is None
+    assert not smtp_client.is_connected
 
 
 async def test_protocol_read_response_with_timeout_times_out(
