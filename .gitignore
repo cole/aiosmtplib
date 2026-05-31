@@ -29,3 +29,4 @@ TODO
 venv/
 poetry.lock
 uv.lock
+__pycache__
