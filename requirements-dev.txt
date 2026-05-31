@@ -6,3 +6,4 @@ coverage[toml]>=6.5
 hypothesis>=6.56
 aiosmtpd>=1.4.2
 trustme>=0.9.0
+poethepoet>=0.24

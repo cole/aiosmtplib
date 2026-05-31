@@ -47,27 +47,21 @@ jobs:
     steps:
       - attach_workspace:
           at: dist
-      - run: uv tool run check-wheel-contents dist/*.whl
-      - run: uv tool run twine check --strict dist/*
+      - run: uv tool run --from poethepoet poe buildcheck
 
   typecheck:
     executor:
       name: cpython_executor
     steps:
       - checkout
-      - run: uv tool run mypy src/aiosmtplib
-      - run: uv tool run --with . mypy tests/type_usage.py
-      - run: uv tool run pyright src/aiosmtplib
-      - run: uv tool run --with . pyright tests/type_usage.py
-      - run: uv tool run ty check src/aiosmtplib
-      - run: uv tool run --with . ty check tests/type_usage.py
+      - run: uv tool run --from poethepoet poe typecheck
 
   security:
     executor:
       name: cpython_executor
     steps:
       - checkout
-      - run: uv tool run bandit -n 10 -x tests -r src/aiosmtplib
+      - run: uv tool run --from poethepoet poe security
 
   docs:
     executor:
