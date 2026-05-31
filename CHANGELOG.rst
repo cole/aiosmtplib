@@ -1,8 +1,8 @@
 Changelog
 =========
 
-Unreleased
-----------
+5.1.1
+-----
 
 - Security: Reject control characters (the C0 range ``0x00``-``0x1F`` and DEL
   ``0x7F``, including CR, LF, and NUL) in SMTP command arguments, preventing
