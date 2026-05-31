@@ -69,6 +69,22 @@ async def test_quit_then_connect_ok(
         assert response.code == SMTPStatus.completed
 
 
+async def test_connect_while_connected_raises(
+    smtp_client: SMTP, smtpd_server: asyncio.AbstractServer
+) -> None:
+    await smtp_client.connect()
+    assert smtp_client.is_connected
+
+    # Connecting an already-connected client is an error, not a deadlock.
+    with pytest.raises(SMTPException, match="already connected"):
+        await asyncio.wait_for(smtp_client.connect(), 1.0)
+
+    # The existing connection is untouched.
+    assert smtp_client.is_connected
+    response = await smtp_client.noop()
+    assert response.code == SMTPStatus.completed
+
+
 @pytest.mark.smtpd_mocks(_handle_client=mock_response_unavailable)
 async def test_bad_connect_response_raises_error(smtp_client: SMTP) -> None:
     with pytest.raises(SMTPConnectError):

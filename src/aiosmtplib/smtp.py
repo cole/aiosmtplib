@@ -440,6 +440,11 @@ class SMTP:
         self.loop = asyncio.get_running_loop()
         if self._connect_lock is None:
             self._connect_lock = asyncio.Lock()
+
+        if self.is_connected:
+            raise SMTPException("SMTP instance is already connected")
+
+        # The lock is held until close(), serializing concurrent connect calls.
         await self._connect_lock.acquire()
 
         # If we're not using a socket, default to port and hostname
