@@ -33,7 +33,7 @@ from .smtp import SMTP
 from .typing import SMTPStatus, SMTPTokenGenerator
 
 __title__ = "aiosmtplib"
-__version__ = "5.1.1"
+__version__ = "5.1.2dev0"
 __author__ = "Cole Maclean"
 __license__ = "MIT"
 __copyright__ = "Copyright 2022 Cole Maclean"
