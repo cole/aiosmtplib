@@ -2,6 +2,8 @@
 Lower level SMTP command tests.
 """
 
+import contextlib
+import email.errors
 import email.message
 from typing import Any
 
@@ -493,7 +495,11 @@ async def test_send_message_compat32_does_not_smuggle_envelope_commands(
     message.set_payload("hello")
 
     async with smtp_client:
-        await smtp_client.send_message(message)
+        # PyPy's BytesGenerator enforces verify_generated_headers and rejects the
+        # injected newline; CPython's BytesGenerator does not. Either way, no
+        # envelope command may be smuggled.
+        with contextlib.suppress(email.errors.HeaderWriteError):
+            await smtp_client.send_message(message)
 
     for _, args in received_commands:
         assert all("hijacker" not in str(arg) for arg in args)
