@@ -1338,7 +1338,7 @@ class SMTP:
             ...     await smtp.sendmail("me@my.org", recipients, message)
             ...     return await smtp.quit()
             >>> asyncio.run(connect_and_send())
-            (221, Bye)
+            SMTPResponse(code=221, message='Bye')
 
         In the above example, the message was accepted for delivery for all
         three addresses. If delivery had been only successful to two
