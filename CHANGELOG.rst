@@ -4,6 +4,13 @@ Changelog
 Unreleased
 ----------
 
+- Security: Reject control characters (the C0 range ``0x00``-``0x1F`` and DEL
+  ``0x7F``, including CR, LF, and NUL) in SMTP command arguments, preventing
+  command injection via input passed to ``mail()``, ``rcpt()``, ``vrfy()``,
+  ``expn()`` or ``sendmail()``. Such input now raises ``ValueError`` before
+  anything is written to the connection.
+  More details: https://github.com/cole/aiosmtplib/security/advisories/GHSA-v3q9-hj7j-63hq
+  Thanks to @tonghuaroot for the report.
 - Bugfix: ``SMTP.quit()`` no longer hangs until the read timeout when the
   peer drops the transport with an exception after ``QUIT`` is sent but
   before the 221 reply is parsed (e.g. AWS SES closing TLS without

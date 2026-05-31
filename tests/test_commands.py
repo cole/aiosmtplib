@@ -2,6 +2,7 @@
 Lower level SMTP command tests.
 """
 
+import email.message
 from typing import Any
 
 import pytest
@@ -18,16 +19,16 @@ from aiosmtplib import (
 
 from .smtpd import (
     RecordingHandler,
-    mock_response_done,
+    mock_response_bad_command_sequence,
     mock_response_bad_data,
+    mock_response_done,
     mock_response_ehlo_full,
     mock_response_expn,
     mock_response_gibberish,
-    mock_response_unavailable,
-    mock_response_unrecognized_command,
-    mock_response_bad_command_sequence,
     mock_response_syntax_error,
     mock_response_syntax_error_and_cleanup,
+    mock_response_unavailable,
+    mock_response_unrecognized_command,
 )
 
 
@@ -433,14 +434,66 @@ async def test_badly_encoded_text_response(smtp_client: SMTP) -> None:
     assert response.code == SMTPStatus.completed
 
 
-async def test_header_injection(
+@pytest.mark.parametrize("command", ("mail", "rcpt", "vrfy", "expn"))
+async def test_address_command_rejects_injection(
+    smtp_client: SMTP,
+    received_commands: list[tuple[str, tuple[Any, ...]]],
+    command: str,
+) -> None:
+    async with smtp_client:
+        await smtp_client.ehlo()
+        received_commands.clear()
+
+        method = getattr(smtp_client, command)
+        with pytest.raises(ValueError):
+            await method("test@example.com\r\nRCPT TO:<hijacker@example.com>")
+
+        assert received_commands == []
+
+
+async def test_sendmail_rejects_command_injection(
+    smtp_client: SMTP,
+    received_commands: list[tuple[str, tuple[Any, ...]]],
+    received_messages: list[email.message.EmailMessage],
+) -> None:
+    """
+    A complete transaction smuggled into the sender must never be sent.
+    """
+    injected_sender = (
+        "test@example.com>\r\n"
+        "MAIL FROM:<attacker@example.com>\r\n"
+        "RCPT TO:<hijacker@example.com>\r\n"
+        "DATA\r\n"
+        "Subject: smuggled\r\n"
+        "\r\n"
+        "smuggled body\r\n"
+        ".\r\n"
+        "RSET\r\nMAIL FROM:<x"
+    )
+    async with smtp_client:
+        await smtp_client.ehlo()
+        received_commands.clear()
+
+        with pytest.raises(ValueError):
+            await smtp_client.sendmail(
+                injected_sender, ["recipient@example.com"], "Subject: legit\n\nhi"
+            )
+
+        assert received_commands == []
+        assert received_messages == []
+
+
+async def test_send_message_compat32_does_not_smuggle_envelope_commands(
     smtp_client: SMTP,
     received_commands: list[tuple[str, tuple[Any, ...]]],
 ) -> None:
-    async with smtp_client:
-        await smtp_client.mail("test@example.com\r\nX-Malicious-Header: bad stuff")
+    message = email.message.Message()
+    message["From"] = "sender@example.com\r\nRCPT TO:<hijacker@example.com>"
+    message["To"] = "recipient@example.com"
+    message.set_payload("hello")
 
-    assert len(received_commands) > 0
-    for command in received_commands:
-        for arg in command:
-            assert "bad stuff" not in arg
+    async with smtp_client:
+        await smtp_client.send_message(message)
+
+    for _, args in received_commands:
+        assert all("hijacker" not in str(arg) for arg in args)
