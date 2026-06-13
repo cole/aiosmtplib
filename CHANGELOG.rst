@@ -4,6 +4,10 @@ Changelog
 5.1.2 (unreleased)
 ------------------
 
+- Security: Discard any buffered server data before the STARTTLS handshake,
+  preventing a response-injection attack where a man-in-the-middle pre-stages
+  plaintext that would otherwise be read as part of the encrypted session.
+  More details: https://github.com/cole/aiosmtplib/security/advisories/GHSA-vxj7-4xrp-5vr4
 - Bugfix: Corrected SMTPResponse ``__repr__`` result
 - Bugfix: Calling ``connect()`` on an already-connected client now raises
   ``SMTPException`` instead of deadlocking on the connection lock

@@ -379,6 +379,13 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
             if self.transport is None or self.transport.is_closing():
                 raise SMTPServerDisconnected("Connection lost")
 
+            # STARTTLS injection defense (RFC 3207 section 4.2): a compliant
+            # server sends nothing after its 220 reply until TLS is negotiated.
+            # Any bytes still buffered here are plaintext a MITM may have
+            # injected; discard them so they cannot be misread as part of the
+            # encrypted session once the handshake completes.
+            del self._buffer[:]
+
             try:
                 tls_transport = await self._loop.start_tls(
                     cast(asyncio.WriteTransport, self.transport),
