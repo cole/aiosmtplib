@@ -704,3 +704,90 @@ async def test_protocol_execute_command_rejects_injected_option() -> None:
         )
 
     assert transport.writes == []
+
+
+async def test_protocol_ignores_unsolicited_data_between_commands() -> None:
+    """
+    Data received while no command is outstanding must be discarded, not stored
+    on the next waiter. Otherwise a single unsolicited line permanently desyncs
+    every subsequent command/response pair by one.
+    """
+    protocol = SMTPProtocol()
+    transport = _WriteRecordingTransport()
+    protocol.connection_made(transport)
+
+    # Greeting, consumed by a normal read.
+    protocol.data_received(b"220 hi\r\n")
+    greeting = await protocol.read_response(timeout=1.0)
+    assert greeting.code == 220
+
+    # An unsolicited line arrives while the client is idle between commands.
+    protocol.data_received(b"250 unsolicited\r\n")
+    assert protocol._response_waiter is not None
+    assert not protocol._response_waiter.done()
+    assert protocol._buffer == bytearray()
+
+    # The next command must receive its OWN response, not the stale line.
+    task = asyncio.ensure_future(protocol.execute_command(b"NOOP", timeout=1.0))
+    await asyncio.sleep(0)  # let the command write and start awaiting
+    protocol.data_received(b"250 real noop reply\r\n")
+
+    response = await task
+    assert response.code == 250
+    assert response.message == "real noop reply"
+
+
+async def test_protocol_ignores_unsolicited_multiline_data() -> None:
+    """An unsolicited multiline response between commands must be discarded."""
+    protocol = SMTPProtocol()
+    transport = _WriteRecordingTransport()
+    protocol.connection_made(transport)
+
+    protocol.data_received(b"220 hi\r\n")
+    greeting = await protocol.read_response(timeout=1.0)
+    assert greeting.code == 220
+
+    # A full multiline response arrives while no command is outstanding.
+    protocol.data_received(b"250-foo\r\n250-bar\r\n250 baz\r\n")
+    assert protocol._response_waiter is not None
+    assert not protocol._response_waiter.done()
+    assert protocol._buffer == bytearray()
+
+    task = asyncio.ensure_future(protocol.execute_command(b"NOOP", timeout=1.0))
+    await asyncio.sleep(0)
+    protocol.data_received(b"250 real\r\n")
+
+    response = await task
+    assert response.code == 250
+    assert response.message == "real"
+
+
+async def test_protocol_ignores_unsolicited_partial_data() -> None:
+    """
+    Unsolicited data fragmented across data_received calls between commands
+    must be discarded, not buffered for the next command.
+    """
+    protocol = SMTPProtocol()
+    transport = _WriteRecordingTransport()
+    protocol.connection_made(transport)
+
+    protocol.data_received(b"220 hi\r\n")
+    greeting = await protocol.read_response(timeout=1.0)
+    assert greeting.code == 220
+
+    # Unsolicited response trickling in across multiple chunks, including a
+    # mid-line split, while no command is outstanding.
+    protocol.data_received(b"250-foo\r\n")
+    protocol.data_received(b"250 ba")
+    protocol.data_received(b"r\r\n")
+    assert protocol._response_waiter is not None
+    assert not protocol._response_waiter.done()
+    assert protocol._buffer == bytearray()
+
+    task = asyncio.ensure_future(protocol.execute_command(b"NOOP", timeout=1.0))
+    await asyncio.sleep(0)
+    protocol.data_received(b"250 real\r\n")
+
+    response = await task
+    assert response.code == 250
+    assert response.message == "real"
