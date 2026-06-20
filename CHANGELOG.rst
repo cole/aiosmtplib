@@ -1,6 +1,13 @@
 Changelog
 =========
 
+5.1.3 (unreleased)
+------------------
+
+- Bugfix: prevent SMTP command/response desync from unsolicited server data (thanks
+  @Charisn for contributing)
+
+
 5.1.2
 -----
 
