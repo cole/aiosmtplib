@@ -474,7 +474,9 @@ class SMTP:
         if self.loop is None:
             raise RuntimeError("No event loop set")
 
-        protocol = SMTPProtocol(loop=self.loop, connection_lost_callback=self.close)
+        protocol = SMTPProtocol(
+            loop=self.loop, connection_lost_callback=self._on_connection_lost
+        )
 
         tls_context: ssl.SSLContext | None = None
         ssl_handshake_timeout: float | None = None
@@ -635,6 +637,10 @@ class SMTP:
                 context.load_cert_chain(self.client_cert, keyfile=self.client_key)
 
         return context
+
+    def _on_connection_lost(self, protocol: SMTPProtocol) -> None:
+        if protocol is self.protocol:
+            self.close()
 
     def close(self) -> None:
         """

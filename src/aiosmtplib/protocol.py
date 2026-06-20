@@ -100,7 +100,7 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
     def __init__(
         self,
         loop: asyncio.AbstractEventLoop | None = None,
-        connection_lost_callback: Callable[[], None] | None = None,
+        connection_lost_callback: Callable[["SMTPProtocol"], None] | None = None,
     ) -> None:
         super().__init__(loop=loop)
         self._over_ssl = False
@@ -161,7 +161,7 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
         self._command_lock = None
 
         if self._connection_lost_callback:
-            self._connection_lost_callback()
+            self._connection_lost_callback(self)
 
     def data_received(self, data: bytes) -> None:
         if self._response_waiter is None:

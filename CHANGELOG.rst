@@ -6,6 +6,7 @@ Changelog
 
 - Bugfix: prevent SMTP command/response desync from unsolicited server data (thanks
   @Charisn for contributing)
+- Bugfix: handle protocol connection lost callback arriving after reconnect
 
 
 5.1.2

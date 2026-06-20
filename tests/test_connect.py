@@ -528,3 +528,24 @@ async def test_connect_with_oauth_token_generator_no_username(
             start_tls=True,
             oauth_token_generator=get_token,
         )
+
+
+async def test_stale_connection_lost_does_not_sabotage_reconnect(
+    smtp_client: SMTP,
+    smtpd_server: asyncio.AbstractServer,
+) -> None:
+    await smtp_client.connect()
+    old_protocol = smtp_client.protocol
+
+    await smtp_client.quit()
+    await smtp_client.connect()
+
+    assert smtp_client.is_connected
+    assert smtp_client._connect_lock is not None
+    assert smtp_client._connect_lock.locked()
+
+    # Simulate a stale connection_lost from the old protocol arriving after reconnect
+    old_protocol.connection_lost(None)
+
+    assert smtp_client.is_connected
+    assert smtp_client._connect_lock.locked()
