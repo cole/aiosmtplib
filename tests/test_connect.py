@@ -25,6 +25,7 @@ from .smtpd import (
     mock_response_unavailable,
     mock_response_disconnect,
     mock_response_eof,
+    mock_response_quit_error,
     mock_response_start_data_disconnect,
     mock_response_tls_ready_disconnect,
 )
@@ -528,6 +529,15 @@ async def test_connect_with_oauth_token_generator_no_username(
             start_tls=True,
             oauth_token_generator=get_token,
         )
+
+
+@pytest.mark.smtpd_mocks(smtp_QUIT=mock_response_quit_error)
+async def test_aexit_closes_connection_on_non_221_quit(smtp_client: SMTP) -> None:
+    async with smtp_client:
+        pass
+
+    assert not smtp_client.is_connected
+    assert smtp_client.transport is None
 
 
 async def test_stale_connection_lost_does_not_sabotage_reconnect(

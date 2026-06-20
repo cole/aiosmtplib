@@ -198,6 +198,8 @@ class SMTP:
             await self.quit()
         except (SMTPServerDisconnected, SMTPResponseException, SMTPTimeoutError):
             pass
+        finally:
+            self.close()
 
     @property
     def is_connected(self) -> bool:

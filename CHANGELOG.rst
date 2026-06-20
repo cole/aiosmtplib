@@ -7,6 +7,7 @@ Changelog
 - Bugfix: prevent SMTP command/response desync from unsolicited server data (thanks
   @Charisn for contributing)
 - Bugfix: handle protocol connection lost callback arriving after reconnect
+- Bugfix: close connection on async context manager exit in cases of a server error response
 
 
 5.1.2

@@ -257,3 +257,7 @@ async def mock_response_syntax_error_and_cleanup(
         smtpd._handler_coroutine.cancel()
     if smtpd.transport:
         smtpd.transport.close()
+
+
+async def mock_response_quit_error(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
+    await smtpd.push("500 unexpected error")
