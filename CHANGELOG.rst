@@ -1,8 +1,8 @@
 Changelog
 =========
 
-5.1.2 (unreleased)
-------------------
+5.1.2
+-----
 
 - Security: Discard any buffered server data before the STARTTLS handshake,
   preventing a response-injection attack where a man-in-the-middle pre-stages
