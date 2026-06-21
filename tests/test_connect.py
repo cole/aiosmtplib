@@ -531,6 +531,28 @@ async def test_connect_with_oauth_token_generator_no_username(
         )
 
 
+async def test_connect_cancellation_releases_lock(
+    smtp_client: SMTP,
+    smtpd_server: asyncio.AbstractServer,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def slow_local_hostname() -> str:
+        await asyncio.sleep(10)
+        return "localhost"
+
+    monkeypatch.setattr(smtp_client, "_get_default_local_hostname", slow_local_hostname)
+
+    with pytest.raises(asyncio.TimeoutError):
+        await asyncio.wait_for(smtp_client.connect(), timeout=0.05)
+
+    monkeypatch.undo()
+
+    # Lock must be released so a subsequent connect() doesn't hang
+    await asyncio.wait_for(smtp_client.connect(), timeout=5.0)
+    assert smtp_client.is_connected
+    await smtp_client.quit()
+
+
 @pytest.mark.smtpd_mocks(smtp_QUIT=mock_response_quit_error)
 async def test_aexit_closes_connection_on_non_221_quit(smtp_client: SMTP) -> None:
     async with smtp_client:

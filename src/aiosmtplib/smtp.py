@@ -449,26 +449,26 @@ class SMTP:
         # The lock is held until close(), serializing concurrent connect calls.
         await self._connect_lock.acquire()
 
-        # If we're not using a socket, default to port and hostname
-        if self.sock is None and self.socket_path is None:
-            if self.hostname is None:
-                self.hostname = "localhost"
-
-            if self.port is None and self.sock is None and self.socket_path is None:
-                self.port = self._get_default_port()
-
-        if self.local_hostname is None:
-            self.local_hostname = await self._get_default_local_hostname()
-
         try:
+            # If we're not using a socket, default to port and hostname
+            if self.sock is None and self.socket_path is None:
+                if self.hostname is None:
+                    self.hostname = "localhost"
+
+                if self.port is None:
+                    self.port = self._get_default_port()
+
+            if self.local_hostname is None:
+                self.local_hostname = await self._get_default_local_hostname()
+
             response = await self._create_connection(
                 timeout=self.timeout if timeout is Default.token else timeout
             )
             await self._maybe_start_tls_on_connect()
             await self._maybe_login_on_connect()
-        except Exception as exc:
-            self.close()  # Reset our state to disconnected
-            raise exc
+        except (Exception, asyncio.CancelledError):
+            self.close()  # Reset to disconnected and release the lock
+            raise
 
         return response
 

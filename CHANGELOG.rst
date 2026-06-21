@@ -8,6 +8,7 @@ Changelog
   @Charisn for contributing)
 - Bugfix: handle protocol connection lost callback arriving after reconnect
 - Bugfix: close connection on async context manager exit in cases of a server error response
+- Bugfix: release connection lock on connect timeout
 
 
 5.1.2
