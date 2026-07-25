@@ -9,6 +9,10 @@ Changelog
 - Bugfix: handle protocol connection lost callback arriving after reconnect
 - Bugfix: close connection on async context manager exit in cases of a server error response
 - Bugfix: release connection lock on connect timeout
+- Bugfix: re-derive the default port on each ``connect()`` so changing
+  ``use_tls``/``start_tls`` between connects no longer reuses a stale default.
+  Defaulted ``port``/``hostname`` are now resolved per-connect rather than
+  written back onto the instance, so they read back as ``None`` when unset
 
 
 5.1.2

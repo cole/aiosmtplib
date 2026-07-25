@@ -450,14 +450,6 @@ class SMTP:
         await self._connect_lock.acquire()
 
         try:
-            # If we're not using a socket, default to port and hostname
-            if self.sock is None and self.socket_path is None:
-                if self.hostname is None:
-                    self.hostname = "localhost"
-
-                if self.port is None:
-                    self.port = self._get_default_port()
-
             if self.local_hostname is None:
                 self.local_hostname = await self._get_default_local_hostname()
 
@@ -476,6 +468,9 @@ class SMTP:
         if self.loop is None:
             raise RuntimeError("No event loop set")
 
+        port = self.port
+        hostname = self.hostname
+
         protocol = SMTPProtocol(
             loop=self.loop, connection_lost_callback=self._on_connection_lost
         )
@@ -486,7 +481,7 @@ class SMTP:
         if self.use_tls:
             tls_context = self._get_tls_context()
             ssl_handshake_timeout = timeout
-            server_hostname = self.hostname
+            server_hostname = hostname
 
         if self.sock is not None:
             connect_coro = self.loop.create_connection(
@@ -505,15 +500,15 @@ class SMTP:
                 ssl_handshake_timeout=ssl_handshake_timeout,
             )
         else:
-            if self.hostname is None:
-                raise RuntimeError("No hostname provided; default should have been set")
-            if self.port is None:
-                raise RuntimeError("No port provided; default should have been set")
+            if hostname is None:
+                hostname = "localhost"
+            if port is None:
+                port = self._get_default_port()
 
             connect_coro = self.loop.create_connection(
                 lambda: protocol,
-                host=self.hostname,
-                port=self.port,
+                host=hostname,
+                port=port,
                 ssl=tls_context,
                 ssl_handshake_timeout=ssl_handshake_timeout,
                 local_addr=self.source_address,
@@ -523,11 +518,11 @@ class SMTP:
             transport, _ = await asyncio.wait_for(connect_coro, timeout=timeout)
         except (TimeoutError, asyncio.TimeoutError) as exc:
             raise SMTPConnectTimeoutError(
-                f"Timed out connecting to {self.hostname} on port {self.port}"
+                f"Timed out connecting to {hostname} on port {port}"
             ) from exc
         except OSError as exc:
             raise SMTPConnectError(
-                f"Error connecting to {self.hostname} on port {self.port}: {exc}"
+                f"Error connecting to {hostname} on port {port}: {exc}"
             ) from exc
 
         self.protocol = protocol
@@ -537,7 +532,7 @@ class SMTP:
             response = await protocol.read_response(timeout=timeout)
         except SMTPServerDisconnected as exc:
             raise SMTPConnectError(
-                f"Error connecting to {self.hostname} on port {self.port}: {exc}"
+                f"Error connecting to {hostname} on port {port}: {exc}"
             ) from exc
         except SMTPTimeoutError as exc:
             raise SMTPConnectTimeoutError(

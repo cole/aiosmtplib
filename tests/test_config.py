@@ -2,13 +2,12 @@
 Tests covering SMTP configuration options.
 """
 
-import asyncio
 import socket
 import ssl
 
 import pytest
 
-from aiosmtplib import SMTP
+from aiosmtplib import SMTP, SMTPConnectError, SMTPConnectTimeoutError
 
 
 async def test_tls_context_and_cert_raises(client_tls_context: ssl.SSLContext) -> None:
@@ -118,16 +117,25 @@ async def test_default_port_on_connect(
 ) -> None:
     client = SMTP()
 
-    try:
+    # Nothing listens on the default ports; the error names the port tried.
+    with pytest.raises(
+        (SMTPConnectError, SMTPConnectTimeoutError), match=f"port {expected_port}"
+    ):
         await client.connect(
-            hostname=bind_address, use_tls=use_tls, start_tls=start_tls, timeout=0.001
+            hostname=bind_address, use_tls=use_tls, start_tls=start_tls, timeout=0.5
         )
-    except (asyncio.TimeoutError, OSError):
-        pass
 
-    assert client.port == expected_port
+    assert client.port is None
 
-    client.close()
+
+async def test_default_hostname_on_connect() -> None:
+    client = SMTP()
+
+    # No hostname configured; the client defaults to localhost for the attempt.
+    with pytest.raises((SMTPConnectError, SMTPConnectTimeoutError), match="localhost"):
+        await client.connect(timeout=0.5)
+
+    assert client.hostname is None
 
 
 async def test_connect_hostname_takes_precedence(
