@@ -479,7 +479,7 @@ class SMTP:
         ssl_handshake_timeout: float | None = None
         server_hostname: str | None = None
         if self.use_tls:
-            tls_context = self._get_tls_context()
+            tls_context = await self._get_tls_context()
             ssl_handshake_timeout = timeout
             server_hostname = hostname
 
@@ -612,28 +612,32 @@ class SMTP:
 
         return response
 
-    def _get_tls_context(self) -> ssl.SSLContext:
+    async def _get_tls_context(self) -> ssl.SSLContext:
         """
         Build an SSLContext object from the options we've been given.
         """
         if self.tls_context is not None:
-            context = self.tls_context
+            return self.tls_context
         else:
-            # SERVER_AUTH is what we want for a client side socket
-            context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
-            context.check_hostname = bool(self.validate_certs)
-            if self.validate_certs:
-                context.verify_mode = ssl.CERT_REQUIRED
-            else:
-                context.verify_mode = ssl.CERT_NONE
+            loop = asyncio.get_event_loop()
 
-            if self.cert_bundle is not None:
-                context.load_verify_locations(cafile=self.cert_bundle)
+            def _run() -> ssl.SSLContext:
+                # SERVER_AUTH is what we want for a client side socket
+                context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+                context.check_hostname = bool(self.validate_certs)
+                if self.validate_certs:
+                    context.verify_mode = ssl.CERT_REQUIRED
+                else:
+                    context.verify_mode = ssl.CERT_NONE
 
-            if self.client_cert is not None:
-                context.load_cert_chain(self.client_cert, keyfile=self.client_key)
+                if self.cert_bundle is not None:
+                    context.load_verify_locations(cafile=self.cert_bundle)
 
-        return context
+                if self.client_cert is not None:
+                    context.load_cert_chain(self.client_cert, keyfile=self.client_key)
+                return context
+
+            return await loop.run_in_executor(None, _run)
 
     def _on_connection_lost(self, protocol: SMTPProtocol) -> None:
         if protocol is self.protocol:
@@ -1070,7 +1074,7 @@ class SMTP:
         if timeout is Default.token:
             timeout = self.timeout
 
-        tls_context = self._get_tls_context()
+        tls_context = await self._get_tls_context()
 
         if not self.supports_extension("starttls"):
             raise SMTPException("SMTP STARTTLS extension not supported by server.")
