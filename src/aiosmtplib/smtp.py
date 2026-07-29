@@ -619,26 +619,24 @@ class SMTP:
         """
         if self.tls_context is not None:
             return self.tls_context
+
+        return await asyncio.to_thread(self._build_tls_context)
+
+    def _build_tls_context(self) -> ssl.SSLContext:
+        # SERVER_AUTH is what we want for a client side socket
+        context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+        context.check_hostname = bool(self.validate_certs)
+        if self.validate_certs:
+            context.verify_mode = ssl.CERT_REQUIRED
         else:
-            loop = asyncio.get_event_loop()
+            context.verify_mode = ssl.CERT_NONE
 
-            def _run() -> ssl.SSLContext:
-                # SERVER_AUTH is what we want for a client side socket
-                context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
-                context.check_hostname = bool(self.validate_certs)
-                if self.validate_certs:
-                    context.verify_mode = ssl.CERT_REQUIRED
-                else:
-                    context.verify_mode = ssl.CERT_NONE
+        if self.cert_bundle is not None:
+            context.load_verify_locations(cafile=self.cert_bundle)
 
-                if self.cert_bundle is not None:
-                    context.load_verify_locations(cafile=self.cert_bundle)
-
-                if self.client_cert is not None:
-                    context.load_cert_chain(self.client_cert, keyfile=self.client_key)
-                return context
-
-            return await loop.run_in_executor(None, _run)
+        if self.client_cert is not None:
+            context.load_cert_chain(self.client_cert, keyfile=self.client_key)
+        return context
 
     def close(self) -> None:
         """
