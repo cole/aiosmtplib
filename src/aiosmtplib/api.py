@@ -97,7 +97,7 @@ async def send(
     :raises ValueError: required arguments missing or mutually exclusive options
         provided
     """
-    if not isinstance(message, (email.message.EmailMessage, email.message.Message)):
+    if isinstance(message, (str, bytes)):
         if not recipients:
             raise ValueError("Recipients must be provided with raw messages.")
         if not sender:
@@ -127,19 +127,19 @@ async def send(
     )
 
     async with client:
-        if isinstance(message, (email.message.EmailMessage, email.message.Message)):
-            result = await client.send_message(
-                message,
-                sender=sender,
-                recipients=recipients,
-                mail_options=mail_options,
-                rcpt_options=rcpt_options,
-            )
-        else:
+        if isinstance(message, (str, bytes)):
             result = await client.sendmail(
                 sender,
                 recipients,
                 message,
+                mail_options=mail_options,
+                rcpt_options=rcpt_options,
+            )
+        else:
+            result = await client.send_message(
+                message,
+                sender=sender,
+                recipients=recipients,
                 mail_options=mail_options,
                 rcpt_options=rcpt_options,
             )

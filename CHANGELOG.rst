@@ -13,6 +13,7 @@ Changelog
   ``use_tls``/``start_tls`` between connects no longer reuses a stale default.
   Defaulted ``port``/``hostname`` are now resolved per-connect rather than
   written back onto the instance, so they read back as ``None`` when unset
+- Bugfix: typeerror in latest ty
 
 
 5.1.2
