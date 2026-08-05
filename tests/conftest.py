@@ -454,6 +454,7 @@ def smtpd_factory(
             decode_data=smtpd_options.get("7bit", False),
             tls_context=smtpd_tls_context,
             auth_callback=smtpd_auth_callback,
+            proxy_protocol_timeout=smtpd_options.get("proxy_protocol_timeout"),
         )
 
     return factory

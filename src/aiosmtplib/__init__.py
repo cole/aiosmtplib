@@ -28,6 +28,11 @@ from .errors import (
     SMTPServerDisconnected,
     SMTPTimeoutError,
 )
+from .proxy import (
+    proxy_protocol_header,
+    proxy_protocol_header_v1,
+    proxy_protocol_header_v2,
+)
 from .response import SMTPResponse
 from .smtp import SMTP
 from .typing import SMTPStatus, SMTPTokenGenerator
@@ -39,6 +44,9 @@ __license__ = "MIT"
 __copyright__ = "Copyright 2022 Cole Maclean"
 __all__ = (
     "send",
+    "proxy_protocol_header",
+    "proxy_protocol_header_v1",
+    "proxy_protocol_header_v2",
     "SMTP",
     "SMTPResponse",
     "SMTPStatus",

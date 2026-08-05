@@ -15,6 +15,17 @@ Changelog
   written back onto the instance, so they read back as ``None`` when unset
 - Bugfix: typeerror in latest ty
 - Bugfix: TLS context setup now run in thread (thanks @tr4nt0r)
+- Feature: Support sending the HAProxy PROXY protocol header on connect, via a
+  new ``proxy_protocol_header`` keyword (type ``bytes``) on ``SMTP`` and
+  ``send``, with ``proxy_protocol_header_v1``/``proxy_protocol_header_v2``
+  helpers for encoding v1 (text) and v2 (binary) headers
+  (``proxy_protocol_header`` is an alias for the v2 encoder). Header bytes are
+  written before the SMTP banner is read, including ahead of the TLS
+  handshake when ``use_tls=True``.
+- Bugfix: ``SMTP.quit()`` no longer hangs until the read timeout when the
+  peer drops the transport with an exception after ``QUIT`` is sent but
+  before the 221 reply is parsed (e.g. AWS SES closing TLS without
+  ``close_notify``).
 
 
 5.1.2
@@ -56,10 +67,6 @@ Changelog
   anything is written to the connection.
   More details: https://github.com/cole/aiosmtplib/security/advisories/GHSA-v3q9-hj7j-63hq
   Thanks to @tonghuaroot for the report.
-- Bugfix: ``SMTP.quit()`` no longer hangs until the read timeout when the
-  peer drops the transport with an exception after ``QUIT`` is sent but
-  before the 221 reply is parsed (e.g. AWS SES closing TLS without
-  ``close_notify``).
 
 5.1.0
 -----

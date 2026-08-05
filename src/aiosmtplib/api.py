@@ -41,6 +41,7 @@ async def send(
     cert_bundle: str | None = None,
     socket_path: SocketPathType | None = None,
     sock: socket.socket | None = None,
+    proxy_protocol_header: bytes | None = None,
 ) -> tuple[dict[str, SMTPResponse], str]:
     """
     Send an email message. On await, connects to the SMTP server using the details
@@ -93,6 +94,10 @@ async def send(
     :keyword sock: An existing, connected socket object. Not compatible with `port`,
         or `socket_path`. Passing a socket object will transfer control of it to the
         asyncio connection, and it will be closed when the client disconnects.
+    :keyword proxy_protocol_header: A pre-encoded HAProxy PROXY protocol
+        header, as returned by :func:`.proxy_protocol_header_v1` or
+        :func:`.proxy_protocol_header_v2`. If given, it is sent on connect,
+        before the TLS handshake (if any) and before any SMTP data.
 
     :raises ValueError: required arguments missing or mutually exclusive options
         provided
@@ -121,6 +126,7 @@ async def send(
         cert_bundle=cert_bundle,
         socket_path=socket_path,
         sock=sock,
+        proxy_protocol_header=proxy_protocol_header,
         username=username,
         password=password,
         oauth_token_generator=oauth_token_generator,
