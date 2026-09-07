@@ -40,7 +40,7 @@ from .errors import (
     SMTPConnectResponseError,
 )
 from .esmtp import parse_esmtp_extensions
-from .protocol import SMTPProtocol
+from .protocol import SMTPProtocol, normalize_message_line_endings
 from .response import SMTPResponse
 from .typing import Default, SMTPStatus, SMTPTokenGenerator, SocketPathType
 
@@ -1428,7 +1428,12 @@ class SMTP:
                 raise SMTPNotSupported("SMTPUTF8 is not supported by this server")
 
             if self.supports_extension("size"):
-                message_len = len(message)
+                # RFC 1870: the size is the number of octets, including CRLF
+                # pairs, as the message will be transmitted in the DATA command.
+                message_bytes = (
+                    message.encode("ascii") if isinstance(message, str) else message
+                )
+                message_len = len(normalize_message_line_endings(message_bytes))
                 size_option = f"size={message_len}"
                 mail_options.insert(0, size_option)
 

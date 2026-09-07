@@ -33,6 +33,18 @@ PERIOD_REGEX = re.compile(rb"(?m)^\.")
 COMMAND_INJECTION_REGEX = re.compile(rb"[\x00-\x1f\x7f]")
 
 
+def normalize_message_line_endings(message: bytes) -> bytes:
+    """
+    Convert lone \\r and \\n characters to \\r\\n, and ensure the message
+    ends with \\r\\n, matching how it will be transmitted in a DATA command.
+    """
+    message = LINE_ENDINGS_REGEX.sub(b"\r\n", message)
+    if not message.endswith(b"\r\n"):
+        message += b"\r\n"
+
+    return message
+
+
 class FlowControlMixin(asyncio.Protocol):
     """
     Reusable flow control logic for StreamWriter.drain().
@@ -354,10 +366,8 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
         if self._command_lock is None:
             raise SMTPServerDisconnected("Server not connected")
 
-        message = LINE_ENDINGS_REGEX.sub(b"\r\n", message)
+        message = normalize_message_line_endings(message)
         message = PERIOD_REGEX.sub(b"..", message)
-        if not message.endswith(b"\r\n"):
-            message += b"\r\n"
         message += b".\r\n"
 
         async with self._command_lock:

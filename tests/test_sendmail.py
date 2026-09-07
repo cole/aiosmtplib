@@ -617,3 +617,39 @@ async def test_sendmail_empty_sender(
         assert not errors
         assert isinstance(errors, dict)
         assert response != ""
+
+
+async def test_sendmail_size_option_counts_transmitted_octets_bytes(
+    smtp_client: SMTP,
+    sender_str: str,
+    recipient_str: str,
+    received_commands: list[tuple[str, tuple[Any, ...]]],
+) -> None:
+    # Bare LF line endings are converted to CRLF on the wire, the body has
+    # multibyte UTF-8, and there is no trailing newline (one gets added).
+    message = b"From: a@example.com\nTo: b@example.com\n\nH\xc3\xa9llo\n.dot"
+    expected_size = len(
+        b"From: a@example.com\r\nTo: b@example.com\r\n\r\nH\xc3\xa9llo\r\n.dot\r\n"
+    )
+
+    async with smtp_client:
+        await smtp_client.sendmail(sender_str, [recipient_str], message)
+
+    assert received_commands[1][0] == "MAIL"
+    assert received_commands[1][1][1][0] == f"SIZE={expected_size}"
+
+
+async def test_sendmail_size_option_counts_transmitted_octets_str(
+    smtp_client: SMTP,
+    sender_str: str,
+    recipient_str: str,
+    received_commands: list[tuple[str, tuple[Any, ...]]],
+) -> None:
+    message = "From: a@example.com\nTo: b@example.com\n\nHello\n"
+    expected_size = len(b"From: a@example.com\r\nTo: b@example.com\r\n\r\nHello\r\n")
+
+    async with smtp_client:
+        await smtp_client.sendmail(sender_str, [recipient_str], message)
+
+    assert received_commands[1][0] == "MAIL"
+    assert received_commands[1][1][1][0] == f"SIZE={expected_size}"
