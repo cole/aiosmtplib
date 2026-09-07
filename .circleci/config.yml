@@ -4,14 +4,17 @@ orbs:
   codecov: codecov/codecov@6.0.0
 
 executors:
+  # Pin the uv version: the unversioned bookworm tags stopped updating in
+  # early 2026 and ship a uv too old to know about current 3.15 builds.
   cpython_executor:
-    parameters:
-      version:
-        default: "3.12"
-        type: enum
-        enum: ["3.10", "3.11", "3.12", "3.13", "3.14"]
     docker:
-      - image: "ghcr.io/astral-sh/uv:python<<parameters.version>>-bookworm"
+      - image: "ghcr.io/astral-sh/uv:0.12.10-python3.12-trixie"
+    resource_class: small
+    environment:
+      FORCE_COLOR: "1"
+  uv_executor:
+    docker:
+      - image: "ghcr.io/astral-sh/uv:0.12.10-trixie"
     resource_class: small
     environment:
       FORCE_COLOR: "1"
@@ -80,13 +83,12 @@ jobs:
 
   test:
     executor:
-      name: cpython_executor
-      version: <<parameters.python_version>>
+      name: uv_executor
     parameters:
       python_version:
         type: enum
-        description: "python version"
-        enum: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        description: "uv python version request (t suffix = free-threaded)"
+        enum: ["3.10", "3.11", "3.12", "3.13", "3.14", "3.15", "3.14t", "3.15t"]
       event_loop:
         type: enum
         description: "event loop type"
@@ -99,7 +101,9 @@ jobs:
       - checkout
       - attach_workspace:
           at: dist
-      - run: uv venv
+      - run: uv python install <<parameters.python_version>>
+      - run: uv venv --python=<<parameters.python_version>>
+      - run: uv run --no-project -- python -VV
       - run: uv pip install -r requirements-dev.txt
       - when:
           condition:
@@ -112,7 +116,7 @@ jobs:
           steps:
             - run: uv pip install $(find dist -name aiosmtplib-*.whl)
       - run: |
-          uv run --with aiosmtplib --no-project -- python -m pytest \
+          uv run --no-project -- python -m pytest \
             --cov \
             --cov-report=xml:coverage-results/coverage-cpython<<parameters.python_version>>-<<parameters.event_loop>>.xml \
             --cov-config=pyproject.toml \
@@ -229,7 +233,10 @@ workflows:
             alias: "test-cpython-asyncio"
             parameters:
               event_loop: ["asyncio"]
-              python_version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+              # uvloop has no wheels for 3.15 or free-threaded builds, so
+              # those run asyncio only. 3.13t is skipped because cffi (via
+              # trustme) does not support it.
+              python_version: ["3.10", "3.11", "3.12", "3.13", "3.14", "3.15", "3.14t", "3.15t"]
           requires:
             - build
       - test:
