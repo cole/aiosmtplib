@@ -101,6 +101,7 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
         self,
         loop: asyncio.AbstractEventLoop | None = None,
         connection_lost_callback: Callable[["SMTPProtocol"], None] | None = None,
+        proxy_header: bytes | None = None,
     ) -> None:
         super().__init__(loop=loop)
         self._over_ssl = False
@@ -117,6 +118,7 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
         self._closed_future: "asyncio.Future[None]" = self._loop.create_future()
         self._quit_sent = False
         self._connection_lost_callback = connection_lost_callback
+        self._proxy_header = proxy_header
 
     def _get_close_waiter(self, stream: asyncio.StreamWriter) -> "asyncio.Future[None]":
         return self._closed_future
@@ -142,6 +144,9 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
         # The server's greeting is expected immediately after connecting, and
         # may arrive before read_response() is awaited, so arm the flag now.
         self._response_pending = True
+
+        if self._proxy_header is not None:
+            cast(asyncio.WriteTransport, self.transport).write(self._proxy_header)
 
     def connection_lost(self, exc: Exception | None) -> None:
         super().connection_lost(exc)
@@ -408,27 +413,43 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
             # encrypted session once the handshake completes.
             del self._buffer[:]
 
-            try:
-                tls_transport = await self._loop.start_tls(
-                    cast(asyncio.WriteTransport, self.transport),
-                    self,
-                    tls_context,
-                    server_side=False,
-                    server_hostname=server_hostname,
-                    ssl_handshake_timeout=timeout,
-                )
-            except (TimeoutError, asyncio.TimeoutError) as exc:
-                raise SMTPTimeoutError("Timed out while upgrading transport") from exc
-            # SSLProtocol only raises ConnectionAbortedError on timeout
-            except ConnectionAbortedError as exc:
-                raise SMTPTimeoutError(
-                    "Connection aborted while upgrading transport"
-                ) from exc
-            except ConnectionError as exc:
-                raise SMTPServerDisconnected(
-                    "Connection reset while upgrading transport"
-                ) from exc
-
-            self.transport = tls_transport
+            await self.upgrade_transport(
+                tls_context, server_hostname=server_hostname, timeout=timeout
+            )
 
         return response
+
+    async def upgrade_transport(
+        self,
+        tls_context: ssl.SSLContext,
+        server_hostname: str | None = None,
+        timeout: float | None = None,
+    ) -> asyncio.BaseTransport | None:
+        """
+        Upgrade our transport to TLS, and return the new transport.
+        """
+        try:
+            tls_transport = await self._loop.start_tls(
+                cast(asyncio.WriteTransport, self.transport),
+                self,
+                tls_context,
+                server_side=False,
+                server_hostname=server_hostname,
+                ssl_handshake_timeout=timeout,
+            )
+        except (TimeoutError, asyncio.TimeoutError) as exc:
+            raise SMTPTimeoutError("Timed out while upgrading transport") from exc
+        # SSLProtocol only raises ConnectionAbortedError on timeout
+        except ConnectionAbortedError as exc:
+            raise SMTPTimeoutError(
+                "Connection aborted while upgrading transport"
+            ) from exc
+        except ConnectionError as exc:
+            raise SMTPServerDisconnected(
+                "Connection reset while upgrading transport"
+            ) from exc
+
+        self.transport = tls_transport
+        self._over_ssl = True
+
+        return tls_transport

@@ -103,6 +103,7 @@ class SMTP:
         cert_bundle: str | None = None,
         socket_path: SocketPathType | None = None,
         sock: socket.socket | None = None,
+        proxy_protocol_header: bytes | None = None,
     ) -> None:
         """
         :keyword hostname:  Server name (or IP) to connect to. defaults to "localhost".
@@ -142,6 +143,11 @@ class SMTP:
             hostname or port. Accepts str, bytes, or a pathlike object.
         :keyword sock: An existing, connected socket object. If given, none of
             hostname, port, or socket_path should be provided.
+        :keyword proxy_protocol_header: A pre-encoded HAProxy PROXY protocol
+            header, as returned by :func:`.proxy_protocol_header_v1` or
+            :func:`.proxy_protocol_header_v2`. If given, it is sent on
+            connect, before the TLS handshake (if any) and before any SMTP
+            data.
 
         :raises ValueError: mutually exclusive options provided
         """
@@ -166,6 +172,7 @@ class SMTP:
         self.socket_path = socket_path
         self.sock = sock
         self.source_address = source_address
+        self.proxy_protocol_header = proxy_protocol_header
 
         self.loop: asyncio.AbstractEventLoop | None = None
         self._connect_lock: asyncio.Lock | None = None
@@ -258,6 +265,7 @@ class SMTP:
         cert_bundle: str | Literal[Default.token] | None = Default.token,
         socket_path: SocketPathType | Literal[Default.token] | None = Default.token,
         sock: socket.socket | Literal[Default.token] | None = Default.token,
+        proxy_protocol_header: bytes | Literal[Default.token] | None = Default.token,
     ) -> None:
         """Update our configuration from the kwargs provided.
 
@@ -296,6 +304,8 @@ class SMTP:
             self.socket_path = socket_path
         if sock is not Default.token:
             self.sock = sock
+        if proxy_protocol_header is not Default.token:
+            self.proxy_protocol_header = proxy_protocol_header
 
     def _validate_config(self) -> None:
         if self._login_password is not None and self._oauth_token_generator is not None:
@@ -372,6 +382,7 @@ class SMTP:
         cert_bundle: str | Literal[Default.token] | None = Default.token,
         socket_path: SocketPathType | Literal[Default.token] | None = Default.token,
         sock: socket.socket | Literal[Default.token] | None = Default.token,
+        proxy_protocol_header: bytes | Literal[Default.token] | None = Default.token,
     ) -> SMTPResponse:
         """
         Initialize a connection to the server. Options provided to
@@ -416,6 +427,11 @@ class SMTP:
             `port`, or `socket_path`. Passing a socket object will transfer
             control of it to the asyncio connection, and it will be closed when
             the client disconnects.
+        :keyword proxy_protocol_header: A pre-encoded HAProxy PROXY protocol
+            header, as returned by :func:`.proxy_protocol_header_v1` or
+            :func:`.proxy_protocol_header_v2`. If given, it is sent on
+            connect, before the TLS handshake (if any) and before any SMTP
+            data.
 
         :raises ValueError: mutually exclusive options provided
         """
@@ -436,6 +452,7 @@ class SMTP:
             username=username,
             password=password,
             oauth_token_generator=oauth_token_generator,
+            proxy_protocol_header=proxy_protocol_header,
         )
         self._validate_config()
 
@@ -472,13 +489,20 @@ class SMTP:
         hostname = self.hostname
 
         protocol = SMTPProtocol(
-            loop=self.loop, connection_lost_callback=self._on_connection_lost
+            loop=self.loop,
+            connection_lost_callback=self._on_connection_lost,
+            proxy_header=self.proxy_protocol_header,
         )
+
+        # When sending a PROXY header with implicit TLS, defer the TLS upgrade
+        # until after the header is on the wire — the spec requires the header
+        # to be sent in plaintext before the TLS handshake.
+        defer_tls = self.use_tls and self.proxy_protocol_header is not None
 
         tls_context: ssl.SSLContext | None = None
         ssl_handshake_timeout: float | None = None
         server_hostname: str | None = None
-        if self.use_tls:
+        if self.use_tls and not defer_tls:
             tls_context = await self._get_tls_context()
             ssl_handshake_timeout = timeout
             server_hostname = hostname
@@ -527,6 +551,20 @@ class SMTP:
 
         self.protocol = protocol
         self.transport = transport
+
+        if defer_tls:
+            deferred_tls_context = await self._get_tls_context()
+            try:
+                tls_transport = await protocol.upgrade_transport(
+                    deferred_tls_context,
+                    server_hostname=self.hostname,
+                    timeout=timeout,
+                )
+            except SMTPTimeoutError as exc:
+                raise SMTPConnectTimeoutError(str(exc)) from exc
+            except SMTPServerDisconnected as exc:
+                raise SMTPConnectError(str(exc)) from exc
+            self.transport = tls_transport
 
         try:
             response = await protocol.read_response(timeout=timeout)
