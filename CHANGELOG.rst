@@ -28,6 +28,9 @@ Changelog
   Defaulted ``port``/``hostname`` are now resolved per-connect rather than
   written back onto the instance, so they read back as ``None`` when unset
 - Bugfix: typeerror in latest ty
+- Bugfix: ``bytearray`` and ``memoryview`` values are no longer silently passed
+  through the auth encoding helpers; only ``str`` and ``bytes`` are accepted, as
+  the type annotations already stated
 - Bugfix: TLS context setup now run in thread (thanks @tr4nt0r)
 
 

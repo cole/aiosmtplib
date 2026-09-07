@@ -18,7 +18,7 @@ __all__ = (
 
 
 def _ensure_bytes(value: str | bytes) -> bytes:
-    if isinstance(value, (bytes, bytearray, memoryview)):
+    if isinstance(value, bytes):
         return value
 
     return value.encode("utf-8")
