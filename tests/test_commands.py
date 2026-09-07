@@ -472,6 +472,64 @@ async def test_address_command_rejects_injection(
         assert received_commands == []
 
 
+@pytest.mark.parametrize("command", ("mail", "rcpt", "vrfy", "expn"))
+@pytest.mark.parametrize(
+    "address",
+    (
+        "test@example.com> AUTH=<attacker@example.com",
+        "test@example.com> NOTIFY=SUCCESS,FAILURE ORCPT=rfc822;<attacker@example.com",
+        "test@example.com> SIZE=1",
+    ),
+    ids=("auth", "dsn", "size"),
+)
+async def test_address_command_rejects_parameter_injection(
+    smtp_client: SMTP,
+    received_commands: list[tuple[str, tuple[Any, ...]]],
+    command: str,
+    address: str,
+) -> None:
+    """
+    Addresses that would smuggle ESMTP parameters onto the command line
+    (without using control characters) must never be sent.
+    """
+    async with smtp_client:
+        await smtp_client.ehlo()
+        received_commands.clear()
+
+        method = getattr(smtp_client, command)
+        with pytest.raises(ValueError):
+            await method(address)
+
+        assert received_commands == []
+
+
+async def test_sendmail_rejects_parameter_injection(
+    smtp_client: SMTP,
+    received_commands: list[tuple[str, tuple[Any, ...]]],
+    received_messages: list[email.message.EmailMessage],
+) -> None:
+    async with smtp_client:
+        await smtp_client.ehlo()
+        received_commands.clear()
+
+        with pytest.raises(ValueError):
+            await smtp_client.sendmail(
+                "test@example.com> AUTH=<attacker@example.com",
+                ["recipient@example.com"],
+                "Subject: legit\n\nhi",
+            )
+
+        with pytest.raises(ValueError):
+            await smtp_client.sendmail(
+                "test@example.com",
+                ["recipient@example.com> NOTIFY=SUCCESS,FAILURE"],
+                "Subject: legit\n\nhi",
+            )
+
+        assert received_commands == []
+        assert received_messages == []
+
+
 async def test_sendmail_rejects_command_injection(
     smtp_client: SMTP,
     received_commands: list[tuple[str, tuple[Any, ...]]],

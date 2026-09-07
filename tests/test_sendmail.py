@@ -22,6 +22,7 @@ from .smtpd import (
     mock_response_done,
     mock_response_error_disconnect,
     mock_response_bad_command_sequence,
+    mock_response_mailbox_unavailable,
 )
 
 
@@ -174,6 +175,7 @@ async def test_sendmail_error_silent_rset_handles_disconnect(
             await smtp_client.sendmail(sender_str, [recipient_str], message_str)
 
 
+@pytest.mark.smtpd_mocks(smtp_MAIL=mock_response_mailbox_unavailable)
 async def test_rset_after_sendmail_error_response_to_mail(
     smtp_client: SMTP,
     received_commands: list[tuple[str, tuple[Any, ...]]],
@@ -187,12 +189,15 @@ async def test_rset_after_sendmail_error_response_to_mail(
         assert response.code == SMTPStatus.completed
 
         with pytest.raises(SMTPResponseException) as excinfo:
-            await smtp_client.sendmail(">foobar<", ["test@example.com"], "Hello World")
+            await smtp_client.sendmail(
+                "test@example.com", ["test@example.com"], "Hello World"
+            )
 
-        assert excinfo.value.code == SMTPStatus.unrecognized_parameters
+        assert excinfo.value.code == SMTPStatus.mailbox_unavailable
         assert received_commands[-1][0] == "RSET"
 
 
+@pytest.mark.smtpd_mocks(smtp_RCPT=mock_response_mailbox_unavailable)
 async def test_rset_after_sendmail_error_response_to_rcpt(
     smtp_client: SMTP,
     received_commands: list[tuple[str, tuple[Any, ...]]],
@@ -207,10 +212,10 @@ async def test_rset_after_sendmail_error_response_to_rcpt(
 
         with pytest.raises(SMTPRecipientsRefused) as excinfo:
             await smtp_client.sendmail(
-                "test@example.com", [">not an addr<"], "Hello World"
+                "test@example.com", ["test@example.com"], "Hello World"
             )
 
-        assert excinfo.value.recipients[0].code == SMTPStatus.unrecognized_parameters
+        assert excinfo.value.recipients[0].code == SMTPStatus.mailbox_unavailable
         assert received_commands[-1][0] == "RSET"
 
 

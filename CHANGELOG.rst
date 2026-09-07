@@ -4,6 +4,13 @@ Changelog
 5.1.3 (unreleased)
 ------------------
 
+- Security: reject addresses containing whitespace or angle brackets outside of a
+  quoted local part in ``mail``, ``rcpt``, ``vrfy``, ``expn`` and ``sendmail``.
+  Previously, a caller supplied address such as
+  ``user@example.com> AUTH=<attacker@example.com`` could smuggle additional ESMTP
+  parameters onto the command line. This is a follow up to the fix in 5.1.1 for
+  CVE-2026-53533 (GHSA-v3q9-hj7j-63hq), which only rejected control characters.
+  ``sendmail`` now validates all addresses before sending any commands.
 - Bugfix: prevent SMTP command/response desync from unsolicited server data (thanks
   @Charisn for contributing)
 - Bugfix: handle protocol connection lost callback arriving after reconnect

@@ -28,15 +28,44 @@ __all__ = (
 SPECIALS_REGEX = re.compile(r'[][\\()<>@,:;".]')
 ESCAPES_REGEX = re.compile(r'[\\"]')
 UTF8_CHARSET = email.charset.Charset("utf-8")
+# Characters that would end the address on an SMTP command line (or start a
+# new command), and so can't appear in a mailbox outside of a quoted-string
+# local part. Whitespace here includes CR/LF, so this also serves as a first
+# line of defence against command injection.
+ADDRESS_INJECTION_REGEX = re.compile(r'[\s<>"]')
+QUOTED_LOCAL_PART_REGEX = re.compile(r'^"(?:[^"\\\r\n]|\\.)*"')
+
+
+def _validate_address(address: str) -> None:
+    """
+    Reject addresses that can't be safely placed on an SMTP command line.
+
+    ``email.utils.parseaddr`` is lenient, and will pass through strings that
+    contain whitespace or angle brackets; if we sent those as-is, a caller
+    supplied address could smuggle extra ESMTP parameters (or commands) into
+    the MAIL, RCPT, VRFY and EXPN commands.
+    """
+    # A quoted-string local part may legitimately contain these characters
+    unquoted_address = QUOTED_LOCAL_PART_REGEX.sub("", address, count=1)
+    if ADDRESS_INJECTION_REGEX.search(unquoted_address):
+        raise ValueError(
+            f"Address {address!r} contains characters not permitted in an SMTP mailbox"
+        )
 
 
 def parse_address(address: str) -> str:
     """
     Parse an email address, falling back to the raw string given.
+
+    :raises ValueError: if the parsed address contains characters that
+        can't safely be sent on an SMTP command line.
     """
     _, parsed_address = email.utils.parseaddr(address)
+    parsed_address = parsed_address or address.strip()
 
-    return parsed_address or address.strip()
+    _validate_address(parsed_address)
+
+    return parsed_address
 
 
 def quote_address(address: str) -> str:

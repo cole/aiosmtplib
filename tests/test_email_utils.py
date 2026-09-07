@@ -65,6 +65,52 @@ def test_quote_address(email: str) -> None:
     assert quote_address(email) == f"<{email}>"
 
 
+@pytest.mark.parametrize(
+    "address",
+    (
+        "test@example.com> AUTH=<attacker@example.com",
+        "test@example.com> NOTIFY=SUCCESS,FAILURE ORCPT=rfc822;<attacker@example.com",
+        "test@example.com>\tNOTIFY=SUCCESS",
+        "test@example.com>",
+        "test@example.com >",
+        "test@example.com\r\nRCPT TO:<hijacker@example.com>",
+    ),
+    ids=("auth_param", "dsn_params", "tab", "trailing_>", "space_then_>", "crlf"),
+)
+def test_parse_address_rejects_injection(address: str) -> None:
+    with pytest.raises(ValueError):
+        parse_address(address)
+
+    with pytest.raises(ValueError):
+        quote_address(address)
+
+
+@pytest.mark.parametrize(
+    "address, expected_address",
+    (
+        ('"a b"@example.com', '"a b"@example.com'),
+        ('"a>b"@example.com', '"a>b"@example.com'),
+        ('"a<b"@example.com', '"a<b"@example.com'),
+        ('"a\\"b"@example.com', '"a\\"b"@example.com'),
+        ('Display Name <"a b"@example.com>', '"a b"@example.com'),
+        ("", ""),
+    ),
+    ids=(
+        "quoted_space",
+        "quoted_>",
+        "quoted_<",
+        "quoted_escaped_quote",
+        "quoted_with_display_name",
+        "empty",
+    ),
+)
+def test_parse_address_allows_quoted_local_part(
+    address: str, expected_address: str
+) -> None:
+    assert parse_address(address) == expected_address
+    assert quote_address(address) == f"<{expected_address}>"
+
+
 def test_flatten_message() -> None:
     message = EmailMessage()
     message["To"] = "bob@example.com"

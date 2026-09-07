@@ -1371,6 +1371,7 @@ class SMTP:
         send an RSET command to reset the server envelope automatically for
         the next attempt.
 
+        :raises ValueError: on an address that can't be safely sent
         :raises SMTPRecipientsRefused: delivery to all recipients failed
         :raises SMTPResponseException: on invalid response
         """
@@ -1389,6 +1390,12 @@ class SMTP:
             mailbox_encoding = "utf-8"
         else:
             mailbox_encoding = "ascii"
+
+        # Validate all addresses before sending anything, so that a bad
+        # recipient doesn't leave a half-finished envelope on the server.
+        parse_address(sender)
+        for recipient in recipients:
+            parse_address(recipient)
 
         if self._sendmail_lock is None:
             self._sendmail_lock = asyncio.Lock()
