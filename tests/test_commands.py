@@ -620,3 +620,13 @@ async def test_send_message_compat32_does_not_smuggle_envelope_commands(
 
     for _, args in received_commands:
         assert all("hijacker" not in str(arg) for arg in args)
+
+
+@pytest.mark.smtpd_mocks(smtp_HELO=mock_response_unrecognized_command)
+async def test_helo_error_does_not_set_last_helo_response(smtp_client: SMTP) -> None:
+    async with smtp_client:
+        with pytest.raises(SMTPHeloError):
+            await smtp_client.helo()
+
+        assert smtp_client.last_helo_response is None
+        assert smtp_client.is_ehlo_or_helo_needed

@@ -716,12 +716,14 @@ class SMTP:
         else:
             hostname = _validate_local_hostname(hostname)
 
-        response = self.last_helo_response = await self.execute_command(
+        response = await self.execute_command(
             b"HELO", hostname.encode("ascii"), timeout=timeout
         )
 
         if response.code != SMTPStatus.completed:
             raise SMTPHeloError(response.code, response.message)
+
+        self.last_helo_response = response
 
         return response
 
