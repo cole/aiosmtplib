@@ -133,11 +133,6 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
     def _get_close_waiter(self, stream: asyncio.StreamWriter) -> "asyncio.Future[None]":
         return self._closed_future
 
-    def __del__(self) -> None:
-        # Avoid 'Future exception was never retrieved' warnings
-        # Some unknown race conditions can sometimes trigger these :(
-        self._retrieve_response_exception()
-
     @property
     def is_connected(self) -> bool:
         """
@@ -167,7 +162,7 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
                 smtp_exc = SMTPServerDisconnected("Connection lost")
                 if exc:
                     smtp_exc.__cause__ = exc
-                self._response_waiter.set_exception(smtp_exc)
+                self._set_response_exception(self._response_waiter, smtp_exc)
 
         self.transport = None
         self._command_lock = None
@@ -191,10 +186,11 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
 
         if len(self._buffer) > MAX_RESPONSE_LENGTH:
             del self._buffer[:]
-            self._response_waiter.set_exception(
+            self._set_response_exception(
+                self._response_waiter,
                 SMTPResponseException(
                     SMTPStatus.invalid_response.value, "Response too long"
-                )
+                ),
             )
             return
 
@@ -209,7 +205,7 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
         try:
             response = self._read_response_from_buffer()
         except Exception as exc:
-            self._response_waiter.set_exception(exc)
+            self._set_response_exception(self._response_waiter, exc)
         else:
             if response is not None:
                 self._response_waiter.set_result(response)
@@ -217,25 +213,25 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
     def eof_received(self) -> bool:
         exc = SMTPServerDisconnected("Unexpected EOF received")
         if self._response_waiter and not self._response_waiter.done():
-            self._response_waiter.set_exception(exc)
+            self._set_response_exception(self._response_waiter, exc)
 
         # Returning false closes the transport
         return False
 
-    def _retrieve_response_exception(self) -> BaseException | None:
+    def _set_response_exception(
+        self, waiter: "asyncio.Future[SMTPResponse]", exc: BaseException
+    ) -> None:
         """
-        Return any exception that has been set on the response waiter.
+        Set an exception on the response waiter and mark it as retrieved.
 
-        Used to avoid 'Future exception was never retrieved' warnings
+        Nobody may ever await the waiter (e.g. the server disconnects between
+        commands), and the future's finalizer would then log 'Future exception
+        was never retrieved'. Marking it retrieved up front avoids depending on
+        finalizer ordering, which differs on free-threaded builds. Awaiting the
+        waiter still raises the exception.
         """
-        if (
-            self._response_waiter
-            and self._response_waiter.done()
-            and not self._response_waiter.cancelled()
-        ):
-            return self._response_waiter.exception()
-
-        return None
+        waiter.set_exception(exc)
+        waiter.exception()
 
     def _read_response_from_buffer(self) -> SMTPResponse | None:
         """Parse the actual response (if any) from the data buffer"""
