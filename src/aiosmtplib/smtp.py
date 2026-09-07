@@ -1075,8 +1075,6 @@ class SMTP:
         if self.get_transport_info("sslcontext") is not None:
             raise SMTPException("Connection already using TLS")
 
-        await self._ehlo_or_helo_if_needed()
-
         self._update_settings_from_kwargs(
             validate_certs=validate_certs,
             client_cert=client_cert,
@@ -1085,6 +1083,8 @@ class SMTP:
             tls_context=tls_context,
         )
         self._validate_config()
+
+        await self._ehlo_or_helo_if_needed()
 
         if server_hostname is None:
             server_hostname = self.hostname

@@ -28,6 +28,8 @@ Changelog
   Defaulted ``port``/``hostname`` are now resolved per-connect rather than
   written back onto the instance, so they read back as ``None`` when unset
 - Bugfix: typeerror in latest ty
+- Bugfix: ``starttls`` now validates its TLS options before sending EHLO, so
+  invalid options raise ``ValueError`` without touching the connection
 - Bugfix: ``helo`` no longer records a failed response as ``last_helo_response``,
   so a rejected HELO does not leave the session looking as if a greeting succeeded
 - Bugfix: ``bytearray`` and ``memoryview`` values are no longer silently passed

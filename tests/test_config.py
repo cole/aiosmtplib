@@ -4,6 +4,7 @@ Tests covering SMTP configuration options.
 
 import socket
 import ssl
+from typing import Any
 
 import pytest
 
@@ -366,3 +367,18 @@ async def test_connect_local_hostname_whitespace_raises_error(
 
     with pytest.raises(ValueError):
         await client.connect(local_hostname="me.example.com XCLIENT ADDR=1.2.3.4")
+
+
+async def test_starttls_invalid_config_raises_before_ehlo(
+    smtp_client: SMTP,
+    client_tls_context: ssl.SSLContext,
+    received_commands: list[tuple[str, tuple[Any, ...]]],
+) -> None:
+    async with smtp_client:
+        with pytest.raises(ValueError):
+            await smtp_client.starttls(
+                client_cert="test.cert", tls_context=client_tls_context
+            )
+
+        assert smtp_client.is_ehlo_or_helo_needed
+        assert not any(command == "EHLO" for command, _ in received_commands)
