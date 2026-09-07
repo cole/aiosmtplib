@@ -31,6 +31,7 @@ Changelog
 - Bugfix: mark response waiter exceptions as retrieved when they are set, so
   ``Future exception was never retrieved`` is no longer logged on free-threaded
   builds where the previous ``__del__`` based cleanup ran too late
+- CI: test on free-threaded 3.14 and on 3.15 (standard and free-threaded)
 - Bugfix: the ``SIZE`` parameter sent with ``MAIL FROM`` now reports the number
   of octets as the message will be transmitted (with CRLF line endings), rather
   than the raw length of the message argument
