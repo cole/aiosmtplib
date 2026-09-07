@@ -28,6 +28,9 @@ Changelog
   Defaulted ``port``/``hostname`` are now resolved per-connect rather than
   written back onto the instance, so they read back as ``None`` when unset
 - Bugfix: typeerror in latest ty
+- Bugfix: mark response waiter exceptions as retrieved when they are set, so
+  ``Future exception was never retrieved`` is no longer logged on free-threaded
+  builds where the previous ``__del__`` based cleanup ran too late
 - Bugfix: the ``SIZE`` parameter sent with ``MAIL FROM`` now reports the number
   of octets as the message will be transmitted (with CRLF line endings), rather
   than the raw length of the message argument
