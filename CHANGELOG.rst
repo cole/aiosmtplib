@@ -11,6 +11,10 @@ Changelog
   parameters onto the command line. This is a follow up to the fix in 5.1.1 for
   CVE-2026-53533 (GHSA-v3q9-hj7j-63hq), which only rejected control characters.
   ``sendmail`` now validates all addresses before sending any commands.
+- Bugfix: reject ``local_hostname`` values (and the ``hostname`` argument to
+  ``helo``/``ehlo``) containing whitespace or control characters, so a hostname
+  such as ``me.example.com XCLIENT ADDR=1.2.3.4`` can no longer smuggle extra
+  parameters onto the EHLO/HELO command line. Surrounding whitespace is stripped.
 - Bugfix: prevent SMTP command/response desync from unsolicited server data (thanks
   @Charisn for contributing)
 - Bugfix: handle protocol connection lost callback arriving after reconnect

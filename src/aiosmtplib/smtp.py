@@ -53,6 +53,24 @@ SMTP_STARTTLS_PORT = 587
 DEFAULT_TIMEOUT = 60
 
 
+def _validate_local_hostname(hostname: str) -> str:
+    """
+    Strip surrounding whitespace from a hostname destined for the HELO/EHLO
+    command line, and reject anything that could smuggle extra parameters onto
+    that line (interior whitespace or control characters).
+    """
+    hostname = hostname.strip()
+    if hostname == "":
+        raise ValueError("The local_hostname param must not be empty")
+    if any(char.isspace() or ord(char) < 32 or ord(char) == 127 for char in hostname):
+        raise ValueError(
+            "The local_hostname param contains prohibited whitespace or control "
+            "characters"
+        )
+
+    return hostname
+
+
 class SMTP:
     """
     Main SMTP client class.
@@ -322,12 +340,8 @@ class SMTP:
         if (self.sock or self.socket_path) and self.use_tls and self.hostname is None:
             raise ValueError("If using a socket with TLS, hostname is required")
 
-        if self.local_hostname is not None and (
-            "\r" in self.local_hostname or "\n" in self.local_hostname
-        ):
-            raise ValueError(
-                "The local_hostname param contains prohibited newline characters"
-            )
+        if self.local_hostname is not None:
+            self.local_hostname = _validate_local_hostname(self.local_hostname)
 
         if self.hostname is not None and (
             "\r" in self.hostname or "\n" in self.hostname
@@ -699,6 +713,8 @@ class SMTP:
                 self.local_hostname = await self._get_default_local_hostname()
 
             hostname = self.local_hostname
+        else:
+            hostname = _validate_local_hostname(hostname)
 
         response = self.last_helo_response = await self.execute_command(
             b"HELO", hostname.encode("ascii"), timeout=timeout
@@ -976,6 +992,8 @@ class SMTP:
                 self.local_hostname = await self._get_default_local_hostname()
 
             hostname = self.local_hostname
+        else:
+            hostname = _validate_local_hostname(hostname)
 
         response = await self.execute_command(
             b"EHLO", hostname.encode("ascii"), timeout=timeout

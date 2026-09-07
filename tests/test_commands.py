@@ -56,6 +56,26 @@ async def test_helo_with_hostname_unset_after_connect(smtp_client: SMTP) -> None
         assert response.code == SMTPStatus.completed
 
 
+@pytest.mark.parametrize(
+    "helo_hostname",
+    ["me.example.com XCLIENT ADDR=1.2.3.4", "me.example.com\r\nQUIT", ""],
+    ids=["space", "crlf", "empty"],
+)
+async def test_helo_with_hostname_injection_raises_error(
+    smtp_client: SMTP, helo_hostname: str
+) -> None:
+    async with smtp_client:
+        with pytest.raises(ValueError):
+            await smtp_client.helo(hostname=helo_hostname)
+
+
+async def test_helo_with_hostname_strips_whitespace(smtp_client: SMTP) -> None:
+    async with smtp_client:
+        response = await smtp_client.helo(hostname=" example.com ")
+
+        assert response.code == SMTPStatus.completed
+
+
 @pytest.mark.smtpd_mocks(smtp_HELO=mock_response_unrecognized_command)
 async def test_helo_error(smtp_client: SMTP) -> None:
     async with smtp_client:
@@ -82,6 +102,26 @@ async def test_ehlo_with_hostname_unset_after_connect(smtp_client: SMTP) -> None
     async with smtp_client:
         smtp_client.local_hostname = None
         response = await smtp_client.ehlo()
+
+        assert response.code == SMTPStatus.completed
+
+
+@pytest.mark.parametrize(
+    "helo_hostname",
+    ["me.example.com XCLIENT ADDR=1.2.3.4", "me.example.com\r\nQUIT", ""],
+    ids=["space", "crlf", "empty"],
+)
+async def test_ehlo_with_hostname_injection_raises_error(
+    smtp_client: SMTP, helo_hostname: str
+) -> None:
+    async with smtp_client:
+        with pytest.raises(ValueError):
+            await smtp_client.ehlo(hostname=helo_hostname)
+
+
+async def test_ehlo_with_hostname_strips_whitespace(smtp_client: SMTP) -> None:
+    async with smtp_client:
+        response = await smtp_client.ehlo(hostname=" example.com ")
 
         assert response.code == SMTPStatus.completed
 

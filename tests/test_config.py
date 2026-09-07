@@ -335,3 +335,34 @@ async def test_local_hostname_newline_raises_error() -> None:
             hostname="localhost",
             local_hostname="localhost\r\nRCPT TO: <hacker@hackers.org>",
         )
+
+
+@pytest.mark.parametrize(
+    "local_hostname",
+    [
+        "me.example.com XCLIENT ADDR=1.2.3.4",
+        "me.example.com\tXCLIENT ADDR=1.2.3.4",
+        "me.example.com\x00",
+        "",
+        "   ",
+    ],
+    ids=["space", "tab", "nul", "empty", "whitespace_only"],
+)
+async def test_local_hostname_whitespace_raises_error(local_hostname: str) -> None:
+    with pytest.raises(ValueError):
+        SMTP(hostname="localhost", local_hostname=local_hostname)
+
+
+async def test_local_hostname_surrounding_whitespace_is_stripped() -> None:
+    client = SMTP(hostname="localhost", local_hostname="  me.example.com\t")
+
+    assert client.local_hostname == "me.example.com"
+
+
+async def test_connect_local_hostname_whitespace_raises_error(
+    hostname: str, smtpd_server_port: int
+) -> None:
+    client = SMTP(hostname=hostname, port=smtpd_server_port)
+
+    with pytest.raises(ValueError):
+        await client.connect(local_hostname="me.example.com XCLIENT ADDR=1.2.3.4")
