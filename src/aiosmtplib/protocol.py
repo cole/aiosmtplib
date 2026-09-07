@@ -165,9 +165,10 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
 
     def data_received(self, data: bytes) -> None:
         if self._response_waiter is None:
-            raise RuntimeError(
-                f"data_received called without a response waiter set: {data!r}"
-            )
+            # The connection has been lost (or was never made) but a queued
+            # data_received callback still fired; there is nothing to deliver
+            # the data to, so drop it.
+            return
         elif not self._response_pending or self._response_waiter.done():
             # We got data without an outstanding command (or a response is
             # already parsed and awaiting pickup); ignore it so it can't be

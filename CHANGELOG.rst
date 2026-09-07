@@ -28,6 +28,8 @@ Changelog
   Defaulted ``port``/``hostname`` are now resolved per-connect rather than
   written back onto the instance, so they read back as ``None`` when unset
 - Bugfix: typeerror in latest ty
+- Bugfix: data arriving on the transport after the connection is lost is now
+  dropped instead of raising ``RuntimeError`` from the protocol callback
 - Bugfix: ``SMTPProtocol`` now records that it is using TLS after a successful
   ``start_tls``, so a second upgrade attempt on the protocol is rejected
 - Bugfix: ``starttls`` now validates its TLS options before sending EHLO, so

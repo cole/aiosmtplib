@@ -791,3 +791,16 @@ async def test_protocol_ignores_unsolicited_partial_data() -> None:
     response = await task
     assert response.code == 250
     assert response.message == "real"
+
+
+async def test_protocol_data_received_without_response_waiter() -> None:
+    """
+    Data can arrive after the connection is lost but before cleanup
+    (e.g. a queued data_received callback); it should be dropped, not raise.
+    """
+    protocol = SMTPProtocol(loop=asyncio.get_running_loop())
+    assert protocol._response_waiter is None
+
+    protocol.data_received(b"421 Going away\r\n")
+
+    assert not protocol._buffer
