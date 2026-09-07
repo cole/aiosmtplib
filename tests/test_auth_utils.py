@@ -5,6 +5,7 @@ Tests for authentication encoding utils.
 import base64
 import hmac
 
+import pytest
 from hypothesis import given
 from hypothesis.strategies import binary, text
 
@@ -14,6 +15,8 @@ from aiosmtplib.auth import (
     auth_plain_encode,
     auth_xoauth2_encode,
 )
+from aiosmtplib.errors import SMTPAuthenticationError
+from aiosmtplib.typing import SMTPStatus
 
 
 @given(binary(), binary(), binary())
@@ -53,6 +56,19 @@ def test_auth_crammd5_verify_str(
     result = auth_crammd5_verify(username, password, encoded_challenge)
 
     assert result == encoded_verification
+
+
+@pytest.mark.parametrize(
+    "challenge",
+    ["abc", "not base64!!", b"abc"],
+    ids=["bad padding", "bad length", "bytes"],
+)
+def test_auth_crammd5_verify_invalid_challenge(challenge: str | bytes) -> None:
+    with pytest.raises(SMTPAuthenticationError) as excinfo:
+        auth_crammd5_verify("username", "password", challenge)
+
+    assert excinfo.value.code == SMTPStatus.auth_continue
+    assert "CRAM-MD5" in excinfo.value.message
 
 
 @given(binary(), binary())

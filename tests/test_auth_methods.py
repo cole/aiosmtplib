@@ -218,6 +218,34 @@ async def test_auth_crammd5_continue_error(mock_auth: DummySMTPAuth) -> None:
         await mock_auth.auth_crammd5("username", "bogus")
 
 
+async def test_auth_crammd5_invalid_challenge_raises_auth_error(
+    mock_auth: DummySMTPAuth,
+) -> None:
+    continue_response = (SMTPStatus.auth_continue, "not base64!!")
+    mock_auth.responses.append(continue_response)
+
+    with pytest.raises(SMTPAuthenticationError) as excinfo:
+        await mock_auth.auth_crammd5("username", "bogus")
+
+    assert excinfo.value.code == SMTPStatus.auth_continue
+    assert "CRAM-MD5" in excinfo.value.message
+    assert mock_auth.received_commands == [b"AUTH CRAM-MD5"]
+
+
+async def test_login_falls_back_after_invalid_crammd5_challenge(
+    mock_auth: DummySMTPAuth,
+) -> None:
+    responses = [
+        (SMTPStatus.auth_continue, "not base64!!"),  # CRAM-MD5 bad challenge
+        SUCCESS_RESPONSE,  # PLAIN
+    ]
+    mock_auth.responses.extend(responses)
+    await mock_auth.login("username", "secondtimelucky")
+
+    assert mock_auth.received_commands[0] == b"AUTH CRAM-MD5"
+    assert mock_auth.received_commands[1].startswith(b"AUTH PLAIN")
+
+
 async def test_login_without_starttls_exception(
     smtp_client: SMTP,
     smtpd_server: asyncio.AbstractServer,

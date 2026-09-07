@@ -3,7 +3,11 @@ Authentication related methods.
 """
 
 import base64
+import binascii
 import hmac
+
+from .errors import SMTPAuthenticationError
+from .typing import SMTPStatus
 
 __all__ = (
     "auth_crammd5_verify",
@@ -32,7 +36,13 @@ def auth_crammd5_verify(
     """
     username_bytes = _ensure_bytes(username)
     password_bytes = _ensure_bytes(password)
-    decoded_challenge = base64.b64decode(challenge)
+    try:
+        decoded_challenge = base64.b64decode(challenge)
+    except (binascii.Error, ValueError) as exc:
+        raise SMTPAuthenticationError(
+            SMTPStatus.auth_continue,
+            f"Invalid CRAM-MD5 challenge from server: {challenge!r}",
+        ) from exc
 
     md5_digest = hmac.new(password_bytes, msg=decoded_challenge, digestmod="md5")
     verification = username_bytes + b" " + md5_digest.hexdigest().encode("ascii")

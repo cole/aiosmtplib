@@ -15,6 +15,9 @@ Changelog
   ``helo``/``ehlo``) containing whitespace or control characters, so a hostname
   such as ``me.example.com XCLIENT ADDR=1.2.3.4`` can no longer smuggle extra
   parameters onto the EHLO/HELO command line. Surrounding whitespace is stripped.
+- Bugfix: raise ``SMTPAuthenticationError`` instead of ``binascii.Error`` when the
+  server sends a malformed (non-base64) CRAM-MD5 challenge, so ``login`` can fall
+  back to the next auth method
 - Bugfix: prevent SMTP command/response desync from unsolicited server data (thanks
   @Charisn for contributing)
 - Bugfix: handle protocol connection lost callback arriving after reconnect
