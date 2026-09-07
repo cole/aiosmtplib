@@ -412,3 +412,16 @@ async def test_starttls_when_disconnected() -> None:
 
     with pytest.raises(SMTPServerDisconnected):
         await client.starttls()
+
+
+@pytest.mark.smtpd_options(tls=False)
+async def test_starttls_sets_protocol_over_ssl(smtp_client: SMTP) -> None:
+    async with smtp_client:
+        assert smtp_client.protocol is not None
+        assert not smtp_client.protocol._over_ssl
+
+        await smtp_client.starttls()
+
+        assert smtp_client.protocol._over_ssl
+        with pytest.raises(RuntimeError, match="Already using TLS"):
+            await smtp_client.protocol.start_tls(smtp_client.tls_context)

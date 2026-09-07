@@ -430,5 +430,6 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
                 ) from exc
 
             self.transport = tls_transport
+            self._over_ssl = True
 
         return response
