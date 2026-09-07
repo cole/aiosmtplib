@@ -200,17 +200,8 @@ jobs:
           path: htmlcov
       - run: uv tool run coverage report --fail-under=100
 
-  deploy:
-    executor:
-      name: cpython_executor
-    steps:
-      - attach_workspace:
-          at: dist
-      - run: uv tool run twine upload -r testpypi --username $TESTPYPI_USERNAME --password $TESTPYPI_PASSWORD dist/*
-      - run: uv tool run twine upload -r pypi --username $PYPI_USERNAME --password $PYPI_PASSWORD dist/*
-
 workflows:
-  build_test_deploy:
+  build_test:
     jobs:
       - build: &base-job
           context:
@@ -258,21 +249,6 @@ workflows:
             - test-cpython-asyncio
             - test-cpython-uvloop
             - test-asyncio-pypy3.11
-      - deploy:
-          requires:
-            - build
-            - buildcheck
-            - docs
-            - test-cpython-asyncio
-            - test-cpython-uvloop
-            - test-asyncio-pypy3.11
-          context:
-            - docker-hub-credentials
-          filters:
-            branches:
-              ignore: /.*/
-            tags:
-              only: /^v.*/
   lint:
     jobs:
       - typecheck:
