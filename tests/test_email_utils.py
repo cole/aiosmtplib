@@ -2,6 +2,8 @@
 Test message and address parsing/formatting functions.
 """
 
+import email.errors
+import sys
 from email.header import Header
 from email.headerregistry import Address
 from email.message import EmailMessage, Message
@@ -163,6 +165,13 @@ def test_flatten_message_utf8_options(
 ) -> None:
     message = message_class()
     message["From"] = "ålice@example.com"
+
+    # Python 3.15+ refuses to flatten a non-ASCII address under a non-UTF8
+    # EmailPolicy rather than emitting an invalid encoded-word (gh-122540).
+    if message_class is EmailMessage and not utf8 and sys.version_info >= (3, 15):
+        with pytest.raises(email.errors.HeaderWriteError):
+            flatten_message(message, utf8=utf8, cte_type=cte_type)
+        return
 
     flat_message = flatten_message(message, utf8=utf8, cte_type=cte_type)
 
