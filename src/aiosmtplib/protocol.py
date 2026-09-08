@@ -6,7 +6,7 @@ import asyncio
 import collections
 import re
 import ssl
-from typing import Any, Callable, cast
+from typing import Any, Callable, TypeVar, cast
 
 from .errors import (
     SMTPDataError,
@@ -45,6 +45,38 @@ def normalize_message_line_endings(message: bytes) -> bytes:
         message += b"\r\n"
 
     return message
+
+
+_T = TypeVar("_T")
+
+
+def _set_timeout(waiter: "asyncio.Future[Any]") -> None:
+    if not waiter.done():
+        waiter.set_exception(asyncio.TimeoutError())
+
+
+async def _wait_for_future(
+    loop: asyncio.AbstractEventLoop,
+    waiter: "asyncio.Future[_T]",
+    timeout: float | None,
+) -> _T:
+    """
+    Await a future with an optional timeout.
+
+    Unlike ``asyncio.wait_for``, the future is awaited directly from the
+    current task, so the number of event loop iterations needed to observe its
+    result is the same on every supported Python version. On Python < 3.12,
+    ``wait_for`` goes through an intermediate waiter (and a separate task for
+    coroutines), which adds iterations and makes timing differ by version.
+    """
+    if timeout is None:
+        return await waiter
+
+    timer = loop.call_later(timeout, _set_timeout, waiter)
+    try:
+        return await waiter
+    finally:
+        timer.cancel()
 
 
 class FlowControlMixin(asyncio.Protocol):
@@ -94,7 +126,10 @@ class FlowControlMixin(asyncio.Protocol):
                 else:
                     waiter.set_exception(exc)
 
-    async def _drain_helper(self) -> None:
+    async def _drain_helper(self, timeout: float | None = None) -> None:
+        """
+        Wait until the transport is ready for more data.
+        """
         if self._connection_lost:
             raise ConnectionResetError("Connection lost")
         if not self._paused:
@@ -102,7 +137,7 @@ class FlowControlMixin(asyncio.Protocol):
         waiter = self._loop.create_future()
         self._drain_waiters.append(waiter)
         try:
-            await waiter
+            await _wait_for_future(self._loop, waiter, timeout)
         finally:
             self._drain_waiters.remove(waiter)
 
@@ -320,7 +355,7 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
         # command write (e.g. the initial server greeting).
         self._response_pending = True
         try:
-            result = await asyncio.wait_for(self._response_waiter, timeout)
+            result = await _wait_for_future(self._loop, self._response_waiter, timeout)
         except (TimeoutError, asyncio.TimeoutError) as exc:
             raise SMTPReadTimeoutError("Timed out waiting for server response") from exc
         finally:
@@ -367,7 +402,7 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
         """
         self.write(data)
         try:
-            await asyncio.wait_for(self._drain_helper(), timeout)
+            await self._drain_helper(timeout)
         except (TimeoutError, asyncio.TimeoutError) as exc:
             raise SMTPTimeoutError("Timed out while sending message data") from exc
         except ConnectionResetError as exc:
