@@ -3,6 +3,7 @@ Cancellation tests.
 """
 
 import asyncio
+from typing import Any
 
 import pytest
 
@@ -73,3 +74,23 @@ async def test_cancel_while_waiting_for_command_lock_keeps_connection(
 
     response = await smtp_client.noop()
     assert response.code == SMTPStatus.completed
+
+
+async def test_sendmail_cancelled_between_commands_closes_connection(
+    smtp_client: SMTP,
+    monkeypatch: pytest.MonkeyPatch,
+    received_commands: list[tuple[str, tuple[Any, ...]]],
+) -> None:
+    async def cancelled_rcpt(*args: Any, **kwargs: Any) -> None:
+        raise asyncio.CancelledError
+
+    await smtp_client.connect()
+    monkeypatch.setattr(smtp_client, "rcpt", cancelled_rcpt)
+
+    # Cancellation lands after MAIL FROM completes, leaving the envelope open
+    # on the server; close rather than spend a round trip on RSET.
+    with pytest.raises(asyncio.CancelledError):
+        await smtp_client.sendmail("j@example.com", ["test@example.com"], "blah")
+
+    assert received_commands[-1][0] == "MAIL"
+    assert not smtp_client.is_connected

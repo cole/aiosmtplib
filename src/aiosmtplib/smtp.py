@@ -1478,6 +1478,12 @@ class SMTP:
                     # status, don't raise that as it's confusing
                     pass
                 raise exc
+            except asyncio.CancelledError:
+                # The envelope may be half-open on the server, and a RSET round
+                # trip after a cancellation could block or be cancelled again,
+                # so drop the connection instead.
+                self.close()
+                raise
 
         return recipient_errors, response.message
 
