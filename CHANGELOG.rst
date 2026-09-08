@@ -1,8 +1,8 @@
 Changelog
 =========
 
-5.1.3 (unreleased)
-------------------
+5.1.3
+-----
 
 - Security: reject addresses containing whitespace or angle brackets outside of a
   quoted local part in ``mail``, ``rcpt``, ``vrfy``, ``expn`` and ``sendmail``.
