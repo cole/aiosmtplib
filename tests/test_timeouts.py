@@ -16,7 +16,11 @@ from aiosmtplib import (
 from aiosmtplib.protocol import SMTPProtocol
 
 from .conftest import ConnectProtocol
-from .smtpd import mock_response_delayed_ok, mock_response_delayed_read
+from .smtpd import (
+    mock_response_delayed_ok,
+    mock_response_delayed_read,
+    mock_response_start_data_stall,
+)
 
 
 @pytest.mark.smtpd_mocks(smtp_EHLO=mock_response_delayed_ok)
@@ -53,6 +57,20 @@ async def test_data_timeout_closes_connection(smtp_client: SMTP) -> None:
     await smtp_client.rcpt("test@example.com")
     with pytest.raises(SMTPTimeoutError):
         await smtp_client.data("HELLO WORLD", timeout=0.0)
+
+    assert smtp_client.protocol is None
+    assert smtp_client.transport is None
+    assert not smtp_client.is_connected
+
+
+@pytest.mark.smtpd_mocks(smtp_DATA=mock_response_start_data_stall)
+async def test_data_upload_stall_closes_connection(smtp_client: SMTP) -> None:
+    await smtp_client.connect()
+    await smtp_client.ehlo()
+    await smtp_client.mail("j@example.com")
+    await smtp_client.rcpt("test@example.com")
+    with pytest.raises(SMTPTimeoutError, match="sending message data"):
+        await smtp_client.data(b"x" * (8 * 1024 * 1024), timeout=0.2)
 
     assert smtp_client.protocol is None
     assert smtp_client.transport is None

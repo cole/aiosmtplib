@@ -26,6 +26,14 @@ Changelog
 - Bugfix: a malformed or oversized server reply now closes the connection. The
   unparseable bytes were previously left in the buffer, so every later command
   on the connection failed with the same ``SMTPResponseException``
+- Bugfix: ``data`` (and so ``sendmail``, ``send_message`` and ``send``) now
+  writes the message in chunks and waits for the transport to accept each one
+  before continuing, so the reply timeout no longer starts until the whole
+  message has been handed off. Previously a large message over a slow link
+  could time out while still uploading, and the client then dropped a message
+  the server went on to deliver. The timeout now bounds inactivity during the
+  upload rather than total upload time, and a stalled upload raises
+  ``SMTPTimeoutError``
 
 5.1.3
 -----

@@ -5,12 +5,13 @@ Protocol level tests.
 import asyncio
 import gc
 import os
+import socket
 import ssl
 
 import pytest
 
 from aiosmtplib import SMTPResponseException, SMTPServerDisconnected, SMTPTimeoutError
-from aiosmtplib.protocol import FlowControlMixin, SMTPProtocol
+from aiosmtplib.protocol import DATA_CHUNK_SIZE, FlowControlMixin, SMTPProtocol
 
 from .conftest import ConnectProtocol
 
@@ -740,3 +741,152 @@ async def test_protocol_response_overrun_closes_connection(
 
     with pytest.raises(SMTPServerDisconnected):
         await protocol.execute_command(b"NOOP", timeout=1.0)
+
+
+async def test_protocol_data_command_slow_reader(
+    connect_protocol: ConnectProtocol,
+) -> None:
+    """
+    The reply timeout must not start until the message has been handed off, so
+    an upload that takes longer than the timeout but never stalls succeeds.
+    """
+
+    async def client_connected(
+        reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+    ) -> None:
+        sock = writer.get_extra_info("socket")
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 64 * 1024)
+        await reader.readline()
+        writer.write(b"354 go\r\n")
+        await writer.drain()
+        while True:
+            chunk = await reader.read(64 * 1024)
+            if not chunk or chunk.endswith(b"\r\n.\r\n"):
+                break
+            await asyncio.sleep(0.01)
+        writer.write(b"250 ok\r\n")
+        await writer.drain()
+
+    protocol = await connect_protocol(client_connected)
+    # Keep kernel buffers small, so backpressure reflects what the server has
+    # actually read rather than what the kernel has absorbed.
+    assert protocol.transport is not None
+    sock = protocol.transport.get_extra_info("socket")
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 64 * 1024)
+
+    response = await protocol.execute_data_command(
+        b"x" * (4 * 1024 * 1024), timeout=0.2
+    )
+
+    assert response.code == 250
+
+
+class _PausingTransport(_WriteRecordingTransport):
+    """Pauses the protocol after every message write, until resumed by hand."""
+
+    def __init__(self, protocol: SMTPProtocol) -> None:
+        super().__init__()
+        self.protocol = protocol
+        self.closed = False
+
+    def write(self, data: bytes) -> None:
+        super().write(data)
+        if data != b"DATA\r\n":
+            self.protocol.pause_writing()
+
+    def close(self) -> None:
+        self.closed = True
+
+    def is_closing(self) -> bool:
+        return self.closed
+
+
+async def test_protocol_data_command_waits_for_drain() -> None:
+    protocol = SMTPProtocol()
+    transport = _PausingTransport(protocol)
+    protocol.connection_made(transport)
+
+    message = b"x" * DATA_CHUNK_SIZE
+    task = asyncio.ensure_future(protocol.execute_data_command(message, timeout=0.5))
+    await asyncio.sleep(0)
+    protocol.data_received(b"354 go\r\n")
+
+    # Each chunk stalls for less than the timeout, but the upload as a whole
+    # takes longer than it. Only inactivity should count.
+    for expected_writes in (2, 3):
+        await asyncio.sleep(0)
+        assert len(transport.writes) == expected_writes
+        await asyncio.sleep(0.3)
+        assert not task.done()
+        protocol.resume_writing()
+
+    await asyncio.sleep(0)
+    protocol.data_received(b"250 ok\r\n")
+
+    response = await task
+    assert response.code == 250
+    assert b"".join(transport.writes[1:]) == message + b"\r\n.\r\n"
+
+
+async def test_protocol_data_command_drain_timeout() -> None:
+    protocol = SMTPProtocol()
+    transport = _PausingTransport(protocol)
+    protocol.connection_made(transport)
+
+    task = asyncio.ensure_future(protocol.execute_data_command(b"hello", timeout=0.05))
+    await asyncio.sleep(0)
+    protocol.data_received(b"354 go\r\n")
+
+    with pytest.raises(SMTPTimeoutError, match="sending message data"):
+        await task
+
+
+async def test_protocol_data_command_drain_connection_lost() -> None:
+    protocol = SMTPProtocol()
+    transport = _PausingTransport(protocol)
+    protocol.connection_made(transport)
+
+    task = asyncio.ensure_future(protocol.execute_data_command(b"hello", timeout=1.0))
+    await asyncio.sleep(0)
+    protocol.data_received(b"354 go\r\n")
+    await asyncio.sleep(0)
+    protocol.connection_lost(ConnectionResetError())
+
+    with pytest.raises(SMTPServerDisconnected):
+        await task
+
+
+async def test_protocol_data_command_cancelled_during_drain() -> None:
+    protocol = SMTPProtocol()
+    transport = _PausingTransport(protocol)
+    protocol.connection_made(transport)
+
+    task = asyncio.ensure_future(protocol.execute_data_command(b"hello", timeout=1.0))
+    await asyncio.sleep(0)
+    protocol.data_received(b"354 go\r\n")
+    await asyncio.sleep(0)
+    task.cancel()
+
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    assert transport.closed
+
+
+async def test_protocol_data_command_writes_in_chunks() -> None:
+    protocol = SMTPProtocol()
+    transport = _WriteRecordingTransport()
+    protocol.connection_made(transport)
+
+    message = b"x" * (DATA_CHUNK_SIZE * 2 + 1)
+    task = asyncio.ensure_future(protocol.execute_data_command(message, timeout=1.0))
+    await asyncio.sleep(0)
+    protocol.data_received(b"354 go\r\n")
+    await asyncio.sleep(0)
+    protocol.data_received(b"250 ok\r\n")
+    await task
+
+    body = b"".join(transport.writes[1:])
+    assert body == message + b"\r\n.\r\n"
+    assert len(transport.writes) == 4
+    assert all(len(chunk) <= DATA_CHUNK_SIZE for chunk in transport.writes[1:])

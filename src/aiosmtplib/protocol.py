@@ -27,6 +27,8 @@ MAX_LINE_LENGTH = 8192
 # Bounds memory if a server streams data with no line ending or endless
 # continuation lines; generous over any real EHLO, which is a few KB.
 MAX_RESPONSE_LENGTH = MAX_LINE_LENGTH * 4
+# Message bodies are written in chunks of this size, draining between them.
+DATA_CHUNK_SIZE = 64 * 1024
 LINE_ENDINGS_REGEX = re.compile(rb"(?:\r\n|\n|\r(?!\n))")
 PERIOD_REGEX = re.compile(rb"(?m)^\.")
 # Reject all C0 controls + DEL; CR/LF/NUL in particular enable injection.
@@ -358,6 +360,23 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
                 self.transport.close()
             raise
 
+    async def _write_and_drain(self, data: bytes, timeout: float | None) -> None:
+        """
+        Write data and wait for the transport to accept it. If cancelled while
+        waiting, close the transport, as a partial message has been sent.
+        """
+        self.write(data)
+        try:
+            await asyncio.wait_for(self._drain_helper(), timeout)
+        except (TimeoutError, asyncio.TimeoutError) as exc:
+            raise SMTPTimeoutError("Timed out while sending message data") from exc
+        except ConnectionResetError as exc:
+            raise SMTPServerDisconnected("Connection lost") from exc
+        except asyncio.CancelledError:
+            if self.transport is not None:
+                self.transport.close()
+            raise
+
     async def execute_command(
         self, *args: bytes, timeout: float | None = None
     ) -> SMTPResponse:
@@ -411,7 +430,13 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
                 raise SMTPDataError(start_response.code, start_response.message)
 
             self._response_pending = True
-            self.write(message)
+            # Chunk the message and apply write backpressure, so the reply
+            # timeout only starts once the whole message has been handed off,
+            # and the timeout bounds inactivity rather than total upload time.
+            view = memoryview(message)
+            for start in range(0, len(view), DATA_CHUNK_SIZE):
+                chunk = bytes(view[start : start + DATA_CHUNK_SIZE])
+                await self._write_and_drain(chunk, timeout)
             response = await self._read_response_or_close(timeout=timeout)
             if response.code != SMTPStatus.completed:
                 raise SMTPDataError(response.code, response.message)

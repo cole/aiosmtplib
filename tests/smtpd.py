@@ -209,6 +209,14 @@ async def mock_response_start_data_disconnect(
     smtpd.transport.close()
 
 
+async def mock_response_start_data_stall(
+    smtpd: SMTPD, *args: Any, **kwargs: Any
+) -> None:
+    await smtpd.push("354 ok")
+    # Stop reading, so the client's send buffers fill up and it stalls.
+    await asyncio.sleep(10)
+
+
 async def mock_response_disconnect(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
     smtpd.transport.close()
 
