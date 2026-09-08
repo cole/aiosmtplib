@@ -23,7 +23,6 @@ from aiosmtpd.smtp import SMTP as SMTPD
 from aiosmtplib import SMTP
 
 from .auth import DummySMTPAuth
-from .compat import cleanup_server
 from .smtpd import RecordingHandler, TestSMTPD
 
 
@@ -376,28 +375,36 @@ def socket_path(tmp_path: Path) -> Path:
 # Servers #
 
 
+def _marker_kwargs(request: pytest.FixtureRequest, name: str) -> dict[str, Any]:
+    marker = request.node.get_closest_marker(name)
+    return dict(marker.kwargs) if marker is not None else {}
+
+
+async def _close_server(server: asyncio.AbstractServer) -> None:
+    server.close()
+    try:
+        await asyncio.wait_for(server.wait_closed(), 0.1)
+    except (asyncio.TimeoutError, RuntimeError):
+        pass
+
+
+@pytest.fixture(scope="function")
+def smtpd_options(request: pytest.FixtureRequest) -> dict[str, Any]:
+    """Keyword arguments from the ``smtpd_options`` marker, if any."""
+    return _marker_kwargs(request, "smtpd_options")
+
+
 @pytest.fixture(scope="function")
 def smtpd_factory(
     request: pytest.FixtureRequest,
     monkeypatch: pytest.MonkeyPatch,
     hostname: str,
     smtpd_handler: RecordingHandler,
+    smtpd_options: dict[str, Any],
     server_tls_context: ssl.SSLContext,
     smtpd_auth_callback: Callable[[str, bytes, bytes], bool],
 ) -> Callable[[], SMTPD]:
-    smtpd_options_marker = request.node.get_closest_marker("smtpd_options")
-    if smtpd_options_marker is None:
-        smtpd_options = {}
-    else:
-        smtpd_options = smtpd_options_marker.kwargs
-
-    smtpd_mocks_marker = request.node.get_closest_marker("smtpd_mocks")
-    if smtpd_mocks_marker is None:
-        smtpd_mocks = {}
-    else:
-        smtpd_mocks = smtpd_mocks_marker.kwargs
-
-    for attr, mock_fn in smtpd_mocks.items():
+    for attr, mock_fn in _marker_kwargs(request, "smtpd_mocks").items():
         monkeypatch.setattr(TestSMTPD, attr, mock_fn)
 
     smtpd_tls_context = (
@@ -421,35 +428,23 @@ def smtpd_factory(
 
 @pytest_asyncio.fixture(scope="function")
 async def smtpd_server(
-    request: pytest.FixtureRequest,
     bind_address: str,
+    smtpd_options: dict[str, Any],
     server_tls_context: ssl.SSLContext,
     smtpd_factory: Callable[[], SMTPD],
 ) -> AsyncGenerator[asyncio.AbstractServer]:
-    smtpd_options_marker = request.node.get_closest_marker("smtpd_options")
-    if smtpd_options_marker is None:
-        smtpd_options = {}
-    else:
-        smtpd_options = smtpd_options_marker.kwargs
-
-    create_server_kwargs = {
-        "host": bind_address,
-        "port": 0,
-        "family": socket.AF_INET,
-    }
-    if smtpd_options.get("tls", False):
-        create_server_kwargs["ssl"] = server_tls_context
-
     event_loop = asyncio.get_running_loop()
-    server = await event_loop.create_server(smtpd_factory, **create_server_kwargs)
+    server = await event_loop.create_server(
+        smtpd_factory,
+        host=bind_address,
+        port=0,
+        family=socket.AF_INET,
+        ssl=server_tls_context if smtpd_options.get("tls", False) else None,
+    )
 
     yield server
 
-    server.close()
-    try:
-        await cleanup_server(server)
-    except RuntimeError:
-        pass
+    await _close_server(server)
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -461,26 +456,16 @@ async def echo_server(bind_address: str) -> AsyncGenerator[asyncio.AbstractServe
 
     yield server
 
-    server.close()
-    try:
-        await cleanup_server(server)
-    except RuntimeError:
-        pass
+    await _close_server(server)
 
 
 @pytest_asyncio.fixture(scope="function")
 async def smtpd_server_socket_path(
-    request: pytest.FixtureRequest,
     socket_path: str | bytes | Path,
+    smtpd_options: dict[str, Any],
     server_tls_context: ssl.SSLContext,
     smtpd_factory: Callable[[], SMTPD],
 ) -> AsyncGenerator[asyncio.AbstractServer]:
-    smtpd_options_marker = request.node.get_closest_marker("smtpd_options")
-    if smtpd_options_marker is None:
-        smtpd_options = {}
-    else:
-        smtpd_options = smtpd_options_marker.kwargs
-
     event_loop = asyncio.get_running_loop()
     server = await event_loop.create_unix_server(
         smtpd_factory,
@@ -490,11 +475,7 @@ async def smtpd_server_socket_path(
 
     yield server
 
-    server.close()
-    try:
-        await cleanup_server(server)
-    except RuntimeError:
-        pass
+    await _close_server(server)
 
 
 @pytest.fixture(scope="function")
@@ -503,9 +484,9 @@ def smtpd_controller(
     unused_tcp_port: int,
     smtpd_handler: RecordingHandler,
 ) -> Generator[SMTPDController, None, None]:
-    port = unused_tcp_port
-    controller: SMTPDController | None
-    controller = SMTPDController(smtpd_handler, hostname=bind_address, port=port)
+    controller = SMTPDController(
+        smtpd_handler, hostname=bind_address, port=unused_tcp_port
+    )
     controller.start()
 
     yield controller
@@ -516,13 +497,13 @@ def smtpd_controller(
 # Running server ports #
 
 
-@pytest_asyncio.fixture(scope="function")
-async def smtpd_server_port(smtpd_server: asyncio.Server) -> int:
+@pytest.fixture(scope="function")
+def smtpd_server_port(smtpd_server: asyncio.Server) -> int:
     return int(smtpd_server.sockets[0].getsockname()[1])
 
 
-@pytest_asyncio.fixture(scope="function")
-async def echo_server_port(echo_server: asyncio.Server) -> int:
+@pytest.fixture(scope="function")
+def echo_server_port(echo_server: asyncio.Server) -> int:
     return int(echo_server.sockets[0].getsockname()[1])
 
 
@@ -535,19 +516,14 @@ def smtpd_server_threaded_port(smtpd_controller: SMTPDController) -> int:
 # SMTP Clients #
 
 
-@pytest_asyncio.fixture(scope="function")
-async def smtp_client(
+@pytest.fixture(scope="function")
+def smtp_client(
     request: pytest.FixtureRequest,
     hostname: str,
     smtpd_server_port: int,
     client_tls_context: ssl.SSLContext,
 ) -> SMTP:
-    smtp_client_options_marker = request.node.get_closest_marker("smtp_client_options")
-    if smtp_client_options_marker is None:
-        smtp_client_options = {}
-    else:
-        smtp_client_options = smtp_client_options_marker.kwargs
-
+    smtp_client_options = _marker_kwargs(request, "smtp_client_options")
     smtp_client_options.setdefault("tls_context", client_tls_context)
     smtp_client_options.setdefault("start_tls", False)
 
@@ -559,8 +535,8 @@ async def smtp_client(
     )
 
 
-@pytest_asyncio.fixture(scope="function")
-async def smtp_client_threaded(
+@pytest.fixture(scope="function")
+def smtp_client_threaded(
     hostname: str, smtpd_server_threaded_port: int, client_tls_context: ssl.SSLContext
 ) -> SMTP:
     return SMTP(
