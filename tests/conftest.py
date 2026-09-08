@@ -347,12 +347,14 @@ def message(
         return compat32_message
     elif request.param == "mime_message":
         return mime_message
-    elif request.param == "str":
+    elif request.param == "message_str":
         return message_str
-    elif request.param == "bytes":
+    elif request.param == "message_bytes":
         return message_bytes
-    else:
+    elif request.param == "email_message":
         return email_message
+    else:
+        raise ValueError(f"Unknown message fixture param: {request.param!r}")
 
 
 # Server helpers and factories #

@@ -408,7 +408,7 @@ async def test_rcpt_options_not_implemented(smtp_client: SMTP) -> None:
 
         with pytest.raises(SMTPResponseException) as err:
             await smtp_client.rcpt("test@example.com", options=["OPT=1"])
-            assert err.value.code == SMTPStatus.syntax_error
+        assert err.value.code == SMTPStatus.syntax_error
 
 
 @pytest.mark.smtpd_mocks(smtp_RCPT=mock_response_syntax_error)

@@ -432,7 +432,7 @@ async def test_send_message_without_sender(
 
 
 @pytest.mark.parametrize(
-    "message", ["message", "compat32_message", "mime_message"], indirect=True
+    "message", ["email_message", "compat32_message", "mime_message"], indirect=True
 )
 @pytest.mark.smtpd_options(smtputf8=True)
 async def test_send_message_smtputf8_sender(
@@ -591,7 +591,7 @@ async def test_send_mime_message_utf8_text_without_smtputf8(
 
 
 @pytest.mark.parametrize(
-    "message", ["message", "compat32_message", "mime_message"], indirect=True
+    "message", ["email_message", "compat32_message", "mime_message"], indirect=True
 )
 @pytest.mark.smtpd_options(**{"smtputf8": False, "7bit": True})
 async def test_send_message_7bit(

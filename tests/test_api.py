@@ -16,7 +16,7 @@ from aiosmtplib import send
 
 
 @pytest.mark.parametrize(
-    "message", ["message", "compat32_message", "mime_message"], indirect=True
+    "message", ["email_message", "compat32_message", "mime_message"], indirect=True
 )
 async def test_send(
     hostname: str,
