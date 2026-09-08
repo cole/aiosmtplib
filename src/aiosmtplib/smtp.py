@@ -619,8 +619,9 @@ class SMTP:
             # mispairing that response with a later command.
             self.close()
             raise
-        except asyncio.CancelledError:
-            # The protocol closes its transport if cancelled mid-command
+        except (SMTPResponseException, asyncio.CancelledError):
+            # The protocol closes its transport on a malformed reply or if
+            # cancelled mid-command
             if not self.is_connected:
                 self.close()
             raise
@@ -977,7 +978,7 @@ class SMTP:
         except (SMTPServerDisconnected, SMTPTimeoutError):
             self.close()
             raise
-        except asyncio.CancelledError:
+        except (SMTPResponseException, asyncio.CancelledError):
             if not self.is_connected:
                 self.close()
             raise
@@ -1114,7 +1115,7 @@ class SMTP:
         except (SMTPServerDisconnected, SMTPTimeoutError):
             self.close()
             raise
-        except asyncio.CancelledError:
+        except (SMTPResponseException, asyncio.CancelledError):
             if not self.is_connected:
                 self.close()
             raise

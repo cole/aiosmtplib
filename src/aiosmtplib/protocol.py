@@ -193,8 +193,7 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
         self._buffer.extend(data)
 
         if len(self._buffer) > MAX_RESPONSE_LENGTH:
-            del self._buffer[:]
-            self._set_response_exception(
+            self._fail_response(
                 self._response_waiter,
                 SMTPResponseException(
                     SMTPStatus.invalid_response.value, "Response too long"
@@ -213,10 +212,24 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
         try:
             response = self._read_response_from_buffer()
         except Exception as exc:
-            self._set_response_exception(self._response_waiter, exc)
+            self._fail_response(self._response_waiter, exc)
         else:
             if response is not None:
                 self._response_waiter.set_result(response)
+
+    def _fail_response(
+        self, waiter: "asyncio.Future[SMTPResponse]", exc: BaseException
+    ) -> None:
+        """
+        Fail the pending response with a framing error and drop the connection.
+
+        Once a reply cannot be parsed we no longer know where the next one
+        starts, so the connection cannot be reused safely.
+        """
+        del self._buffer[:]
+        self._set_response_exception(waiter, exc)
+        if self.transport is not None and not self.transport.is_closing():
+            self.transport.close()
 
     def eof_received(self) -> bool:
         exc = SMTPServerDisconnected("Unexpected EOF received")

@@ -502,6 +502,21 @@ async def test_gibberish_raises_exception(smtp_client: SMTP) -> None:
             await smtp_client.noop()
 
 
+@pytest.mark.smtpd_mocks(smtp_NOOP=mock_response_gibberish)
+async def test_gibberish_closes_connection(smtp_client: SMTP) -> None:
+    await smtp_client.connect()
+
+    with pytest.raises(SMTPResponseException):
+        await smtp_client.noop()
+
+    assert smtp_client.protocol is None
+    assert smtp_client.transport is None
+    assert not smtp_client.is_connected
+
+    with pytest.raises(SMTPServerDisconnected):
+        await smtp_client.noop()
+
+
 @pytest.mark.smtpd_mocks(smtp_NOOP=mock_response_bad_data)
 async def test_badly_encoded_text_response(smtp_client: SMTP) -> None:
     async with smtp_client:

@@ -142,7 +142,7 @@ async def mock_response_bad_data(smtpd: SMTPD, *args: Any, **kwargs: Any) -> Non
 
 
 async def mock_response_gibberish(smtpd: SMTPD, *args: Any, **kwargs: Any) -> None:
-    smtpd._writer.write("wefpPSwrsfa2sdfsdf")
+    smtpd._writer.write(b"wefpPSwrsfa2sdfsdf\r\n")
     await smtpd._writer.drain()
 
 

@@ -683,3 +683,60 @@ async def test_protocol_data_received_without_response_waiter() -> None:
     protocol.data_received(b"421 Going away\r\n")
 
     assert not protocol._buffer
+
+
+async def test_protocol_malformed_response_closes_connection(
+    connect_protocol: ConnectProtocol,
+) -> None:
+    """
+    A reply we cannot parse means we no longer know where the next reply
+    starts, so the connection must be dropped rather than left desynced with
+    the bad bytes still buffered.
+    """
+
+    async def client_connected(
+        reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+    ) -> None:
+        await reader.readline()
+        writer.write(b"ERROR\r\n250 ok\r\n")
+        await writer.drain()
+        await reader.read(1000)
+
+    protocol = await connect_protocol(client_connected)
+
+    with pytest.raises(SMTPResponseException, match="Malformed SMTP response line"):
+        await protocol.execute_command(b"NOOP", timeout=1.0)
+
+    assert not protocol.is_connected
+    assert protocol._buffer == bytearray()
+
+    with pytest.raises(SMTPServerDisconnected):
+        await protocol.execute_command(b"NOOP", timeout=1.0)
+
+
+async def test_protocol_response_overrun_closes_connection(
+    connect_protocol: ConnectProtocol, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """
+    The rest of an oversized reply keeps arriving after the error is raised,
+    and must not be paired with the next command.
+    """
+
+    async def client_connected(
+        reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+    ) -> None:
+        await reader.readline()
+        writer.write(b"250-spam\r\n" * 100)
+        await writer.drain()
+        await reader.read(1000)
+
+    protocol = await connect_protocol(client_connected)
+    monkeypatch.setattr("aiosmtplib.protocol.MAX_RESPONSE_LENGTH", 128)
+
+    with pytest.raises(SMTPResponseException, match="Response too long"):
+        await protocol.execute_command(b"NOOP", timeout=1.0)
+
+    assert not protocol.is_connected
+
+    with pytest.raises(SMTPServerDisconnected):
+        await protocol.execute_command(b"NOOP", timeout=1.0)

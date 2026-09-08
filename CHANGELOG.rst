@@ -23,6 +23,9 @@ Changelog
   ``AttributeError`` when the connection is lost during the preceding EHLO
 - Bugfix: ``sendmail`` no longer adds its own ``SIZE`` parameter to ``MAIL FROM``
   when the caller already supplied one in ``mail_options``
+- Bugfix: a malformed or oversized server reply now closes the connection. The
+  unparseable bytes were previously left in the buffer, so every later command
+  on the connection failed with the same ``SMTPResponseException``
 
 5.1.3
 -----
