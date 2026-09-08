@@ -312,27 +312,14 @@ def email_message(recipient_str: str, sender_str: str) -> email.message.EmailMes
 @pytest.fixture(scope="function")
 def message(
     request: pytest.FixtureRequest,
-    email_message: email.message.EmailMessage,
-    compat32_message: email.message.Message,
-    mime_message: email.mime.multipart.MIMEMultipart,
-    message_str: str,
-    message_bytes: bytes,
 ) -> email.message.EmailMessage | email.message.Message | str | bytes:
-    if not hasattr(request, "param"):
-        return email_message
-
-    if request.param == "compat32_message":
-        return compat32_message
-    elif request.param == "mime_message":
-        return mime_message
-    elif request.param == "message_str":
-        return message_str
-    elif request.param == "message_bytes":
-        return message_bytes
-    elif request.param == "email_message":
-        return email_message
-    else:
-        raise ValueError(f"Unknown message fixture param: {request.param!r}")
+    """
+    Defaults to ``email_message``; parametrize indirectly with the name of any
+    message fixture (``email_message``, ``compat32_message``, ``mime_message``,
+    ``message_str``, ``message_bytes``) to select another.
+    """
+    fixture_name = getattr(request, "param", "email_message")
+    return request.getfixturevalue(fixture_name)  # type: ignore[no-any-return]
 
 
 # Server helpers and factories #
