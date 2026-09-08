@@ -75,7 +75,7 @@ sequence = ["typecheck-mypy", "typecheck-pyright", "typecheck-ty"]
 [tool.poe.tasks.buildcheck]
 help = "Validate built artifacts (run `uv build` first)"
 default_item_type = "cmd"
-sequence = ["uvx check-wheel-contents dist", "uvx twine check --strict dist/*"]
+sequence = ["uvx check-wheel-contents dist", "uvx twine check --strict dist/*.whl dist/*.tar.gz"]
 
 [tool.poe.tasks.check]
 help = "Run all lint/type/security/test checks"
