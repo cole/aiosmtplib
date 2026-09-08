@@ -10,7 +10,7 @@ import email.mime.text
 import socket
 import ssl
 import sys
-from collections.abc import AsyncGenerator, Callable, Generator, Mapping
+from collections.abc import AsyncGenerator, Awaitable, Callable, Generator, Mapping
 from pathlib import Path
 from typing import Any
 
@@ -21,6 +21,7 @@ from aiosmtpd.controller import Controller as SMTPDController
 from aiosmtpd.smtp import SMTP as SMTPD
 
 from aiosmtplib import SMTP
+from aiosmtplib.protocol import SMTPProtocol
 
 from .auth import DummySMTPAuth
 from .smtpd import RecordingHandler, TestSMTPD
@@ -492,6 +493,42 @@ def smtpd_controller(
     yield controller
 
     controller.stop()
+
+
+ClientConnectedCallback = Callable[
+    [asyncio.StreamReader, asyncio.StreamWriter], Awaitable[None]
+]
+ConnectProtocol = Callable[[ClientConnectedCallback], Awaitable[SMTPProtocol]]
+
+
+@pytest_asyncio.fixture(scope="function")
+async def connect_protocol(
+    bind_address: str, hostname: str
+) -> AsyncGenerator[ConnectProtocol]:
+    """
+    Start a throwaway stream server driven by the given callback and connect a
+    raw SMTPProtocol to it. Servers are closed on teardown.
+    """
+    servers: list[asyncio.AbstractServer] = []
+
+    async def _connect(client_connected: ClientConnectedCallback) -> SMTPProtocol:
+        server = await asyncio.start_server(
+            client_connected, host=bind_address, port=0, family=socket.AF_INET
+        )
+        servers.append(server)
+        port = server.sockets[0].getsockname()[1]
+
+        event_loop = asyncio.get_running_loop()
+        _, protocol = await asyncio.wait_for(
+            event_loop.create_connection(SMTPProtocol, host=hostname, port=port),
+            timeout=1.0,
+        )
+        return protocol
+
+    yield _connect
+
+    for server in servers:
+        await _close_server(server)
 
 
 # Running server ports #

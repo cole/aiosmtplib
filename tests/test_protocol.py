@@ -5,7 +5,6 @@ Protocol level tests.
 import asyncio
 import gc
 import os
-import socket
 import ssl
 
 import pytest
@@ -13,7 +12,7 @@ import pytest
 from aiosmtplib import SMTPResponseException, SMTPServerDisconnected, SMTPTimeoutError
 from aiosmtplib.protocol import FlowControlMixin, SMTPProtocol
 
-from .compat import cleanup_server
+from .conftest import ConnectProtocol
 
 
 async def test_protocol_connect(hostname: str, echo_server_port: int) -> None:
@@ -30,12 +29,8 @@ async def test_protocol_connect(hostname: str, echo_server_port: int) -> None:
 
 
 async def test_protocol_read_limit_overrun(
-    bind_address: str,
-    hostname: str,
-    monkeypatch: pytest.MonkeyPatch,
+    connect_protocol: ConnectProtocol, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    event_loop = asyncio.get_running_loop()
-
     async def client_connected(
         reader: asyncio.StreamReader, writer: asyncio.StreamWriter
     ) -> None:
@@ -48,35 +43,19 @@ async def test_protocol_read_limit_overrun(
         writer.write(long_response)
         await writer.drain()
 
-    server = await asyncio.start_server(
-        client_connected, host=bind_address, port=0, family=socket.AF_INET
-    )
-    server_port = server.sockets[0].getsockname()[1] if server.sockets else 0
-    connect_future = event_loop.create_connection(
-        SMTPProtocol, host=hostname, port=server_port
-    )
-
-    _, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
-
+    protocol = await connect_protocol(client_connected)
     monkeypatch.setattr("aiosmtplib.protocol.MAX_LINE_LENGTH", 128)
 
     with pytest.raises(SMTPResponseException) as exc_info:
-        await protocol.execute_command(b"TEST", timeout=1.0)  # type: ignore
+        await protocol.execute_command(b"TEST", timeout=1.0)
 
     assert exc_info.value.code == -1
     assert "Response too long" in exc_info.value.message
 
-    server.close()
-    await cleanup_server(server)
-
 
 async def test_protocol_response_no_newline_overrun(
-    bind_address: str,
-    hostname: str,
-    monkeypatch: pytest.MonkeyPatch,
+    connect_protocol: ConnectProtocol, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    event_loop = asyncio.get_running_loop()
-
     async def client_connected(
         reader: asyncio.StreamReader, writer: asyncio.StreamWriter
     ) -> None:
@@ -85,35 +64,19 @@ async def test_protocol_response_no_newline_overrun(
         writer.write(b"2" * 500)
         await writer.drain()
 
-    server = await asyncio.start_server(
-        client_connected, host=bind_address, port=0, family=socket.AF_INET
-    )
-    server_port = server.sockets[0].getsockname()[1] if server.sockets else 0
-    connect_future = event_loop.create_connection(
-        SMTPProtocol, host=hostname, port=server_port
-    )
-
-    _, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
-
+    protocol = await connect_protocol(client_connected)
     monkeypatch.setattr("aiosmtplib.protocol.MAX_RESPONSE_LENGTH", 128)
 
     with pytest.raises(SMTPResponseException) as exc_info:
-        await protocol.execute_command(b"TEST", timeout=1.0)  # type: ignore
+        await protocol.execute_command(b"TEST", timeout=1.0)
 
     assert exc_info.value.code == -1
     assert "Response too long" in exc_info.value.message
 
-    server.close()
-    await cleanup_server(server)
-
 
 async def test_protocol_response_continuation_overrun(
-    bind_address: str,
-    hostname: str,
-    monkeypatch: pytest.MonkeyPatch,
+    connect_protocol: ConnectProtocol, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    event_loop = asyncio.get_running_loop()
-
     async def client_connected(
         reader: asyncio.StreamReader, writer: asyncio.StreamWriter
     ) -> None:
@@ -123,26 +86,14 @@ async def test_protocol_response_continuation_overrun(
         writer.write(b"250-spam\r\n" * 100)
         await writer.drain()
 
-    server = await asyncio.start_server(
-        client_connected, host=bind_address, port=0, family=socket.AF_INET
-    )
-    server_port = server.sockets[0].getsockname()[1] if server.sockets else 0
-    connect_future = event_loop.create_connection(
-        SMTPProtocol, host=hostname, port=server_port
-    )
-
-    _, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
-
+    protocol = await connect_protocol(client_connected)
     monkeypatch.setattr("aiosmtplib.protocol.MAX_RESPONSE_LENGTH", 128)
 
     with pytest.raises(SMTPResponseException) as exc_info:
-        await protocol.execute_command(b"TEST", timeout=1.0)  # type: ignore
+        await protocol.execute_command(b"TEST", timeout=1.0)
 
     assert exc_info.value.code == -1
     assert "Response too long" in exc_info.value.message
-
-    server.close()
-    await cleanup_server(server)
 
 
 async def test_protocol_connected_check_on_read_response(
@@ -238,8 +189,7 @@ async def test_protocol_timeout_on_starttls(
 
 
 async def test_protocol_discards_buffer_before_tls_handshake(
-    bind_address: str,
-    hostname: str,
+    connect_protocol: ConnectProtocol,
     client_tls_context: ssl.SSLContext,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -247,7 +197,6 @@ async def test_protocol_discards_buffer_before_tls_handshake(
     Bytes a MITM injects after the 220 STARTTLS reply must not survive into the
     encrypted session.
     """
-    event_loop = asyncio.get_running_loop()
 
     async def client_connected(
         reader: asyncio.StreamReader, writer: asyncio.StreamWriter
@@ -258,14 +207,7 @@ async def test_protocol_discards_buffer_before_tls_handshake(
         await writer.drain()
         await reader.read()  # keep the connection open through start_tls
 
-    server = await asyncio.start_server(
-        client_connected, host=bind_address, port=0, family=socket.AF_INET
-    )
-    server_port = server.sockets[0].getsockname()[1] if server.sockets else 0
-    connect_future = event_loop.create_connection(
-        SMTPProtocol, host=hostname, port=server_port
-    )
-    _, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
+    protocol = await connect_protocol(client_connected)
 
     captured: dict[str, bytes] = {}
 
@@ -273,88 +215,51 @@ async def test_protocol_discards_buffer_before_tls_handshake(
         captured["buffer"] = bytes(proto._buffer)
         return transport
 
-    monkeypatch.setattr(event_loop, "start_tls", mock_start_tls)
+    monkeypatch.setattr(asyncio.get_running_loop(), "start_tls", mock_start_tls)
 
-    response = await protocol.start_tls(client_tls_context, timeout=1.0)  # type: ignore[union-attr]
+    response = await protocol.start_tls(client_tls_context, timeout=1.0)
 
     assert response.code == 220
     assert captured["buffer"] == b""
 
-    server.close()
-    await cleanup_server(server)
-
 
 async def test_error_on_readline_with_partial_line(
-    bind_address: str, hostname: str
+    connect_protocol: ConnectProtocol,
 ) -> None:
-    event_loop = asyncio.get_running_loop()
-    partial_response = b"499 incomplete response\\"
-
     async def client_connected(
         reader: asyncio.StreamReader, writer: asyncio.StreamWriter
     ) -> None:
-        writer.write(partial_response)
+        writer.write(b"499 incomplete response\\")
         writer.write_eof()
         await writer.drain()
 
-    server = await asyncio.start_server(
-        client_connected, host=bind_address, port=0, family=socket.AF_INET
-    )
-    server_port = server.sockets[0].getsockname()[1] if server.sockets else 0
-
-    connect_future = event_loop.create_connection(
-        SMTPProtocol, host=hostname, port=server_port
-    )
-
-    _, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
+    protocol = await connect_protocol(client_connected)
 
     with pytest.raises(SMTPServerDisconnected):
-        await protocol.read_response(timeout=1.0)  # type: ignore
-
-    server.close()
-    await cleanup_server(server)
+        await protocol.read_response(timeout=1.0)
 
 
 async def test_protocol_error_on_readline_with_malformed_response(
-    bind_address: str, hostname: str
+    connect_protocol: ConnectProtocol,
 ) -> None:
-    event_loop = asyncio.get_running_loop()
-    response = b"ERROR\n"
-
     async def client_connected(
         reader: asyncio.StreamReader, writer: asyncio.StreamWriter
     ) -> None:
-        writer.write(response)
+        writer.write(b"ERROR\n")
         writer.write_eof()
         await writer.drain()
 
-    server = await asyncio.start_server(
-        client_connected, host=bind_address, port=0, family=socket.AF_INET
-    )
-    server_port = server.sockets[0].getsockname()[1] if server.sockets else 0
-
-    connect_future = event_loop.create_connection(
-        SMTPProtocol, host=hostname, port=server_port
-    )
-
-    _, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
+    protocol = await connect_protocol(client_connected)
 
     with pytest.raises(
         SMTPResponseException, match="Malformed SMTP response line: ERROR"
     ):
-        await protocol.read_response(timeout=1.0)  # type: ignore
-
-    server.close()
-    await cleanup_server(server)
+        await protocol.read_response(timeout=1.0)
 
 
 async def test_protocol_response_waiter_unset(
-    bind_address: str,
-    hostname: str,
-    monkeypatch: pytest.MonkeyPatch,
+    connect_protocol: ConnectProtocol, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    event_loop = asyncio.get_running_loop()
-
     async def client_connected(
         reader: asyncio.StreamReader, writer: asyncio.StreamWriter
     ) -> None:
@@ -362,32 +267,16 @@ async def test_protocol_response_waiter_unset(
         writer.write(b"220 Hi\r\n")
         await writer.drain()
 
-    server = await asyncio.start_server(
-        client_connected, host=bind_address, port=0, family=socket.AF_INET
-    )
-    server_port = server.sockets[0].getsockname()[1] if server.sockets else 0
-
-    connect_future = event_loop.create_connection(
-        SMTPProtocol, host=hostname, port=server_port
-    )
-
-    _, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
-
+    protocol = await connect_protocol(client_connected)
     monkeypatch.setattr(protocol, "_response_waiter", None)
 
     with pytest.raises(SMTPServerDisconnected):
-        await protocol.execute_command(b"TEST", timeout=1.0)  # type: ignore
-
-    server.close()
-    await cleanup_server(server)
+        await protocol.execute_command(b"TEST", timeout=1.0)
 
 
 async def test_protocol_data_received_called_twice(
-    bind_address: str,
-    hostname: str,
+    connect_protocol: ConnectProtocol,
 ) -> None:
-    event_loop = asyncio.get_running_loop()
-
     async def client_connected(
         reader: asyncio.StreamReader, writer: asyncio.StreamWriter
     ) -> None:
@@ -398,32 +287,19 @@ async def test_protocol_data_received_called_twice(
         writer.write(b"221 Hi again!\r\n")
         await writer.drain()
 
-    server = await asyncio.start_server(
-        client_connected, host=bind_address, port=0, family=socket.AF_INET
-    )
-    server_port = server.sockets[0].getsockname()[1] if server.sockets else 0
+    protocol = await connect_protocol(client_connected)
 
-    connect_future = event_loop.create_connection(
-        SMTPProtocol, host=hostname, port=server_port
-    )
-
-    _, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
-
-    response = await protocol.execute_command(b"TEST", timeout=1.0)  # type: ignore
+    response = await protocol.execute_command(b"TEST", timeout=1.0)
 
     assert response.code == 220
     assert response.message == "Hi"
-
-    server.close()
-    await cleanup_server(server)
 
 
 @pytest.mark.skip_if_uvloop(reason="flaky on uvloop")
 async def test_protocol_exception_cleanup_warning(
     caplog: pytest.LogCaptureFixture,
     debug_event_loop: asyncio.AbstractEventLoop,
-    bind_address: str,
-    hostname: str,
+    connect_protocol: ConnectProtocol,
 ) -> None:
     async def client_connected(
         reader: asyncio.StreamReader, writer: asyncio.StreamWriter
@@ -438,15 +314,7 @@ async def test_protocol_exception_cleanup_warning(
 
         writer.transport.close()
 
-    server = await asyncio.start_server(
-        client_connected, host=bind_address, port=0, family=socket.AF_INET
-    )
-    server_port = server.sockets[0].getsockname()[1] if server.sockets else 0
-
-    connect_future = debug_event_loop.create_connection(
-        SMTPProtocol, host=hostname, port=server_port
-    )
-    _, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
+    protocol = await connect_protocol(client_connected)
 
     await protocol.execute_command(b"HELO", timeout=1.0)
     await protocol.execute_command(b"QUIT", timeout=1.0)
@@ -454,9 +322,6 @@ async def test_protocol_exception_cleanup_warning(
     del protocol
     # Force garbage collection
     gc.collect()
-
-    server.close()
-    await cleanup_server(server)
 
     assert "Future exception was never retrieved" not in caplog.text
 

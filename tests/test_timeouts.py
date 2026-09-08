@@ -3,7 +3,6 @@ Timeout tests.
 """
 
 import asyncio
-import socket
 import ssl
 
 import pytest
@@ -16,7 +15,7 @@ from aiosmtplib import (
 )
 from aiosmtplib.protocol import SMTPProtocol
 
-from .compat import cleanup_server
+from .conftest import ConnectProtocol
 from .smtpd import mock_response_delayed_ok, mock_response_delayed_read
 
 
@@ -137,34 +136,18 @@ async def test_server_disconnected_error_after_connect_timeout(
 
 
 async def test_protocol_timeout_on_starttls(
-    bind_address: str,
-    hostname: str,
-    client_tls_context: ssl.SSLContext,
+    connect_protocol: ConnectProtocol, client_tls_context: ssl.SSLContext
 ) -> None:
-    event_loop = asyncio.get_running_loop()
-
     async def client_connected(
         reader: asyncio.StreamReader, writer: asyncio.StreamWriter
     ) -> None:
         await asyncio.sleep(1.0)
 
-    server = await asyncio.start_server(
-        client_connected, host=bind_address, port=0, family=socket.AF_INET
-    )
-    server_port = server.sockets[0].getsockname()[1] if server.sockets else 0
-
-    connect_future = event_loop.create_connection(
-        SMTPProtocol, host=hostname, port=server_port
-    )
-
-    _, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
+    protocol = await connect_protocol(client_connected)
 
     with pytest.raises(SMTPTimeoutError):
         # STARTTLS timeout must be > 0
-        await protocol.start_tls(client_tls_context, timeout=0.00001)  # type: ignore
-
-    server.close()
-    await cleanup_server(server)
+        await protocol.start_tls(client_tls_context, timeout=0.00001)
 
 
 async def test_protocol_connection_aborted_on_starttls(
