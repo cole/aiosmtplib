@@ -335,7 +335,7 @@ async def test_send_message_with_cc_and_bcc_recipients(
 ) -> None:
     cc_recipient = "recipient2@example.com"
     message["Cc"] = cc_recipient
-    bcc_recipient = "recipient2@example.com"
+    bcc_recipient = "recipient3@example.com"
     message["Bcc"] = bcc_recipient
 
     async with smtp_client:
