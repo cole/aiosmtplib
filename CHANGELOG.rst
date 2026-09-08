@@ -7,6 +7,8 @@ Changelog
 - Bugfix: resolve the ``SMTPProtocol`` close waiter on connection loss, so
   ``asyncio.StreamWriter.wait_closed()`` on a writer wrapping the protocol no
   longer hangs forever
+- Bugfix: the async context manager no longer sends ``QUIT`` on exit when the
+  block was cancelled, so a timed-out ``send`` cannot block for another round trip
 - Bugfix: cancelling ``sendmail`` between commands now closes the connection
   instead of leaving a half-open envelope on the server
 - Bugfix: cancelling a command while waiting for its reply (e.g. via

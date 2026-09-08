@@ -94,3 +94,15 @@ async def test_sendmail_cancelled_between_commands_closes_connection(
 
     assert received_commands[-1][0] == "MAIL"
     assert not smtp_client.is_connected
+
+
+async def test_aexit_on_cancel_skips_quit(
+    smtp_client: SMTP,
+    received_commands: list[tuple[str, tuple[Any, ...]]],
+) -> None:
+    with pytest.raises(asyncio.CancelledError):
+        async with smtp_client:
+            raise asyncio.CancelledError
+
+    assert not any(command == "QUIT" for command, _ in received_commands)
+    assert not smtp_client.is_connected

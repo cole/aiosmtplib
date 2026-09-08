@@ -208,7 +208,7 @@ class SMTP:
         exc: BaseException | None,
         traceback: TracebackType | None,
     ) -> None:
-        if isinstance(exc, (ConnectionError, TimeoutError)):
+        if isinstance(exc, (ConnectionError, TimeoutError, asyncio.CancelledError)):
             self.close()
             return
 
