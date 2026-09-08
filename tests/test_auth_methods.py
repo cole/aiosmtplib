@@ -24,6 +24,14 @@ from .auth import DummySMTPAuth
 SUCCESS_RESPONSE = SMTPResponse(SMTPStatus.auth_successful, "OK")
 FAILURE_RESPONSE = SMTPResponse(SMTPStatus.auth_failed, "Nope")
 
+CREDENTIALS = [
+    ("test", "test"),
+    ("admin124", "$3cr3t$"),
+    ("føø", "bär€"),
+    ("ภาษา".encode("tis-620"), "ไทย".encode("tis-620")),
+]
+CREDENTIAL_IDS = ["test user", "admin user", "utf-8 user", "tis-620 bytes user"]
+
 
 async def test_login_without_extension_raises_error(mock_auth: DummySMTPAuth) -> None:
     mock_auth.esmtp_extensions = {}
@@ -71,30 +79,13 @@ async def test_login_all_methods_fail_raises_error(mock_auth: DummySMTPAuth) -> 
         await mock_auth.login("username", "bogus")
 
 
-@pytest.mark.parametrize(
-    "username,password",
-    [("test", "test"), ("admin124", "$3cr3t$"), ("føø", "bär€")],
-    ids=["test user", "admin user", "utf-8 user"],
-)
+@pytest.mark.parametrize("username,password", CREDENTIALS, ids=CREDENTIAL_IDS)
 async def test_auth_plain_success(
-    mock_auth: DummySMTPAuth, username: str, password: str
+    mock_auth: DummySMTPAuth, username: str | bytes, password: str | bytes
 ) -> None:
     """
     Check that auth_plain base64 encodes the username/password given.
     """
-    mock_auth.responses.append(SUCCESS_RESPONSE)
-    await mock_auth.auth_plain(username, password)
-
-    encoded = auth_plain_encode(username, password)
-    assert mock_auth.received_commands == [b"AUTH PLAIN " + encoded]
-
-
-async def test_auth_plain_success_bytes(mock_auth: DummySMTPAuth) -> None:
-    """
-    Check that auth_plain base64 encodes the username/password when given as bytes.
-    """
-    username = "ภาษา".encode("tis-620")
-    password = "ไทย".encode("tis-620")
     mock_auth.responses.append(SUCCESS_RESPONSE)
     await mock_auth.auth_plain(username, password)
 
@@ -109,32 +100,12 @@ async def test_auth_plain_error(mock_auth: DummySMTPAuth) -> None:
         await mock_auth.auth_plain("username", "bogus")
 
 
-@pytest.mark.parametrize(
-    "username,password",
-    [("test", "test"), ("admin124", "$3cr3t$"), ("føø", "bär€")],
-    ids=["test user", "admin user", "utf-8 user"],
-)
+@pytest.mark.parametrize("username,password", CREDENTIALS, ids=CREDENTIAL_IDS)
 async def test_auth_login_success(
-    mock_auth: DummySMTPAuth, username: str, password: str
+    mock_auth: DummySMTPAuth, username: str | bytes, password: str | bytes
 ) -> None:
     continue_response = (SMTPStatus.auth_continue, "VXNlcm5hbWU6")
     mock_auth.responses.extend([continue_response, SUCCESS_RESPONSE])
-    await mock_auth.auth_login(username, password)
-
-    encoded_username, encoded_password = auth_login_encode(username, password)
-
-    assert mock_auth.received_commands == [
-        b"AUTH LOGIN " + encoded_username,
-        encoded_password,
-    ]
-
-
-async def test_auth_login_success_bytes(mock_auth: DummySMTPAuth) -> None:
-    continue_response = (SMTPStatus.auth_continue, "VXNlcm5hbWU6")
-    mock_auth.responses.extend([continue_response, SUCCESS_RESPONSE])
-
-    username = "ภาษา".encode("tis-620")
-    password = "ไทย".encode("tis-620")
     await mock_auth.auth_login(username, password)
 
     encoded_username, encoded_password = auth_login_encode(username, password)
@@ -159,13 +130,9 @@ async def test_auth_login_continue_error(mock_auth: DummySMTPAuth) -> None:
         await mock_auth.auth_login("username", "bogus")
 
 
-@pytest.mark.parametrize(
-    "username,password",
-    [("test", "test"), ("admin124", "$3cr3t$"), ("føø", "bär€")],
-    ids=["test user", "admin user", "utf-8 user"],
-)
+@pytest.mark.parametrize("username,password", CREDENTIALS, ids=CREDENTIAL_IDS)
 async def test_auth_crammd5_success(
-    mock_auth: DummySMTPAuth, username: str, password: str
+    mock_auth: DummySMTPAuth, username: str | bytes, password: str | bytes
 ) -> None:
     continue_response = (
         SMTPStatus.auth_continue,
@@ -174,30 +141,7 @@ async def test_auth_crammd5_success(
     mock_auth.responses.extend([continue_response, SUCCESS_RESPONSE])
     await mock_auth.auth_crammd5(username, password)
 
-    password_bytes = password.encode("utf-8")
-    username_bytes = username.encode("utf-8")
     response_bytes = continue_response[1].encode("utf-8")
-
-    expected_command = auth_crammd5_verify(
-        username_bytes, password_bytes, response_bytes
-    )
-
-    assert mock_auth.received_commands == [b"AUTH CRAM-MD5", expected_command]
-
-
-async def test_auth_crammd5_success_bytes(mock_auth: DummySMTPAuth) -> None:
-    continue_response = (
-        SMTPStatus.auth_continue,
-        base64.b64encode(b"secretteststring").decode("utf-8"),
-    )
-    mock_auth.responses.extend([continue_response, SUCCESS_RESPONSE])
-
-    username = "ภาษา".encode("tis-620")
-    password = "ไทย".encode("tis-620")
-    await mock_auth.auth_crammd5(username, password)
-
-    response_bytes = continue_response[1].encode("utf-8")
-
     expected_command = auth_crammd5_verify(username, password, response_bytes)
 
     assert mock_auth.received_commands == [b"AUTH CRAM-MD5", expected_command]
@@ -265,24 +209,14 @@ async def test_login_without_starttls_exception(
         ("test@example.com", "ya29.token123"),
         ("user@gmail.com", "access_token_here"),
         ("føø@example.com", "bär€_token"),
+        (b"user@example.com", b"access_token_bytes"),
     ],
-    ids=["test user", "gmail user", "utf-8 user"],
+    ids=["test user", "gmail user", "utf-8 user", "bytes user"],
 )
 async def test_auth_xoauth2_success(
-    mock_auth: DummySMTPAuth, username: str, token: str
+    mock_auth: DummySMTPAuth, username: str | bytes, token: str | bytes
 ) -> None:
     """Check that auth_xoauth2 base64 encodes the username/token correctly."""
-    mock_auth.responses.append(SUCCESS_RESPONSE)
-    await mock_auth.auth_xoauth2(username, token)
-
-    encoded = auth_xoauth2_encode(username, token)
-    assert mock_auth.received_commands == [b"AUTH XOAUTH2 " + encoded]
-
-
-async def test_auth_xoauth2_success_bytes(mock_auth: DummySMTPAuth) -> None:
-    """Check that auth_xoauth2 works with bytes input."""
-    username = b"user@example.com"
-    token = b"access_token_bytes"
     mock_auth.responses.append(SUCCESS_RESPONSE)
     await mock_auth.auth_xoauth2(username, token)
 
