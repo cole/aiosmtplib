@@ -10,7 +10,7 @@ import email.mime.text
 import socket
 import ssl
 import sys
-from collections.abc import AsyncGenerator, Callable, Generator
+from collections.abc import AsyncGenerator, Callable, Generator, Mapping
 from pathlib import Path
 from typing import Any
 
@@ -98,16 +98,15 @@ async def debug_event_loop() -> AsyncGenerator[asyncio.AbstractEventLoop]:
     event_loop.set_debug(previous_debug)
 
 
-@pytest.fixture(scope="session")
-def event_loop_policy(
-    request: pytest.FixtureRequest,
-) -> asyncio.AbstractEventLoopPolicy | None:
-    if request.config.getoption("event_loop_type") == "uvloop":
+def pytest_asyncio_loop_factories(
+    config: pytest.Config, item: pytest.Item
+) -> Mapping[str, Callable[[], asyncio.AbstractEventLoop]]:
+    if config.getoption("event_loop_type") == "uvloop":
         if not HAS_UVLOOP:
             raise RuntimeError("uvloop not installed.")
-        return uvloop.EventLoopPolicy()
+        return {"uvloop": uvloop.new_event_loop}
 
-    return asyncio.get_event_loop_policy()
+    return {"asyncio": asyncio.new_event_loop}
 
 
 # Session scoped static values #
