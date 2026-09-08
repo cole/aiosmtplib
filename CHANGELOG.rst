@@ -4,6 +4,8 @@ Changelog
 5.1.4 (unreleased)
 ------------------
 
+- Bugfix: ``SMTPRecipientsRefused`` now exposes the ``message`` attribute shared
+  by all ``SMTPException`` subclasses
 - Bugfix: resolve the ``SMTPProtocol`` close waiter on connection loss, so
   ``asyncio.StreamWriter.wait_closed()`` on a writer wrapping the protocol no
   longer hangs forever

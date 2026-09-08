@@ -133,4 +133,5 @@ class SMTPRecipientsRefused(SMTPException):
 
     def __init__(self, recipients: list[SMTPRecipientRefused], /) -> None:
         self.recipients = recipients
+        self.message = str(recipients)
         self.args = (recipients,)
