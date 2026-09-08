@@ -434,7 +434,13 @@ async def test_protocol_eof_response(bind_address: str, hostname: str) -> None:
     connect_future = event_loop.create_connection(
         SMTPProtocol, host=hostname, port=server_port
     )
-    await asyncio.wait_for(connect_future, timeout=1.0)
+    transport, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
+
+    # The server aborted immediately; the client must observe the closed
+    # connection rather than hang waiting for a greeting.
+    with pytest.raises(SMTPServerDisconnected):
+        await protocol.read_response(timeout=1.0)  # type: ignore
+    assert transport.is_closing()
 
     server.close()
     await cleanup_server(server)

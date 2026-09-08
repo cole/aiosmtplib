@@ -57,7 +57,7 @@ async def test_sendmail_multiple_times_with_gather(
             assert message != ""
 
 
-async def test_connect_and_sendmail_multiple_times_with_gather(
+async def test_multiple_clients_sendmail_with_gather(
     hostname: str,
     smtpd_server_port: int,
     client_tls_context: ssl.SSLContext,
@@ -70,36 +70,6 @@ async def test_connect_and_sendmail_multiple_times_with_gather(
         async with SMTP(
             hostname=hostname, port=smtpd_server_port, tls_context=client_tls_context
         ) as client:
-            response = await client.sendmail(*args, **kwargs)
-
-        return response
-
-    tasks = [
-        connect_and_send(sender_str, [recipient], message_str)
-        for recipient in RECIPIENTS
-    ]
-    results = await asyncio.gather(*tasks)
-    for errors, message in results:
-        assert not errors
-        assert isinstance(errors, dict)
-        assert message != ""
-
-
-async def test_multiple_clients_with_gather(
-    hostname: str,
-    smtpd_server: asyncio.AbstractServer,
-    smtpd_server_port: int,
-    client_tls_context: ssl.SSLContext,
-    sender_str: str,
-    message_str: str,
-) -> None:
-    async def connect_and_send(
-        *args: Any, **kwargs: Any
-    ) -> tuple[dict[str, SMTPResponse], str]:
-        client = SMTP(
-            hostname=hostname, port=smtpd_server_port, tls_context=client_tls_context
-        )
-        async with client:
             response = await client.sendmail(*args, **kwargs)
 
         return response
@@ -119,10 +89,8 @@ async def test_multiple_actions_in_context_manager_with_gather(
     hostname: str,
     smtpd_server_port: int,
     client_tls_context: ssl.SSLContext,
-    sender_str: str,
-    message_str: str,
 ) -> None:
-    async def connect_and_run_commands(*args: Any, **kwargs: Any) -> SMTPResponse:
+    async def connect_and_run_commands() -> SMTPResponse:
         async with SMTP(
             hostname=hostname, port=smtpd_server_port, tls_context=client_tls_context
         ) as client:
@@ -132,10 +100,7 @@ async def test_multiple_actions_in_context_manager_with_gather(
 
         return response
 
-    tasks = [
-        connect_and_run_commands(sender_str, [recipient], message_str)
-        for recipient in RECIPIENTS
-    ]
+    tasks = [connect_and_run_commands() for _ in RECIPIENTS]
     responses = await asyncio.gather(*tasks)
     for response in responses:
         assert 200 <= response.code < 300

@@ -122,17 +122,6 @@ async def test_421_closes_connection(smtp_client: SMTP) -> None:
     assert not smtp_client.is_connected
 
 
-async def test_connect_error_with_no_server(
-    hostname: str, unused_tcp_port: int
-) -> None:
-    client = SMTP(hostname=hostname, port=unused_tcp_port, timeout=1.0)
-
-    with pytest.raises(SMTPConnectError):
-        # SMTPConnectTimeoutError vs SMTPConnectError here depends on
-        # processing time.
-        await client.connect()
-
-
 @pytest.mark.smtpd_mocks(smtp_NOOP=mock_response_disconnect)
 async def test_disconnected_server_raises_on_client_read(smtp_client: SMTP) -> None:
     await smtp_client.connect()
@@ -278,13 +267,22 @@ async def test_context_manager_double_entry(
     assert not smtp_client.is_connected
 
 
-async def test_connect_error_second_attempt(
+async def test_connect_error_leaves_client_reusable(
     hostname: str, unused_tcp_port: int
 ) -> None:
     client = SMTP(hostname=hostname, port=unused_tcp_port, timeout=1.0)
 
     with pytest.raises(SMTPConnectError):
+        # SMTPConnectTimeoutError vs SMTPConnectError here depends on
+        # processing time.
         await client.connect()
+
+    # A failed connect must not leave the client half-connected or holding
+    # the connect lock, so a second attempt fails the same way rather than
+    # hanging.
+    assert not client.is_connected
+    assert client._connect_lock is not None
+    assert not client._connect_lock.locked()
 
     with pytest.raises(SMTPConnectError):
         await client.connect()
