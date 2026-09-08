@@ -1392,7 +1392,8 @@ class SMTP:
         send an RSET command to reset the server envelope automatically for
         the next attempt.
 
-        :raises ValueError: on an address that can't be safely sent
+        :raises ValueError: on an address that can't be safely sent, or if no
+            recipients are given
         :raises SMTPRecipientsRefused: delivery to all recipients failed
         :raises SMTPResponseException: on invalid response
         """
@@ -1414,9 +1415,13 @@ class SMTP:
 
         # Validate all addresses before sending anything, so that a bad
         # recipient doesn't leave a half-finished envelope on the server.
-        parse_address(sender)
+        if not recipients:
+            raise ValueError("No recipients provided")
+        parse_address(sender).encode(mailbox_encoding)
         for recipient in recipients:
-            parse_address(recipient)
+            parse_address(recipient).encode(mailbox_encoding)
+        for option in rcpt_options:
+            option.encode("ascii")
 
         if self._sendmail_lock is None:
             self._sendmail_lock = asyncio.Lock()

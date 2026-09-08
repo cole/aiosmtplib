@@ -7,6 +7,11 @@ Changelog
 - Bugfix: resolve the ``SMTPProtocol`` close waiter on connection loss, so
   ``asyncio.StreamWriter.wait_closed()`` on a writer wrapping the protocol no
   longer hangs forever
+- Bugfix: ``sendmail`` now checks that addresses are encodable and that at least
+  one recipient was given before sending ``MAIL FROM``, so a non-ASCII recipient
+  without ``SMTPUTF8`` or an empty recipient list no longer leaves a half-open
+  envelope on the server. An empty recipient list now raises ``ValueError``
+  (matching ``send_message`` and ``send``) instead of ``SMTPRecipientsRefused``
 - Bugfix: ``data`` and ``starttls`` raise ``SMTPServerDisconnected`` instead of
   ``AttributeError`` when the connection is lost during the preceding EHLO
 - Bugfix: ``sendmail`` no longer adds its own ``SIZE`` parameter to ``MAIL FROM``

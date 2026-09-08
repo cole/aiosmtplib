@@ -163,6 +163,31 @@ async def test_sendmail_smtputf8_not_supported(smtp_client: SMTP) -> None:
             )
 
 
+async def test_sendmail_non_ascii_recipient_without_smtputf8(
+    smtp_client: SMTP,
+    received_commands: list[tuple[str, tuple[Any, ...]]],
+) -> None:
+    async with smtp_client:
+        with pytest.raises(UnicodeEncodeError):
+            await smtp_client.sendmail("test@example.com", ["børk@example.com"], "blah")
+
+        # No envelope was started, so a subsequent send still works
+        assert not any(command == "MAIL" for command, _ in received_commands)
+        await smtp_client.sendmail("test@example.com", ["ok@example.com"], "blah")
+
+
+async def test_sendmail_no_recipients(
+    smtp_client: SMTP,
+    received_commands: list[tuple[str, tuple[Any, ...]]],
+) -> None:
+    async with smtp_client:
+        with pytest.raises(ValueError, match="No recipients"):
+            await smtp_client.sendmail("test@example.com", [], "blah")
+
+        assert not any(command == "MAIL" for command, _ in received_commands)
+        await smtp_client.sendmail("test@example.com", ["ok@example.com"], "blah")
+
+
 @pytest.mark.smtpd_mocks(smtp_DATA=mock_response_error_disconnect)
 async def test_sendmail_error_silent_rset_handles_disconnect(
     smtp_client: SMTP,
