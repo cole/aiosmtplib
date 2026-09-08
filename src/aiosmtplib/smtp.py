@@ -956,10 +956,10 @@ class SMTP:
         :raises SMTPDataError: on unexpected server response code
         :raises SMTPServerDisconnected: connection lost
         """
+        await self._ehlo_or_helo_if_needed()
+
         if self.protocol is None:
             raise SMTPServerDisconnected("Connection lost")
-
-        await self._ehlo_or_helo_if_needed()
 
         if timeout is Default.token:
             timeout = self.timeout
@@ -1069,9 +1069,6 @@ class SMTP:
         :raises SMTPServerDisconnected: connection lost
         :raises ValueError: invalid options provided
         """
-        if self.protocol is None:
-            raise SMTPServerDisconnected("Server not connected")
-
         if self.get_transport_info("sslcontext") is not None:
             raise SMTPException("Connection already using TLS")
 
@@ -1086,6 +1083,10 @@ class SMTP:
 
         await self._ehlo_or_helo_if_needed()
 
+        protocol = self.protocol
+        if protocol is None:
+            raise SMTPServerDisconnected("Connection lost")
+
         if server_hostname is None:
             server_hostname = self.hostname
 
@@ -1098,7 +1099,7 @@ class SMTP:
             raise SMTPException("SMTP STARTTLS extension not supported by server.")
 
         try:
-            response = await self.protocol.start_tls(
+            response = await protocol.start_tls(
                 tls_context, server_hostname=server_hostname, timeout=timeout
             )
         except (SMTPServerDisconnected, SMTPTimeoutError):
@@ -1106,7 +1107,7 @@ class SMTP:
             raise
 
         # Update our transport reference
-        self.transport = self.protocol.transport
+        self.transport = protocol.transport
 
         # RFC 3207 part 4.2:
         # The client MUST discard any knowledge obtained from the server, such

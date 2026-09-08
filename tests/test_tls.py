@@ -383,6 +383,24 @@ async def test_starttls_when_disconnected() -> None:
 
 
 @pytest.mark.smtpd_options(tls=False)
+async def test_starttls_when_disconnected_during_ehlo(
+    smtp_client: SMTP, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    async with smtp_client:
+        await smtp_client.ehlo()
+
+        async def ehlo_then_disconnect() -> None:
+            smtp_client.close()
+
+        monkeypatch.setattr(
+            smtp_client, "_ehlo_or_helo_if_needed", ehlo_then_disconnect
+        )
+
+        with pytest.raises(SMTPServerDisconnected):
+            await smtp_client.starttls()
+
+
+@pytest.mark.smtpd_options(tls=False)
 async def test_starttls_sets_protocol_over_ssl(smtp_client: SMTP) -> None:
     async with smtp_client:
         assert smtp_client.protocol is not None

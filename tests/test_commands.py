@@ -480,6 +480,21 @@ async def test_data_error_when_disconnected() -> None:
         await client.data("HELLO WORLD")
 
 
+async def test_data_error_when_disconnected_during_ehlo(
+    smtp_client: SMTP, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    async def ehlo_then_disconnect() -> None:
+        smtp_client.close()
+
+    async with smtp_client:
+        monkeypatch.setattr(
+            smtp_client, "_ehlo_or_helo_if_needed", ehlo_then_disconnect
+        )
+
+        with pytest.raises(SMTPServerDisconnected):
+            await smtp_client.data("HELLO WORLD")
+
+
 @pytest.mark.smtpd_mocks(smtp_NOOP=mock_response_gibberish)
 async def test_gibberish_raises_exception(smtp_client: SMTP) -> None:
     async with smtp_client:
