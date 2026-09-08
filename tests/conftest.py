@@ -14,7 +14,6 @@ from collections.abc import AsyncGenerator, Callable, Generator, Mapping
 from pathlib import Path
 from typing import Any
 
-import hypothesis
 import pytest
 import pytest_asyncio
 import trustme
@@ -34,22 +33,6 @@ except ImportError:
     HAS_UVLOOP = False
 else:
     HAS_UVLOOP = True
-BASE_CERT_PATH = Path("tests/certs/")
-IS_PYPY = hasattr(sys, "pypy_version_info")
-
-# pypy can take a while to generate data, so don't fail the test due to health checks.
-if IS_PYPY:
-    base_settings = hypothesis.settings(
-        suppress_health_check=(hypothesis.HealthCheck.too_slow,)
-    )
-else:
-    base_settings = hypothesis.settings()
-hypothesis.settings.register_profile("dev", parent=base_settings, max_examples=10)
-hypothesis.settings.register_profile("ci", parent=base_settings, max_examples=100)
-
-
-class ParamFixtureRequest(pytest.FixtureRequest):
-    param: Any
 
 
 class EchoServerProtocol(asyncio.Protocol):
@@ -154,11 +137,6 @@ def message_str(recipient_str: str, sender_str: str) -> str:
 @pytest.fixture(scope="session")
 def message_bytes(message_str: str) -> bytes:
     return message_str.encode("ascii")
-
-
-@pytest.fixture(scope="session")
-def smtpd_class() -> type[SMTPD]:
-    return TestSMTPD
 
 
 @pytest.fixture(scope="session")
@@ -371,17 +349,11 @@ def received_commands() -> list[tuple[str, tuple[Any, ...]]]:
 
 
 @pytest.fixture(scope="function")
-def smtpd_responses() -> list[str]:
-    return []
-
-
-@pytest.fixture(scope="function")
 def smtpd_handler(
     received_messages: list[email.message.EmailMessage],
     received_commands: list[tuple[str, tuple[Any, ...]]],
-    smtpd_responses: list[str],
 ) -> RecordingHandler:
-    return RecordingHandler(received_messages, received_commands, smtpd_responses)
+    return RecordingHandler(received_messages, received_commands)
 
 
 @pytest.fixture(scope="session")
@@ -552,12 +524,6 @@ def smtpd_controller(
     yield controller
 
     controller.stop()
-
-
-@pytest.fixture(scope="function")
-def smtpd_server_threaded(smtpd_controller: SMTPDController) -> asyncio.AbstractServer:
-    server: asyncio.AbstractServer = smtpd_controller.server
-    return server
 
 
 # Running server ports #

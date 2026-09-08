@@ -6,7 +6,7 @@ import asyncio
 import logging
 from email.errors import HeaderParseError
 from email.message import EmailMessage, Message
-from typing import Any, AnyStr
+from typing import Any
 
 from aiosmtpd.handlers import Message as MessageHandler
 from aiosmtpd.smtp import MISSING
@@ -24,18 +24,13 @@ class RecordingHandler(MessageHandler):
         self,
         messages_list: list[EmailMessage | Message],
         commands_list: list[tuple[str, tuple[Any, ...]]],
-        responses_list: list[str],
     ) -> None:
         self.messages = messages_list
         self.commands = commands_list
-        self.responses = responses_list
         super().__init__(message_class=EmailMessage)
 
     def record_command(self, command: str, *args: Any) -> None:
         self.commands.append((command, tuple(args)))
-
-    def record_server_response(self, status: str) -> None:
-        self.responses.append(status)
 
     def handle_message(self, message: EmailMessage | Message) -> None:
         self.messages.append(message)
@@ -75,10 +70,6 @@ class TestSMTPD(SMTPD):
     async def _call_handler_hook(self, command: str, *args: Any) -> Any:
         self.event_handler.record_command(command, *args)
         return await super()._call_handler_hook(command, *args)
-
-    async def push(self, status: AnyStr) -> None:
-        await super().push(status)
-        self.event_handler.record_server_response(status)
 
     async def smtp_EXPN(self, arg: str) -> None:
         """

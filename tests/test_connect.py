@@ -166,14 +166,8 @@ async def test_disconnected_server_raises_on_data_read(smtp_client: SMTP) -> Non
     assert not smtp_client.is_connected
 
 
-async def test_disconnected_server_raises_on_data_write(
-    smtp_client: SMTP,
-    smtpd_server: asyncio.AbstractServer,
-    smtpd_class: type[SMTPD],
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(smtpd_class, "smtp_DATA", close_during_read_response)
-
+@pytest.mark.smtpd_mocks(smtp_DATA=close_during_read_response)
+async def test_disconnected_server_raises_on_data_write(smtp_client: SMTP) -> None:
     await smtp_client.connect()
     await smtp_client.ehlo()
     await smtp_client.mail("sender@example.com")
@@ -449,9 +443,7 @@ async def test_disconnected_server_data(smtp_client: SMTP) -> None:
         await smtp_client.data("123")
 
 
-async def test_create_connection_runtime_error_on_missing_loop(
-    smtp_client: SMTP,
-) -> None:
+async def test_create_connection_runtime_error_on_missing_loop() -> None:
     client = SMTP(timeout=1.0)
     with pytest.raises(RuntimeError, match="No event loop set"):
         await client._create_connection(1.0)
