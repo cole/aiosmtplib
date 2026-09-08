@@ -151,7 +151,7 @@ async def test_auth_login_error(mock_auth: DummySMTPAuth) -> None:
         await mock_auth.auth_login("username", "bogus")
 
 
-async def test_auth_plain_continue_error(mock_auth: DummySMTPAuth) -> None:
+async def test_auth_login_continue_error(mock_auth: DummySMTPAuth) -> None:
     continue_response = (SMTPStatus.auth_continue, "VXNlcm5hbWU6")
     mock_auth.responses.extend([continue_response, FAILURE_RESPONSE])
 
