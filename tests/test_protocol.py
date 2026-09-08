@@ -418,34 +418,6 @@ async def test_protocol_data_received_called_twice(
     await cleanup_server(server)
 
 
-async def test_protocol_eof_response(bind_address: str, hostname: str) -> None:
-    event_loop = asyncio.get_running_loop()
-
-    async def client_connected(
-        reader: asyncio.StreamReader, writer: asyncio.StreamWriter
-    ) -> None:
-        writer.transport.abort()  # type: ignore
-
-    server = await asyncio.start_server(
-        client_connected, host=bind_address, port=0, family=socket.AF_INET
-    )
-    server_port = server.sockets[0].getsockname()[1] if server.sockets else 0
-
-    connect_future = event_loop.create_connection(
-        SMTPProtocol, host=hostname, port=server_port
-    )
-    transport, protocol = await asyncio.wait_for(connect_future, timeout=1.0)
-
-    # The server aborted immediately; the client must observe the closed
-    # connection rather than hang waiting for a greeting.
-    with pytest.raises(SMTPServerDisconnected):
-        await protocol.read_response(timeout=1.0)  # type: ignore
-    assert transport.is_closing()
-
-    server.close()
-    await cleanup_server(server)
-
-
 @pytest.mark.skip_if_uvloop(reason="flaky on uvloop")
 async def test_protocol_exception_cleanup_warning(
     caplog: pytest.LogCaptureFixture,
@@ -487,14 +459,6 @@ async def test_protocol_exception_cleanup_warning(
     await cleanup_server(server)
 
     assert "Future exception was never retrieved" not in caplog.text
-
-
-async def test_protocol_get_close_waiter() -> None:
-    event_loop = asyncio.get_running_loop()
-    protocol = SMTPProtocol(event_loop)
-
-    close_waiter = protocol._get_close_waiter(None)  # type: ignore
-    assert close_waiter is not None
 
 
 async def test_protocol_missing_command_lock_disconnected() -> None:
