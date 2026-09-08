@@ -90,6 +90,10 @@ minversion = "6.0"
 junit_family = "xunit2"
 addopts = ["--import-mode=importlib", "--strict-markers"]
 testpaths = ["tests"]
+filterwarnings = [
+    # aiosmtpd 1.4.6 still imports typing.ByteString (deprecated in 3.14)
+    "ignore:'typing.ByteString' and 'collections.abc.ByteString' are deprecated:DeprecationWarning:aiosmtpd.proxy_protocol",
+]
 markers = [
     "smtpd_options",
     "smtpd_mocks",
