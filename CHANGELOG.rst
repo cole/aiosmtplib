@@ -7,6 +7,8 @@ Changelog
 - Bugfix: resolve the ``SMTPProtocol`` close waiter on connection loss, so
   ``asyncio.StreamWriter.wait_closed()`` on a writer wrapping the protocol no
   longer hangs forever
+- Bugfix: ``sendmail`` no longer adds its own ``SIZE`` parameter to ``MAIL FROM``
+  when the caller already supplied one in ``mail_options``
 
 5.1.3
 -----

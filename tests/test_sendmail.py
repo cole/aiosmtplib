@@ -653,3 +653,19 @@ async def test_sendmail_size_option_counts_transmitted_octets_str(
 
     assert received_commands[1][0] == "MAIL"
     assert received_commands[1][1][1][0] == f"SIZE={expected_size}"
+
+
+async def test_sendmail_size_option_not_duplicated(
+    smtp_client: SMTP,
+    sender_str: str,
+    recipient_str: str,
+    message_str: str,
+    received_commands: list[tuple[str, tuple[Any, ...]]],
+) -> None:
+    async with smtp_client:
+        await smtp_client.sendmail(
+            sender_str, [recipient_str], message_str, mail_options=["SIZE=42"]
+        )
+
+    assert received_commands[1][0] == "MAIL"
+    assert received_commands[1][1][1] == ["SIZE=42"]

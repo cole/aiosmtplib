@@ -1427,7 +1427,9 @@ class SMTP:
             if mailbox_encoding == "utf-8" and not self.supports_extension("smtputf8"):
                 raise SMTPNotSupported("SMTPUTF8 is not supported by this server")
 
-            if self.supports_extension("size"):
+            if self.supports_extension("size") and not any(
+                option.lower().startswith("size=") for option in mail_options
+            ):
                 # RFC 1870: the size is the number of octets, including CRLF
                 # pairs, as the message will be transmitted in the DATA command.
                 message_bytes = (
