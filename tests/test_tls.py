@@ -4,6 +4,7 @@ TLS and STARTTLS handling.
 
 import copy
 import ssl
+from typing import Any
 
 import pytest
 
@@ -56,65 +57,32 @@ async def test_starttls(smtp_client: SMTP) -> None:
         assert response.code == SMTPStatus.completed
 
 
-async def test_starttls_init_kwarg(
-    hostname: str, smtpd_server_port: int, client_tls_context: ssl.SSLContext
-) -> None:
-    smtp_client = SMTP(
-        hostname=hostname,
-        port=smtpd_server_port,
-        start_tls=True,
-        tls_context=client_tls_context,
-        timeout=1.0,
-    )
-
-    async with smtp_client:
-        # Make sure our connection was actually upgraded. ssl protocol transport is
-        # private in UVloop, so just check the class name.
-        assert "SSL" in type(smtp_client.transport).__name__
-
-
-@pytest.mark.smtpd_options(tls=False)
-async def test_starttls_connect_kwarg(smtp_client: SMTP) -> None:
-    await smtp_client.connect(start_tls=True)
-
-    # Make sure our connection was actually upgraded. ssl protocol transport is
-    # private in UVloop, so just check the class name.
-    assert "SSL" in type(smtp_client.transport).__name__
-
-    await smtp_client.quit()
-
-
-async def test_starttls_auto(
-    hostname: str, smtpd_server_port: int, client_tls_context: ssl.SSLContext
-) -> None:
-    smtp_client = SMTP(
-        hostname=hostname,
-        port=smtpd_server_port,
-        start_tls=None,
-        tls_context=client_tls_context,
-        timeout=1.0,
-    )
-
-    async with smtp_client:
-        # Make sure our connection was actually upgraded. ssl protocol transport is
-        # private in UVloop, so just check the class name.
-        assert "SSL" in type(smtp_client.transport).__name__
-
-
-async def test_starttls_auto_connect_kwarg(
+@pytest.mark.parametrize(
+    "init_kwargs, connect_kwargs",
+    [
+        ({"start_tls": True}, {}),
+        ({"start_tls": False}, {"start_tls": True}),
+        ({"start_tls": None}, {}),
+        ({"start_tls": False}, {"start_tls": None}),
+    ],
+    ids=["init_kwarg", "connect_kwarg", "auto_init_kwarg", "auto_connect_kwarg"],
+)
+async def test_starttls_option_upgrades_connection(
     hostname: str,
     smtpd_server_port: int,
     client_tls_context: ssl.SSLContext,
+    init_kwargs: dict[str, Any],
+    connect_kwargs: dict[str, Any],
 ) -> None:
     smtp_client = SMTP(
         hostname=hostname,
         port=smtpd_server_port,
-        start_tls=False,
         tls_context=client_tls_context,
         timeout=1.0,
+        **init_kwargs,
     )
 
-    await smtp_client.connect(start_tls=None)
+    await smtp_client.connect(**connect_kwargs)
 
     # Make sure our connection was actually upgraded. ssl protocol transport is
     # private in UVloop, so just check the class name.
