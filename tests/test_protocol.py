@@ -11,7 +11,12 @@ import ssl
 import pytest
 
 from aiosmtplib import SMTPResponseException, SMTPServerDisconnected, SMTPTimeoutError
-from aiosmtplib.protocol import DATA_CHUNK_SIZE, FlowControlMixin, SMTPProtocol
+from aiosmtplib.protocol import (
+    DATA_CHUNK_SIZE,
+    FlowControlMixin,
+    SMTPProtocol,
+    _set_timeout,
+)
 
 from .conftest import ConnectProtocol
 
@@ -545,9 +550,16 @@ class _WriteRecordingTransport(_FakeTransport):
     def __init__(self) -> None:
         super().__init__()
         self.writes: list[bytes] = []
+        self.closed = False
 
     def write(self, data: bytes) -> None:
         self.writes.append(data)
+
+    def close(self) -> None:
+        self.closed = True
+
+    def is_closing(self) -> bool:
+        return self.closed
 
 
 @pytest.mark.parametrize(
@@ -787,18 +799,11 @@ class _PausingTransport(_WriteRecordingTransport):
     def __init__(self, protocol: SMTPProtocol) -> None:
         super().__init__()
         self.protocol = protocol
-        self.closed = False
 
     def write(self, data: bytes) -> None:
         super().write(data)
         if data != b"DATA\r\n":
             self.protocol.pause_writing()
-
-    def close(self) -> None:
-        self.closed = True
-
-    def is_closing(self) -> bool:
-        return self.closed
 
 
 async def test_protocol_data_command_waits_for_drain() -> None:
@@ -890,3 +895,93 @@ async def test_protocol_data_command_writes_in_chunks() -> None:
     assert body == message + b"\r\n.\r\n"
     assert len(transport.writes) == 4
     assert all(len(chunk) <= DATA_CHUNK_SIZE for chunk in transport.writes[1:])
+
+
+async def test_set_timeout_ignores_done_waiter() -> None:
+    """
+    The timeout callback can fire after the waiter has already been resolved,
+    if both land in the same loop iteration; it must not touch the result.
+    """
+    waiter = asyncio.get_running_loop().create_future()
+    waiter.set_result("done")
+
+    _set_timeout(waiter)
+
+    assert waiter.result() == "done"
+
+
+async def test_protocol_malformed_response_on_closing_transport() -> None:
+    """
+    A bad reply arriving after the transport has already started closing
+    still fails the waiter, without trying to close the transport again.
+    """
+    protocol = SMTPProtocol()
+    transport = _WriteRecordingTransport()
+    protocol.connection_made(transport)
+
+    task = asyncio.ensure_future(protocol.execute_command(b"NOOP", timeout=1.0))
+    await asyncio.sleep(0)
+    transport.close()
+    protocol.data_received(b"ERROR\r\n")
+
+    with pytest.raises(SMTPResponseException, match="Malformed SMTP response line"):
+        await task
+
+    assert protocol._buffer == bytearray()
+
+
+async def test_protocol_read_response_cancelled_after_connection_lost() -> None:
+    """
+    Cancellation delivered in the same loop iteration as connection_lost
+    should propagate without trying to close the (already gone) transport.
+    """
+    protocol = SMTPProtocol()
+    transport = _WriteRecordingTransport()
+    protocol.connection_made(transport)
+
+    task = asyncio.ensure_future(protocol.execute_command(b"NOOP", timeout=1.0))
+    await asyncio.sleep(0)
+    protocol.connection_lost(None)
+    task.cancel()
+
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    assert protocol.transport is None
+    assert not transport.closed
+
+
+async def test_protocol_data_command_cancelled_after_connection_lost() -> None:
+    protocol = SMTPProtocol()
+    transport = _PausingTransport(protocol)
+    protocol.connection_made(transport)
+
+    task = asyncio.ensure_future(protocol.execute_data_command(b"hello", timeout=1.0))
+    await asyncio.sleep(0)
+    protocol.data_received(b"354 go\r\n")
+    await asyncio.sleep(0)
+    protocol.connection_lost(None)
+    task.cancel()
+
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    assert protocol.transport is None
+    assert not transport.closed
+
+
+async def test_protocol_start_tls_transport_closing_after_reply(
+    client_tls_context: ssl.SSLContext,
+) -> None:
+    protocol = SMTPProtocol()
+    transport = _WriteRecordingTransport()
+    transport._extra.clear()  # not already over TLS
+    protocol.connection_made(transport)
+
+    task = asyncio.ensure_future(protocol.start_tls(client_tls_context, timeout=1.0))
+    await asyncio.sleep(0)
+    transport.close()
+    protocol.data_received(b"220 Go ahead\r\n")
+
+    with pytest.raises(SMTPServerDisconnected, match="Connection lost"):
+        await task
