@@ -125,6 +125,20 @@ def test_raise_smtp_recipients_refused(addresses: list[tuple[int, str, str]]) ->
     assert excinfo.value.recipients == errors
 
 
+@pytest.mark.parametrize("recipient_count", (1, 2))
+def test_smtp_recipients_refused_message(recipient_count: int) -> None:
+    errors = [
+        SMTPRecipientRefused(550, "Mailbox unavailable", f"user{index}@example.com")
+        for index in range(recipient_count)
+    ]
+
+    error = SMTPRecipientsRefused(errors)
+
+    assert error.message == str(errors)
+    assert error.args == (errors,)
+    assert str(error) == str(errors)
+
+
 @given(error_message=text())
 def test_raise_smtp_not_supported(error_message: str) -> None:
     with pytest.raises(SMTPNotSupported) as excinfo:
