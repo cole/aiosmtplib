@@ -330,6 +330,21 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
                 f"Transport {self.transport!r} does not support writing."
             ) from None
 
+    async def _read_response_or_close(
+        self, timeout: float | None = None
+    ) -> SMTPResponse:
+        """
+        Read a response to a command already written. If cancelled while
+        waiting, close the transport: the reply is still in flight, and would
+        otherwise be paired with the next command sent.
+        """
+        try:
+            return await self.read_response(timeout=timeout)
+        except asyncio.CancelledError:
+            if self.transport is not None:
+                self.transport.close()
+            raise
+
     async def execute_command(
         self, *args: bytes, timeout: float | None = None
     ) -> SMTPResponse:
@@ -353,7 +368,7 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
             if command == b"QUIT\r\n":
                 self._quit_sent = True
 
-            response = await self.read_response(timeout=timeout)
+            response = await self._read_response_or_close(timeout=timeout)
 
         return response
 
@@ -378,13 +393,13 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
             # Mark a reply as expected before each send (see execute_command).
             self._response_pending = True
             self.write(b"DATA\r\n")
-            start_response = await self.read_response(timeout=timeout)
+            start_response = await self._read_response_or_close(timeout=timeout)
             if start_response.code != SMTPStatus.start_input:
                 raise SMTPDataError(start_response.code, start_response.message)
 
             self._response_pending = True
             self.write(message)
-            response = await self.read_response(timeout=timeout)
+            response = await self._read_response_or_close(timeout=timeout)
             if response.code != SMTPStatus.completed:
                 raise SMTPDataError(response.code, response.message)
 
@@ -408,7 +423,7 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
             # Mark a reply as expected before sending (see execute_command).
             self._response_pending = True
             self.write(b"STARTTLS\r\n")
-            response = await self.read_response(timeout=timeout)
+            response = await self._read_response_or_close(timeout=timeout)
             if response.code != SMTPStatus.ready:
                 raise SMTPResponseException(response.code, response.message)
 

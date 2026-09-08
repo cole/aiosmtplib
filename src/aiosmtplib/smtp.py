@@ -619,6 +619,11 @@ class SMTP:
             # mispairing that response with a later command.
             self.close()
             raise
+        except asyncio.CancelledError:
+            # The protocol closes its transport if cancelled mid-command
+            if not self.is_connected:
+                self.close()
+            raise
 
         # If the server is unavailable, be nice and close the connection
         if response.code == SMTPStatus.domain_unavailable:
@@ -972,6 +977,10 @@ class SMTP:
         except (SMTPServerDisconnected, SMTPTimeoutError):
             self.close()
             raise
+        except asyncio.CancelledError:
+            if not self.is_connected:
+                self.close()
+            raise
 
     # ESMTP commands #
 
@@ -1104,6 +1113,10 @@ class SMTP:
             )
         except (SMTPServerDisconnected, SMTPTimeoutError):
             self.close()
+            raise
+        except asyncio.CancelledError:
+            if not self.is_connected:
+                self.close()
             raise
 
         # Update our transport reference
