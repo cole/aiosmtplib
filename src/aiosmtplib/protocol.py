@@ -6,7 +6,7 @@ import asyncio
 import collections
 import re
 import ssl
-from typing import Callable, cast
+from typing import Any, Callable, cast
 
 from .errors import (
     SMTPDataError,
@@ -164,6 +164,14 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
                     smtp_exc.__cause__ = exc
                 self._set_response_exception(self._response_waiter, smtp_exc)
 
+        # Resolve the close waiter handed out by _get_close_waiter, so that
+        # asyncio.StreamWriter.wait_closed() returns once the connection is gone.
+        if not self._closed_future.done():
+            if exc is None:
+                self._closed_future.set_result(None)
+            else:
+                self._set_response_exception(self._closed_future, exc)
+
         self.transport = None
         self._command_lock = None
 
@@ -219,10 +227,10 @@ class SMTPProtocol(FlowControlMixin, asyncio.BaseProtocol):
         return False
 
     def _set_response_exception(
-        self, waiter: "asyncio.Future[SMTPResponse]", exc: BaseException
+        self, waiter: "asyncio.Future[Any]", exc: BaseException
     ) -> None:
         """
-        Set an exception on the response waiter and mark it as retrieved.
+        Set an exception on a waiter future and mark it as retrieved.
 
         Nobody may ever await the waiter (e.g. the server disconnects between
         commands), and the future's finalizer would then log 'Future exception

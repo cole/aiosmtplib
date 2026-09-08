@@ -631,6 +631,50 @@ async def test_protocol_connection_lost_without_quit_raises() -> None:
     assert isinstance(exc, SMTPServerDisconnected)
 
 
+async def test_protocol_close_waiter_resolves_on_connection_lost() -> None:
+    """
+    The future returned by _get_close_waiter (used by
+    asyncio.StreamWriter.wait_closed) must resolve when the connection is
+    lost, or wait_closed() hangs forever.
+    """
+    protocol = SMTPProtocol()
+    protocol.connection_made(_FakeTransport())
+    close_waiter = protocol._get_close_waiter(None)  # type: ignore[arg-type]
+    assert not close_waiter.done()
+
+    protocol.connection_lost(None)
+
+    assert close_waiter.done()
+    assert close_waiter.exception() is None
+
+
+async def test_protocol_close_waiter_raises_on_connection_lost_error() -> None:
+    protocol = SMTPProtocol()
+    protocol.connection_made(_FakeTransport())
+    close_waiter = protocol._get_close_waiter(None)  # type: ignore[arg-type]
+
+    exc = ConnectionResetError("boom")
+    protocol.connection_lost(exc)
+
+    assert close_waiter.done()
+    assert close_waiter.exception() is exc
+
+
+async def test_protocol_stream_writer_wait_closed(
+    hostname: str, echo_server_port: int
+) -> None:
+    event_loop = asyncio.get_running_loop()
+    transport, protocol = await event_loop.create_connection(
+        SMTPProtocol, host=hostname, port=echo_server_port
+    )
+    writer = asyncio.StreamWriter(transport, protocol, None, event_loop)  # type: ignore[arg-type]
+
+    writer.close()
+    await asyncio.wait_for(writer.wait_closed(), timeout=1.0)
+
+    assert not protocol.is_connected
+
+
 class _WriteRecordingTransport(_FakeTransport):
     def __init__(self) -> None:
         super().__init__()
