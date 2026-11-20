@@ -1173,6 +1173,12 @@ class SMTP:
                 response = await auth_method(username, password, timeout=timeout)
             except SMTPAuthenticationError as exc:
                 exception = exc
+            except SMTPServerDisconnected as exc:
+                # Servers may close the connection after a 535, leaving
+                # nothing to try: raise the saved auth error instead.
+                if exception is not None:
+                    raise exception from exc
+                raise
             else:
                 # No exception means we're good
                 break

@@ -14,7 +14,11 @@ from aiosmtplib.auth import (
     auth_plain_encode,
     auth_xoauth2_encode,
 )
-from aiosmtplib.errors import SMTPAuthenticationError, SMTPException
+from aiosmtplib.errors import (
+    SMTPAuthenticationError,
+    SMTPException,
+    SMTPServerDisconnected,
+)
 from aiosmtplib.response import SMTPResponse
 from aiosmtplib.typing import SMTPStatus
 
@@ -285,3 +289,39 @@ async def test_auth_crammd5_passes_timeout(mock_auth: DummySMTPAuth) -> None:
     assert len(mock_auth.received_kwargs) == 2
     assert mock_auth.received_kwargs[0].get("timeout") == 5.0
     assert mock_auth.received_kwargs[1].get("timeout") == 5.0
+
+
+async def test_login_raises_saved_auth_error_when_server_disconnects() -> None:
+    """
+    If the server hangs up after a failed AUTH attempt, login() raises the
+    saved authentication error instead of SMTPServerDisconnected.
+    """
+
+    async def handle(
+        reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+    ) -> None:
+        writer.write(b"220 fake ESMTP\r\n")
+        while line := await reader.readline():
+            cmd = line.decode().strip().upper()
+            if cmd.startswith("EHLO"):
+                writer.write(b"250-fake\r\n250 AUTH PLAIN LOGIN\r\n")
+            elif cmd.startswith("AUTH PLAIN"):
+                writer.write(b"535 5.7.8 Username and Password not accepted\r\n")
+                await writer.drain()
+                writer.close()
+                return
+            else:
+                writer.write(b"250 OK\r\n")
+            await writer.drain()
+
+    server = await asyncio.start_server(handle, "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    try:
+        client = SMTP(hostname="127.0.0.1", port=port, start_tls=False)
+        await client.connect()
+        with pytest.raises(SMTPAuthenticationError) as excinfo:
+            await client.login("user", "wrong")
+        assert excinfo.value.code == 535
+        assert isinstance(excinfo.value.__cause__, SMTPServerDisconnected)
+    finally:
+        server.close()
